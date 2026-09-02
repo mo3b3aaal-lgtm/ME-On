@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #F9F7F2;
+    color: #2D332A;
+  }
+
+  h1, h2, h3, .font-heading {
+    font-family: 'Cairo', 'Tajawal', sans-serif;
+    font-weight: 700;
+  }
+}
+
+/* Custom scrollbars that feel like natural, smooth UI */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.android-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.android-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.android-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(116, 140, 112, 0.25);
+  border-radius: 9999px;
+}
+.android-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(116, 140, 112, 0.45);
+}
+
+@keyframes natural-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.98); }
+}
+
+.animate-natural-pulse {
+  animation: natural-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+

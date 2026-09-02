@@ -1,0 +1,8 @@
+{
+  "name": "Teacher Manager",
+  "description": "A comprehensive Android mobile application for educators to manage classes, track attendance, record grades, plan lessons, log student behavior, and streamline parent communications with AI assistance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

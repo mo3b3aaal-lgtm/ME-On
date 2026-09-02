@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -287,6 +288,19 @@ app.post("/api/ai/copilot", async (req, res) => {
   } catch (error: any) {
     console.error("Copilot error:", error);
     res.status(500).json({ error: error.message || "Failed to consult copilot." });
+  }
+});
+
+// APK Download Endpoint
+app.get(["/api/apk/download", "/TeacherManager.apk", "/download/TeacherManager.apk"], (_req, res) => {
+  const apkPath = path.join(process.cwd(), "android/app/build/outputs/apk/debug/app-debug.apk");
+  const fallbackPath = path.join(process.cwd(), "public/TeacherManager.apk");
+  
+  const fileToSend = fs.existsSync(apkPath) ? apkPath : fallbackPath;
+  if (fs.existsSync(fileToSend)) {
+    res.download(fileToSend, "TeacherManager.apk");
+  } else {
+    res.status(404).json({ error: "APK file not found. Please build it first." });
   }
 });
 

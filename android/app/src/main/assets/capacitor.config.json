@@ -1,0 +1,11 @@
+{
+	"appId": "com.teachermanager.app",
+	"appName": "Teacher Manager",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {
+		"allowMixedContent": true
+	}
+}

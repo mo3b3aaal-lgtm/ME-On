@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { App as CapacitorApp } from '@capacitor/app';
 import { ActiveTab, Student, Group, Session, Payment, TeacherProfile, UserAccount } from './types';
 import { db } from './utils/storage';
 
@@ -98,54 +97,6 @@ export default function App() {
       setSelectedGroupForProfile(refreshed || null);
     }
   }, [groups]);
-
-  // Capacitor Android Hardware Back Button Support
-  useEffect(() => {
-    let backButtonHandle: { remove: () => Promise<void> } | null = null;
-    try {
-      CapacitorApp.addListener('backButton', () => {
-        if (selectedSessionForAttendance) {
-          setSelectedSessionForAttendance(null);
-        } else if (selectedGroupForProfile) {
-          setSelectedGroupForProfile(null);
-        } else if (selectedStudentForProfile) {
-          setSelectedStudentForProfile(null);
-        } else if (isEnrollModalOpen) {
-          setIsEnrollModalOpen(false);
-        } else if (isAddPaymentOpen) {
-          setIsAddPaymentOpen(false);
-        } else if (isAddSessionOpen) {
-          setIsAddSessionOpen(false);
-        } else if (isAddGroupOpen) {
-          setIsAddGroupOpen(false);
-        } else if (isAddStudentOpen) {
-          setIsAddStudentOpen(false);
-        } else if (activeTab !== 'dashboard') {
-          setActiveTab('dashboard');
-        } else {
-          CapacitorApp.exitApp();
-        }
-      }).then((handle) => {
-        backButtonHandle = handle;
-      }).catch(() => {});
-    } catch {}
-
-    return () => {
-      if (backButtonHandle) {
-        backButtonHandle.remove();
-      }
-    };
-  }, [
-    selectedSessionForAttendance,
-    selectedGroupForProfile,
-    selectedStudentForProfile,
-    isEnrollModalOpen,
-    isAddPaymentOpen,
-    isAddSessionOpen,
-    isAddGroupOpen,
-    isAddStudentOpen,
-    activeTab,
-  ]);
 
   // Handlers for Add/Edit
   const handleOpenAddStudent = () => {

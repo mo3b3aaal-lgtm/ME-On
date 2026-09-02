@@ -13,8 +13,6 @@ import {
   Calendar,
   AlertCircle,
   TrendingUp,
-  Smartphone,
-  Download,
 } from 'lucide-react';
 import { Student, Group, Session, Payment, TeacherProfile } from '../types';
 import { db } from '../utils/storage';
@@ -86,32 +84,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {new Date().toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
           </span>
         </div>
-      </div>
-
-      {/* Android APK Download Banner */}
-      <div className="p-3 bg-gradient-to-r from-[#748C70]/15 via-white to-[#F5F8F4] border border-[#748C70]/30 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#748C70] text-white flex items-center justify-center shrink-0 shadow-xs">
-            <Smartphone className="w-4 h-4" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
-              <span>نسخة تطبيق أندرويد (APK) جاهزة</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-[#748C70] animate-ping"></span>
-            </p>
-            <p className="text-[10px] text-[#6B7567] font-semibold">
-              تطبيق أصلي سريع يعمل أوفلاين مع دعم المزامنة والنسخ الاحتياطي
-            </p>
-          </div>
-        </div>
-        <a
-          href="/TeacherManager.apk"
-          download="TeacherManager.apk"
-          className="px-3 py-1.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 shrink-0"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>تحميل APK</span>
-        </a>
       </div>
 
       {/* 4 Core Metric KPI Cards */}

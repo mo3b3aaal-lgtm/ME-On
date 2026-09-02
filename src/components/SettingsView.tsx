@@ -22,8 +22,6 @@ import {
   HardDriveDownload,
   Clock,
   Check,
-  Smartphone,
-  Sparkles,
 } from 'lucide-react';
 import { TeacherProfile, UserAccount } from '../types';
 import { db, formatSyncTimeArabic } from '../utils/storage';
@@ -486,56 +484,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* 3. ANDROID APP & APK DOWNLOAD CARD */}
-      <div className="p-4 bg-gradient-to-br from-white to-[#F5F8F4] border border-[#748C70]/30 rounded-2xl shadow-sm space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#748C70] text-white flex items-center justify-center shadow-xs">
-              <Smartphone className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
-                <span>تطبيق أندرويد (Android APK)</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-[#748C70]/15 text-[#748C70] text-[9px] font-bold">
-                  جاهز للتحميل
-                </span>
-              </h2>
-              <p className="text-[10px] text-[#8A9187] font-semibold">
-                حزمة التثبيت المباشرة لهواتف وأجهزة أندرويد اللوحية
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-3 bg-white border border-[#E8E2D6] rounded-xl flex items-center justify-between text-xs">
-          <div className="space-y-0.5">
-            <p className="font-bold text-[#2D332A] text-[11px]">TeacherManager.apk</p>
-            <p className="text-[10px] text-[#8A9187]">حجم الملف: 4.2 MB • الإصدار: v2.0</p>
-          </div>
-          <a
-            href="/TeacherManager.apk"
-            download="TeacherManager.apk"
-            className="px-3.5 py-2 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-[0.98]"
-          >
-            <Download className="w-4 h-4" />
-            <span>تحميل الـ APK الآن</span>
-          </a>
-        </div>
-
-        <div className="text-[10px] text-[#6B7567] bg-[#F9F7F2] p-2.5 rounded-xl border border-[#E8E2D6] space-y-1">
-          <p className="font-bold text-[#2D332A] flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#748C70]" />
-            <span>مميزات تطبيق الأندرويد:</span>
-          </p>
-          <ul className="list-disc list-inside space-y-0.5 text-[#8A9187] pr-1">
-            <li>يعمل بالكامل بدون إنترنت مع إمكانية المزامنة السحابية.</li>
-            <li>تثبيت مباشر وسريع على أي هاتف أو تابلت أندرويد.</li>
-            <li>دعم زر الرجوع وإيماءات الأندرويد والواجهة العربية.</li>
-          </ul>
-        </div>
-      </div>
-
-      {/* 4. TEACHER PROFILE CARD */}
+      {/* 3. TEACHER PROFILE CARD */}
       <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3.5">
         <h2 className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
           <User className="w-4 h-4 text-[#748C70]" />

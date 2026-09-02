@@ -16,17 +16,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
+          bun-version: latest
 
-      - name: Install Node.js dependencies
-        run: npm ci || npm install
+      - name: Install dependencies
+        run: bun install
 
       - name: Run web build
-        run: npm run build
+        run: bun run build
 
       - name: Set up Java JDK
         uses: actions/setup-java@v4
@@ -39,19 +38,16 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Run Capacitor sync
-        run: npx cap sync android
-
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./android/gradlew || true
+        run: bunx @capacitor/cli sync android || npx @capacitor/cli sync android || bunx cap sync android
 
       - name: Build Android Debug APK
-        working-directory: ./android
         run: |
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug --stacktrace
-          else
-            gradle assembleDebug --stacktrace
+          cd android
+          if [ ! -f gradlew ]; then
+            gradle wrapper
           fi
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
@@ -60,3 +56,4 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+

@@ -360,6 +360,35 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
 // Auto-Sync Scheduling & Realtime Engine
 // ==========================================
 
+export const DEPLOYED_SERVER_API_URL = 'https://ais-dev-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app';
+
+export function getServerApiBaseUrl(): string {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
+    return (import.meta as any).env.VITE_API_URL.replace(/\/+$/, '');
+  }
+  if (Capacitor.isNativePlatform() || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:'))) {
+    return DEPLOYED_SERVER_API_URL;
+  }
+  return typeof window !== 'undefined' ? window.location.origin : DEPLOYED_SERVER_API_URL;
+}
+
+export function getFullApiUrl(endpointPath: string): string {
+  const cleanPath = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
+  if (Capacitor.isNativePlatform() || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:'))) {
+    return `${DEPLOYED_SERVER_API_URL}${cleanPath}`;
+  }
+  return cleanPath;
+}
+
+export function getAuthTokenForUser(userId: string): string {
+  try {
+    const accounts = db.getAccounts();
+    const acc = accounts.find((a) => a.id === userId);
+    if (acc && acc.authToken) return acc.authToken;
+  } catch {}
+  return `auth_tk_${userId}`;
+}
+
 export interface AutoSyncSchedulerPlugin {
   scheduleSync(options: { frequency: string; userId: string; serverUrl?: string }): Promise<{ success: boolean; message?: string }>;
   triggerImmediateSync(options: { userId: string; serverUrl?: string }): Promise<{ success: boolean }>;
@@ -447,13 +476,13 @@ export function saveAutoSyncConfig(configPatch: Partial<AutoSyncConfig>, userId?
     console.error('Error saving auto sync config:', err);
   }
 
-  // Schedule or cancel native Android WorkManager task
+  // Schedule or cancel native Android WorkManager task with real backend API URL
   if (Capacitor.isNativePlatform()) {
     try {
       AutoSyncScheduler.scheduleSync({
         frequency: updated.frequency,
         userId: targetUserId,
-        serverUrl: typeof window !== 'undefined' ? window.location.origin : '',
+        serverUrl: getServerApiBaseUrl(),
       }).catch((nativeErr) => {
         console.warn('Native Android WorkManager scheduler dispatch error:', nativeErr);
       });
@@ -489,7 +518,7 @@ export function notifySyncListeners(): void {
 /**
  * تنفيذ المزامنة الكاملة (السحابية والمحلية)
  * تجمع جميع بيانات المستخدم (الطلاب، المجموعات، الاشتراكات، الدروس الخاصة، الحصص، الحضور، المدفوعات، الفواتير الشهرية، رصيد الحصص، الرصيد المالي، والملف الشخصي)
- * وتقوم بدمجها بشكل آمن وتحديث السجلات
+ * وتقوم بدمجها بشكل آمن وتحديث السجلات في قاعدة بيانات SQLite السحابية
  */
 export async function performFullSync(
   userId?: string,
@@ -533,12 +562,23 @@ export async function performFullSync(
     };
   }
 
-  // 3. Attempt cloud sync via server API
+  // 3. Attempt cloud sync via persistent server API with authorization token
   try {
-    const response = await fetch('/api/sync/merge', {
+    const token = getAuthTokenForUser(targetUserId);
+    const syncApiUrl = getFullApiUrl('/api/sync/merge');
+
+    const response = await fetch(syncApiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: targetUserId, dataPackage: localPackage }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'x-auth-token': token,
+      },
+      body: JSON.stringify({
+        userId: targetUserId,
+        token: token,
+        dataPackage: localPackage,
+      }),
     });
 
     if (response.ok) {
@@ -554,7 +594,7 @@ export async function performFullSync(
         saveAutoSyncConfig(
           {
             status: 'success',
-            statusMessage: 'تمت المزامنة السحابية بنجاح وتحديث كافة البيانات',
+            statusMessage: 'تمت المزامنة السحابية بنجاح وتحديث كافة البيانات في قاعدة البيانات السحابية الدائمة',
             lastSyncTime: finalPackage.lastSyncTime || new Date().toISOString(),
             nextSyncTime: nextSync,
             autoRetryOnReconnect: false,
@@ -564,7 +604,7 @@ export async function performFullSync(
 
         return {
           success: true,
-          message: `تمت المزامنة بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
+          message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
           dataPackage: finalPackage,
         };
       }
@@ -611,7 +651,7 @@ export function initAutoSyncScheduler(): void {
     }
   });
 
-  // Native Android WorkManager bootstrap
+  // Native Android WorkManager bootstrap with production server URL
   if (Capacitor.isNativePlatform()) {
     try {
       const activeUserId = getActiveUserId();
@@ -620,7 +660,7 @@ export function initAutoSyncScheduler(): void {
         AutoSyncScheduler.scheduleSync({
           frequency: config.frequency,
           userId: activeUserId,
-          serverUrl: typeof window !== 'undefined' ? window.location.origin : '',
+          serverUrl: getServerApiBaseUrl(),
         }).catch((e) => console.warn('Bootstrap native sync failed:', e));
       }
     } catch {}
@@ -2497,6 +2537,7 @@ export const db = {
         subject: initialProfile.subject || 'رياضيات',
         centerOrSchool: initialProfile.centerOrSchool || 'سنتر الأوائل',
         password: 'password123',
+        authToken: 'auth_tk_acc_master_teacher',
         recoveryPin: '123456',
         securityQuestion: 'ما هي مادتك المفضلة؟',
         securityAnswer: initialProfile.subject || 'رياضيات',
@@ -2505,7 +2546,13 @@ export const db = {
       saveList(STORAGE_KEYS.ACCOUNTS, [defaultAccount]);
       return [defaultAccount];
     }
-    return list;
+    // Ensure all existing accounts have an authToken
+    return list.map((acc) => {
+      if (!acc.authToken) {
+        return { ...acc, authToken: `auth_tk_${acc.id}` };
+      }
+      return acc;
+    });
   },
 
   saveAccounts: (accounts: UserAccount[]): void => {
@@ -2516,7 +2563,11 @@ export const db = {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
       if (!raw) return null;
-      return JSON.parse(raw);
+      const user = JSON.parse(raw) as UserAccount;
+      if (user && !user.authToken) {
+        user.authToken = `auth_tk_${user.id}`;
+      }
+      return user;
     } catch {
       return null;
     }
@@ -2526,6 +2577,9 @@ export const db = {
     if (!user) {
       localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
     } else {
+      if (!user.authToken) {
+        user.authToken = `auth_tk_${user.id}`;
+      }
       localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(user));
     }
   },
@@ -2552,14 +2606,16 @@ export const db = {
       return { success: false, error: 'البريد الإلكتروني أو رقم الهاتف مسجل بالفعل بحساب آخر.' };
     }
 
+    const newId = `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const newAccount: UserAccount = {
-      id: `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      id: newId,
       name: accountData.name.trim(),
       email: cleanEmail,
       phone: accountData.phone?.trim(),
       subject: accountData.subject?.trim(),
       centerOrSchool: accountData.centerOrSchool?.trim(),
       password: accountData.password,
+      authToken: `auth_tk_${newId}`,
       recoveryPin: accountData.recoveryPin?.trim() || '123456',
       securityQuestion: accountData.securityQuestion?.trim() || 'ما هي مادتك الدراسية؟',
       securityAnswer: accountData.securityAnswer?.trim() || accountData.subject?.trim() || '',

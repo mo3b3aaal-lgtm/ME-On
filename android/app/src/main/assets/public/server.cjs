@@ -27,10 +27,238 @@ var import_path = __toESM(require("path"), 1);
 var import_vite = require("vite");
 var import_genai = require("@google/genai");
 var import_dotenv = __toESM(require("dotenv"), 1);
+
+// server/db.ts
+var import_app = require("firebase/app");
+var import_firestore = require("firebase/firestore");
+var import_node_fs = __toESM(require("node:fs"), 1);
+var import_node_path = __toESM(require("node:path"), 1);
+var import_node_crypto = __toESM(require("node:crypto"), 1);
+var firebaseConfig = {};
+try {
+  const configPath = import_node_path.default.join(process.cwd(), "firebase-applet-config.json");
+  if (import_node_fs.default.existsSync(configPath)) {
+    firebaseConfig = JSON.parse(import_node_fs.default.readFileSync(configPath, "utf-8"));
+  }
+} catch (e) {
+  console.error("Error loading firebase-applet-config.json:", e);
+}
+var app = (0, import_app.getApps)().length === 0 ? (0, import_app.initializeApp)(firebaseConfig) : (0, import_app.getApp)();
+var db = firebaseConfig.firestoreDatabaseId ? (0, import_firestore.getFirestore)(app, firebaseConfig.firestoreDatabaseId) : (0, import_firestore.getFirestore)(app);
+function generateDeterministicToken(userId, salt = "teachermanager_secret_seed") {
+  return import_node_crypto.default.createHmac("sha256", salt).update(userId).digest("hex");
+}
+async function registerOrAuthenticateUser(account) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const token = generateDeterministicToken(account.id);
+  const pwdHash = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
+  const userRef = (0, import_firestore.doc)(db, "users", account.id);
+  const userSnap = await (0, import_firestore.getDoc)(userRef);
+  if (userSnap.exists()) {
+    const existing = userSnap.data();
+    const updatedData = {
+      name: account.name || existing.name,
+      phone: account.phone || existing.phone,
+      auth_token: token,
+      updated_at: now
+    };
+    if (pwdHash) {
+      updatedData.password_hash = pwdHash;
+    }
+    await (0, import_firestore.setDoc)(userRef, updatedData, { merge: true });
+    return {
+      user: { ...existing, ...updatedData },
+      token
+    };
+  }
+  const usersColl = (0, import_firestore.collection)(db, "users");
+  const q = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", account.email));
+  const querySnap = await (0, import_firestore.getDocs)(q);
+  if (!querySnap.empty) {
+    const docFound = querySnap.docs[0];
+    const existing = docFound.data();
+    const updatedData = {
+      name: account.name || existing.name,
+      phone: account.phone || existing.phone,
+      auth_token: token,
+      updated_at: now
+    };
+    if (pwdHash) {
+      updatedData.password_hash = pwdHash;
+    }
+    await (0, import_firestore.setDoc)(docFound.ref, updatedData, { merge: true });
+    return {
+      user: { ...existing, ...updatedData },
+      token
+    };
+  }
+  const newUser = {
+    id: account.id,
+    email: account.email,
+    name: account.name || "\u0645\u0639\u0644\u0645",
+    phone: account.phone || "",
+    password_hash: pwdHash,
+    auth_token: token,
+    recovery_pin: account.recoveryPin || "123456",
+    created_at: now,
+    updated_at: now
+  };
+  await (0, import_firestore.setDoc)(userRef, newUser);
+  return { user: newUser, token };
+}
+async function getUserByToken(token) {
+  if (!token || typeof token !== "string") return null;
+  try {
+    const usersColl = (0, import_firestore.collection)(db, "users");
+    const q = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("auth_token", "==", token.trim()));
+    const snap = await (0, import_firestore.getDocs)(q);
+    if (snap.empty) return null;
+    return snap.docs[0].data();
+  } catch (err) {
+    console.error("Error getting user by token from Firestore:", err);
+    return null;
+  }
+}
+async function getUserById(userId) {
+  if (!userId) return null;
+  try {
+    const userRef = (0, import_firestore.doc)(db, "users", userId);
+    const snap = await (0, import_firestore.getDoc)(userRef);
+    if (!snap.exists()) return null;
+    return snap.data();
+  } catch (err) {
+    console.error("Error getting user by id from Firestore:", err);
+    return null;
+  }
+}
+async function getCloudDataPackage(userId) {
+  if (!userId) return null;
+  try {
+    const syncDocRef = (0, import_firestore.doc)(db, "user_sync_stores", userId);
+    const snap = await (0, import_firestore.getDoc)(syncDocRef);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return data.package || data.data_package || null;
+  } catch (err) {
+    console.error(`Error reading cloud data package from Firestore for ${userId}:`, err);
+    return null;
+  }
+}
+async function saveCloudDataPackage(userId, dataPackage) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const updatedPkg = {
+    ...dataPackage,
+    userId,
+    lastSyncTime: now
+  };
+  const syncDocRef = (0, import_firestore.doc)(db, "user_sync_stores", userId);
+  await (0, import_firestore.setDoc)(
+    syncDocRef,
+    {
+      user_id: userId,
+      version: dataPackage.version || "2.0",
+      last_sync_time: now,
+      package: updatedPkg,
+      updated_at: now
+    },
+    { merge: true }
+  );
+  try {
+    const auditRef = (0, import_firestore.doc)((0, import_firestore.collection)(db, "sync_audit_logs"));
+    const totalRecords = (dataPackage.students?.length || 0) + (dataPackage.groups?.length || 0) + (dataPackage.sessions?.length || 0) + (dataPackage.payments?.length || 0);
+    (0, import_firestore.setDoc)(auditRef, {
+      id: auditRef.id,
+      user_id: userId,
+      action: "sync_push",
+      client_ip: "cloud_server",
+      timestamp: now,
+      records_count: totalRecords
+    }).catch(() => {
+    });
+  } catch {
+  }
+  return { lastSyncTime: now, stats: updatedPkg.stats };
+}
+function mergeEntities(localList = [], cloudList = []) {
+  const map = /* @__PURE__ */ new Map();
+  for (const item of cloudList) {
+    if (item && item.id) {
+      map.set(item.id, item);
+    }
+  }
+  for (const item of localList) {
+    if (item && item.id) {
+      const existing = map.get(item.id);
+      if (existing) {
+        const existingTime = existing.updatedAt || existing.createdAt || "";
+        const localTime = item.updatedAt || item.createdAt || "";
+        if (existingTime && localTime && new Date(existingTime).getTime() > new Date(localTime).getTime()) {
+          map.set(item.id, { ...item, ...existing });
+        } else {
+          map.set(item.id, { ...existing, ...item });
+        }
+      } else {
+        map.set(item.id, item);
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+async function mergeCloudDataPackage(userId, incomingPackage) {
+  const existingCloud = await getCloudDataPackage(userId);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  if (!existingCloud) {
+    const saved = { ...incomingPackage, userId, lastSyncTime: now };
+    await saveCloudDataPackage(userId, saved);
+    return { dataPackage: saved, merged: false };
+  }
+  const mergedStudents = mergeEntities(incomingPackage.students, existingCloud.students);
+  const mergedGroups = mergeEntities(incomingPackage.groups, existingCloud.groups);
+  const mergedEnrollments = mergeEntities(incomingPackage.enrollments, existingCloud.enrollments);
+  const mergedSessions = mergeEntities(incomingPackage.sessions, existingCloud.sessions);
+  const mergedAttendance = mergeEntities(incomingPackage.attendance, existingCloud.attendance);
+  const mergedPayments = mergeEntities(incomingPackage.payments, existingCloud.payments);
+  const mergedCreditLogs = mergeEntities(incomingPackage.creditLogs || [], existingCloud.creditLogs || []);
+  const mergedMonthlyInvoices = mergeEntities(incomingPackage.monthlyInvoices || [], existingCloud.monthlyInvoices || []);
+  const mergedProfile = { ...existingCloud.teacherProfile || {}, ...incomingPackage.teacherProfile || {} };
+  const mergedPackage = {
+    version: incomingPackage.version || "2.0",
+    userId,
+    lastSyncTime: now,
+    students: mergedStudents,
+    groups: mergedGroups,
+    enrollments: mergedEnrollments,
+    sessions: mergedSessions,
+    attendance: mergedAttendance,
+    payments: mergedPayments,
+    creditLogs: mergedCreditLogs,
+    monthlyInvoices: mergedMonthlyInvoices,
+    teacherProfile: mergedProfile,
+    stats: {
+      totalStudents: mergedStudents.length,
+      totalGroups: mergedGroups.length,
+      totalSessions: mergedSessions.length,
+      totalPayments: mergedPayments.length
+    }
+  };
+  await saveCloudDataPackage(userId, mergedPackage);
+  return { dataPackage: mergedPackage, merged: true };
+}
+
+// server.ts
 import_dotenv.default.config();
-var app = (0, import_express.default)();
+var app2 = (0, import_express.default)();
 var PORT = 3e3;
-app.use(import_express.default.json());
+app2.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+app2.use(import_express.default.json({ limit: "50mb" }));
 var aiClient = null;
 function getGenAI() {
   if (!aiClient && process.env.GEMINI_API_KEY) {
@@ -45,55 +273,94 @@ function getGenAI() {
   }
   return aiClient;
 }
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString(), hasApiKey: Boolean(process.env.GEMINI_API_KEY) });
+app2.get("/api/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    database: "Firebase Firestore (Project: corded-elevator-cf6jr)",
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    hasApiKey: Boolean(process.env.GEMINI_API_KEY)
+  });
 });
-var cloudUserStores = {};
-function mergeEntities(localList = [], cloudList = []) {
-  const map = /* @__PURE__ */ new Map();
-  for (const item of cloudList) {
-    if (item && item.id) {
-      map.set(item.id, item);
+async function requireAuth(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    let token = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (req.headers["x-auth-token"]) {
+      token = String(req.headers["x-auth-token"]).trim();
+    } else if (req.body && req.body.token) {
+      token = String(req.body.token).trim();
     }
-  }
-  for (const item of localList) {
-    if (item && item.id) {
-      const existing = map.get(item.id);
-      if (existing) {
-        map.set(item.id, { ...existing, ...item });
-      } else {
-        map.set(item.id, item);
+    let user = null;
+    if (token) {
+      user = await getUserByToken(token);
+    }
+    if (!user && req.body && req.body.userId) {
+      const rawId = String(req.body.userId).trim();
+      user = await getUserById(rawId);
+      if (!user) {
+        const result = await registerOrAuthenticateUser({
+          id: rawId,
+          email: req.body.email || `${rawId}@teachermanager.local`,
+          name: req.body.teacherProfile?.name || "\u0645\u0639\u0644\u0645"
+        });
+        user = result.user;
       }
     }
-  }
-  return Array.from(map.values());
-}
-app.post("/api/sync/push", (req, res) => {
-  try {
-    const { userId, dataPackage } = req.body;
-    if (!userId || !dataPackage) {
-      return res.status(400).json({ success: false, error: "Missing userId or dataPackage" });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Invalid or missing authentication credentials."
+      });
     }
-    const now = (/* @__PURE__ */ new Date()).toISOString();
-    const updatedPackage = {
-      ...dataPackage,
-      userId,
-      lastSyncTime: now
-    };
-    cloudUserStores[userId] = updatedPackage;
-    res.json({ success: true, lastSyncTime: now, stats: dataPackage.stats });
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error("Auth middleware error:", err);
+    return res.status(500).json({ success: false, error: "Internal authentication error" });
+  }
+}
+var handleAuth = async (req, res) => {
+  try {
+    const { id, email, name, phone, password, recoveryPin } = req.body;
+    const userId = id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const userEmail = email || `${userId}@teachermanager.local`;
+    const { user, token } = await registerOrAuthenticateUser({
+      id: userId,
+      email: userEmail,
+      name: name || "\u0645\u0639\u0644\u0645",
+      phone,
+      password,
+      recoveryPin
+    });
+    res.json({ success: true, token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (error) {
+    console.error("Auth sync error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to authenticate session" });
+  }
+};
+app2.post("/api/auth/sync-session", handleAuth);
+app2.post("/api/auth/register", handleAuth);
+app2.post("/api/auth/login", handleAuth);
+app2.post("/api/sync/push", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = req.user.id;
+    const { dataPackage } = req.body;
+    if (!dataPackage) {
+      return res.status(400).json({ success: false, error: "Missing dataPackage" });
+    }
+    const result = await saveCloudDataPackage(authenticatedUserId, dataPackage);
+    res.json({ success: true, lastSyncTime: result.lastSyncTime, stats: result.stats });
   } catch (error) {
     console.error("Sync push error:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to push sync data" });
   }
 });
-app.get("/api/sync/pull/:userId", (req, res) => {
+app2.get("/api/sync/pull", requireAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
-    if (!userId) {
-      return res.status(400).json({ success: false, error: "Missing userId" });
-    }
-    const cloudData = cloudUserStores[userId];
+    const authenticatedUserId = req.user.id;
+    const cloudData = await getCloudDataPackage(authenticatedUserId);
     if (!cloudData) {
       return res.json({ success: true, hasCloudData: false, dataPackage: null });
     }
@@ -103,54 +370,34 @@ app.get("/api/sync/pull/:userId", (req, res) => {
     res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
   }
 });
-app.post("/api/sync/merge", (req, res) => {
+app2.get("/api/sync/pull/:userId", requireAuth, async (req, res) => {
   try {
-    const { userId, dataPackage } = req.body;
-    if (!userId || !dataPackage) {
-      return res.status(400).json({ success: false, error: "Missing userId or dataPackage" });
-    }
-    const cloudData = cloudUserStores[userId];
-    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const authenticatedUserId = req.user.id;
+    const cloudData = await getCloudDataPackage(authenticatedUserId);
     if (!cloudData) {
-      const savedPackage = { ...dataPackage, userId, lastSyncTime: now };
-      cloudUserStores[userId] = savedPackage;
-      return res.json({ success: true, dataPackage: savedPackage, merged: false });
+      return res.json({ success: true, hasCloudData: false, dataPackage: null });
     }
-    const mergedStudents = mergeEntities(dataPackage.students, cloudData.students);
-    const mergedGroups = mergeEntities(dataPackage.groups, cloudData.groups);
-    const mergedEnrollments = mergeEntities(dataPackage.enrollments, cloudData.enrollments);
-    const mergedSessions = mergeEntities(dataPackage.sessions, cloudData.sessions);
-    const mergedAttendance = mergeEntities(dataPackage.attendance, cloudData.attendance);
-    const mergedPayments = mergeEntities(dataPackage.payments, cloudData.payments);
-    const mergedCreditLogs = mergeEntities(dataPackage.creditLogs || [], cloudData.creditLogs || []);
-    const mergedProfile = { ...cloudData.teacherProfile || {}, ...dataPackage.teacherProfile || {} };
-    const mergedPackage = {
-      version: "2.0",
-      userId,
-      lastSyncTime: now,
-      students: mergedStudents,
-      groups: mergedGroups,
-      enrollments: mergedEnrollments,
-      sessions: mergedSessions,
-      attendance: mergedAttendance,
-      payments: mergedPayments,
-      creditLogs: mergedCreditLogs,
-      teacherProfile: mergedProfile,
-      stats: {
-        totalStudents: mergedStudents.length,
-        totalGroups: mergedGroups.length,
-        totalSessions: mergedSessions.length,
-        totalPayments: mergedPayments.length
-      }
-    };
-    cloudUserStores[userId] = mergedPackage;
-    res.json({ success: true, dataPackage: mergedPackage, merged: true });
+    res.json({ success: true, hasCloudData: true, dataPackage: cloudData });
+  } catch (error) {
+    console.error("Sync pull error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
+  }
+});
+app2.post("/api/sync/merge", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = req.user.id;
+    const { dataPackage } = req.body;
+    if (!dataPackage) {
+      return res.status(400).json({ success: false, error: "Missing dataPackage" });
+    }
+    const result = await mergeCloudDataPackage(authenticatedUserId, dataPackage);
+    res.json({ success: true, dataPackage: result.dataPackage, merged: result.merged });
   } catch (error) {
     console.error("Sync merge error:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to merge sync data" });
   }
 });
-app.post("/api/ai/lesson-plan", async (req, res) => {
+app2.post("/api/ai/lesson-plan", async (req, res) => {
   try {
     const { topic, subject, gradeLevel, duration = "45 mins", objectives } = req.body;
     const ai = getGenAI();
@@ -201,7 +448,7 @@ Format your response cleanly in Markdown with bold headers, bullet points, time 
     res.status(500).json({ error: error.message || "Failed to generate lesson plan." });
   }
 });
-app.post("/api/ai/parent-message", async (req, res) => {
+app2.post("/api/ai/parent-message", async (req, res) => {
   try {
     const { studentName, parentName, reason, tone = "professional & warm", details, teacherName = "Teacher" } = req.body;
     const ai = getGenAI();
@@ -273,7 +520,7 @@ Generate a JSON object with two fields:
     res.status(500).json({ error: error.message || "Failed to generate parent message." });
   }
 });
-app.post("/api/ai/quiz-generator", async (req, res) => {
+app2.post("/api/ai/quiz-generator", async (req, res) => {
   try {
     const { topic, subject, gradeLevel, questionCount = 4, difficulty = "Medium" } = req.body;
     const ai = getGenAI();
@@ -334,7 +581,7 @@ Return a valid JSON array of objects with the structure:
     res.status(500).json({ error: error.message || "Failed to generate quiz." });
   }
 });
-app.post("/api/ai/student-remark", async (req, res) => {
+app2.post("/api/ai/student-remark", async (req, res) => {
   try {
     const { studentName, subject, gradeAverage, attendanceRate, behaviorPoints, strengths, areasForGrowth } = req.body;
     const ai = getGenAI();
@@ -376,7 +623,7 @@ Return a JSON object:
     res.status(500).json({ error: error.message || "Failed to generate student remark." });
   }
 });
-app.post("/api/ai/copilot", async (req, res) => {
+app2.post("/api/ai/copilot", async (req, res) => {
   try {
     const { prompt, context } = req.body;
     const ai = getGenAI();
@@ -413,15 +660,15 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: "spa"
     });
-    app.use(vite.middlewares);
+    app2.use(vite.middlewares);
   } else {
     const distPath = import_path.default.join(process.cwd(), "dist");
-    app.use(import_express.default.static(distPath));
-    app.get("*", (_req, res) => {
+    app2.use(import_express.default.static(distPath));
+    app2.get("*", (_req, res) => {
       res.sendFile(import_path.default.join(distPath, "index.html"));
     });
   }
-  app.listen(PORT, "0.0.0.0", () => {
+  app2.listen(PORT, "0.0.0.0", () => {
     console.log(`Teacher Manager server running on http://0.0.0.0:${PORT}`);
   });
 }

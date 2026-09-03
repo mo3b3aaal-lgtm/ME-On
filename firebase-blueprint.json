@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "users": {
+      "fields": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "password_hash": { "type": "string" },
+        "auth_token": { "type": "string" },
+        "recovery_pin": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      }
+    },
+    "user_sync_stores": {
+      "fields": {
+        "user_id": { "type": "string" },
+        "version": { "type": "string" },
+        "last_sync_time": { "type": "string" },
+        "data_package": { "type": "object" },
+        "updated_at": { "type": "string" }
+      }
+    },
+    "sync_audit_logs": {
+      "fields": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "action": { "type": "string" },
+        "client_ip": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "records_count": { "type": "number" }
+      }
+    }
+  }
+}

@@ -364,6 +364,7 @@ export interface UserAccount {
   subject?: string;
   centerOrSchool?: string;
   password?: string;
+  authToken?: string;
   recoveryPin?: string;
   securityQuestion?: string;
   securityAnswer?: string;

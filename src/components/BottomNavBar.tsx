@@ -8,6 +8,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { ActiveTab } from '../types';
+import { useTranslation } from '../utils/i18n';
 
 interface BottomNavBarProps {
   activeTab: ActiveTab;
@@ -15,13 +16,15 @@ interface BottomNavBarProps {
 }
 
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useTranslation();
+
   const tabs = [
-    { id: 'dashboard' as ActiveTab, label: 'الرئيسية', icon: LayoutDashboard },
-    { id: 'students' as ActiveTab, label: 'الطلاب', icon: Users },
-    { id: 'groups' as ActiveTab, label: 'المجموعات', icon: Layers },
-    { id: 'sessions' as ActiveTab, label: 'الحصص', icon: CalendarCheck2 },
-    { id: 'reports' as ActiveTab, label: 'التقارير', icon: BarChart3 },
-    { id: 'settings' as ActiveTab, label: 'الإعدادات', icon: Settings },
+    { id: 'dashboard' as ActiveTab, label: t('navDashboard'), icon: LayoutDashboard },
+    { id: 'students' as ActiveTab, label: t('navStudents'), icon: Users },
+    { id: 'groups' as ActiveTab, label: t('navGroups'), icon: Layers },
+    { id: 'sessions' as ActiveTab, label: t('navSessions'), icon: CalendarCheck2 },
+    { id: 'reports' as ActiveTab, label: t('navReports'), icon: BarChart3 },
+    { id: 'settings' as ActiveTab, label: t('navSettings'), icon: Settings },
   ];
 
   return (

@@ -27,6 +27,8 @@ import {
   WifiOff,
   Activity,
   Zap,
+  Globe,
+  Languages,
 } from 'lucide-react';
 import { TeacherProfile, UserAccount, AutoSyncFrequency, AutoSyncConfig } from '../types';
 import {
@@ -35,6 +37,12 @@ import {
   formatNextSyncTimeArabic,
   formatSyncStatusArabic,
 } from '../utils/storage';
+import {
+  subscribeToNetworkStatus,
+  getCachedNetworkStatus,
+  DetailedNetworkStatus,
+} from '../utils/network';
+import { useTranslation, Language } from '../utils/i18n';
 
 interface SettingsViewProps {
   teacherProfile: TeacherProfile;
@@ -60,7 +68,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Sync state & feedback
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => db.getLastSyncTime(currentUser?.id));
   const [autoSyncConfig, setAutoSyncConfig] = useState<AutoSyncConfig>(() => db.getAutoSyncConfig(currentUser?.id));
-  const [isOnline, setIsOnline] = useState<boolean>(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
+  const [networkStatus, setNetworkStatus] = useState<DetailedNetworkStatus>(() => getCachedNetworkStatus());
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 
@@ -70,20 +78,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPass, setNewPass] = useState('');
   const [passMessage, setPassMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Update sync time display periodically and subscribe to background sync updates
+  // Update sync time display periodically and subscribe to background sync & network updates
   useEffect(() => {
     setLastSyncTime(db.getLastSyncTime(currentUser?.id));
     setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
 
-    const unsubscribe = db.subscribeToSyncUpdates(() => {
+    const unsubscribeSync = db.subscribeToSyncUpdates(() => {
       setLastSyncTime(db.getLastSyncTime(currentUser?.id));
       setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
     });
 
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    const unsubscribeNet = subscribeToNetworkStatus((status) => {
+      setNetworkStatus(status);
+    });
 
     const interval = setInterval(() => {
       setLastSyncTime(db.getLastSyncTime(currentUser?.id));
@@ -91,9 +98,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }, 10000);
 
     return () => {
-      unsubscribe();
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      unsubscribeSync();
+      unsubscribeNet();
       clearInterval(interval);
     };
   }, [currentUser]);
@@ -315,16 +321,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
+  const { language, setLanguage, isRTL, t } = useTranslation();
+
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#2D332A] pb-24" dir="rtl">
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#2D332A] pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
       <div>
         <h1 className="text-xl font-bold font-serif text-[#2D332A] tracking-tight">
-          الإعدادات ومزامنة الحساب
+          {t('settingsTitle')}
         </h1>
         <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
-          مزامنة آمنة للبيانات، إدارة الحساب، والنسخ الاحتياطي الفوري
+          {t('settingsSubtitle')}
         </p>
       </div>
 
@@ -350,6 +358,55 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
+      {/* LANGUAGE SELECTOR CARD (اللغة وخيارات العرض) */}
+      <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E8E2D6]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#5C788A]/15 text-[#5C788A] flex items-center justify-center border border-[#5C788A]/30 shadow-xs">
+              <Globe className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-bold text-[#2D332A]">{t('languageSection')}</h2>
+              <p className="text-[10px] sm:text-[11px] text-[#8A9187] font-semibold">
+                {t('languageDesc')}
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#5C788A]/15 text-[#5C788A]">
+            {language === 'ar' ? 'العربية (RTL)' : language === 'en-GB' ? 'UK English (LTR)' : 'US English (LTR)'}
+          </span>
+        </div>
+
+        {/* 3 Distinct Language Options */}
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          {[
+            { id: 'ar' as Language, title: 'العربية', sub: 'Arabic (RTL)', flag: '🇪🇬' },
+            { id: 'en-GB' as Language, title: 'English (UK)', sub: 'British (LTR)', flag: '🇬🇧' },
+            { id: 'en-US' as Language, title: 'English (US)', sub: 'American (LTR)', flag: '🇺🇸' },
+          ].map((langOpt) => {
+            const isSelected = language === langOpt.id;
+            return (
+              <button
+                key={langOpt.id}
+                type="button"
+                onClick={() => setLanguage(langOpt.id)}
+                className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#5C788A] border-[#5C788A] text-white shadow-xs font-bold'
+                    : 'bg-[#F9F7F2] hover:bg-[#F2ECE1] border-[#E8E2D6] text-[#2D332A]'
+                }`}
+              >
+                <span className="text-base">{langOpt.flag}</span>
+                <span className="text-xs font-bold leading-tight">{langOpt.title}</span>
+                <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-[#8A9187]'}`}>
+                  {langOpt.sub}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* 1. AUTO-SYNC & SCHEDULING (المزامنة التلقائية والنسخ الاحتياطي) */}
       <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-4">
         {/* Section Header */}
@@ -365,7 +422,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     autoSyncConfig.frequency === 'off'
                       ? 'bg-[#8A9187]/15 text-[#6B7567] border border-[#8A9187]/30'
-                      : !isOnline
+                      : !networkStatus.isOnline
                       ? 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30'
                       : 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30'
                   }`}
@@ -374,12 +431,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className={`w-1.5 h-1.5 rounded-full ${
                       autoSyncConfig.frequency === 'off'
                         ? 'bg-[#8A9187]'
-                        : !isOnline
+                        : !networkStatus.isOnline
                         ? 'bg-[#C97C5D]'
                         : 'bg-[#748C70] animate-pulse'
                     }`}
                   ></span>
-                  {autoSyncConfig.frequency === 'off' ? 'المزامنة متوقفة' : !isOnline ? 'مؤجلة (دون اتصال)' : 'نشطة ومجدولة'}
+                  {autoSyncConfig.frequency === 'off'
+                    ? 'المزامنة متوقفة'
+                    : !networkStatus.deviceConnected
+                    ? 'مؤجلة (دون اتصال)'
+                    : !networkStatus.apiReachable
+                    ? 'مؤجلة (السيرفر غير متاح)'
+                    : 'نشطة ومجدولة'}
                 </span>
               </div>
               <p className="text-[10px] sm:text-[11px] text-[#8A9187] font-semibold mt-0.5">
@@ -391,13 +454,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {/* Connectivity Status Pill */}
           <div
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border shadow-xs ${
-              isOnline
+              networkStatus.isOnline
                 ? 'bg-[#748C70]/10 text-[#5E755A] border-[#748C70]/25'
+                : networkStatus.deviceConnected && !networkStatus.apiReachable
+                ? 'bg-[#5C788A]/10 text-[#5C788A] border-[#5C788A]/25'
                 : 'bg-[#C97C5D]/10 text-[#C97C5D] border-[#C97C5D]/25'
             }`}
           >
-            {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5 text-[#C97C5D]" />}
-            <span>{isOnline ? 'متصل بالإنترنت' : 'وضع عدم الاتصال (أوفلاين)'}</span>
+            {networkStatus.isOnline ? (
+              <>
+                <Wifi className="w-3.5 h-3.5" />
+                <span>
+                  {networkStatus.connectionType === 'wifi'
+                    ? 'متصل بالإنترنت (Wi-Fi)'
+                    : networkStatus.connectionType === 'cellular'
+                    ? 'متصل بالإنترنت (بيانات الجوال)'
+                    : 'متصل بالإنترنت'}
+                </span>
+              </>
+            ) : networkStatus.deviceConnected && !networkStatus.apiReachable ? (
+              <>
+                <Activity className="w-3.5 h-3.5 text-[#5C788A]" />
+                <span>متصل بالشبكة (السيرفر غير متاح)</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-[#C97C5D]" />
+                <span>وضع عدم الاتصال (أوفلاين)</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -451,10 +536,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
-                formatSyncStatusArabic(autoSyncConfig.status, isOnline).badgeClass
+                formatSyncStatusArabic(autoSyncConfig.status, networkStatus.isOnline, networkStatus.statusReason).badgeClass
               }`}
             >
-              {formatSyncStatusArabic(autoSyncConfig.status, isOnline).label}
+              {formatSyncStatusArabic(autoSyncConfig.status, networkStatus.isOnline, networkStatus.statusReason).label}
             </div>
           </div>
 

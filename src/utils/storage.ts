@@ -1,5 +1,13 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
 import {
+  getServerApiBaseUrl,
+  getFullApiUrl,
+  checkOverallConnectivity,
+  onNetworkReconnected,
+  NetworkStatusReason,
+  DEPLOYED_SERVER_API_URL,
+} from './network';
+import {
   Student,
   Group,
   Enrollment,
@@ -27,6 +35,8 @@ import {
   AutoSyncStatus,
   AutoSyncConfig,
 } from '../types';
+
+export { getServerApiBaseUrl, getFullApiUrl, DEPLOYED_SERVER_API_URL };
 
 const STORAGE_KEYS = {
   STUDENTS: 'tm_v2_students',
@@ -360,26 +370,6 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
 // Auto-Sync Scheduling & Realtime Engine
 // ==========================================
 
-export const DEPLOYED_SERVER_API_URL = 'https://ais-dev-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app';
-
-export function getServerApiBaseUrl(): string {
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
-    return (import.meta as any).env.VITE_API_URL.replace(/\/+$/, '');
-  }
-  if (Capacitor.isNativePlatform() || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:'))) {
-    return DEPLOYED_SERVER_API_URL;
-  }
-  return typeof window !== 'undefined' ? window.location.origin : DEPLOYED_SERVER_API_URL;
-}
-
-export function getFullApiUrl(endpointPath: string): string {
-  const cleanPath = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
-  if (Capacitor.isNativePlatform() || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:'))) {
-    return `${DEPLOYED_SERVER_API_URL}${cleanPath}`;
-  }
-  return cleanPath;
-}
-
 export function getAuthTokenForUser(userId: string): string {
   try {
     const accounts = db.getAccounts();
@@ -523,7 +513,7 @@ export function notifySyncListeners(): void {
 export async function performFullSync(
   userId?: string,
   isManual = false
-): Promise<{ success: boolean; message: string; dataPackage: UserAccountDataPackage; isOffline?: boolean }> {
+): Promise<{ success: boolean; message: string; dataPackage: UserAccountDataPackage; isOffline?: boolean; error?: string }> {
   const targetUserId = userId || getActiveUserId();
   const config = getAutoSyncConfig(targetUserId);
 
@@ -539,15 +529,24 @@ export async function performFullSync(
   // 1. Gather all local entities
   const localPackage = autoSyncUserAccount(targetUserId);
 
-  // 2. Check network connectivity
-  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  // 2. Check native network & reachability
+  const netStatus = await checkOverallConnectivity(true);
+  const resolvedBaseUrl = getServerApiBaseUrl();
+  const syncApiUrl = getFullApiUrl('/api/sync/merge');
 
-  if (!isOnline) {
+  console.log(`[Sync] performFullSync triggered (manual: ${isManual}, userId: ${targetUserId})`);
+  console.log(`[Sync] Native network status: ${netStatus.deviceConnected ? 'CONNECTED' : 'DISCONNECTED'} (type: ${netStatus.connectionType})`);
+  console.log(`[Sync] Resolved API base URL: ${resolvedBaseUrl}`);
+  console.log(`[Sync] Target Sync Endpoint: ${syncApiUrl}`);
+
+  // If the device is completely disconnected from network
+  if (!netStatus.deviceConnected) {
+    console.warn(`[Sync] Sync attempt deferred: Device has no active network connection (type: ${netStatus.connectionType})`);
     const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
     saveAutoSyncConfig(
       {
         status: 'offline_deferred',
-        statusMessage: 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت (ستتم المزامنة السحابية فور عودة الاتصال)',
+        statusMessage: 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت في الجهاز (ستتم المزامنة السحابية فور عودة الاتصال)',
         lastSyncTime: localPackage.lastSyncTime,
         nextSyncTime: nextSync,
         autoRetryOnReconnect: true,
@@ -565,13 +564,15 @@ export async function performFullSync(
   // 3. Attempt cloud sync via persistent server API with authorization token
   try {
     const token = getAuthTokenForUser(targetUserId);
-    const syncApiUrl = getFullApiUrl('/api/sync/merge');
+    console.log(`[Sync] Dispatching POST request to ${syncApiUrl} with user token...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const response = await fetch(syncApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'x-auth-token': token,
       },
       body: JSON.stringify({
@@ -579,7 +580,11 @@ export async function performFullSync(
         token: token,
         dataPackage: localPackage,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+
+    console.log(`[Sync] Server response status: ${response.status} ${response.statusText}`);
 
     if (response.ok) {
       const resData = await response.json();
@@ -590,6 +595,8 @@ export async function performFullSync(
 
         const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
         const finalPackage = resData.dataPackage as UserAccountDataPackage;
+
+        console.log(`[Sync] Sync attempt result: SUCCESS - Synced with Firestore (${finalPackage.stats?.totalStudents || 0} students, ${finalPackage.stats?.totalGroups || 0} groups, ${finalPackage.stats?.totalSessions || 0} sessions)`);
 
         saveAutoSyncConfig(
           {
@@ -607,31 +614,47 @@ export async function performFullSync(
           message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
           dataPackage: finalPackage,
         };
+      } else {
+        const failureReason = resData.error || 'Server returned unsuccessful sync response';
+        console.warn(`[Sync] Sync attempt result: FAILED - Server error: ${failureReason}`);
+        throw new Error(failureReason);
       }
+    } else {
+      const errorText = await response.text().catch(() => '');
+      console.warn(`[Sync] Sync attempt result: FAILED (HTTP ${response.status}) - ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
     }
-  } catch (netErr) {
-    console.warn('Cloud sync fetch error, keeping safe local backup:', netErr);
+  } catch (netErr: any) {
+    const isTimeout = netErr?.name === 'AbortError';
+    const failureReason = isTimeout ? 'Request timed out after 12 seconds' : netErr?.message || 'Network fetch error';
+    console.warn(`[Sync] Sync failure reason: ${failureReason}. Preserving local offline backup.`);
+
+    const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
+    const isServerUnreachable = netStatus.deviceConnected;
+
+    saveAutoSyncConfig(
+      {
+        status: 'offline_deferred',
+        statusMessage: isServerUnreachable
+          ? 'تم حفظ وتأمين البيانات محلياً - تعذر الوصول للسيرفر السحابي (سيُعاد المحاولة تلقائياً)'
+          : 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت (ستتم المزامنة السحابية فور عودة الاتصال)',
+        lastSyncTime: localPackage.lastSyncTime,
+        nextSyncTime: nextSync,
+        autoRetryOnReconnect: true,
+      },
+      targetUserId
+    );
+
+    return {
+      success: true,
+      message: isServerUnreachable
+        ? 'تم حفظ وتأمين البيانات محلياً. تعذر الاتصال بالسيرفر السحابي وسيتم إعادة المحاولة تلقائياً عند استقرار الاتصال.'
+        : 'تم حفظ وتأمين البيانات محلياً، وستتم المزامنة السحابية عند استقرار الشبكة.',
+      dataPackage: localPackage,
+      isOffline: true,
+      error: failureReason,
+    };
   }
-
-  // Graceful fallback: local backup succeeded
-  const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
-  saveAutoSyncConfig(
-    {
-      status: 'offline_deferred',
-      statusMessage: 'تم حفظ البيانات محلياً بأمان - بانتظار الاتصال بالسيرفر السحابي',
-      lastSyncTime: localPackage.lastSyncTime,
-      nextSyncTime: nextSync,
-      autoRetryOnReconnect: true,
-    },
-    targetUserId
-  );
-
-  return {
-    success: true,
-    message: 'تم حفظ وتأمين البيانات محلياً، وستتم المزامنة السحابية عند استقرار الشبكة.',
-    dataPackage: localPackage,
-    isOffline: true,
-  };
 }
 
 /**
@@ -642,12 +665,15 @@ export function initAutoSyncScheduler(): void {
   if (typeof window === 'undefined' || schedulerInitialized) return;
   schedulerInitialized = true;
 
-  // 1. إعادة المحاولة فور عودة الاتصال بالإنترنت
-  window.addEventListener('online', () => {
+  console.log('[Scheduler] Initializing auto-sync scheduler & listeners...');
+
+  // 1. إعادة المحاولة فور عودة الاتصال بالإنترنت (عبر Network utility)
+  onNetworkReconnected(() => {
+    console.log('[Scheduler] onNetworkReconnected event fired! Checking for pending sync...');
     const activeUserId = getActiveUserId();
     const config = getAutoSyncConfig(activeUserId);
     if (config.autoRetryOnReconnect || config.status === 'offline_deferred') {
-      performFullSync(activeUserId, false).catch((err) => console.warn('Auto sync on online failed:', err));
+      performFullSync(activeUserId, false).catch((err) => console.warn('[Scheduler] Auto sync on reconnect failed:', err));
     }
   });
 
@@ -661,7 +687,7 @@ export function initAutoSyncScheduler(): void {
           frequency: config.frequency,
           userId: activeUserId,
           serverUrl: getServerApiBaseUrl(),
-        }).catch((e) => console.warn('Bootstrap native sync failed:', e));
+        }).catch((e) => console.warn('[Scheduler] Bootstrap native sync failed:', e));
       }
     } catch {}
   }
@@ -674,7 +700,7 @@ export function initAutoSyncScheduler(): void {
       if (config.frequency !== 'off' && config.nextSyncTime) {
         const nextTime = new Date(config.nextSyncTime).getTime();
         if (Date.now() >= nextTime && config.status !== 'syncing') {
-          performFullSync(activeUserId, false).catch((err) => console.warn('Foreground auto sync failed:', err));
+          performFullSync(activeUserId, false).catch((err) => console.warn('[Scheduler] Foreground auto sync failed:', err));
         }
       }
     }
@@ -688,11 +714,11 @@ export function initAutoSyncScheduler(): void {
       if (config.frequency !== 'off' && config.nextSyncTime) {
         const nextTime = new Date(config.nextSyncTime).getTime();
         if (Date.now() >= nextTime && config.status !== 'syncing') {
-          performFullSync(activeUserId, false).catch((err) => console.warn('Interval auto sync failed:', err));
+          performFullSync(activeUserId, false).catch((err) => console.warn('[Scheduler] Interval auto sync failed:', err));
         }
       }
     } catch (err) {
-      console.error('Auto sync scheduler tick error:', err);
+      console.error('[Scheduler] Auto sync scheduler tick error:', err);
     }
   }, 20000);
 }
@@ -751,9 +777,17 @@ export function formatNextSyncTimeArabic(isoString?: string | null, frequency?: 
  */
 export function formatSyncStatusArabic(
   status: AutoSyncStatus,
-  isOnline = true
+  isOnline = true,
+  statusReason?: NetworkStatusReason
 ): { label: string; badgeClass: string; iconType: 'success' | 'syncing' | 'offline' | 'error' | 'idle' } {
   if (!isOnline || status === 'offline_deferred') {
+    if (statusReason === 'api_unreachable') {
+      return {
+        label: 'مؤجل - تعذر الوصول للسيرفر السحابي (البيانات محفوظة محلياً)',
+        badgeClass: 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30',
+        iconType: 'offline',
+      };
+    }
     return {
       label: 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
       badgeClass: 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30',

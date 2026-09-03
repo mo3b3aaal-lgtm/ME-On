@@ -32,6 +32,133 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString(), hasApiKey: Boolean(process.env.GEMINI_API_KEY) });
 });
 
+// Cloud Sync Store (Per User ID)
+const cloudUserStores: Record<string, any> = {};
+
+function mergeEntities<T extends { id?: string }>(localList: T[] = [], cloudList: T[] = []): T[] {
+  const map = new Map<string, T>();
+  
+  // Add cloud items first
+  for (const item of cloudList) {
+    if (item && item.id) {
+      map.set(item.id, item);
+    }
+  }
+
+  // Merge/add local items
+  for (const item of localList) {
+    if (item && item.id) {
+      const existing = map.get(item.id);
+      if (existing) {
+        map.set(item.id, { ...existing, ...item });
+      } else {
+        map.set(item.id, item);
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+// 1. Cloud Sync Push
+app.post("/api/sync/push", (req, res) => {
+  try {
+    const { userId, dataPackage } = req.body;
+    if (!userId || !dataPackage) {
+      return res.status(400).json({ success: false, error: "Missing userId or dataPackage" });
+    }
+
+    const now = new Date().toISOString();
+    const updatedPackage = {
+      ...dataPackage,
+      userId,
+      lastSyncTime: now,
+    };
+
+    cloudUserStores[userId] = updatedPackage;
+    res.json({ success: true, lastSyncTime: now, stats: dataPackage.stats });
+  } catch (error: any) {
+    console.error("Sync push error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to push sync data" });
+  }
+});
+
+// 2. Cloud Sync Pull
+app.get("/api/sync/pull/:userId", (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: "Missing userId" });
+    }
+
+    const cloudData = cloudUserStores[userId];
+    if (!cloudData) {
+      return res.json({ success: true, hasCloudData: false, dataPackage: null });
+    }
+
+    res.json({ success: true, hasCloudData: true, dataPackage: cloudData });
+  } catch (error: any) {
+    console.error("Sync pull error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
+  }
+});
+
+// 3. Bi-directional Safe Merge Sync
+app.post("/api/sync/merge", (req, res) => {
+  try {
+    const { userId, dataPackage } = req.body;
+    if (!userId || !dataPackage) {
+      return res.status(400).json({ success: false, error: "Missing userId or dataPackage" });
+    }
+
+    const cloudData = cloudUserStores[userId];
+    const now = new Date().toISOString();
+
+    if (!cloudData) {
+      // First cloud upload for this user
+      const savedPackage = { ...dataPackage, userId, lastSyncTime: now };
+      cloudUserStores[userId] = savedPackage;
+      return res.json({ success: true, dataPackage: savedPackage, merged: false });
+    }
+
+    // Merge entities safely
+    const mergedStudents = mergeEntities(dataPackage.students, cloudData.students);
+    const mergedGroups = mergeEntities(dataPackage.groups, cloudData.groups);
+    const mergedEnrollments = mergeEntities(dataPackage.enrollments, cloudData.enrollments);
+    const mergedSessions = mergeEntities(dataPackage.sessions, cloudData.sessions);
+    const mergedAttendance = mergeEntities(dataPackage.attendance, cloudData.attendance);
+    const mergedPayments = mergeEntities(dataPackage.payments, cloudData.payments);
+    const mergedCreditLogs = mergeEntities(dataPackage.creditLogs || [], cloudData.creditLogs || []);
+    const mergedProfile = { ...(cloudData.teacherProfile || {}), ...(dataPackage.teacherProfile || {}) };
+
+    const mergedPackage = {
+      version: "2.0",
+      userId,
+      lastSyncTime: now,
+      students: mergedStudents,
+      groups: mergedGroups,
+      enrollments: mergedEnrollments,
+      sessions: mergedSessions,
+      attendance: mergedAttendance,
+      payments: mergedPayments,
+      creditLogs: mergedCreditLogs,
+      teacherProfile: mergedProfile,
+      stats: {
+        totalStudents: mergedStudents.length,
+        totalGroups: mergedGroups.length,
+        totalSessions: mergedSessions.length,
+        totalPayments: mergedPayments.length,
+      },
+    };
+
+    cloudUserStores[userId] = mergedPackage;
+    res.json({ success: true, dataPackage: mergedPackage, merged: true });
+  } catch (error: any) {
+    console.error("Sync merge error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to merge sync data" });
+  }
+});
+
 // AI Lesson Plan Generator
 app.post("/api/ai/lesson-plan", async (req, res) => {
   try {

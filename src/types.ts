@@ -375,3 +375,19 @@ export interface UserAccount {
 
 // التبويبات الرئيسية للتطبيق
 export type ActiveTab = 'dashboard' | 'students' | 'groups' | 'sessions' | 'reports' | 'settings';
+
+// خيارات فترات المزامنة التلقائية المجدولة
+export type AutoSyncFrequency = 'off' | 'hourly' | 'daily' | 'weekly' | 'monthly';
+
+// حالة عملية المزامنة الحالية
+export type AutoSyncStatus = 'idle' | 'syncing' | 'success' | 'offline_deferred' | 'error';
+
+// إعدادات وبيانات المزامنة التلقائية المجدولة
+export interface AutoSyncConfig {
+  frequency: AutoSyncFrequency;
+  lastSyncTime: string | null;
+  nextSyncTime: string | null;
+  status: AutoSyncStatus;
+  statusMessage?: string;
+  autoRetryOnReconnect: boolean;
+}

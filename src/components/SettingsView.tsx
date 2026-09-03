@@ -22,9 +22,19 @@ import {
   HardDriveDownload,
   Clock,
   Check,
+  Calendar,
+  Wifi,
+  WifiOff,
+  Activity,
+  Zap,
 } from 'lucide-react';
-import { TeacherProfile, UserAccount } from '../types';
-import { db, formatSyncTimeArabic } from '../utils/storage';
+import { TeacherProfile, UserAccount, AutoSyncFrequency, AutoSyncConfig } from '../types';
+import {
+  db,
+  formatSyncTimeArabic,
+  formatNextSyncTimeArabic,
+  formatSyncStatusArabic,
+} from '../utils/storage';
 
 interface SettingsViewProps {
   teacherProfile: TeacherProfile;
@@ -49,6 +59,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Sync state & feedback
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => db.getLastSyncTime(currentUser?.id));
+  const [autoSyncConfig, setAutoSyncConfig] = useState<AutoSyncConfig>(() => db.getAutoSyncConfig(currentUser?.id));
+  const [isOnline, setIsOnline] = useState<boolean>(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 
@@ -58,14 +70,78 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newPass, setNewPass] = useState('');
   const [passMessage, setPassMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Update sync time display periodically or on mount
+  // Update sync time display periodically and subscribe to background sync updates
   useEffect(() => {
     setLastSyncTime(db.getLastSyncTime(currentUser?.id));
+    setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
+
+    const unsubscribe = db.subscribeToSyncUpdates(() => {
+      setLastSyncTime(db.getLastSyncTime(currentUser?.id));
+      setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
+    });
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     const interval = setInterval(() => {
       setLastSyncTime(db.getLastSyncTime(currentUser?.id));
-    }, 15000);
-    return () => clearInterval(interval);
+      setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
+    }, 10000);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
   }, [currentUser]);
+
+  // Handle frequency schedule change
+  const handleFrequencyChange = (newFreq: AutoSyncFrequency) => {
+    const updated = db.setSyncFrequency(newFreq, currentUser?.id);
+    setAutoSyncConfig(updated);
+    const labels: Record<AutoSyncFrequency, string> = {
+      off: 'إيقاف',
+      hourly: 'كل ساعة',
+      daily: 'كل يوم',
+      weekly: 'كل أسبوع',
+      monthly: 'كل شهر',
+    };
+    setSyncFeedback({
+      type: 'success',
+      message:
+        newFreq === 'off'
+          ? 'تم إيقاف المزامنة التلقائية المجدولة.'
+          : `تم تفعيل وتعيين جدول المزامنة التلقائية (${labels[newFreq]}) وحفظ الإعداد بشكل دائم.`,
+    });
+    setTimeout(() => setSyncFeedback(null), 4000);
+  };
+
+  // Handle Sync Now ("مزامنة الآن")
+  const handleSyncNow = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    try {
+      const res = await db.performFullSync(currentUser?.id, true);
+      setLastSyncTime(db.getLastSyncTime(currentUser?.id));
+      setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
+      setSyncFeedback({
+        type: res.isOffline ? 'info' : 'success',
+        message: res.message,
+      });
+      setTimeout(() => setSyncFeedback(null), 5000);
+    } catch (err: any) {
+      setSyncFeedback({
+        type: 'error',
+        message: 'فشلت المزامنة، ولكن تم حفظ وتأمين جميع البيانات محلياً على هذا الجهاز.',
+      });
+      setTimeout(() => setSyncFeedback(null), 5000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Handle Backup Now
   const handleBackupNow = () => {
@@ -274,78 +350,199 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* 1. SECURE SYNC & DATA PERSISTENCE CARD */}
-      <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#748C70]/15 text-[#748C70] flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
+      {/* 1. AUTO-SYNC & SCHEDULING (المزامنة التلقائية والنسخ الاحتياطي) */}
+      <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-4">
+        {/* Section Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-[#E8E2D6] flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#748C70]/15 text-[#748C70] flex items-center justify-center border border-[#748C70]/30 shadow-xs">
+              <RefreshCw className={`w-4 h-4 ${autoSyncConfig.status === 'syncing' ? 'animate-spin text-[#5C788A]' : 'text-[#748C70]'}`} />
             </div>
             <div>
-              <h2 className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
-                <span>المزامنة الآمنة للبيانات</span>
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#748C70]/15 text-[#748C70] text-[9px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#748C70] animate-pulse"></span>
-                  تلقائية ونشطة
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs sm:text-sm font-bold text-[#2D332A]">المزامنة التلقائية والنسخ الاحتياطي</h2>
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    autoSyncConfig.frequency === 'off'
+                      ? 'bg-[#8A9187]/15 text-[#6B7567] border border-[#8A9187]/30'
+                      : !isOnline
+                      ? 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30'
+                      : 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      autoSyncConfig.frequency === 'off'
+                        ? 'bg-[#8A9187]'
+                        : !isOnline
+                        ? 'bg-[#C97C5D]'
+                        : 'bg-[#748C70] animate-pulse'
+                    }`}
+                  ></span>
+                  {autoSyncConfig.frequency === 'off' ? 'المزامنة متوقفة' : !isOnline ? 'مؤجلة (دون اتصال)' : 'نشطة ومجدولة'}
                 </span>
-              </h2>
-              <p className="text-[10px] text-[#8A9187] font-semibold">
-                يتم حفظ بيانات الطلاب والمجموعات والحصص والحضور والمدفوعات تلقائياً بحسابك
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-[#8A9187] font-semibold mt-0.5">
+                مزامنة بيانات المستخدم تلقائياً مع السحابة حسب الفترة المحددة مع استقلالية تامة لكل حساب
               </p>
             </div>
           </div>
+
+          {/* Connectivity Status Pill */}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border shadow-xs ${
+              isOnline
+                ? 'bg-[#748C70]/10 text-[#5E755A] border-[#748C70]/25'
+                : 'bg-[#C97C5D]/10 text-[#C97C5D] border-[#C97C5D]/25'
+            }`}
+          >
+            {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5 text-[#C97C5D]" />}
+            <span>{isOnline ? 'متصل بالإنترنت' : 'وضع عدم الاتصال (أوفلاين)'}</span>
+          </div>
         </div>
 
-        {/* Last Sync Info Bar */}
-        <div className="p-3 bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-[#434B3E]">
-            <Clock className="w-4 h-4 text-[#748C70]" />
-            <div>
-              <span className="font-bold text-[11px] text-[#6B7567] block">وقت آخر مزامنة (Last Sync Time):</span>
-              <span className="font-bold text-xs text-[#2D332A]">{formatSyncTimeArabic(lastSyncTime)}</span>
+        {/* Frequency Options Selection */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#5C788A]" />
+              <span>فترة المزامنة التلقائية (Sync Schedule):</span>
+            </label>
+            <span className="text-[10px] text-[#8A9187] font-semibold">يُحفظ الإعداد تلقائياً بشكل دائم</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {[
+              { value: 'off', label: 'إيقاف', desc: 'يدوي فقط' },
+              { value: 'hourly', label: 'كل ساعة', desc: 'تحديث كل 60 دقيقة' },
+              { value: 'daily', label: 'كل يوم', desc: 'مرة يومياً' },
+              { value: 'weekly', label: 'كل أسبوع', desc: 'مرة أسبوعياً' },
+              { value: 'monthly', label: 'كل شهر', desc: 'مرة شهرياً' },
+            ].map((opt) => {
+              const isSelected = autoSyncConfig.frequency === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleFrequencyChange(opt.value as AutoSyncFrequency)}
+                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#748C70] border-[#748C70] text-white shadow-xs font-bold'
+                      : 'bg-[#F9F7F2] hover:bg-[#F2ECE1] border-[#E8E2D6] text-[#2D332A]'
+                  }`}
+                >
+                  <span className="text-xs font-bold">{opt.label}</span>
+                  <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-[#8A9187]'}`}>
+                    {opt.desc}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sync Status, Last Sync & Next Sync Times */}
+        <div className="p-3.5 bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl space-y-2.5 text-xs">
+          {/* Current Sync Status */}
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#E8E2D6]">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#5C788A]" />
+              <span className="font-bold text-[#434B3E]">حالة المزامنة الحالية:</span>
+            </div>
+            <div
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                formatSyncStatusArabic(autoSyncConfig.status, isOnline).badgeClass
+              }`}
+            >
+              {formatSyncStatusArabic(autoSyncConfig.status, isOnline).label}
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setIsSyncing(true);
-              const pkg = db.syncAccountData(currentUser?.id);
-              setLastSyncTime(pkg.lastSyncTime);
-              setSyncFeedback({ type: 'success', message: 'تمت مزامنة جميع البيانات مع حسابك بنجاح الآن.' });
-              setTimeout(() => {
-                setIsSyncing(false);
-                setSyncFeedback(null);
-              }, 2500);
-            }}
-            disabled={isSyncing}
-            className="py-1.5 px-2.5 rounded-lg bg-white hover:bg-[#F2ECE1] border border-[#E8E2D6] text-xs font-bold text-[#2D332A] flex items-center gap-1 transition-all active:scale-95 shadow-xs disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 text-[#748C70] ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>تحديث المزامنة</span>
-          </button>
+          {/* Last Sync & Next Sync Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+            {/* Last Sync */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-[#E8E2D6]/80 shadow-2xs">
+              <Clock className="w-4 h-4 text-[#748C70] shrink-0" />
+              <div>
+                <span className="text-[#8A9187] block font-semibold">آخر مزامنة (Last Sync):</span>
+                <span className="font-bold text-[#2D332A] text-xs">{formatSyncTimeArabic(lastSyncTime)}</span>
+              </div>
+            </div>
+
+            {/* Next Sync */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-[#E8E2D6]/80 shadow-2xs">
+              <Calendar className="w-4 h-4 text-[#5C788A] shrink-0" />
+              <div>
+                <span className="text-[#8A9187] block font-semibold">موعد المزامنة القادمة (Next Sync):</span>
+                <span className="font-bold text-[#2D332A] text-xs">
+                  {formatNextSyncTimeArabic(autoSyncConfig.nextSyncTime, autoSyncConfig.frequency)}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Action Buttons: Backup Now & Restore Data */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-          {/* Backup Now */}
+        {/* Action Buttons: Sync Now + Backup & Restore */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+          {/* 1. "مزامنة الآن" Sync Now */}
+          <button
+            onClick={handleSyncNow}
+            disabled={isSyncing}
+            className="py-2.5 px-3 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>مزامنة الآن (Sync Now)</span>
+          </button>
+
+          {/* 2. Backup Now (.json export) */}
           <button
             onClick={handleBackupNow}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50"
+            className="py-2.5 px-3 rounded-xl bg-[#5C788A] hover:bg-[#475E6C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            <Download className="w-4 h-4" />
-            <span>نسخ احتياطي الآن (Backup Now)</span>
+            <Download className="w-3.5 h-3.5" />
+            <span>تصدير نسخة احتياطية (.json)</span>
           </button>
 
-          {/* Restore Data From Cloud Account */}
+          {/* 3. Restore Data */}
           <button
             onClick={handleRestoreFromAccount}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-[#5C788A] hover:bg-[#475E6C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50"
+            className="py-2.5 px-3 rounded-xl bg-white hover:bg-[#F2ECE1] border border-[#E8E2D6] text-[#2D332A] font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            <HardDriveDownload className="w-4 h-4" />
-            <span>استعادة البيانات (Restore Data)</span>
+            <HardDriveDownload className="w-3.5 h-3.5 text-[#5C788A]" />
+            <span>استعادة البيانات السحابية</span>
           </button>
+        </div>
+
+        {/* Synced Entities Pill Badges */}
+        <div className="pt-2 border-t border-[#E8E2D6]">
+          <span className="text-[10px] font-bold text-[#8A9187] block mb-1.5">
+            البيانات المشمولة في المزامنة التلقائية:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              'الطلاب (Students)',
+              'المجموعات (Groups)',
+              'الاشتراكات (Enrollments)',
+              'الدروس الخاصة (Private Services)',
+              'الحصص والمواعيد (Sessions)',
+              'الحضور والغياب (Attendance)',
+              'المدفوعات (Payments)',
+              'الفواتير الشهرية (Monthly Billing)',
+              'رصيد الحصص (Session Credits)',
+              'الرصيد المالي (Financial Credits)',
+              'الملف الشخصي (Teacher Profile)',
+            ].map((entity, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F2ECE1] text-[#434B3E] text-[10px] font-semibold"
+              >
+                <Check className="w-2.5 h-2.5 text-[#748C70]" />
+                {entity}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Secondary Import File Option */}

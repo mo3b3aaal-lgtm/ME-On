@@ -1,3 +1,4 @@
+import { registerPlugin, Capacitor } from '@capacitor/core';
 import {
   Student,
   Group,
@@ -22,6 +23,9 @@ import {
   UserAccount,
   UserAccountDataPackage,
   ReportPeriodFilter,
+  AutoSyncFrequency,
+  AutoSyncStatus,
+  AutoSyncConfig,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -35,6 +39,7 @@ const STORAGE_KEYS = {
   TEACHER_PROFILE: 'tm_v2_teacher_profile',
   ACCOUNTS: 'tm_v2_accounts',
   CURRENT_SESSION: 'tm_v2_current_session',
+  AUTO_SYNC_CONFIG: 'tm_v2_auto_sync_config',
 };
 
 const ARABIC_MONTH_NAMES = [
@@ -349,6 +354,400 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   }
 
   return dataPackage;
+}
+
+// ==========================================
+// Auto-Sync Scheduling & Realtime Engine
+// ==========================================
+
+export interface AutoSyncSchedulerPlugin {
+  scheduleSync(options: { frequency: string; userId: string; serverUrl?: string }): Promise<{ success: boolean; message?: string }>;
+  triggerImmediateSync(options: { userId: string; serverUrl?: string }): Promise<{ success: boolean }>;
+  getSyncStatus(options: { userId: string }): Promise<{ frequency?: string; lastSyncTime?: string; lastSyncStatus?: string; lastSyncMessage?: string }>;
+}
+
+export const AutoSyncScheduler = registerPlugin<AutoSyncSchedulerPlugin>('AutoSyncScheduler');
+
+export function calculateNextSyncTime(frequency: AutoSyncFrequency, fromDate = new Date()): string | null {
+  if (frequency === 'off') return null;
+  const t = fromDate.getTime();
+  let deltaMs = 0;
+  switch (frequency) {
+    case 'hourly':
+      deltaMs = 60 * 60 * 1000; // 1 hour
+      break;
+    case 'daily':
+      deltaMs = 24 * 60 * 60 * 1000; // 24 hours
+      break;
+    case 'weekly':
+      deltaMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      break;
+    case 'monthly':
+      deltaMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+      break;
+    default:
+      return null;
+  }
+  return new Date(t + deltaMs).toISOString();
+}
+
+export function getAutoSyncConfig(userId?: string): AutoSyncConfig {
+  const targetUserId = userId || getActiveUserId();
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEYS.AUTO_SYNC_CONFIG}_${targetUserId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.frequency) {
+        return {
+          frequency: parsed.frequency,
+          lastSyncTime: parsed.lastSyncTime || db.getLastSyncTime(targetUserId),
+          nextSyncTime: parsed.nextSyncTime || (parsed.frequency !== 'off' ? calculateNextSyncTime(parsed.frequency) : null),
+          status: parsed.status || 'idle',
+          statusMessage: parsed.statusMessage || 'جاهز للمزامنة المجدولة',
+          autoRetryOnReconnect: parsed.autoRetryOnReconnect ?? true,
+        };
+      }
+    }
+  } catch {}
+
+  const defaultConfig: AutoSyncConfig = {
+    frequency: 'daily',
+    lastSyncTime: db.getLastSyncTime(targetUserId),
+    nextSyncTime: calculateNextSyncTime('daily'),
+    status: 'idle',
+    statusMessage: 'المزامنة اليومية مجدولة ونشطة',
+    autoRetryOnReconnect: true,
+  };
+
+  try {
+    localStorage.setItem(`${STORAGE_KEYS.AUTO_SYNC_CONFIG}_${targetUserId}`, JSON.stringify(defaultConfig));
+  } catch {}
+
+  return defaultConfig;
+}
+
+export function saveAutoSyncConfig(configPatch: Partial<AutoSyncConfig>, userId?: string): AutoSyncConfig {
+  const targetUserId = userId || getActiveUserId();
+  const current = getAutoSyncConfig(targetUserId);
+
+  let newNextSync = configPatch.nextSyncTime !== undefined ? configPatch.nextSyncTime : current.nextSyncTime;
+  if (configPatch.frequency !== undefined && configPatch.frequency !== current.frequency) {
+    newNextSync = calculateNextSyncTime(configPatch.frequency);
+  }
+
+  const updated: AutoSyncConfig = {
+    ...current,
+    ...configPatch,
+    nextSyncTime: newNextSync,
+  };
+
+  try {
+    localStorage.setItem(`${STORAGE_KEYS.AUTO_SYNC_CONFIG}_${targetUserId}`, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Error saving auto sync config:', err);
+  }
+
+  // Schedule or cancel native Android WorkManager task
+  if (Capacitor.isNativePlatform()) {
+    try {
+      AutoSyncScheduler.scheduleSync({
+        frequency: updated.frequency,
+        userId: targetUserId,
+        serverUrl: typeof window !== 'undefined' ? window.location.origin : '',
+      }).catch((nativeErr) => {
+        console.warn('Native Android WorkManager scheduler dispatch error:', nativeErr);
+      });
+    } catch (e) {
+      console.warn('Capacitor native scheduling call failed:', e);
+    }
+  }
+
+  notifySyncListeners();
+  return updated;
+}
+
+type SyncListener = () => void;
+const syncListeners: Set<SyncListener> = new Set();
+
+export function subscribeToSyncUpdates(listener: SyncListener): () => void {
+  syncListeners.add(listener);
+  return () => {
+    syncListeners.delete(listener);
+  };
+}
+
+export function notifySyncListeners(): void {
+  syncListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (e) {
+      console.error('Sync listener error:', e);
+    }
+  });
+}
+
+/**
+ * تنفيذ المزامنة الكاملة (السحابية والمحلية)
+ * تجمع جميع بيانات المستخدم (الطلاب، المجموعات، الاشتراكات، الدروس الخاصة، الحصص، الحضور، المدفوعات، الفواتير الشهرية، رصيد الحصص، الرصيد المالي، والملف الشخصي)
+ * وتقوم بدمجها بشكل آمن وتحديث السجلات
+ */
+export async function performFullSync(
+  userId?: string,
+  isManual = false
+): Promise<{ success: boolean; message: string; dataPackage: UserAccountDataPackage; isOffline?: boolean }> {
+  const targetUserId = userId || getActiveUserId();
+  const config = getAutoSyncConfig(targetUserId);
+
+  // Set status to syncing
+  saveAutoSyncConfig(
+    {
+      status: 'syncing',
+      statusMessage: isManual ? 'جاري تنفيذ المزامنة اليدوية الآن...' : 'جاري تنفيذ المزامنة التلقائية المجدولة...',
+    },
+    targetUserId
+  );
+
+  // 1. Gather all local entities
+  const localPackage = autoSyncUserAccount(targetUserId);
+
+  // 2. Check network connectivity
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+  if (!isOnline) {
+    const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
+    saveAutoSyncConfig(
+      {
+        status: 'offline_deferred',
+        statusMessage: 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت (ستتم المزامنة السحابية فور عودة الاتصال)',
+        lastSyncTime: localPackage.lastSyncTime,
+        nextSyncTime: nextSync,
+        autoRetryOnReconnect: true,
+      },
+      targetUserId
+    );
+    return {
+      success: true,
+      message: 'تم حفظ وتأمين كافة البيانات محلياً. ستتم المزامنة السحابية فور عودة الاتصال بالإنترنت.',
+      dataPackage: localPackage,
+      isOffline: true,
+    };
+  }
+
+  // 3. Attempt cloud sync via server API
+  try {
+    const response = await fetch('/api/sync/merge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: targetUserId, dataPackage: localPackage }),
+    });
+
+    if (response.ok) {
+      const resData = await response.json();
+      if (resData.success && resData.dataPackage) {
+        if (resData.merged) {
+          db.restoreAccountData(targetUserId, resData.dataPackage);
+        }
+
+        const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
+        const finalPackage = resData.dataPackage as UserAccountDataPackage;
+
+        saveAutoSyncConfig(
+          {
+            status: 'success',
+            statusMessage: 'تمت المزامنة السحابية بنجاح وتحديث كافة البيانات',
+            lastSyncTime: finalPackage.lastSyncTime || new Date().toISOString(),
+            nextSyncTime: nextSync,
+            autoRetryOnReconnect: false,
+          },
+          targetUserId
+        );
+
+        return {
+          success: true,
+          message: `تمت المزامنة بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
+          dataPackage: finalPackage,
+        };
+      }
+    }
+  } catch (netErr) {
+    console.warn('Cloud sync fetch error, keeping safe local backup:', netErr);
+  }
+
+  // Graceful fallback: local backup succeeded
+  const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
+  saveAutoSyncConfig(
+    {
+      status: 'offline_deferred',
+      statusMessage: 'تم حفظ البيانات محلياً بأمان - بانتظار الاتصال بالسيرفر السحابي',
+      lastSyncTime: localPackage.lastSyncTime,
+      nextSyncTime: nextSync,
+      autoRetryOnReconnect: true,
+    },
+    targetUserId
+  );
+
+  return {
+    success: true,
+    message: 'تم حفظ وتأمين البيانات محلياً، وستتم المزامنة السحابية عند استقرار الشبكة.',
+    dataPackage: localPackage,
+    isOffline: true,
+  };
+}
+
+/**
+ * تهيئة محرك الجدولة والمزامنة في الخلفية لنظام Android والمتصفح
+ */
+let schedulerInitialized = false;
+export function initAutoSyncScheduler(): void {
+  if (typeof window === 'undefined' || schedulerInitialized) return;
+  schedulerInitialized = true;
+
+  // 1. إعادة المحاولة فور عودة الاتصال بالإنترنت
+  window.addEventListener('online', () => {
+    const activeUserId = getActiveUserId();
+    const config = getAutoSyncConfig(activeUserId);
+    if (config.autoRetryOnReconnect || config.status === 'offline_deferred') {
+      performFullSync(activeUserId, false).catch((err) => console.warn('Auto sync on online failed:', err));
+    }
+  });
+
+  // Native Android WorkManager bootstrap
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const activeUserId = getActiveUserId();
+      const config = getAutoSyncConfig(activeUserId);
+      if (config.frequency !== 'off') {
+        AutoSyncScheduler.scheduleSync({
+          frequency: config.frequency,
+          userId: activeUserId,
+          serverUrl: typeof window !== 'undefined' ? window.location.origin : '',
+        }).catch((e) => console.warn('Bootstrap native sync failed:', e));
+      }
+    } catch {}
+  }
+
+  // 2. فحص المزامنة المجدولة عند فتح التطبيق أو عودته للواجهة (Android Resume / Tab active)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      const activeUserId = getActiveUserId();
+      const config = getAutoSyncConfig(activeUserId);
+      if (config.frequency !== 'off' && config.nextSyncTime) {
+        const nextTime = new Date(config.nextSyncTime).getTime();
+        if (Date.now() >= nextTime && config.status !== 'syncing') {
+          performFullSync(activeUserId, false).catch((err) => console.warn('Foreground auto sync failed:', err));
+        }
+      }
+    }
+  });
+
+  // 3. حلقة فحص مجدولة خفيفة في الخلفية (كل 20 ثانية)
+  setInterval(() => {
+    try {
+      const activeUserId = getActiveUserId();
+      const config = getAutoSyncConfig(activeUserId);
+      if (config.frequency !== 'off' && config.nextSyncTime) {
+        const nextTime = new Date(config.nextSyncTime).getTime();
+        if (Date.now() >= nextTime && config.status !== 'syncing') {
+          performFullSync(activeUserId, false).catch((err) => console.warn('Interval auto sync failed:', err));
+        }
+      }
+    } catch (err) {
+      console.error('Auto sync scheduler tick error:', err);
+    }
+  }, 20000);
+}
+
+// Auto-boot scheduler on module load
+initAutoSyncScheduler();
+
+/**
+ * دالة تنسيق وقت المزامنة القادمة بشكل عربي واضح
+ */
+export function formatNextSyncTimeArabic(isoString?: string | null, frequency?: AutoSyncFrequency): string {
+  if (frequency === 'off' || !isoString) {
+    return 'المزامنة التلقائية متوقفة (إيقاف)';
+  }
+  try {
+    const targetDate = new Date(isoString);
+    if (isNaN(targetDate.getTime())) return 'المزامنة التلقائية متوقفة';
+
+    const now = new Date();
+    const diffMs = targetDate.getTime() - now.getTime();
+    const timeStr = targetDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+    if (diffMs <= 0) {
+      return `مستحقة الآن (${timeStr})`;
+    }
+
+    const diffMin = Math.round(diffMs / (60 * 1000));
+    const diffHours = Math.round(diffMs / (60 * 60 * 1000));
+    const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
+
+    const isToday = targetDate.toDateString() === now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = targetDate.toDateString() === tomorrow.toDateString();
+
+    if (diffMin < 60) {
+      return `اليوم، ${timeStr} (خلال ${diffMin} دقيقة)`;
+    }
+
+    if (isToday) {
+      return `اليوم، ${timeStr} (خلال ${diffHours} ساعة)`;
+    }
+
+    if (isTomorrow) {
+      return `غداً، ${timeStr}`;
+    }
+
+    return `${targetDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}، ${timeStr} (خلال ${diffDays} يوم)`;
+  } catch {
+    return 'مجدولة';
+  }
+}
+
+/**
+ * دالة تنسيق حالة المزامنة الحالية مع الألوان والوسوم المناسبة
+ */
+export function formatSyncStatusArabic(
+  status: AutoSyncStatus,
+  isOnline = true
+): { label: string; badgeClass: string; iconType: 'success' | 'syncing' | 'offline' | 'error' | 'idle' } {
+  if (!isOnline || status === 'offline_deferred') {
+    return {
+      label: 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
+      badgeClass: 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30',
+      iconType: 'offline',
+    };
+  }
+
+  switch (status) {
+    case 'syncing':
+      return {
+        label: 'جاري مزامنة البيانات مع السحابة...',
+        badgeClass: 'bg-[#5C788A]/15 text-[#5C788A] border border-[#5C788A]/30',
+        iconType: 'syncing',
+      };
+    case 'success':
+    case 'idle':
+      return {
+        label: 'متزامن وجاهز (جميع البيانات مؤمنة بالسحابة)',
+        badgeClass: 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30',
+        iconType: 'success',
+      };
+    case 'error':
+      return {
+        label: 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
+        badgeClass: 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30',
+        iconType: 'error',
+      };
+    default:
+      return {
+        label: 'متزامن وجاهز',
+        badgeClass: 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30',
+        iconType: 'idle',
+      };
+  }
 }
 
 /**
@@ -2271,5 +2670,41 @@ export const db = {
 
   clearAllData: (): void => {
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.getItem(k) && localStorage.removeItem(k));
+  },
+
+  // Auto-Sync Scheduling Helpers
+  getAutoSyncConfig: (userId?: string): AutoSyncConfig => {
+    return getAutoSyncConfig(userId);
+  },
+
+  saveAutoSyncConfig: (config: Partial<AutoSyncConfig>, userId?: string): AutoSyncConfig => {
+    return saveAutoSyncConfig(config, userId);
+  },
+
+  setSyncFrequency: (frequency: AutoSyncFrequency, userId?: string): AutoSyncConfig => {
+    return saveAutoSyncConfig({ frequency }, userId);
+  },
+
+  performFullSync: async (
+    userId?: string,
+    isManual = true
+  ): Promise<{ success: boolean; message: string; dataPackage: UserAccountDataPackage; isOffline?: boolean }> => {
+    return performFullSync(userId, isManual);
+  },
+
+  calculateNextSyncTime: (frequency: AutoSyncFrequency, fromDate?: Date): string | null => {
+    return calculateNextSyncTime(frequency, fromDate);
+  },
+
+  formatNextSyncTimeArabic: (isoString?: string | null, frequency?: AutoSyncFrequency): string => {
+    return formatNextSyncTimeArabic(isoString, frequency);
+  },
+
+  formatSyncStatusArabic: (status: AutoSyncStatus, isOnline?: boolean) => {
+    return formatSyncStatusArabic(status, isOnline);
+  },
+
+  subscribeToSyncUpdates: (listener: () => void): (() => void) => {
+    return subscribeToSyncUpdates(listener);
   },
 };

@@ -27,8 +27,45 @@ jobs:
       - name: Build web app
         run: bun run build
 
-      - name: Sync Capacitor
-        run: bunx cap sync android
+      - name: Verify Web Build Output
+        run: |
+          echo "Verifying web build output in dist/..."
+          if [ ! -d "dist" ] || [ ! -f "dist/index.html" ]; then
+            echo "::error::Web build directory 'dist/' or 'dist/index.html' is missing."
+            ls -la
+            exit 1
+          fi
+          echo "Web build verified successfully."
+
+      - name: Capacitor Environment Diagnostics
+        run: |
+          echo "=== Capacitor & Environment Diagnostics ==="
+          echo "Bun version:"
+          bun --version
+          echo "Capacitor CLI version:"
+          bunx @capacitor/cli --version || bunx cap --version
+          echo "Root directory contents:"
+          ls -la
+          echo "Dist directory contents:"
+          ls -la dist
+          if [ -d "android" ]; then
+            echo "Android directory contents:"
+            ls -la android
+          else
+            echo "Android directory does not exist yet."
+          fi
+
+      - name: Initialize and Sync Capacitor Android
+        run: |
+          echo "=== Capacitor Android Setup & Sync ==="
+          if [ ! -d "android" ] || [ ! -f "android/build.gradle" ]; then
+            echo "Android platform not initialized. Adding Android platform..."
+            bunx @capacitor/cli add android
+          fi
+          echo "Copying web assets to native Android project..."
+          bunx @capacitor/cli copy android
+          echo "Syncing Capacitor Android project..."
+          bunx @capacitor/cli sync android
 
       - name: Verify Android Project Structure
         run: |

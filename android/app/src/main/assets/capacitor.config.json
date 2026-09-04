@@ -6,8 +6,7 @@
 		"androidScheme": "https",
 		"cleartext": true,
 		"allowNavigation": [
-			"https://ais-dev-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app",
-			"https://ais-pre-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app",
+			"https://teacher-manager-623166426191.europe-west2.run.app",
 			"*.europe-west2.run.app",
 			"*.run.app",
 			"*.firebaseio.com",

@@ -8,7 +8,6 @@ import {
   NetworkStatusReason,
   DEPLOYED_SERVER_API_URL,
 } from './network';
-import { syncUserDataToFirestore, pullUserDataFromFirestore } from './cloudSync';
 import {
   Student,
   Group,
@@ -563,50 +562,35 @@ export async function performFullSync(
     };
   }
 
-  // 3. Attempt direct cloud sync via Google Cloud Firestore or server API
+  // 3. Dispatch cloud sync directly to standalone Cloud Run Express backend (/api/sync/merge)
   try {
-    console.log(`[Sync] Initiating cloud sync for user ${targetUserId}...`);
+    console.log(`[Sync] Initiating cloud sync for user ${targetUserId} to Cloud Run backend...`);
+    const token = getAuthTokenForUser(targetUserId);
 
-    // First: Direct Firebase Firestore connection (zero proxy hops, zero cookie redirects)
-    let syncRes = await syncUserDataToFirestore(targetUserId, localPackage);
+    const res = await universalApiFetch(syncApiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-auth-token': token,
+      },
+      body: {
+        userId: targetUserId,
+        token: token,
+        dataPackage: localPackage,
+      },
+      timeoutMs: 15000,
+    });
 
-    // If direct Firestore failed, fallback to universal API fetch
-    if (!syncRes.success) {
-      console.warn(`[Sync] Direct Firestore returned: ${syncRes.error}. Attempting server API route fallback...`);
-      const token = getAuthTokenForUser(targetUserId);
-      const res = await universalApiFetch(syncApiUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-auth-token': token,
-        },
-        body: {
-          userId: targetUserId,
-          token: token,
-          dataPackage: localPackage,
-        },
-        timeoutMs: 15000,
-      });
-
-      if (res.ok && res.data && res.data.success) {
-        syncRes = {
-          success: true,
-          timestamp: res.data.timestamp,
-          dataPackage: res.data.dataPackage,
-          merged: res.data.merged,
-        };
-      }
-    }
-
-    if (syncRes.success && syncRes.dataPackage) {
-      if (syncRes.merged) {
-        db.restoreAccountData(targetUserId, syncRes.dataPackage);
+    if (res.ok && res.data && res.data.success) {
+      const resData = res.data;
+      if (resData.merged && resData.dataPackage) {
+        db.restoreAccountData(targetUserId, resData.dataPackage);
       }
 
       const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
-      const finalPackage = syncRes.dataPackage as UserAccountDataPackage;
+      const finalPackage = (resData.dataPackage || localPackage) as UserAccountDataPackage;
 
-      console.log(`[Sync] Sync attempt result: SUCCESS - Synced with Firestore (${finalPackage.stats?.totalStudents || 0} students, ${finalPackage.stats?.totalGroups || 0} groups, ${finalPackage.stats?.totalSessions || 0} sessions)`);
+      console.log(`[Sync] Sync attempt result: SUCCESS - Synced with Cloud Run Backend (${finalPackage.stats?.totalStudents || 0} students, ${finalPackage.stats?.totalGroups || 0} groups, ${finalPackage.stats?.totalSessions || 0} sessions)`);
 
       saveAutoSyncConfig(
         {
@@ -625,7 +609,8 @@ export async function performFullSync(
         dataPackage: finalPackage,
       };
     } else {
-      throw new Error(syncRes.error || 'Cloud sync failed');
+      const errorDetail = res.data?.error || res.error || `HTTP ${res.status}`;
+      throw new Error(errorDetail);
     }
   } catch (netErr: any) {
     const isTimeout = netErr?.name === 'AbortError' || String(netErr?.message).includes('Timeout');
@@ -669,18 +654,10 @@ export async function pullCloudDataPackageFromServer(
   const targetUserId = userId || getActiveUserId();
 
   try {
-    console.log(`[Sync] Pulling cloud data package for user ${targetUserId}...`);
-
-    // First: Direct Firebase Firestore pull
-    const firestoreRes = await pullUserDataFromFirestore(targetUserId);
-    if (firestoreRes.success && firestoreRes.dataPackage) {
-      db.restoreAccountData(targetUserId, firestoreRes.dataPackage);
-      return { success: true, dataPackage: firestoreRes.dataPackage };
-    }
-
-    // Fallback: Universal API fetch
+    console.log(`[Sync] Pulling cloud data package for user ${targetUserId} from Cloud Run backend...`);
     const token = getAuthTokenForUser(targetUserId);
     const pullUrl = getFullApiUrl('/api/sync/pull');
+
     const res = await universalApiFetch(pullUrl, {
       method: 'GET',
       headers: {
@@ -698,7 +675,7 @@ export async function pullCloudDataPackageFromServer(
       }
       return { success: true, dataPackage: null };
     } else {
-      return { success: false, error: res.error || `HTTP ${res.status}` };
+      return { success: false, error: res.data?.error || res.error || `HTTP ${res.status}` };
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error during pull' };

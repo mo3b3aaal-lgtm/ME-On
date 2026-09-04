@@ -224,12 +224,10 @@ Stack: ${diagnostics.exceptionStack || 'None'}
             <div className="p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/60">
               <span className="text-slate-400 block mb-1 flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                Direct Cloud Firestore
+                Backend Database
               </span>
-              <span className="font-mono font-bold text-emerald-300">
-                {diagnostics?.firestoreDirectConnected
-                  ? `Connected (${diagnostics.firestoreDurationMs}ms)`
-                  : 'Checking...'}
+              <span className="font-mono text-emerald-300 text-xs truncate block">
+                {diagnostics?.parsedJson?.database || (diagnostics?.responseOk ? 'Firebase Firestore' : 'Checking...')}
               </span>
             </div>
 

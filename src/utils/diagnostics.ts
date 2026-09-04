@@ -1,7 +1,6 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { Network } from '@capacitor/network';
 import { getPermanentProductionApiUrl, getFullApiUrl } from '../config/api';
-import { testDirectFirestoreHealth } from '../config/firebase';
 
 export interface HealthCheckDiagnosticResult {
   timestamp: string;
@@ -12,11 +11,6 @@ export interface HealthCheckDiagnosticResult {
   platform: string;
   nativeNetworkConnected: boolean;
   nativeConnectionType: string;
-  
-  // Direct Firestore status
-  firestoreDirectConnected?: boolean;
-  firestoreDatabaseId?: string;
-  firestoreDurationMs?: number;
 
   // Request details
   apiBaseUrl: string;
@@ -223,19 +217,6 @@ export async function runExactHealthCheckDiagnostics(
     diagnosticResult.exceptionStack = err?.stack || undefined;
     diagnosticResult.conclusion = 'NETWORK_EXCEPTION';
     diagnosticResult.diagnosticSummary = `Exception (${diagnosticResult.exceptionName}): ${diagnosticResult.exceptionMessage}`;
-  }
-
-  // Also verify Direct Firebase Firestore connection
-  try {
-    const fsHealth = await testDirectFirestoreHealth();
-    diagnosticResult.firestoreDirectConnected = fsHealth.ok;
-    diagnosticResult.firestoreDatabaseId = 'ai-studio-teacherskdb-2ab7b23f-628d-4bc7-9c38-f649ca7153f9';
-    diagnosticResult.firestoreDurationMs = fsHealth.durationMs;
-    if (fsHealth.ok && diagnosticResult.conclusion !== 'SUCCESS_HEALTHY') {
-      diagnosticResult.diagnosticSummary += ` | Direct Firestore: REACHABLE (${fsHealth.durationMs}ms)`;
-    }
-  } catch (fsErr) {
-    diagnosticResult.firestoreDirectConnected = false;
   }
 
   notifyDiagnosticListeners(diagnosticResult);

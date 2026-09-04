@@ -7,11 +7,11 @@
 import { Capacitor } from '@capacitor/core';
 
 export const CLOUD_CONFIG = {
-  serviceName: 'teachermanager-backend',
+  serviceName: 'teacher-manager',
   gcpProject: 'corded-elevator-cf6jr',
   firestoreDatabase: 'ai-studio-teacherskdb-2ab7b23f-628d-4bc7-9c38-f649ca7153f9',
   region: 'europe-west2',
-  permanentProductionUrl: 'https://ais-dev-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app',
+  permanentProductionUrl: 'https://teacher-manager-623166426191.europe-west2.run.app',
 };
 
 const STORAGE_KEY_CUSTOM_API_URL = 'tm_custom_api_base_url';

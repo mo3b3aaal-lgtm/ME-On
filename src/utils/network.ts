@@ -1,11 +1,12 @@
 import { Network, ConnectionStatus } from '@capacitor/network';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import {
   CLOUD_CONFIG,
   getPermanentProductionApiUrl,
   getFullApiUrl as configGetFullApiUrl,
   API_ROUTES,
 } from '../config/api';
+import { runExactHealthCheckDiagnostics } from './diagnostics';
 
 export const PRIMARY_SERVER_API_URL = CLOUD_CONFIG.permanentProductionUrl;
 export const DEPLOYED_SERVER_API_URL = PRIMARY_SERVER_API_URL;
@@ -77,6 +78,112 @@ export function subscribeToNetworkStatus(listener: NetworkListener): () => void 
 }
 
 /**
+ * Robust cross-platform API HTTP requester:
+ * Uses native Android CapacitorHttp when running inside Capacitor APK (bypassing WebView CORS & cookie redirects)
+ * Uses standard browser fetch() in Web / Chrome.
+ */
+export async function universalApiFetch(
+  endpointOrFullUrl: string,
+  options: {
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    headers?: Record<string, string>;
+    body?: any;
+    timeoutMs?: number;
+  } = {}
+): Promise<{ ok: boolean; status: number; data: any; rawText?: string; error?: string }> {
+  const isFullUrl = endpointOrFullUrl.startsWith('http://') || endpointOrFullUrl.startsWith('https://');
+  const targetUrl = isFullUrl ? endpointOrFullUrl : getFullApiUrl(endpointOrFullUrl);
+  const method = options.method || 'GET';
+  const timeoutMs = options.timeoutMs || 12000;
+  const isNative = Capacitor.isNativePlatform();
+
+  const reqHeaders: Record<string, string> = {
+    Accept: 'application/json',
+    ...(options.headers || {}),
+  };
+  if (options.body && !reqHeaders['Content-Type']) {
+    reqHeaders['Content-Type'] = 'application/json';
+  }
+
+  console.log(`[Universal Fetch] [${isNative ? 'Native CapacitorHttp' : 'Web Fetch'}] ${method} ${targetUrl}`);
+
+  if (isNative) {
+    try {
+      const httpRes = await CapacitorHttp.request({
+        url: targetUrl,
+        method: method,
+        headers: reqHeaders,
+        data: options.body,
+        readTimeout: timeoutMs,
+        connectTimeout: timeoutMs,
+      });
+
+      const isOk = httpRes.status >= 200 && httpRes.status < 300;
+      let resData = httpRes.data;
+      if (typeof resData === 'string') {
+        try {
+          resData = JSON.parse(resData);
+        } catch {
+          // keep as string
+        }
+      }
+
+      console.log(`[Universal Fetch Native] Response status: ${httpRes.status}, ok: ${isOk}`);
+      return {
+        ok: isOk,
+        status: httpRes.status,
+        data: resData,
+        rawText: typeof httpRes.data === 'string' ? httpRes.data : JSON.stringify(httpRes.data),
+        error: isOk ? undefined : `HTTP ${httpRes.status}`,
+      };
+    } catch (nativeErr: any) {
+      console.warn(`[Universal Fetch Native Error] ${nativeErr?.message || nativeErr}. Falling back to fetch...`);
+    }
+  }
+
+  // Web or fallback fetch
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: method,
+      headers: reqHeaders,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    clearTimeout(timeoutId);
+
+    const rawText = await res.text();
+    let data: any = null;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = rawText;
+    }
+
+    return {
+      ok: res.ok,
+      status: res.status,
+      data: data,
+      rawText: rawText,
+      error: res.ok ? undefined : `HTTP ${res.status}: ${res.statusText}`,
+    };
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    const isTimeout = err.name === 'AbortError';
+    const msg = isTimeout ? `Timeout after ${timeoutMs}ms` : err.message || 'Network fetch error';
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      error: msg,
+    };
+  }
+}
+
+/**
  * Checks native device network status using @capacitor/network with fallback.
  */
 export async function getDeviceNetworkStatus(): Promise<{
@@ -92,11 +199,9 @@ export async function getDeviceNetworkStatus(): Promise<{
       | 'none'
       | 'unknown';
 
-    console.log(`[Network Diagnostics] Native status: ${isConnected ? 'CONNECTED' : 'DISCONNECTED'} (type: ${connType})`);
     return { connected: isConnected, connectionType: connType };
   } catch (err) {
     const navOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-    console.log(`[Network Diagnostics] Native status (fallback): connected=${navOnline}`);
     return { connected: navOnline, connectionType: navOnline ? 'unknown' : 'none' };
   }
 }
@@ -107,60 +212,24 @@ export async function getDeviceNetworkStatus(): Promise<{
 export async function checkApiHealth(
   timeoutMs = 8000
 ): Promise<{ ok: boolean; status?: string; database?: string; statusCode?: number; error?: string; url?: string }> {
-  const prodBaseUrl = getServerApiBaseUrl();
-  const healthUrl = getFullApiUrl('/api/health', prodBaseUrl);
-  console.log(`[Network Diagnostics] Probing API Health at permanent production URL: ${healthUrl} (timeout: ${timeoutMs}ms)`);
+  const diag = await runExactHealthCheckDiagnostics(timeoutMs);
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(healthUrl, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        'Cache-Control': 'no-cache',
-        Pragma: 'no-cache',
-      },
-      signal: controller.signal,
-      cache: 'no-store',
-    });
-    clearTimeout(timeoutId);
-
-    console.log(`[Network Diagnostics] HTTP Status Code for ${healthUrl}: ${res.status} ${res.statusText}`);
-
-    if (res.ok) {
-      const data = await res.json().catch(() => ({ status: 'ok', database: 'connected' }));
-      console.log(`[Network Diagnostics] API Health: REACHABLE (status: ${data.status}, db: ${data.database || 'ready'})`);
-      return {
-        ok: true,
-        status: data.status || 'ok',
-        database: data.database || 'Firebase Firestore',
-        statusCode: res.status,
-        url: healthUrl,
-      };
-    } else {
-      const errText = await res.text().catch(() => '');
-      console.warn(`[Network Diagnostics] API Health check UNREACHABLE (HTTP ${res.status}): ${errText.slice(0, 150)}`);
-      return {
-        ok: false,
-        error: `HTTP ${res.status}: ${res.statusText}`,
-        statusCode: res.status,
-        url: healthUrl,
-      };
-    }
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    const isAbort = err.name === 'AbortError';
-    const msg = isAbort ? `Timeout (exceeded ${timeoutMs}ms)` : err.message || 'Fetch NetworkError';
-    console.warn(`[Network Diagnostics] Health check failed for ${healthUrl} - Reason: ${msg}`);
+  if (diag.conclusion === 'SUCCESS_HEALTHY') {
     return {
-      ok: false,
-      error: msg,
-      statusCode: 0,
-      url: healthUrl,
+      ok: true,
+      status: diag.parsedJson?.status || 'ok',
+      database: diag.parsedJson?.database || 'Firebase Firestore',
+      statusCode: diag.httpStatusCode,
+      url: diag.exactHealthCheckUrl,
     };
   }
+
+  return {
+    ok: false,
+    error: diag.diagnosticSummary,
+    statusCode: diag.httpStatusCode,
+    url: diag.exactHealthCheckUrl,
+  };
 }
 
 /**

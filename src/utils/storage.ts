@@ -2,11 +2,13 @@ import { registerPlugin, Capacitor } from '@capacitor/core';
 import {
   getServerApiBaseUrl,
   getFullApiUrl,
+  universalApiFetch,
   checkOverallConnectivity,
   onNetworkReconnected,
   NetworkStatusReason,
   DEPLOYED_SERVER_API_URL,
 } from './network';
+import { syncUserDataToFirestore, pullUserDataFromFirestore } from './cloudSync';
 import {
   Student,
   Group,
@@ -561,72 +563,73 @@ export async function performFullSync(
     };
   }
 
-  // 3. Attempt cloud sync via persistent server API with authorization token
+  // 3. Attempt direct cloud sync via Google Cloud Firestore or server API
   try {
-    const token = getAuthTokenForUser(targetUserId);
-    console.log(`[Sync] Dispatching POST request to ${syncApiUrl} with user token...`);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    console.log(`[Sync] Initiating cloud sync for user ${targetUserId}...`);
 
-    const response = await fetch(syncApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        'x-auth-token': token,
-      },
-      body: JSON.stringify({
-        userId: targetUserId,
-        token: token,
-        dataPackage: localPackage,
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    // First: Direct Firebase Firestore connection (zero proxy hops, zero cookie redirects)
+    let syncRes = await syncUserDataToFirestore(targetUserId, localPackage);
 
-    console.log(`[Sync] Server response status: ${response.status} ${response.statusText}`);
+    // If direct Firestore failed, fallback to universal API fetch
+    if (!syncRes.success) {
+      console.warn(`[Sync] Direct Firestore returned: ${syncRes.error}. Attempting server API route fallback...`);
+      const token = getAuthTokenForUser(targetUserId);
+      const res = await universalApiFetch(syncApiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-auth-token': token,
+        },
+        body: {
+          userId: targetUserId,
+          token: token,
+          dataPackage: localPackage,
+        },
+        timeoutMs: 15000,
+      });
 
-    if (response.ok) {
-      const resData = await response.json();
-      if (resData.success && resData.dataPackage) {
-        if (resData.merged) {
-          db.restoreAccountData(targetUserId, resData.dataPackage);
-        }
-
-        const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
-        const finalPackage = resData.dataPackage as UserAccountDataPackage;
-
-        console.log(`[Sync] Sync attempt result: SUCCESS - Synced with Firestore (${finalPackage.stats?.totalStudents || 0} students, ${finalPackage.stats?.totalGroups || 0} groups, ${finalPackage.stats?.totalSessions || 0} sessions)`);
-
-        saveAutoSyncConfig(
-          {
-            status: 'success',
-            statusMessage: 'تمت المزامنة السحابية بنجاح وتحديث كافة البيانات في قاعدة البيانات السحابية الدائمة',
-            lastSyncTime: finalPackage.lastSyncTime || new Date().toISOString(),
-            nextSyncTime: nextSync,
-            autoRetryOnReconnect: false,
-          },
-          targetUserId
-        );
-
-        return {
+      if (res.ok && res.data && res.data.success) {
+        syncRes = {
           success: true,
-          message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
-          dataPackage: finalPackage,
+          timestamp: res.data.timestamp,
+          dataPackage: res.data.dataPackage,
+          merged: res.data.merged,
         };
-      } else {
-        const failureReason = resData.error || 'Server returned unsuccessful sync response';
-        console.warn(`[Sync] Sync attempt result: FAILED - Server error: ${failureReason}`);
-        throw new Error(failureReason);
       }
+    }
+
+    if (syncRes.success && syncRes.dataPackage) {
+      if (syncRes.merged) {
+        db.restoreAccountData(targetUserId, syncRes.dataPackage);
+      }
+
+      const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
+      const finalPackage = syncRes.dataPackage as UserAccountDataPackage;
+
+      console.log(`[Sync] Sync attempt result: SUCCESS - Synced with Firestore (${finalPackage.stats?.totalStudents || 0} students, ${finalPackage.stats?.totalGroups || 0} groups, ${finalPackage.stats?.totalSessions || 0} sessions)`);
+
+      saveAutoSyncConfig(
+        {
+          status: 'success',
+          statusMessage: 'تمت المزامنة السحابية بنجاح وتحديث كافة البيانات في قاعدة البيانات السحابية الدائمة',
+          lastSyncTime: finalPackage.lastSyncTime || new Date().toISOString(),
+          nextSyncTime: nextSync,
+          autoRetryOnReconnect: false,
+        },
+        targetUserId
+      );
+
+      return {
+        success: true,
+        message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
+        dataPackage: finalPackage,
+      };
     } else {
-      const errorText = await response.text().catch(() => '');
-      console.warn(`[Sync] Sync attempt result: FAILED (HTTP ${response.status}) - ${errorText}`);
-      throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+      throw new Error(syncRes.error || 'Cloud sync failed');
     }
   } catch (netErr: any) {
-    const isTimeout = netErr?.name === 'AbortError';
-    const failureReason = isTimeout ? 'Request timed out after 12 seconds' : netErr?.message || 'Network fetch error';
+    const isTimeout = netErr?.name === 'AbortError' || String(netErr?.message).includes('Timeout');
+    const failureReason = isTimeout ? 'Request timed out' : netErr?.message || 'Network fetch error';
     console.warn(`[Sync] Sync failure reason: ${failureReason}. Preserving local offline backup.`);
 
     const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
@@ -664,35 +667,38 @@ export async function pullCloudDataPackageFromServer(
   userId?: string
 ): Promise<{ success: boolean; dataPackage?: UserAccountDataPackage | null; error?: string }> {
   const targetUserId = userId || getActiveUserId();
-  const token = getAuthTokenForUser(targetUserId);
-  const pullUrl = getFullApiUrl('/api/sync/pull');
 
   try {
-    console.log(`[Sync] Pulling cloud data package from ${pullUrl} for user ${targetUserId}...`);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    console.log(`[Sync] Pulling cloud data package for user ${targetUserId}...`);
 
-    const res = await fetch(pullUrl, {
+    // First: Direct Firebase Firestore pull
+    const firestoreRes = await pullUserDataFromFirestore(targetUserId);
+    if (firestoreRes.success && firestoreRes.dataPackage) {
+      db.restoreAccountData(targetUserId, firestoreRes.dataPackage);
+      return { success: true, dataPackage: firestoreRes.dataPackage };
+    }
+
+    // Fallback: Universal API fetch
+    const token = getAuthTokenForUser(targetUserId);
+    const pullUrl = getFullApiUrl('/api/sync/pull');
+    const res = await universalApiFetch(pullUrl, {
       method: 'GET',
       headers: {
-        Accept: 'application/json',
         Authorization: `Bearer ${token}`,
         'x-auth-token': token,
       },
-      signal: controller.signal,
+      timeoutMs: 15000,
     });
-    clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const data = await res.json();
+    if (res.ok && res.data) {
+      const data = res.data;
       if (data.success && data.dataPackage) {
         db.restoreAccountData(targetUserId, data.dataPackage);
         return { success: true, dataPackage: data.dataPackage };
       }
       return { success: true, dataPackage: null };
     } else {
-      const errText = await res.text().catch(() => '');
-      return { success: false, error: `HTTP ${res.status}: ${errText || res.statusText}` };
+      return { success: false, error: res.error || `HTTP ${res.status}` };
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error during pull' };
@@ -711,29 +717,21 @@ export async function loginWithServerApi(credentials: {
   const loginUrl = getFullApiUrl('/api/auth/login');
   try {
     console.log(`[Auth] Logging in via server API at ${loginUrl}...`);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-    const res = await fetch(loginUrl, {
+    const res = await universalApiFetch(loginUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(credentials),
-      signal: controller.signal,
+      body: credentials,
+      timeoutMs: 15000,
     });
-    clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const data = await res.json();
+    if (res.ok && res.data) {
+      const data = res.data;
       if (data.success) {
         return { success: true, token: data.token, user: data.user };
       }
       return { success: false, error: data.error || 'Login failed' };
     } else {
-      const errText = await res.text().catch(() => '');
-      return { success: false, error: `HTTP ${res.status}: ${errText || res.statusText}` };
+      return { success: false, error: res.error || `HTTP ${res.status}` };
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error during login' };

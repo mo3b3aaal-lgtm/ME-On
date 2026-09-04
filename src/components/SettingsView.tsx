@@ -43,6 +43,7 @@ import {
   DetailedNetworkStatus,
 } from '../utils/network';
 import { useTranslation, Language } from '../utils/i18n';
+import { NetworkDiagnosticsModal } from './NetworkDiagnosticsModal';
 
 interface SettingsViewProps {
   teacherProfile: TeacherProfile;
@@ -71,6 +72,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [networkStatus, setNetworkStatus] = useState<DetailedNetworkStatus>(() => getCachedNetworkStatus());
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
 
   // Password change in settings
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -451,38 +453,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
 
-          {/* Connectivity Status Pill */}
-          <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border shadow-xs ${
-              networkStatus.isOnline
-                ? 'bg-[#748C70]/10 text-[#5E755A] border-[#748C70]/25'
-                : networkStatus.deviceConnected && !networkStatus.apiReachable
-                ? 'bg-[#5C788A]/10 text-[#5C788A] border-[#5C788A]/25'
-                : 'bg-[#C97C5D]/10 text-[#C97C5D] border-[#C97C5D]/25'
-            }`}
-          >
-            {networkStatus.isOnline ? (
-              <>
-                <Wifi className="w-3.5 h-3.5" />
-                <span>
-                  {networkStatus.connectionType === 'wifi'
-                    ? 'متصل بالإنترنت (Wi-Fi)'
-                    : networkStatus.connectionType === 'cellular'
-                    ? 'متصل بالإنترنت (بيانات الجوال)'
-                    : 'متصل بالإنترنت'}
-                </span>
-              </>
-            ) : networkStatus.deviceConnected && !networkStatus.apiReachable ? (
-              <>
-                <Activity className="w-3.5 h-3.5 text-[#5C788A]" />
-                <span>متصل بالشبكة (السيرفر غير متاح)</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-[#C97C5D]" />
-                <span>وضع عدم الاتصال (أوفلاين)</span>
-              </>
-            )}
+          {/* Connectivity Status Pill & Diagnostics Button */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border shadow-xs ${
+                networkStatus.isOnline
+                  ? 'bg-[#748C70]/10 text-[#5E755A] border-[#748C70]/25'
+                  : networkStatus.deviceConnected && !networkStatus.apiReachable
+                  ? 'bg-[#5C788A]/10 text-[#5C788A] border-[#5C788A]/25'
+                  : 'bg-[#C97C5D]/10 text-[#C97C5D] border-[#C97C5D]/25'
+              }`}
+            >
+              {networkStatus.isOnline ? (
+                <>
+                  <Wifi className="w-3.5 h-3.5" />
+                  <span>
+                    {networkStatus.connectionType === 'wifi'
+                      ? 'متصل بالإنترنت (Wi-Fi)'
+                      : networkStatus.connectionType === 'cellular'
+                      ? 'متصل بالإنترنت (بيانات الجوال)'
+                      : 'متصل بالإنترنت'}
+                  </span>
+                </>
+              ) : networkStatus.deviceConnected && !networkStatus.apiReachable ? (
+                <>
+                  <Activity className="w-3.5 h-3.5 text-[#5C788A]" />
+                  <span>متصل بالشبكة (السيرفر غير متاح)</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-[#C97C5D]" />
+                  <span>وضع عدم الاتصال (أوفلاين)</span>
+                </>
+              )}
+            </div>
+
+            <button
+              id="open_network_diagnostics_button"
+              type="button"
+              onClick={() => setIsDiagnosticsOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-[11px] font-mono font-medium transition active:scale-95 shadow-xs"
+              title="تشخيص اتصال السيرفر المباشر"
+            >
+              <Activity className="w-3.5 h-3.5 text-sky-400" />
+              <span>تشخيص السيرفر (Android Runtime)</span>
+            </button>
           </div>
         </div>
 
@@ -861,6 +876,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <p>مزامنة آمنة للحسابات • يدعم العمل بدون إنترنت والنسخ السحابي</p>
       </div>
 
+      {/* Network Diagnostics Modal */}
+      <NetworkDiagnosticsModal
+        isOpen={isDiagnosticsOpen}
+        onClose={() => setIsDiagnosticsOpen(false)}
+      />
     </div>
   );
 };

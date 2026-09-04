@@ -18,6 +18,9 @@
     "allowMixedContent": true
   },
   "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
     "StatusBar": {
       "overlaysWebView": true
     }

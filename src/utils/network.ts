@@ -1,48 +1,28 @@
 import { Network, ConnectionStatus } from '@capacitor/network';
 import { Capacitor } from '@capacitor/core';
+import {
+  CLOUD_CONFIG,
+  getPermanentProductionApiUrl,
+  getFullApiUrl as configGetFullApiUrl,
+  API_ROUTES,
+} from '../config/api';
 
-export const PRIMARY_SERVER_API_URL = 'https://ais-dev-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app';
-export const SHARED_SERVER_API_URL = 'https://ais-pre-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app';
+export const PRIMARY_SERVER_API_URL = CLOUD_CONFIG.permanentProductionUrl;
 export const DEPLOYED_SERVER_API_URL = PRIMARY_SERVER_API_URL;
-
-let currentActiveBaseUrl: string = PRIMARY_SERVER_API_URL;
 
 /**
  * Returns the fully qualified base URL for server API calls.
  * Ensures the Android Capacitor APK always points to the live production server.
  */
 export function getServerApiBaseUrl(): string {
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
-    const custom = (import.meta as any).env.VITE_API_URL.replace(/\/+$/, '');
-    if (custom) return custom;
-  }
-  // In native Android APK or Capacitor local webview, ALWAYS route to production cloud API
-  if (
-    Capacitor.isNativePlatform() ||
-    (typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.protocol === 'capacitor:' ||
-        (window.location.protocol === 'http:' && window.location.port === '')))
-  ) {
-    return currentActiveBaseUrl || PRIMARY_SERVER_API_URL;
-  }
-  if (typeof window !== 'undefined' && window.location.origin && window.location.origin.startsWith('http')) {
-    if (window.location.hostname === 'localhost' && window.location.port !== '3000') {
-      return currentActiveBaseUrl || PRIMARY_SERVER_API_URL;
-    }
-    return window.location.origin;
-  }
-  return currentActiveBaseUrl || PRIMARY_SERVER_API_URL;
+  return getPermanentProductionApiUrl();
 }
 
 /**
  * Returns the complete URL for an API endpoint path.
  */
 export function getFullApiUrl(endpointPath: string, overrideBaseUrl?: string): string {
-  const cleanPath = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
-  const baseUrl = overrideBaseUrl || getServerApiBaseUrl();
-  return `${baseUrl}${cleanPath}`;
+  return configGetFullApiUrl(endpointPath, overrideBaseUrl);
 }
 
 export type NetworkStatusReason = 'online' | 'device_offline' | 'api_unreachable' | 'checking';
@@ -127,62 +107,60 @@ export async function getDeviceNetworkStatus(): Promise<{
 export async function checkApiHealth(
   timeoutMs = 8000
 ): Promise<{ ok: boolean; status?: string; database?: string; statusCode?: number; error?: string; url?: string }> {
-  const candidateUrls = [getServerApiBaseUrl()];
-  if (!candidateUrls.includes(PRIMARY_SERVER_API_URL)) candidateUrls.push(PRIMARY_SERVER_API_URL);
-  if (!candidateUrls.includes(SHARED_SERVER_API_URL)) candidateUrls.push(SHARED_SERVER_API_URL);
+  const prodBaseUrl = getServerApiBaseUrl();
+  const healthUrl = getFullApiUrl('/api/health', prodBaseUrl);
+  console.log(`[Network Diagnostics] Probing API Health at permanent production URL: ${healthUrl} (timeout: ${timeoutMs}ms)`);
 
-  let lastError = 'No URL tested';
-  let lastStatusCode = 0;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  for (const candidateBase of candidateUrls) {
-    const healthUrl = getFullApiUrl('/api/health', candidateBase);
-    console.log(`[Network Diagnostics] Probing API Health at: ${healthUrl} (timeout: ${timeoutMs}ms)`);
+  try {
+    const res = await fetch(healthUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    clearTimeout(timeoutId);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    console.log(`[Network Diagnostics] HTTP Status Code for ${healthUrl}: ${res.status} ${res.statusText}`);
 
-    try {
-      const res = await fetch(healthUrl, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache',
-          Pragma: 'no-cache',
-        },
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-      clearTimeout(timeoutId);
-      lastStatusCode = res.status;
-
-      console.log(`[Network Diagnostics] HTTP Status Code for ${healthUrl}: ${res.status} ${res.statusText}`);
-
-      if (res.ok) {
-        const data = await res.json().catch(() => ({ status: 'ok', database: 'connected' }));
-        console.log(`[Network Diagnostics] API Health: REACHABLE (status: ${data.status}, db: ${data.database || 'ready'})`);
-        currentActiveBaseUrl = candidateBase;
-        return {
-          ok: true,
-          status: data.status || 'ok',
-          database: data.database || 'Firebase Firestore',
-          statusCode: res.status,
-          url: healthUrl,
-        };
-      } else {
-        const errText = await res.text().catch(() => '');
-        console.warn(`[Network Diagnostics] API Health check UNREACHABLE (HTTP ${res.status}): ${errText.slice(0, 150)}`);
-        lastError = `HTTP ${res.status}: ${res.statusText}`;
-      }
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      const isAbort = err.name === 'AbortError';
-      const msg = isAbort ? `Timeout (exceeded ${timeoutMs}ms)` : err.message || 'Fetch NetworkError';
-      console.warn(`[Network Diagnostics] Health check failed for ${healthUrl} - Reason: ${msg}`);
-      lastError = msg;
+    if (res.ok) {
+      const data = await res.json().catch(() => ({ status: 'ok', database: 'connected' }));
+      console.log(`[Network Diagnostics] API Health: REACHABLE (status: ${data.status}, db: ${data.database || 'ready'})`);
+      return {
+        ok: true,
+        status: data.status || 'ok',
+        database: data.database || 'Firebase Firestore',
+        statusCode: res.status,
+        url: healthUrl,
+      };
+    } else {
+      const errText = await res.text().catch(() => '');
+      console.warn(`[Network Diagnostics] API Health check UNREACHABLE (HTTP ${res.status}): ${errText.slice(0, 150)}`);
+      return {
+        ok: false,
+        error: `HTTP ${res.status}: ${res.statusText}`,
+        statusCode: res.status,
+        url: healthUrl,
+      };
     }
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    const isAbort = err.name === 'AbortError';
+    const msg = isAbort ? `Timeout (exceeded ${timeoutMs}ms)` : err.message || 'Fetch NetworkError';
+    console.warn(`[Network Diagnostics] Health check failed for ${healthUrl} - Reason: ${msg}`);
+    return {
+      ok: false,
+      error: msg,
+      statusCode: 0,
+      url: healthUrl,
+    };
   }
-
-  return { ok: false, error: lastError, statusCode: lastStatusCode, url: getFullApiUrl('/api/health') };
 }
 
 /**

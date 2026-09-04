@@ -49,63 +49,175 @@ var db = firebaseConfig.firestoreDatabaseId ? (0, import_firestore.getFirestore)
 function generateDeterministicToken(userId, salt = "teachermanager_secret_seed") {
   return import_node_crypto.default.createHmac("sha256", salt).update(userId).digest("hex");
 }
-async function registerOrAuthenticateUser(account) {
-  const now = (/* @__PURE__ */ new Date()).toISOString();
-  const token = generateDeterministicToken(account.id);
-  const pwdHash = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
-  const userRef = (0, import_firestore.doc)(db, "users", account.id);
-  const userSnap = await (0, import_firestore.getDoc)(userRef);
-  if (userSnap.exists()) {
-    const existing = userSnap.data();
-    const updatedData = {
-      name: account.name || existing.name,
-      phone: account.phone || existing.phone,
-      auth_token: token,
-      updated_at: now
-    };
-    if (pwdHash) {
-      updatedData.password_hash = pwdHash;
+async function authenticateUser(identifierOrParams, explicitPassword) {
+  let clean = "";
+  let password = explicitPassword;
+  if (typeof identifierOrParams === "object" && identifierOrParams !== null) {
+    clean = (identifierOrParams.identifier || identifierOrParams.email || identifierOrParams.phone || "").trim();
+    if (!password) {
+      password = identifierOrParams.password;
     }
-    await (0, import_firestore.setDoc)(userRef, updatedData, { merge: true });
-    return {
-      user: { ...existing, ...updatedData },
-      token
-    };
+  } else if (typeof identifierOrParams === "string") {
+    clean = identifierOrParams.trim();
+  }
+  if (!clean) {
+    throw new Error("\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 \u0623\u0648 \u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645");
   }
   const usersColl = (0, import_firestore.collection)(db, "users");
-  const q = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", account.email));
-  const querySnap = await (0, import_firestore.getDocs)(q);
-  if (!querySnap.empty) {
-    const docFound = querySnap.docs[0];
-    const existing = docFound.data();
-    const updatedData = {
-      name: account.name || existing.name,
-      phone: account.phone || existing.phone,
-      auth_token: token,
-      updated_at: now
-    };
-    if (pwdHash) {
-      updatedData.password_hash = pwdHash;
+  let matchedDoc = null;
+  try {
+    const directDoc = await (0, import_firestore.getDoc)((0, import_firestore.doc)(db, "users", clean));
+    if (directDoc.exists()) {
+      matchedDoc = directDoc;
     }
-    await (0, import_firestore.setDoc)(docFound.ref, updatedData, { merge: true });
-    return {
-      user: { ...existing, ...updatedData },
-      token
-    };
+  } catch (e) {
   }
+  if (!matchedDoc) {
+    try {
+      const qEmail = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", clean.toLowerCase()));
+      const snap = await (0, import_firestore.getDocs)(qEmail);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+    }
+  }
+  if (!matchedDoc) {
+    try {
+      const qEmailRaw = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", clean));
+      const snap = await (0, import_firestore.getDocs)(qEmailRaw);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+    }
+  }
+  if (!matchedDoc) {
+    try {
+      const qPhone = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("phone", "==", clean));
+      const snap = await (0, import_firestore.getDocs)(qPhone);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+    }
+  }
+  if (!matchedDoc) {
+    try {
+      const qName = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("name", "==", clean));
+      const snap = await (0, import_firestore.getDocs)(qName);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+    }
+  }
+  if (!matchedDoc) {
+    throw new Error("\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628 \u0645\u0633\u062C\u0644 \u0628\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0627\u0644\u0647\u0627\u062A\u0641 \u0641\u064A \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0633\u062D\u0627\u0628\u064A");
+  }
+  const userData = matchedDoc.data();
+  if (password) {
+    const inputHash = import_node_crypto.default.createHash("sha256").update(password).digest("hex");
+    const storedHash = userData.password_hash || "";
+    const storedPlain = userData.password || "";
+    const isMatch = storedHash && storedHash === inputHash || storedPlain && storedPlain === password || !storedHash && !storedPlain;
+    if (!isMatch) {
+      throw new Error("\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D\u0629\u060C \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0623\u0643\u062F \u0648\u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0645\u062C\u062F\u062F\u0627\u064B");
+    }
+  }
+  const token = generateDeterministicToken(userData.id);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  await (0, import_firestore.setDoc)(
+    matchedDoc.ref,
+    {
+      auth_token: token,
+      last_login_at: now,
+      updated_at: now
+    },
+    { merge: true }
+  );
+  const updatedUser = {
+    ...userData,
+    auth_token: token
+  };
+  return { user: updatedUser, token };
+}
+async function registerUser(account) {
+  const cleanEmail = (account.email || "").trim().toLowerCase();
+  const cleanPhone = (account.phone || "").trim();
+  const usersColl = (0, import_firestore.collection)(db, "users");
+  if (cleanEmail) {
+    const qEmail = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", cleanEmail));
+    const snap = await (0, import_firestore.getDocs)(qEmail);
+    if (!snap.empty) {
+      const existing = snap.docs[0].data();
+      const pwdHash2 = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
+      if (pwdHash2 && existing.password_hash && pwdHash2 !== existing.password_hash) {
+        throw new Error("\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0645\u0633\u062C\u0644 \u0628\u0627\u0644\u0641\u0639\u0644 \u0628\u062D\u0633\u0627\u0628 \u0622\u062E\u0631 \u0628\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0645\u062E\u062A\u0644\u0641\u0629.");
+      }
+      const token2 = generateDeterministicToken(existing.id);
+      return { user: existing, token: token2 };
+    }
+  }
+  const userId = account.id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const token = generateDeterministicToken(userId);
+  const pwdHash = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
   const newUser = {
-    id: account.id,
-    email: account.email,
+    id: userId,
+    email: cleanEmail || `${userId}@teachermanager.local`,
     name: account.name || "\u0645\u0639\u0644\u0645",
-    phone: account.phone || "",
+    phone: cleanPhone || "",
     password_hash: pwdHash,
     auth_token: token,
     recovery_pin: account.recoveryPin || "123456",
     created_at: now,
     updated_at: now
   };
-  await (0, import_firestore.setDoc)(userRef, newUser);
+  const userRef = (0, import_firestore.doc)(db, "users", userId);
+  await (0, import_firestore.setDoc)(userRef, {
+    ...newUser,
+    subject: account.subject || "\u0639\u0627\u0645",
+    centerOrSchool: account.centerOrSchool || ""
+  });
   return { user: newUser, token };
+}
+async function resetUserPasswordInFirestore(identifier, newPassword, recoveryPin) {
+  const clean = (identifier || "").trim();
+  const usersColl = (0, import_firestore.collection)(db, "users");
+  let matchedDoc = null;
+  const qEmail = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", clean.toLowerCase()));
+  const snap = await (0, import_firestore.getDocs)(qEmail);
+  if (!snap.empty) {
+    matchedDoc = snap.docs[0];
+  } else {
+    const qPhone = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("phone", "==", clean));
+    const snapPhone = await (0, import_firestore.getDocs)(qPhone);
+    if (!snapPhone.empty) {
+      matchedDoc = snapPhone.docs[0];
+    }
+  }
+  if (!matchedDoc) {
+    throw new Error("\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628 \u0628\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0627\u0644\u0647\u0627\u062A\u0641 \u0641\u064A \u0627\u0644\u062E\u0627\u062F\u0645 \u0627\u0644\u0633\u062D\u0627\u0628\u064A.");
+  }
+  const user = matchedDoc.data();
+  if (recoveryPin && user.recovery_pin && user.recovery_pin.trim() !== recoveryPin.trim()) {
+    throw new Error("\u0643\u0648\u062F \u0627\u0644\u0627\u0633\u062A\u0631\u062F\u0627\u062F \u0627\u0644\u0633\u0631\u064A (PIN) \u063A\u064A\u0631 \u0635\u062D\u064A\u062D.");
+  }
+  const newHash = import_node_crypto.default.createHash("sha256").update(newPassword).digest("hex");
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  await (0, import_firestore.setDoc)(
+    matchedDoc.ref,
+    {
+      password_hash: newHash,
+      updated_at: now
+    },
+    { merge: true }
+  );
+  return { success: true, message: "\u062A\u0645 \u062A\u062D\u062F\u064A\u062B \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0628\u0646\u062C\u0627\u062D \u0641\u064A \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0633\u062D\u0627\u0628\u064A." };
+}
+async function registerOrAuthenticateUser(account) {
+  return registerUser(account);
 }
 async function getUserByToken(token) {
   if (!token || typeof token !== "string") return null;
@@ -332,7 +444,81 @@ async function requireAuth(req, res, next) {
     return res.status(500).json({ success: false, error: "Internal authentication error" });
   }
 }
-var handleAuth = async (req, res) => {
+app2.post("/api/auth/login", async (req, res) => {
+  try {
+    const identifier = req.body.identifier || req.body.email || req.body.phone || req.body.id;
+    const password = req.body.password;
+    console.log(`[Auth API /api/auth/login] Attempting login for identifier: "${identifier}"`);
+    if (!identifier) {
+      return res.status(400).json({ success: false, error: "\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641" });
+    }
+    const { user, token } = await authenticateUser(identifier, password);
+    console.log(`[Auth API /api/auth/login] Login successful! User ID: ${user.id}, Email: ${user.email}`);
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "",
+        subject: user.subject || "\u0639\u0627\u0645",
+        centerOrSchool: user.centerOrSchool || "",
+        recoveryPin: user.recovery_pin || "123456",
+        createdAt: user.created_at,
+        lastLoginAt: user.updated_at
+      }
+    });
+  } catch (error) {
+    console.warn(`[Auth API /api/auth/login] Authentication failed:`, error.message);
+    res.status(401).json({ success: false, error: error.message || "\u0641\u0634\u0644 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+  }
+});
+app2.post("/api/auth/register", async (req, res) => {
+  try {
+    const { id, email, name, phone, subject, centerOrSchool, password, recoveryPin } = req.body;
+    console.log(`[Auth API /api/auth/register] Registering account for: ${email || name}`);
+    const { user, token } = await registerUser({
+      id,
+      email,
+      name,
+      phone,
+      subject,
+      centerOrSchool,
+      password,
+      recoveryPin
+    });
+    console.log(`[Auth API /api/auth/register] Registration successful! User ID: ${user.id}`);
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "",
+        subject: user.subject || "\u0639\u0627\u0645",
+        centerOrSchool: user.centerOrSchool || "",
+        recoveryPin: user.recovery_pin || "123456",
+        createdAt: user.created_at,
+        lastLoginAt: user.updated_at
+      }
+    });
+  } catch (error) {
+    console.error(`[Auth API /api/auth/register] Registration error:`, error);
+    res.status(400).json({ success: false, error: error.message || "\u0641\u0634\u0644 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628" });
+  }
+});
+app2.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { identifier, newPassword, recoveryPin } = req.body;
+    const result = await resetUserPasswordInFirestore(identifier, newPassword, recoveryPin);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message || "\u0641\u0634\u0644 \u0627\u0633\u062A\u0639\u0627\u062F\u0629 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631" });
+  }
+});
+app2.post("/api/auth/sync-session", async (req, res) => {
   try {
     const { id, email, name, phone, password, recoveryPin } = req.body;
     const userId = id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -350,10 +536,7 @@ var handleAuth = async (req, res) => {
     console.error("Auth sync error:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to authenticate session" });
   }
-};
-app2.post("/api/auth/sync-session", handleAuth);
-app2.post("/api/auth/register", handleAuth);
-app2.post("/api/auth/login", handleAuth);
+});
 app2.post("/api/sync/push", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = req.user.id;

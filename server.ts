@@ -6,6 +6,9 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import {
   registerOrAuthenticateUser,
+  authenticateUser,
+  registerUser,
+  resetUserPasswordInFirestore,
   getUserByToken,
   getUserById,
   getCloudDataPackage,
@@ -117,8 +120,92 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
   }
 }
 
-// Authentication / Session Sync Endpoints
-const handleAuth = async (req: express.Request, res: express.Response) => {
+// Dedicated Server-Authoritative Auth Endpoints
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const identifier = req.body.identifier || req.body.email || req.body.phone || req.body.id;
+    const password = req.body.password;
+
+    console.log(`[Auth API /api/auth/login] Attempting login for identifier: "${identifier}"`);
+
+    if (!identifier) {
+      return res.status(400).json({ success: false, error: "يرجى إدخال البريد الإلكتروني أو رقم الهاتف" });
+    }
+
+    const { user, token } = await authenticateUser(identifier, password);
+    console.log(`[Auth API /api/auth/login] Login successful! User ID: ${user.id}, Email: ${user.email}`);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "",
+        subject: (user as any).subject || "عام",
+        centerOrSchool: (user as any).centerOrSchool || "",
+        recoveryPin: user.recovery_pin || "123456",
+        createdAt: user.created_at,
+        lastLoginAt: user.updated_at,
+      },
+    });
+  } catch (error: any) {
+    console.warn(`[Auth API /api/auth/login] Authentication failed:`, error.message);
+    res.status(401).json({ success: false, error: error.message || "فشل تسجيل الدخول" });
+  }
+});
+
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { id, email, name, phone, subject, centerOrSchool, password, recoveryPin } = req.body;
+    console.log(`[Auth API /api/auth/register] Registering account for: ${email || name}`);
+
+    const { user, token } = await registerUser({
+      id,
+      email,
+      name,
+      phone,
+      subject,
+      centerOrSchool,
+      password,
+      recoveryPin,
+    });
+
+    console.log(`[Auth API /api/auth/register] Registration successful! User ID: ${user.id}`);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "",
+        subject: (user as any).subject || "عام",
+        centerOrSchool: (user as any).centerOrSchool || "",
+        recoveryPin: user.recovery_pin || "123456",
+        createdAt: user.created_at,
+        lastLoginAt: user.updated_at,
+      },
+    });
+  } catch (error: any) {
+    console.error(`[Auth API /api/auth/register] Registration error:`, error);
+    res.status(400).json({ success: false, error: error.message || "فشل إنشاء الحساب" });
+  }
+});
+
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { identifier, newPassword, recoveryPin } = req.body;
+    const result = await resetUserPasswordInFirestore(identifier, newPassword, recoveryPin);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message || "فشل استعادة كلمة المرور" });
+  }
+});
+
+app.post("/api/auth/sync-session", async (req, res) => {
   try {
     const { id, email, name, phone, password, recoveryPin } = req.body;
     const userId = id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -138,11 +225,7 @@ const handleAuth = async (req: express.Request, res: express.Response) => {
     console.error("Auth sync error:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to authenticate session" });
   }
-};
-
-app.post("/api/auth/sync-session", handleAuth);
-app.post("/api/auth/register", handleAuth);
-app.post("/api/auth/login", handleAuth);
+});
 
 // 1. Cloud Sync Push (Persists directly into Firebase Firestore)
 app.post("/api/sync/push", requireAuth, async (req, res) => {

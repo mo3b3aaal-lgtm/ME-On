@@ -35,9 +35,12 @@ import {
   AutoSyncFrequency,
   AutoSyncStatus,
   AutoSyncConfig,
+  AuthDiagnostics,
 } from '../types';
 
 export { getServerApiBaseUrl, getFullApiUrl, DEPLOYED_SERVER_API_URL };
+
+let lastAuthDiagnosticsRecord: AuthDiagnostics | null = null;
 
 const STORAGE_KEYS = {
   STUDENTS: 'tm_v2_students',
@@ -2610,41 +2613,9 @@ export const db = {
     return db.importDatabaseJSON(jsonString);
   },
 
-  // 10. User Accounts & Authentication System
+  // 10. User Accounts & Authentication System (Server-Authoritative with Cloud Run & Firestore)
   getAccounts: (): UserAccount[] => {
-    const list = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
-    if (list.length === 0) {
-      // Seed initial default teacher account linked to existing data
-      let initialProfile = DEFAULT_TEACHER_PROFILE;
-      try {
-        const raw = localStorage.getItem(STORAGE_KEYS.TEACHER_PROFILE);
-        if (raw) initialProfile = JSON.parse(raw);
-      } catch {}
-
-      const defaultAccount: UserAccount = {
-        id: 'acc_master_teacher',
-        name: initialProfile.name || 'أ/ محمد أحمد',
-        email: 'teacher@example.com',
-        phone: initialProfile.phone || '01000000000',
-        subject: initialProfile.subject || 'رياضيات',
-        centerOrSchool: initialProfile.centerOrSchool || 'سنتر الأوائل',
-        password: 'password123',
-        authToken: 'auth_tk_acc_master_teacher',
-        recoveryPin: '123456',
-        securityQuestion: 'ما هي مادتك المفضلة؟',
-        securityAnswer: initialProfile.subject || 'رياضيات',
-        createdAt: new Date().toISOString(),
-      };
-      saveList(STORAGE_KEYS.ACCOUNTS, [defaultAccount]);
-      return [defaultAccount];
-    }
-    // Ensure all existing accounts have an authToken
-    return list.map((acc) => {
-      if (!acc.authToken) {
-        return { ...acc, authToken: `auth_tk_${acc.id}` };
-      }
-      return acc;
-    });
+    return getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
   },
 
   saveAccounts: (accounts: UserAccount[]): void => {
@@ -2676,7 +2647,7 @@ export const db = {
     }
   },
 
-  registerAccount: (accountData: {
+  registerAccount: async (accountData: {
     name: string;
     email: string;
     phone?: string;
@@ -2686,134 +2657,321 @@ export const db = {
     recoveryPin?: string;
     securityQuestion?: string;
     securityAnswer?: string;
-  }): { success: boolean; user?: UserAccount; error?: string } => {
-    const accounts = db.getAccounts();
-    const cleanEmail = accountData.email.trim().toLowerCase();
-    
-    // Check if email/username already exists
-    const existing = accounts.find(
-      (a) => a.email.toLowerCase() === cleanEmail || (accountData.phone && a.phone === accountData.phone.trim())
-    );
-    if (existing) {
-      return { success: false, error: 'البريد الإلكتروني أو رقم الهاتف مسجل بالفعل بحساب آخر.' };
+  }): Promise<{ success: boolean; user?: UserAccount; error?: string }> => {
+    const regUrl = getFullApiUrl('/api/auth/register');
+    console.log('[Auth API] Registering account at:', regUrl);
+
+    try {
+      const res = await universalApiFetch(regUrl, {
+        method: 'POST',
+        body: accountData,
+        timeoutMs: 15000,
+      });
+
+      if (res.ok && res.data && res.data.success && res.data.user) {
+        const serverUser = res.data.user;
+        const token = res.data.token || `auth_tk_${serverUser.id}`;
+
+        const newAccount: UserAccount = {
+          id: serverUser.id,
+          name: serverUser.name || accountData.name.trim(),
+          email: serverUser.email || accountData.email.trim().toLowerCase(),
+          phone: serverUser.phone || accountData.phone?.trim(),
+          subject: serverUser.subject || accountData.subject?.trim(),
+          centerOrSchool: serverUser.centerOrSchool || accountData.centerOrSchool?.trim(),
+          password: accountData.password,
+          authToken: token,
+          recoveryPin: serverUser.recoveryPin || accountData.recoveryPin?.trim() || '123456',
+          securityQuestion: accountData.securityQuestion?.trim() || 'ما هي مادتك الدراسية؟',
+          securityAnswer: accountData.securityAnswer?.trim() || accountData.subject?.trim() || '',
+          createdAt: serverUser.createdAt || new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+        };
+
+        // Cache locally
+        localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
+        const existing = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []).filter((a) => a.id !== newAccount.id);
+        db.saveAccounts([newAccount, ...existing]);
+
+        db.saveTeacherProfile(
+          {
+            name: newAccount.name,
+            subject: newAccount.subject || 'عام',
+            phone: newAccount.phone || '',
+            centerOrSchool: newAccount.centerOrSchool || '',
+            currency: 'ج.م',
+          },
+          newAccount.id
+        );
+
+        db.setCurrentSession(newAccount);
+        autoSyncUserAccount(newAccount.id);
+        return { success: true, user: newAccount };
+      } else {
+        return {
+          success: false,
+          error: res.data?.error || res.error || 'فشل إنشاء الحساب بالسيرفر السحابي.',
+        };
+      }
+    } catch (err: any) {
+      console.warn('[Auth API] Registration network error:', err);
+      return { success: false, error: err.message || 'حدث خطأ في الاتصال بالإنترنت أثناء إنشاء الحساب.' };
     }
-
-    const newId = `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    const newAccount: UserAccount = {
-      id: newId,
-      name: accountData.name.trim(),
-      email: cleanEmail,
-      phone: accountData.phone?.trim(),
-      subject: accountData.subject?.trim(),
-      centerOrSchool: accountData.centerOrSchool?.trim(),
-      password: accountData.password,
-      authToken: `auth_tk_${newId}`,
-      recoveryPin: accountData.recoveryPin?.trim() || '123456',
-      securityQuestion: accountData.securityQuestion?.trim() || 'ما هي مادتك الدراسية؟',
-      securityAnswer: accountData.securityAnswer?.trim() || accountData.subject?.trim() || '',
-      createdAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
-    };
-
-    const updated = [newAccount, ...accounts];
-    db.saveAccounts(updated);
-
-    // Also sync teacher profile
-    db.saveTeacherProfile({
-      name: newAccount.name,
-      subject: newAccount.subject || 'عام',
-      phone: newAccount.phone || '',
-      centerOrSchool: newAccount.centerOrSchool || '',
-      currency: 'ج.م',
-    }, newAccount.id);
-
-    db.setCurrentSession(newAccount);
-    autoSyncUserAccount(newAccount.id);
-    return { success: true, user: newAccount };
   },
 
-  login: (identifier: string, password: string): { success: boolean; user?: UserAccount; error?: string } => {
-    const accounts = db.getAccounts();
-    const clean = identifier.trim().toLowerCase();
+  getLastAuthDiagnostics: (): AuthDiagnostics | null => {
+    return lastAuthDiagnosticsRecord;
+  },
 
-    const account = accounts.find(
+  login: async (
+    identifier: string,
+    password: string
+  ): Promise<{
+    success: boolean;
+    user?: UserAccount;
+    error?: string;
+    isOffline?: boolean;
+    diagnostics?: AuthDiagnostics;
+  }> => {
+    const clean = (identifier || '').trim();
+    const loginUrl = getFullApiUrl('/api/auth/login');
+
+    console.log('=== [AUTH & RESTORE DIAGNOSTICS] ===');
+    console.log('[Auth] 1. Login Request URL:', loginUrl);
+    console.log('[Auth] 2. Login Identifier:', clean);
+
+    const diag: AuthDiagnostics = {
+      loginRequestUrl: loginUrl,
+      httpStatus: 0,
+      loginSuccess: false,
+      tokenSaved: false,
+      syncPullStatus: 'not_attempted',
+      studentsReceived: 0,
+      groupsReceived: 0,
+      sessionsReceived: 0,
+      paymentsReceived: 0,
+      restoreSuccess: false,
+      restoreMessage: '',
+      timestamp: new Date().toISOString(),
+    };
+    lastAuthDiagnosticsRecord = diag;
+
+    if (!clean) {
+      diag.restoreMessage = 'يرجى إدخال البريد الإلكتروني أو رقم الهاتف أو اسم المستخدم.';
+      return { success: false, error: diag.restoreMessage, diagnostics: diag };
+    }
+
+    try {
+      // 1. Authenticate with Cloud Run Production API -> Firestore
+      const res = await universalApiFetch(loginUrl, {
+        method: 'POST',
+        body: { identifier: clean, email: clean, phone: clean, password },
+        timeoutMs: 15000,
+      });
+
+      diag.httpStatus = res.status;
+      console.log('[Auth] 3. HTTP Status:', res.status, 'Response:', res.data);
+
+      if (res.ok && res.data && res.data.success && res.data.user) {
+        const serverUser = res.data.user;
+        const token = res.data.token || `auth_tk_${serverUser.id}`;
+
+        diag.loginSuccess = true;
+        diag.authenticatedUserId = serverUser.id;
+
+        console.log('[Auth] 4. Authentication Result: SUCCESS');
+        console.log('[Auth] 5. Returned User ID:', serverUser.id, 'Email:', serverUser.email);
+
+        const userAccount: UserAccount = {
+          id: serverUser.id,
+          name: serverUser.name || 'معلم',
+          email: serverUser.email,
+          phone: serverUser.phone || '',
+          subject: serverUser.subject || 'عام',
+          centerOrSchool: serverUser.centerOrSchool || '',
+          password: password,
+          authToken: token,
+          recoveryPin: serverUser.recoveryPin || '123456',
+          createdAt: serverUser.createdAt || new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+        };
+
+        // Cache token locally
+        try {
+          localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
+          diag.tokenSaved = true;
+        } catch {
+          diag.tokenSaved = false;
+        }
+
+        // Update local accounts array (offline cache)
+        const existingAccounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []).filter(
+          (a) => a.id !== serverUser.id
+        );
+        db.saveAccounts([userAccount, ...existingAccounts]);
+
+        // Save profile
+        db.saveTeacherProfile(
+          {
+            name: userAccount.name,
+            subject: userAccount.subject || 'عام',
+            phone: userAccount.phone || '',
+            centerOrSchool: userAccount.centerOrSchool || '',
+            currency: 'ج.م',
+          },
+          userAccount.id
+        );
+
+        // Set session
+        db.setCurrentSession(userAccount);
+
+        // 2. Immediately call authenticated /api/sync/pull to restore all Firestore cloud data
+        const pullUrl = getFullApiUrl('/api/sync/pull');
+        console.log('[Auth -> Restore] 6. Pull Request URL:', pullUrl);
+        console.log('[Auth -> Restore] 7. Pull Token:', token.substring(0, 10) + '...');
+
+        try {
+          const pullRes = await universalApiFetch(pullUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'x-auth-token': token,
+            },
+            timeoutMs: 20000,
+          });
+
+          diag.syncPullStatus = pullRes.status;
+          console.log('[Auth -> Restore] 8. Pull Request Status:', pullRes.status, 'Ok:', pullRes.ok);
+
+          if (pullRes.ok && pullRes.data && pullRes.data.success && pullRes.data.dataPackage) {
+            const cloudPkg: UserAccountDataPackage = pullRes.data.dataPackage;
+            diag.studentsReceived = cloudPkg.students?.length || 0;
+            diag.groupsReceived = cloudPkg.groups?.length || 0;
+            diag.sessionsReceived = cloudPkg.sessions?.length || 0;
+            diag.paymentsReceived = cloudPkg.payments?.length || 0;
+
+            console.log('[Auth -> Restore] 9. Cloud Data Counts from Firestore:', {
+              students: diag.studentsReceived,
+              groups: diag.groupsReceived,
+              sessions: diag.sessionsReceived,
+              payments: diag.paymentsReceived,
+              enrollments: cloudPkg.enrollments?.length || 0,
+              attendance: cloudPkg.attendance?.length || 0,
+              creditLogs: cloudPkg.creditLogs?.length || 0,
+            });
+
+            const restoreRes = db.restoreAccountData(serverUser.id, cloudPkg);
+            diag.restoreSuccess = restoreRes.success;
+            diag.restoreMessage = restoreRes.message;
+            console.log('[Auth -> Restore] 10. Restore Counts locally:', restoreRes.count, 'Success:', restoreRes.success);
+          } else {
+            diag.restoreSuccess = true;
+            diag.restoreMessage = 'لا توجد بيانات سابقة مسجلة لهذا الحساب بالسيرفر السحابي.';
+            console.log('[Auth -> Restore] 9. No existing cloud data package found in Firestore for this user.');
+          }
+        } catch (pullErr: any) {
+          diag.syncPullStatus = `error: ${pullErr.message}`;
+          diag.restoreMessage = `فشل سحب البيانات: ${pullErr.message}`;
+          console.warn('[Auth -> Restore] Error pulling cloud data after login:', pullErr);
+        }
+
+        // Initialize background auto-sync scheduler for this account
+        autoSyncUserAccount(serverUser.id);
+        lastAuthDiagnosticsRecord = diag;
+
+        return { success: true, user: userAccount, diagnostics: diag };
+      }
+
+      // If server explicitly returned 401 or failed credentials
+      if (res.status === 401 || (res.data && res.data.success === false)) {
+        diag.restoreMessage = res.data?.error || 'بيانات الدخول غير صحيحة.';
+        lastAuthDiagnosticsRecord = diag;
+        console.warn('[Auth] 4. Authentication Result: FAILED -', res.data?.error);
+        return {
+          success: false,
+          error: res.data?.error || 'بيانات الدخول غير صحيحة، يرجى التأكد من البريد أو الهاتف وكلمة المرور.',
+          diagnostics: diag,
+        };
+      }
+
+      console.warn('[Auth] Server returned non-ok status:', res.status, res.error);
+    } catch (netErr: any) {
+      diag.httpStatus = `error: ${netErr.message}`;
+      console.warn('[Auth] Network error during server login:', netErr);
+    }
+
+    // Offline Fallback: ONLY if the account was previously logged in on this device
+    const cachedAccounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    const cached = cachedAccounts.find(
       (a) =>
-        a.email.toLowerCase() === clean ||
-        (a.phone && a.phone.trim() === identifier.trim()) ||
-        a.name.toLowerCase() === clean
+        a.email.toLowerCase() === clean.toLowerCase() ||
+        (a.phone && a.phone.trim() === clean) ||
+        a.name.toLowerCase() === clean.toLowerCase()
     );
 
-    if (!account) {
-      return { success: false, error: 'لم يتم العثور على حساب بهذا البريد أو الهاتف.' };
+    if (cached && cached.password === password) {
+      console.log('[Auth] Logging in via local offline cache...');
+      cached.lastLoginAt = new Date().toISOString();
+      db.saveAccounts(cachedAccounts.map((a) => (a.id === cached.id ? cached : a)));
+      db.setCurrentSession(cached);
+      autoSyncUserAccount(cached.id);
+      diag.loginSuccess = true;
+      diag.authenticatedUserId = cached.id;
+      diag.restoreMessage = 'تم الدخول عبر النسخة المحلية المؤقتة (Offline)';
+      lastAuthDiagnosticsRecord = diag;
+      return { success: true, user: cached, isOffline: true, diagnostics: diag };
     }
 
-    if (account.password !== password) {
-      return { success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مجدداً.' };
-    }
-
-    // Update last login
-    account.lastLoginAt = new Date().toISOString();
-    db.saveAccounts(accounts.map((a) => (a.id === account.id ? account : a)));
-
-    // Sync profile
-    db.saveTeacherProfile({
-      name: account.name,
-      subject: account.subject || 'عام',
-      phone: account.phone || '',
-      centerOrSchool: account.centerOrSchool || '',
-      currency: 'ج.م',
-    }, account.id);
-
-    db.setCurrentSession(account);
-
-    // Auto-restore data on login if working storage for this user is empty but account has syncedData
-    const localStudents = getList<Student>(STORAGE_KEYS.STUDENTS, []).filter((s) => s.userId === account.id);
-    if (localStudents.length === 0 && account.syncedData && ((account.syncedData.students && account.syncedData.students.length > 0) || (account.syncedData.groups && account.syncedData.groups.length > 0))) {
-      db.restoreAccountData(account.id, account.syncedData);
-    } else {
-      autoSyncUserAccount(account.id);
-    }
-
-    return { success: true, user: account };
+    diag.restoreMessage = 'تعذر الاتصال بالسيرفر السحابي للتحقق من الحساب.';
+    lastAuthDiagnosticsRecord = diag;
+    return {
+      success: false,
+      error:
+        'تعذر الاتصال بالسيرفر السحابي للتحقق من الحساب واستعادة البيانات. يرجى التأكد من اتصال الإنترنت والمحاولة مجدداً.',
+      diagnostics: diag,
+    };
   },
 
   logout: (): void => {
     db.setCurrentSession(null);
   },
 
-  resetPassword: (
+  resetPassword: async (
     identifier: string,
     newPassword: string,
     recoveryPinOrAnswer?: string
-  ): { success: boolean; error?: string } => {
-    const accounts = db.getAccounts();
-    const clean = identifier.trim().toLowerCase();
+  ): Promise<{ success: boolean; error?: string }> => {
+    const clean = (identifier || '').trim();
+    const resetUrl = getFullApiUrl('/api/auth/reset-password');
 
-    const account = accounts.find(
-      (a) =>
-        a.email.toLowerCase() === clean ||
-        (a.phone && a.phone.trim() === identifier.trim()) ||
-        a.name.toLowerCase() === clean
-    );
+    try {
+      const res = await universalApiFetch(resetUrl, {
+        method: 'POST',
+        body: {
+          identifier: clean,
+          newPassword,
+          recoveryPin: recoveryPinOrAnswer?.trim(),
+        },
+        timeoutMs: 15000,
+      });
 
-    if (!account) {
-      return { success: false, error: 'لم يتم العثور على حساب بهذا البريد الإلكتروني أو الهاتف.' };
-    }
-
-    if (recoveryPinOrAnswer) {
-      const pinMatch = account.recoveryPin && account.recoveryPin === recoveryPinOrAnswer.trim();
-      const answerMatch =
-        account.securityAnswer &&
-        account.securityAnswer.trim().toLowerCase() === recoveryPinOrAnswer.trim().toLowerCase();
-
-      if (!pinMatch && !answerMatch) {
-        return { success: false, error: 'كود الاسترداد أو إجابة سؤال الأمان غير صحيحة.' };
+      if (res.ok && res.data && res.data.success) {
+        // Update local cached account if present
+        const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+        const updated = accounts.map((a) => {
+          if (a.email.toLowerCase() === clean.toLowerCase() || (a.phone && a.phone.trim() === clean)) {
+            return { ...a, password: newPassword };
+          }
+          return a;
+        });
+        db.saveAccounts(updated);
+        return { success: true };
+      } else {
+        return { success: false, error: res.data?.error || res.error || 'فشل استعادة كلمة المرور.' };
       }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'حدث خطأ في الاتصال أثناء استعادة كلمة المرور.' };
     }
-
-    account.password = newPassword;
-    db.saveAccounts(accounts.map((a) => (a.id === account.id ? account : a)));
-    return { success: true };
   },
 
   clearAllData: (): void => {

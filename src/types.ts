@@ -392,3 +392,20 @@ export interface AutoSyncConfig {
   statusMessage?: string;
   autoRetryOnReconnect: boolean;
 }
+
+// تشخيصات تسجيل الدخول واستعادة البيانات السحابية
+export interface AuthDiagnostics {
+  loginRequestUrl: string;
+  httpStatus: number | string;
+  loginSuccess: boolean;
+  authenticatedUserId?: string;
+  tokenSaved: boolean;
+  syncPullStatus: number | string;
+  studentsReceived: number;
+  groupsReceived: number;
+  sessionsReceived: number;
+  paymentsReceived: number;
+  restoreSuccess: boolean;
+  restoreMessage?: string;
+  timestamp: string;
+}

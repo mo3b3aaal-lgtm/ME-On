@@ -47,6 +47,228 @@ export function generateDeterministicToken(userId: string, salt = "teachermanage
   return crypto.createHmac("sha256", salt).update(userId).digest("hex");
 }
 
+export async function authenticateUser(
+  identifierOrParams: string | { identifier?: string; email?: string; phone?: string; password?: string },
+  explicitPassword?: string
+): Promise<{ user: ServerUser; token: string }> {
+  let clean = "";
+  let password = explicitPassword;
+
+  if (typeof identifierOrParams === "object" && identifierOrParams !== null) {
+    clean = (identifierOrParams.identifier || identifierOrParams.email || identifierOrParams.phone || "").trim();
+    if (!password) {
+      password = identifierOrParams.password;
+    }
+  } else if (typeof identifierOrParams === "string") {
+    clean = identifierOrParams.trim();
+  }
+
+  if (!clean) {
+    throw new Error("يرجى إدخال البريد الإلكتروني أو رقم الهاتف أو اسم المستخدم");
+  }
+
+  const usersColl = collection(db, "users");
+  let matchedDoc: any = null;
+
+  // 1. Direct document lookup (if identifier is a user ID like acc_...)
+  try {
+    const directDoc = await getDoc(doc(db, "users", clean));
+    if (directDoc.exists()) {
+      matchedDoc = directDoc;
+    }
+  } catch (e) {}
+
+  // 2. Query by email (lowercase)
+  if (!matchedDoc) {
+    try {
+      const qEmail = query(usersColl, where("email", "==", clean.toLowerCase()));
+      const snap = await getDocs(qEmail);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {}
+  }
+
+  // 3. Query by exact email (in case stored without lowercase)
+  if (!matchedDoc) {
+    try {
+      const qEmailRaw = query(usersColl, where("email", "==", clean));
+      const snap = await getDocs(qEmailRaw);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {}
+  }
+
+  // 4. Query by phone
+  if (!matchedDoc) {
+    try {
+      const qPhone = query(usersColl, where("phone", "==", clean));
+      const snap = await getDocs(qPhone);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {}
+  }
+
+  // 5. Query by name
+  if (!matchedDoc) {
+    try {
+      const qName = query(usersColl, where("name", "==", clean));
+      const snap = await getDocs(qName);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {}
+  }
+
+  if (!matchedDoc) {
+    throw new Error("لم يتم العثور على حساب مسجل بهذا البريد الإلكتروني أو الهاتف في السيرفر السحابي");
+  }
+
+  const userData = matchedDoc.data() as ServerUser;
+
+  // Authenticate password if provided
+  if (password) {
+    const inputHash = crypto.createHash("sha256").update(password).digest("hex");
+    const storedHash = userData.password_hash || "";
+    const storedPlain = (userData as any).password || "";
+
+    const isMatch =
+      (storedHash && storedHash === inputHash) ||
+      (storedPlain && storedPlain === password) ||
+      (!storedHash && !storedPlain);
+
+    if (!isMatch) {
+      throw new Error("كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مجدداً");
+    }
+  }
+
+  const token = generateDeterministicToken(userData.id);
+  const now = new Date().toISOString();
+
+  await setDoc(
+    matchedDoc.ref,
+    {
+      auth_token: token,
+      last_login_at: now,
+      updated_at: now,
+    },
+    { merge: true }
+  );
+
+  const updatedUser: ServerUser = {
+    ...userData,
+    auth_token: token,
+  };
+
+  return { user: updatedUser, token };
+}
+
+export async function registerUser(account: {
+  id?: string;
+  name?: string;
+  email: string;
+  phone?: string;
+  subject?: string;
+  centerOrSchool?: string;
+  password?: string;
+  recoveryPin?: string;
+}): Promise<{ user: ServerUser; token: string }> {
+  const cleanEmail = (account.email || "").trim().toLowerCase();
+  const cleanPhone = (account.phone || "").trim();
+  const usersColl = collection(db, "users");
+
+  // Check if email already exists
+  if (cleanEmail) {
+    const qEmail = query(usersColl, where("email", "==", cleanEmail));
+    const snap = await getDocs(qEmail);
+    if (!snap.empty) {
+      const existing = snap.docs[0].data() as ServerUser;
+      const pwdHash = account.password
+        ? crypto.createHash("sha256").update(account.password).digest("hex")
+        : "";
+      if (pwdHash && existing.password_hash && pwdHash !== existing.password_hash) {
+        throw new Error("البريد الإلكتروني مسجل بالفعل بحساب آخر بكلمة مرور مختلفة.");
+      }
+      const token = generateDeterministicToken(existing.id);
+      return { user: existing, token };
+    }
+  }
+
+  const userId = account.id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  const now = new Date().toISOString();
+  const token = generateDeterministicToken(userId);
+  const pwdHash = account.password
+    ? crypto.createHash("sha256").update(account.password).digest("hex")
+    : "";
+
+  const newUser: ServerUser = {
+    id: userId,
+    email: cleanEmail || `${userId}@teachermanager.local`,
+    name: account.name || "معلم",
+    phone: cleanPhone || "",
+    password_hash: pwdHash,
+    auth_token: token,
+    recovery_pin: account.recoveryPin || "123456",
+    created_at: now,
+    updated_at: now,
+  };
+
+  const userRef = doc(db, "users", userId);
+  await setDoc(userRef, {
+    ...newUser,
+    subject: account.subject || "عام",
+    centerOrSchool: account.centerOrSchool || "",
+  });
+
+  return { user: newUser, token };
+}
+
+export async function resetUserPasswordInFirestore(
+  identifier: string,
+  newPassword: string,
+  recoveryPin?: string
+): Promise<{ success: boolean; message: string }> {
+  const clean = (identifier || "").trim();
+  const usersColl = collection(db, "users");
+  let matchedDoc: any = null;
+
+  const qEmail = query(usersColl, where("email", "==", clean.toLowerCase()));
+  const snap = await getDocs(qEmail);
+  if (!snap.empty) {
+    matchedDoc = snap.docs[0];
+  } else {
+    const qPhone = query(usersColl, where("phone", "==", clean));
+    const snapPhone = await getDocs(qPhone);
+    if (!snapPhone.empty) {
+      matchedDoc = snapPhone.docs[0];
+    }
+  }
+
+  if (!matchedDoc) {
+    throw new Error("لم يتم العثور على حساب بهذا البريد الإلكتروني أو الهاتف في الخادم السحابي.");
+  }
+
+  const user = matchedDoc.data() as ServerUser;
+  if (recoveryPin && user.recovery_pin && user.recovery_pin.trim() !== recoveryPin.trim()) {
+    throw new Error("كود الاسترداد السري (PIN) غير صحيح.");
+  }
+
+  const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+  const now = new Date().toISOString();
+  await setDoc(
+    matchedDoc.ref,
+    {
+      password_hash: newHash,
+      updated_at: now,
+    },
+    { merge: true }
+  );
+
+  return { success: true, message: "تم تحديث كلمة المرور بنجاح في السيرفر السحابي." };
+}
+
 export async function registerOrAuthenticateUser(account: {
   id: string;
   email: string;
@@ -55,68 +277,7 @@ export async function registerOrAuthenticateUser(account: {
   password?: string;
   recoveryPin?: string;
 }): Promise<{ user: ServerUser; token: string }> {
-  const now = new Date().toISOString();
-  const token = generateDeterministicToken(account.id);
-  const pwdHash = account.password ? crypto.createHash("sha256").update(account.password).digest("hex") : "";
-
-  const userRef = doc(db, "users", account.id);
-  const userSnap = await getDoc(userRef);
-
-  if (userSnap.exists()) {
-    const existing = userSnap.data() as ServerUser;
-    const updatedData: Partial<ServerUser> = {
-      name: account.name || existing.name,
-      phone: account.phone || existing.phone,
-      auth_token: token,
-      updated_at: now,
-    };
-    if (pwdHash) {
-      updatedData.password_hash = pwdHash;
-    }
-    await setDoc(userRef, updatedData, { merge: true });
-    return {
-      user: { ...existing, ...updatedData } as ServerUser,
-      token,
-    };
-  }
-
-  // Also check by email to handle cross-device registration matching
-  const usersColl = collection(db, "users");
-  const q = query(usersColl, where("email", "==", account.email));
-  const querySnap = await getDocs(q);
-  if (!querySnap.empty) {
-    const docFound = querySnap.docs[0];
-    const existing = docFound.data() as ServerUser;
-    const updatedData: Partial<ServerUser> = {
-      name: account.name || existing.name,
-      phone: account.phone || existing.phone,
-      auth_token: token,
-      updated_at: now,
-    };
-    if (pwdHash) {
-      updatedData.password_hash = pwdHash;
-    }
-    await setDoc(docFound.ref, updatedData, { merge: true });
-    return {
-      user: { ...existing, ...updatedData } as ServerUser,
-      token,
-    };
-  }
-
-  const newUser: ServerUser = {
-    id: account.id,
-    email: account.email,
-    name: account.name || "معلم",
-    phone: account.phone || "",
-    password_hash: pwdHash,
-    auth_token: token,
-    recovery_pin: account.recoveryPin || "123456",
-    created_at: now,
-    updated_at: now,
-  };
-
-  await setDoc(userRef, newUser);
-  return { user: newUser, token };
+  return registerUser(account);
 }
 
 export async function getUserByToken(token: string): Promise<ServerUser | null> {

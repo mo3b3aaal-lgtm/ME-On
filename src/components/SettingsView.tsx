@@ -282,7 +282,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPassMessage(null);
 
@@ -296,17 +296,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
 
-    const res = db.resetPassword(currentUser.email, newPass, currentUser.recoveryPin);
-    if (res.success) {
-      setPassMessage({ type: 'success', text: 'تم تغيير كلمة المرور بنجاح!' });
-      setCurrentPass('');
-      setNewPass('');
-      setTimeout(() => {
-        setIsChangingPassword(false);
-        setPassMessage(null);
-      }, 2000);
-    } else {
-      setPassMessage({ type: 'error', text: res.error || 'فشل تحديث كلمة المرور.' });
+    try {
+      const res = await db.resetPassword(currentUser.email, newPass, currentUser.recoveryPin);
+      if (res.success) {
+        setPassMessage({ type: 'success', text: 'تم تغيير كلمة المرور بنجاح!' });
+        setCurrentPass('');
+        setNewPass('');
+        setTimeout(() => {
+          setIsChangingPassword(false);
+          setPassMessage(null);
+        }, 2000);
+      } else {
+        setPassMessage({ type: 'error', text: res.error || 'فشل تحديث كلمة المرور.' });
+      }
+    } catch (err: any) {
+      setPassMessage({ type: 'error', text: err.message || 'حدث خطأ أثناء الاتصال بالخادم.' });
     }
   };
 

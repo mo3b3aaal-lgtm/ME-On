@@ -24,6 +24,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // server.ts
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
+var import_cors = __toESM(require("cors"), 1);
 var import_vite = require("vite");
 var import_genai = require("@google/genai");
 var import_dotenv = __toESM(require("dotenv"), 1);
@@ -249,15 +250,25 @@ async function mergeCloudDataPackage(userId, incomingPackage) {
 import_dotenv.default.config();
 var app2 = (0, import_express.default)();
 var PORT = 3e3;
-app2.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
+app2.use(
+  (0, import_cors.default)({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "x-auth-token",
+      "Cache-Control",
+      "Pragma",
+      "Expires"
+    ]
+  })
+);
+app2.options("*", (0, import_cors.default)());
 app2.use(import_express.default.json({ limit: "50mb" }));
 var aiClient = null;
 function getGenAI() {

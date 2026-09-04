@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -18,16 +19,27 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Enable CORS so Android Capacitor APK (https://localhost) can reach the server APIs
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
+// Enable CORS so Android Capacitor APK (https://localhost, capacitor://localhost, etc.) can reach the server APIs
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "x-auth-token",
+      "Cache-Control",
+      "Pragma",
+      "Expires",
+    ],
+  })
+);
+
+app.options("*", cors());
 
 app.use(express.json({ limit: "50mb" }));
 

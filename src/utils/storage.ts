@@ -658,6 +658,89 @@ export async function performFullSync(
 }
 
 /**
+ * Pulls the latest cloud data package from the production server for the specified user
+ */
+export async function pullCloudDataPackageFromServer(
+  userId?: string
+): Promise<{ success: boolean; dataPackage?: UserAccountDataPackage | null; error?: string }> {
+  const targetUserId = userId || getActiveUserId();
+  const token = getAuthTokenForUser(targetUserId);
+  const pullUrl = getFullApiUrl('/api/sync/pull');
+
+  try {
+    console.log(`[Sync] Pulling cloud data package from ${pullUrl} for user ${targetUserId}...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const res = await fetch(pullUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+        'x-auth-token': token,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.dataPackage) {
+        db.restoreAccountData(targetUserId, data.dataPackage);
+        return { success: true, dataPackage: data.dataPackage };
+      }
+      return { success: true, dataPackage: null };
+    } else {
+      const errText = await res.text().catch(() => '');
+      return { success: false, error: `HTTP ${res.status}: ${errText || res.statusText}` };
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Network error during pull' };
+  }
+}
+
+/**
+ * Authenticates / logs in with the production server API
+ */
+export async function loginWithServerApi(credentials: {
+  id: string;
+  email?: string;
+  name?: string;
+  password?: string;
+}): Promise<{ success: boolean; token?: string; user?: any; error?: string }> {
+  const loginUrl = getFullApiUrl('/api/auth/login');
+  try {
+    console.log(`[Auth] Logging in via server API at ${loginUrl}...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const res = await fetch(loginUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(credentials),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        return { success: true, token: data.token, user: data.user };
+      }
+      return { success: false, error: data.error || 'Login failed' };
+    } else {
+      const errText = await res.text().catch(() => '');
+      return { success: false, error: `HTTP ${res.status}: ${errText || res.statusText}` };
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Network error during login' };
+  }
+}
+
+/**
  * تهيئة محرك الجدولة والمزامنة في الخلفية لنظام Android والمتصفح
  */
 let schedulerInitialized = false;

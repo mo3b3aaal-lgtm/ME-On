@@ -1,7 +1,11 @@
 import { Network, ConnectionStatus } from '@capacitor/network';
 import { Capacitor } from '@capacitor/core';
 
-export const DEPLOYED_SERVER_API_URL = 'https://ais-dev-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app';
+export const PRIMARY_SERVER_API_URL = 'https://ais-dev-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app';
+export const SHARED_SERVER_API_URL = 'https://ais-pre-bumcipp7qg5qixdbptx3o7-577166781335.europe-west2.run.app';
+export const DEPLOYED_SERVER_API_URL = PRIMARY_SERVER_API_URL;
+
+let currentActiveBaseUrl: string = PRIMARY_SERVER_API_URL;
 
 /**
  * Returns the fully qualified base URL for server API calls.
@@ -21,23 +25,23 @@ export function getServerApiBaseUrl(): string {
         window.location.protocol === 'capacitor:' ||
         (window.location.protocol === 'http:' && window.location.port === '')))
   ) {
-    return DEPLOYED_SERVER_API_URL;
+    return currentActiveBaseUrl || PRIMARY_SERVER_API_URL;
   }
   if (typeof window !== 'undefined' && window.location.origin && window.location.origin.startsWith('http')) {
     if (window.location.hostname === 'localhost' && window.location.port !== '3000') {
-      return DEPLOYED_SERVER_API_URL;
+      return currentActiveBaseUrl || PRIMARY_SERVER_API_URL;
     }
     return window.location.origin;
   }
-  return DEPLOYED_SERVER_API_URL;
+  return currentActiveBaseUrl || PRIMARY_SERVER_API_URL;
 }
 
 /**
  * Returns the complete URL for an API endpoint path.
  */
-export function getFullApiUrl(endpointPath: string): string {
+export function getFullApiUrl(endpointPath: string, overrideBaseUrl?: string): string {
   const cleanPath = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
-  const baseUrl = getServerApiBaseUrl();
+  const baseUrl = overrideBaseUrl || getServerApiBaseUrl();
   return `${baseUrl}${cleanPath}`;
 }
 
@@ -51,6 +55,8 @@ export interface DetailedNetworkStatus {
   resolvedApiBaseUrl: string;
   statusReason: NetworkStatusReason;
   lastChecked: string;
+  statusCode?: number;
+  diagnosticDetails?: string;
 }
 
 let cachedStatus: DetailedNetworkStatus = {
@@ -106,51 +112,77 @@ export async function getDeviceNetworkStatus(): Promise<{
       | 'none'
       | 'unknown';
 
-    console.log(`[Network] Native status: ${isConnected ? 'CONNECTED' : 'DISCONNECTED'} (type: ${connType})`);
+    console.log(`[Network Diagnostics] Native status: ${isConnected ? 'CONNECTED' : 'DISCONNECTED'} (type: ${connType})`);
     return { connected: isConnected, connectionType: connType };
   } catch (err) {
     const navOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-    console.log(`[Network] Native status (fallback): connected=${navOnline}`);
+    console.log(`[Network Diagnostics] Native status (fallback): connected=${navOnline}`);
     return { connected: navOnline, connectionType: navOnline ? 'unknown' : 'none' };
   }
 }
 
 /**
- * Checks if the production server API is healthy and reachable.
+ * Checks if the production server API is healthy and reachable with comprehensive diagnostics.
  */
 export async function checkApiHealth(
-  timeoutMs = 6000
-): Promise<{ ok: boolean; status?: string; database?: string; error?: string }> {
-  const baseUrl = getServerApiBaseUrl();
-  const healthUrl = getFullApiUrl('/api/health');
+  timeoutMs = 8000
+): Promise<{ ok: boolean; status?: string; database?: string; statusCode?: number; error?: string; url?: string }> {
+  const candidateUrls = [getServerApiBaseUrl()];
+  if (!candidateUrls.includes(PRIMARY_SERVER_API_URL)) candidateUrls.push(PRIMARY_SERVER_API_URL);
+  if (!candidateUrls.includes(SHARED_SERVER_API_URL)) candidateUrls.push(SHARED_SERVER_API_URL);
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  let lastError = 'No URL tested';
+  let lastStatusCode = 0;
 
-  try {
-    console.log(`[Network] Checking API Health at resolved base URL: ${baseUrl}`);
-    const res = await fetch(healthUrl, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      signal: controller.signal,
-      cache: 'no-store',
-    });
-    clearTimeout(timeoutId);
+  for (const candidateBase of candidateUrls) {
+    const healthUrl = getFullApiUrl('/api/health', candidateBase);
+    console.log(`[Network Diagnostics] Probing API Health at: ${healthUrl} (timeout: ${timeoutMs}ms)`);
 
-    if (res.ok) {
-      const data = await res.json();
-      console.log(`[Network] API Health check result: REACHABLE (status: ${data.status}, db: ${data.database})`);
-      return { ok: true, status: data.status, database: data.database };
-    } else {
-      console.warn(`[Network] API Health check result: UNREACHABLE (HTTP ${res.status}) at ${healthUrl}`);
-      return { ok: false, error: `HTTP ${res.status}` };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(healthUrl, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      clearTimeout(timeoutId);
+      lastStatusCode = res.status;
+
+      console.log(`[Network Diagnostics] HTTP Status Code for ${healthUrl}: ${res.status} ${res.statusText}`);
+
+      if (res.ok) {
+        const data = await res.json().catch(() => ({ status: 'ok', database: 'connected' }));
+        console.log(`[Network Diagnostics] API Health: REACHABLE (status: ${data.status}, db: ${data.database || 'ready'})`);
+        currentActiveBaseUrl = candidateBase;
+        return {
+          ok: true,
+          status: data.status || 'ok',
+          database: data.database || 'Firebase Firestore',
+          statusCode: res.status,
+          url: healthUrl,
+        };
+      } else {
+        const errText = await res.text().catch(() => '');
+        console.warn(`[Network Diagnostics] API Health check UNREACHABLE (HTTP ${res.status}): ${errText.slice(0, 150)}`);
+        lastError = `HTTP ${res.status}: ${res.statusText}`;
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      const isAbort = err.name === 'AbortError';
+      const msg = isAbort ? `Timeout (exceeded ${timeoutMs}ms)` : err.message || 'Fetch NetworkError';
+      console.warn(`[Network Diagnostics] Health check failed for ${healthUrl} - Reason: ${msg}`);
+      lastError = msg;
     }
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    const errorMsg = err.name === 'AbortError' ? 'Timeout (server took too long to respond)' : err.message || 'Network error';
-    console.warn(`[Network] API Health check result: UNREACHABLE at ${healthUrl} - Reason: ${errorMsg}`);
-    return { ok: false, error: errorMsg };
   }
+
+  return { ok: false, error: lastError, statusCode: lastStatusCode, url: getFullApiUrl('/api/health') };
 }
 
 /**

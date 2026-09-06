@@ -48,12 +48,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   session,
   onSaveComplete,
 }) => {
-  if (!isOpen || !session) return null;
-
-  const group = db.getGroupById(session.groupId);
-  const enrolledStudents = db.getGroupStudents(session.groupId);
-  const existingAttendance = db.getSessionAttendance(session.id);
-  const allEnrollments = db.getGroupEnrollments(session.groupId);
+  const group = session ? db.getGroupById(session.groupId) : undefined;
+  const enrolledStudents = session ? db.getGroupStudents(session.groupId) : [];
+  const existingAttendance = session ? db.getSessionAttendance(session.id) : [];
+  const allEnrollments = session ? db.getGroupEnrollments(session.groupId) : [];
 
   // Local state for attendance records mapping: studentId -> StudentAttendanceRecord
   const [records, setRecords] = useState<Record<string, StudentAttendanceRecord>>({});
@@ -256,6 +254,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   };
 
   const handleSave = () => {
+    if (!session) return;
     const listToSave: Attendance[] = [];
 
     Object.entries(records).forEach(([studentId, item]: [string, StudentAttendanceRecord]) => {
@@ -294,6 +293,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   const presentCount = recordValues.filter((r) => r.status === 'present' || r.status === 'late').length;
   const chargedAbsentCount = recordValues.filter((r) => r.status === 'absent_charged' || (r.status === 'absent' && r.isCharged !== false)).length;
   const freeAbsentCount = recordValues.filter((r) => r.status === 'absent_free' || r.status === 'excused' || (r.status === 'absent' && r.isCharged === false)).length;
+
+  if (!isOpen || !session) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">

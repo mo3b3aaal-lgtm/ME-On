@@ -43,8 +43,13 @@ export interface ServerUser {
   updated_at: string;
 }
 
+export function generateRandomSessionToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
 export function generateDeterministicToken(userId: string, salt = "teachermanager_secret_seed"): string {
-  return crypto.createHmac("sha256", salt).update(userId).digest("hex");
+  // Provided for backward compatibility if ever queried, but session tokens are random
+  return crypto.randomBytes(32).toString("hex");
 }
 
 export async function authenticateUser(
@@ -144,7 +149,7 @@ export async function authenticateUser(
     }
   }
 
-  const token = generateDeterministicToken(userData.id);
+  const token = generateRandomSessionToken();
   const now = new Date().toISOString();
 
   await setDoc(
@@ -191,14 +196,24 @@ export async function registerUser(account: {
       if (pwdHash && existing.password_hash && pwdHash !== existing.password_hash) {
         throw new Error("البريد الإلكتروني مسجل بالفعل بحساب آخر بكلمة مرور مختلفة.");
       }
-      const token = generateDeterministicToken(existing.id);
-      return { user: existing, token };
+      const token = generateRandomSessionToken();
+      const now = new Date().toISOString();
+      await setDoc(
+        snap.docs[0].ref,
+        {
+          auth_token: token,
+          last_login_at: now,
+          updated_at: now,
+        },
+        { merge: true }
+      );
+      return { user: { ...existing, auth_token: token }, token };
     }
   }
 
   const userId = account.id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const now = new Date().toISOString();
-  const token = generateDeterministicToken(userId);
+  const token = generateRandomSessionToken();
   const pwdHash = account.password
     ? crypto.createHash("sha256").update(account.password).digest("hex")
     : "";
@@ -256,17 +271,32 @@ export async function resetUserPasswordInFirestore(
   }
 
   const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+  const newToken = generateRandomSessionToken(); // Invalidate old session tokens
   const now = new Date().toISOString();
   await setDoc(
     matchedDoc.ref,
     {
       password_hash: newHash,
+      auth_token: newToken,
       updated_at: now,
     },
     { merge: true }
   );
 
-  return { success: true, message: "تم تحديث كلمة المرور بنجاح في السيرفر السحابي." };
+  return { success: true, message: "تم تحديث كلمة المرور بنجاح في السيرفر السحابي وتجديد جلسة الأمان." };
+}
+
+export async function invalidateUserToken(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const userRef = doc(db, "users", userId);
+    const newToken = generateRandomSessionToken();
+    await setDoc(userRef, { auth_token: newToken, updated_at: new Date().toISOString() }, { merge: true });
+    return true;
+  } catch (err) {
+    console.error("Error invalidating user token in Firestore:", err);
+    return false;
+  }
 }
 
 export async function registerOrAuthenticateUser(account: {

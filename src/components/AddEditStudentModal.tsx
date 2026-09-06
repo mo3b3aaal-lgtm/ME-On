@@ -58,8 +58,6 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   allGroups,
   onSaveComplete,
 }) => {
-  if (!isOpen) return null;
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
@@ -276,6 +274,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
   const currentStage = GRADE_STAGES.find((s) => s.id === selectedStageId) || GRADE_STAGES[2];
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">

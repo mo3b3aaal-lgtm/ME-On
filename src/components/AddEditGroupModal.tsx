@@ -29,8 +29,6 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   editingGroup,
   onSaveComplete,
 }) => {
-  if (!isOpen) return null;
-
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [gradeLevel, setGradeLevel] = useState('الصف الأول الثانوي');
@@ -115,6 +113,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
     onSaveComplete(savedGroup);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">

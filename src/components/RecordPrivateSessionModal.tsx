@@ -16,8 +16,6 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   student,
   onSaveComplete,
 }) => {
-  if (!isOpen || !student) return null;
-
   const todayStr = new Date().toISOString().split('T')[0];
   const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -25,11 +23,11 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const allEnrollments = db.getEnrollments();
   const allGroups = db.getGroups();
 
-  const studentPrivateEnrollments = allEnrollments.filter((enr) => {
+  const studentPrivateEnrollments = student ? allEnrollments.filter((enr) => {
     if (enr.studentId !== student.id) return false;
     const grp = allGroups.find((g) => g.id === enr.groupId);
     return enr.serviceType === 'private' || grp?.type === 'private';
-  });
+  }) : [];
 
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string>(() => {
     return studentPrivateEnrollments[0]?.id || '';
@@ -162,6 +160,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
       setIsSubmitting(false);
     }
   };
+
+  if (!isOpen || !student) return null;
 
   return (
     <div className="fixed inset-0 z-[60] bg-[#2D332A]/70 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200" dir="rtl">

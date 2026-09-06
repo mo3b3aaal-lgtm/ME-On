@@ -85,30 +85,19 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
       token = String(req.body.token).trim();
     }
 
-    let user: ServerUser | null = null;
-    if (token) {
-      user = await getUserByToken(token);
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Missing authentication token.",
+      });
     }
 
-    // Fallback: If client provides user credentials, verify or auto-register user in Firestore
-    if (!user && req.body && req.body.userId) {
-      const rawId = String(req.body.userId).trim();
-      user = await getUserById(rawId);
-      if (!user) {
-        // Auto-register verified user account in Firestore
-        const result = await registerOrAuthenticateUser({
-          id: rawId,
-          email: req.body.email || `${rawId}@teachermanager.local`,
-          name: req.body.teacherProfile?.name || "معلم",
-        });
-        user = result.user;
-      }
-    }
+    const user = await getUserByToken(token);
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: "Unauthorized: Invalid or missing authentication credentials.",
+        error: "Unauthorized: Invalid or expired authentication session token.",
       });
     }
 

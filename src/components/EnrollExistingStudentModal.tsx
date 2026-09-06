@@ -35,8 +35,6 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   allGroups,
   onEnrollmentComplete,
 }) => {
-  if (!isOpen) return null;
-
   const isGroupMode = Boolean(targetGroup);
 
   // Tab: Group enrollment VS New Independent Private Service
@@ -168,6 +166,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     onEnrollmentComplete();
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">

@@ -54,8 +54,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onOpenAddPayment,
   onDataChanged,
 }) => {
-  if (!isOpen || !student) return null;
-
   const [activeSubTab, setActiveSubTab] = useState<'finances' | 'credit_logs' | 'groups' | 'history' | 'attendance'>('finances');
   const [serviceFilter, setServiceFilter] = useState<'all' | 'group' | 'private'>('all');
   const [isRecordPrivateModalOpen, setIsRecordPrivateModalOpen] = useState<boolean>(false);
@@ -76,13 +74,24 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [editPackageSessions, setEditPackageSessions] = useState<number>(10);
 
   // Load relations and calculated financials
-  const studentGroups = db.getStudentGroups(student.id);
-  const grandFinancials = db.calculateStudentGrandFinancials(student.id);
+  const studentGroups = student ? db.getStudentGroups(student.id) : [];
+  const grandFinancials = student ? db.calculateStudentGrandFinancials(student.id) : {
+    studentId: '',
+    studentName: '',
+    grandTotalDue: 0,
+    grandTotalPaid: 0,
+    grandRemaining: 0,
+    totalSessionCredit: 0,
+    totalUnpaidSessions: 0,
+    totalFinancialCredit: 0,
+    enrollmentsSummary: [],
+    allPayments: [],
+  };
   const allPayments = grandFinancials.allPayments;
-  const attendanceList = db.getStudentAttendance(student.id);
+  const attendanceList = student ? db.getStudentAttendance(student.id) : [];
   const allSessions = db.getSessions();
-  const allCreditLogs = db.getCreditLogs().filter((l) => l.studentId === student.id);
-  const serviceType = db.getStudentServiceType(student.id);
+  const allCreditLogs = student ? db.getCreditLogs().filter((l) => l.studentId === student.id) : [];
+  const serviceType = student ? db.getStudentServiceType(student.id) : 'none';
 
   const privateEnrollments = grandFinancials.enrollmentsSummary.filter((e) => e.groupType === 'private');
   const groupEnrollments = grandFinancials.enrollmentsSummary.filter((e) => e.groupType !== 'private');
@@ -185,12 +194,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   };
 
   const handleDeleteStudent = () => {
+    if (!student) return;
     if (confirm(`هل أنت متأكد من حذف الطالب ${student.name} نهائياً مع كافة تسجيلاته ومدفوعاته؟`)) {
       db.deleteStudent(student.id);
       onDataChanged();
       onClose();
     }
   };
+
+  if (!isOpen || !student) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">

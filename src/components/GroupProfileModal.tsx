@@ -43,17 +43,24 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   onOpenStudentProfile,
   onDataChanged,
 }) => {
-  if (!isOpen || !group) return null;
-
   const [activeSubTab, setActiveSubTab] = useState<'students' | 'sessions' | 'stats'>('students');
 
   // Load data
-  const enrollments = db.getGroupEnrollments(group.id);
-  const enrolledStudents = db.getGroupStudents(group.id);
-  const groupSessions = db.getSessions().filter((s) => s.groupId === group.id);
-  const stats = db.calculateGroupStats(group.id);
+  const enrollments = group ? db.getGroupEnrollments(group.id) : [];
+  const enrolledStudents = group ? db.getGroupStudents(group.id) : [];
+  const groupSessions = group ? db.getSessions().filter((s) => s.groupId === group.id) : [];
+  const stats = group ? db.calculateGroupStats(group.id) : {
+    studentCount: 0,
+    totalSessions: 0,
+    completedSessions: 0,
+    attendanceRate: 100,
+    totalRevenue: 0,
+    totalDue: 0,
+    remaining: 0,
+  };
 
   const handleRemoveStudentFromGroup = (studentId: string, studentName: string) => {
+    if (!group) return;
     const enr = enrollments.find((e) => e.studentId === studentId);
     if (!enr) return;
     if (confirm(`هل أنت متأكد من إزالة ${studentName} من هذه المجموعة؟`)) {
@@ -63,12 +70,15 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   };
 
   const handleDeleteGroup = () => {
+    if (!group) return;
     if (confirm(`هل أنت متأكد من حذف مجموعة ${group.name}؟ لن يتم حذف الطلاب من النظام.`)) {
       db.deleteGroup(group.id);
       onDataChanged();
       onClose();
     }
   };
+
+  if (!isOpen || !group) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">

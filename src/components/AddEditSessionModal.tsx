@@ -22,8 +22,6 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   allGroups,
   onSaveComplete,
 }) => {
-  if (!isOpen) return null;
-
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [groupId, setGroupId] = useState(defaultGroupId || allGroups[0]?.id || '');
@@ -32,11 +30,30 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   const [startTime, setStartTime] = useState('16:00');
   const [endTime, setEndTime] = useState('17:30');
   const [sessionNumber, setSessionNumber] = useState<number>(1);
+  const [hours, setHours] = useState<number>(1.5);
+  const [hourlyRate, setHourlyRate] = useState<number>(100);
   const [pricePerStudent, setPricePerStudent] = useState<number>(100);
   const [status, setStatus] = useState<'scheduled' | 'completed' | 'cancelled'>('scheduled');
   const [notes, setNotes] = useState('');
 
   const selectedGroup = allGroups.find((g) => g.id === groupId);
+  const isHourly = selectedGroup?.billingMode === 'hourly' || selectedGroup?.billingType === 'hourly';
+
+  // Helper to calculate hours between times
+  const calculateHoursFromTimes = (start: string, end: string): number => {
+    try {
+      if (!start || !end) return 1.5;
+      const [startH, startM] = start.split(':').map(Number);
+      const [endH, endM] = end.split(':').map(Number);
+      const startMin = startH * 60 + startM;
+      let endMin = endH * 60 + endM;
+      if (endMin < startMin) endMin += 24 * 60; // Next day fallback
+      const diffHrs = (endMin - startMin) / 60;
+      return Math.round(diffHrs * 100) / 100 > 0 ? Math.round(diffHrs * 100) / 100 : 1.5;
+    } catch {
+      return 1.5;
+    }
+  };
 
   useEffect(() => {
     if (editingSession) {
@@ -46,6 +63,9 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       setStartTime(editingSession.startTime);
       setEndTime(editingSession.endTime || '');
       setSessionNumber(editingSession.sessionNumber || 1);
+      const durHours = editingSession.hours || calculateHoursFromTimes(editingSession.startTime, editingSession.endTime || '');
+      setHours(durHours);
+      setHourlyRate(editingSession.hourlyRate || editingSession.pricePerStudent || 100);
       setPricePerStudent(editingSession.pricePerStudent || 100);
       setStatus(editingSession.status);
       setNotes(editingSession.notes || '');
@@ -58,11 +78,29 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       setStartTime('16:00');
       setEndTime('17:30');
       setSessionNumber(1);
-      setPricePerStudent(getEffectiveSessionPrice(null, grp));
+      const durHours = 1.5;
+      setHours(durHours);
+      const rate = grp?.hourlyRate || grp?.defaultPrice || 100;
+      setHourlyRate(rate);
+      const calculatedPrice = (grp?.billingMode === 'hourly' || grp?.billingType === 'hourly')
+        ? durHours * rate
+        : getEffectiveSessionPrice(null, grp);
+      setPricePerStudent(calculatedPrice);
       setStatus('scheduled');
       setNotes('');
     }
   }, [editingSession, defaultGroupId, isOpen]);
+
+  // Update hours and price when times or group change
+  const handleTimeChange = (newStart: string, newEnd: string) => {
+    setStartTime(newStart);
+    setEndTime(newEnd);
+    if (isHourly) {
+      const calculated = calculateHoursFromTimes(newStart, newEnd);
+      setHours(calculated);
+      setPricePerStudent(Math.round(calculated * hourlyRate));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,9 +113,15 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
 
     const grp = allGroups.find((g) => g.id === groupId);
     const isPackage = grp?.billingMode === 'package' || grp?.billingType === 'package';
+    const isGrpHourly = grp?.billingMode === 'hourly' || grp?.billingType === 'hourly';
     const packageSessionsCount = isPackage ? (grp?.packageSessionsCount || 8) : undefined;
     const packageTotalPrice = isPackage ? grp?.defaultPrice : undefined;
-    const effectiveSessionPrice = Number(pricePerStudent) || (grp ? getEffectiveSessionPrice(null, grp) : 100);
+
+    const finalHours = isGrpHourly ? (Number(hours) || calculateHoursFromTimes(startTime, endTime)) : undefined;
+    const finalHourlyRate = isGrpHourly ? (Number(hourlyRate) || grp?.hourlyRate || 100) : undefined;
+    const effectiveSessionPrice = isGrpHourly
+      ? (finalHours! * finalHourlyRate!)
+      : (Number(pricePerStudent) || (grp ? getEffectiveSessionPrice(null, grp) : 100));
 
     const sessionId = editingSession
       ? editingSession.id
@@ -94,6 +138,8 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       startTime,
       endTime,
       sessionNumber: Number(sessionNumber) || 1,
+      hours: finalHours,
+      hourlyRate: finalHourlyRate,
       pricePerStudent: effectiveSessionPrice,
       sessionCount: 1,
       effectiveSessionPrice,
@@ -109,6 +155,8 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     onSaveComplete(savedSession);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
@@ -206,7 +254,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
               <input
                 type="time"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => handleTimeChange(e.target.value, endTime)}
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none"
               />
             </div>
@@ -216,27 +264,90 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
               <input
                 type="time"
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+                onChange={(e) => handleTimeChange(startTime, e.target.value)}
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Status & Price */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="block font-bold text-[#6B7567] mb-1">حالة الحصة</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none"
-              >
-                <option value="scheduled">مجدولة (قادمة)</option>
-                <option value="completed">تمت واكتملت</option>
-                <option value="cancelled">ملغاة</option>
-              </select>
-            </div>
+          {/* Status & Pricing Options */}
+          <div>
+            <label className="block font-bold text-[#6B7567] mb-1">حالة الحصة</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none"
+            >
+              <option value="scheduled">مجدولة (قادمة)</option>
+              <option value="completed">تمت واكتملت</option>
+              <option value="cancelled">ملغاة</option>
+            </select>
+          </div>
 
+          {isHourly ? (
+            <div className="p-3 bg-[#F0EBE1] border border-[#E8E2D6] rounded-2xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#2D332A]">حساب الحصة بالساعة (مجموعة بالساعة)</span>
+                <span className="text-[11px] font-bold text-[#748C70]">
+                  الإجمالي: {Math.round(hours * hourlyRate)} ج.م
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#6B7567] mb-1">مدة الحصة (بالساعات)</label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0.25"
+                    value={hours}
+                    onChange={(e) => {
+                      const h = Number(e.target.value) || 1;
+                      setHours(h);
+                      setPricePerStudent(Math.round(h * hourlyRate));
+                    }}
+                    className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#6B7567] mb-1">سعر الساعة للطالب (ج.م)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={hourlyRate}
+                    onChange={(e) => {
+                      const rate = Number(e.target.value) || 0;
+                      setHourlyRate(rate);
+                      setPricePerStudent(Math.round(hours * rate));
+                    }}
+                    className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Hours Pills */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                {[1, 1.5, 2, 2.5, 3].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => {
+                      setHours(val);
+                      setPricePerStudent(Math.round(val * hourlyRate));
+                    }}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-lg border transition-all ${
+                      hours === val
+                        ? 'bg-[#748C70] text-white border-[#748C70]'
+                        : 'bg-white text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
+                    }`}
+                  >
+                    {val} س
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
             <div>
               <label className="block font-bold text-[#6B7567] mb-1">سعر الحصة للطالب (ج.م)</label>
               <input
@@ -247,7 +358,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none"
               />
             </div>
-          </div>
+          )}
 
           {/* Notes */}
           <div>

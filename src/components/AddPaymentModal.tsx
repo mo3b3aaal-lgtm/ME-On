@@ -35,8 +35,6 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   allStudents,
   onPaymentSaved,
 }) => {
-  if (!isOpen) return null;
-
   const todayStr = new Date().toISOString().split('T')[0];
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -159,6 +157,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   };
 
   const selectedStudent = allStudents.find((s) => s.id === studentId) || targetStudent;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">

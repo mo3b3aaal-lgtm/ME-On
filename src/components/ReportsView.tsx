@@ -288,12 +288,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </div>
 
             <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl shadow-xs space-y-1">
-              <span className="text-[10px] font-bold text-[#8A9187]">إجمالي المستحقات المطلوبة</span>
+              <span className="text-[10px] font-bold text-[#8A9187]">إجمالي الرسوم المسجلة (Gross Charges)</span>
               <p className="text-xl font-black text-[#2D332A]">{teacherSummary.totalDues} <span className="text-xs text-[#8A9187]">ج.م</span></p>
             </div>
 
             <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl shadow-xs space-y-1">
-              <span className="text-[10px] font-bold text-[#8A9187]">إجمالي المتبقي (المتأخرات)</span>
+              <span className="text-[10px] font-bold text-[#8A9187]">المستحقات المتبقية للتحصيل (Outstanding)</span>
               <p className={`text-xl font-black ${teacherSummary.totalRemaining > 0 ? 'text-[#C97C5D]' : 'text-[#748C70]'}`}>
                 {teacherSummary.totalRemaining} <span className="text-xs text-[#8A9187]">ج.م</span>
               </p>
@@ -368,7 +368,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               {/* Group Metrics */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl text-center">
-                  <span className="text-[10px] text-[#8A9187] font-bold">إجمالي المستحق</span>
+                  <span className="text-[10px] text-[#8A9187] font-bold">إجمالي الرسوم (Gross)</span>
                   <p className="text-lg font-black text-[#2D332A] mt-0.5">{selectedGroupFin.totalDue} ج</p>
                 </div>
                 <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl text-center">
@@ -376,7 +376,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <p className="text-lg font-black text-[#748C70] mt-0.5">{selectedGroupFin.totalPaid} ج</p>
                 </div>
                 <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl text-center">
-                  <span className="text-[10px] text-[#8A9187] font-bold">المتبقي</span>
+                  <span className="text-[10px] text-[#8A9187] font-bold">المتبقي (Outstanding)</span>
                   <p className={`text-lg font-black mt-0.5 ${selectedGroupFin.remaining > 0 ? 'text-[#C97C5D]' : 'text-[#748C70]'}`}>
                     {selectedGroupFin.remaining} ج
                   </p>
@@ -404,9 +404,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       <tr>
                         <th className="p-2 font-bold">الطالب</th>
                         <th className="p-2 font-bold">الحصص المستهلكة</th>
-                        <th className="p-2 font-bold">المطلوب</th>
-                        <th className="p-2 font-bold">المدفوع</th>
-                        <th className="p-2 font-bold">المتبقي</th>
+                        <th className="p-2 font-bold">إجمالي الرسوم</th>
+                        <th className="p-2 font-bold">المسدد</th>
+                        <th className="p-2 font-bold">المتبقي المطلوب</th>
                         <th className="p-2 font-bold">رصيد الحصص</th>
                       </tr>
                     </thead>
@@ -499,7 +499,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
-                    <span className="text-[10px] text-[#8A9187] font-bold block">إجمالي المطلوب</span>
+                    <span className="text-[10px] text-[#8A9187] font-bold block">إجمالي الرسوم (Gross)</span>
                     <strong className="text-base text-[#2D332A] mt-0.5 block">{selectedStudentGrandFin.grandTotalDue} ج</strong>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
@@ -507,7 +507,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     <strong className="text-base text-[#748C70] mt-0.5 block">{selectedStudentGrandFin.grandTotalPaid} ج</strong>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
-                    <span className="text-[10px] text-[#8A9187] font-bold block">المتبقي</span>
+                    <span className="text-[10px] text-[#8A9187] font-bold block">المستحق المتبقي (Outstanding)</span>
                     <strong className={`text-base mt-0.5 block ${selectedStudentGrandFin.grandRemaining > 0 ? 'text-[#C97C5D]' : 'text-[#748C70]'}`}>
                       {selectedStudentGrandFin.grandRemaining} ج
                     </strong>

@@ -1,7 +1,10 @@
 {
   "entities": {
     "users": {
-      "fields": {
+      "title": "User",
+      "description": "Registered teacher user account",
+      "type": "object",
+      "properties": {
         "id": { "type": "string" },
         "email": { "type": "string" },
         "name": { "type": "string" },
@@ -11,26 +14,50 @@
         "recovery_pin": { "type": "string" },
         "created_at": { "type": "string" },
         "updated_at": { "type": "string" }
-      }
+      },
+      "required": ["id", "email", "name", "auth_token"]
     },
     "user_sync_stores": {
-      "fields": {
+      "title": "UserSyncStore",
+      "description": "User cloud synchronization snapshot package",
+      "type": "object",
+      "properties": {
         "user_id": { "type": "string" },
         "version": { "type": "string" },
         "last_sync_time": { "type": "string" },
         "data_package": { "type": "object" },
         "updated_at": { "type": "string" }
-      }
+      },
+      "required": ["user_id", "version", "last_sync_time", "data_package"]
     },
     "sync_audit_logs": {
-      "fields": {
+      "title": "SyncAuditLog",
+      "description": "Audit log for cloud sync operations",
+      "type": "object",
+      "properties": {
         "id": { "type": "string" },
         "user_id": { "type": "string" },
         "action": { "type": "string" },
         "client_ip": { "type": "string" },
         "timestamp": { "type": "string" },
         "records_count": { "type": "number" }
-      }
+      },
+      "required": ["id", "user_id", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "Teacher user account profiles"
+    },
+    "/user_sync_stores/{userId}": {
+      "schema": "user_sync_stores",
+      "description": "Encrypted user cloud data package"
+    },
+    "/sync_audit_logs/{logId}": {
+      "schema": "sync_audit_logs",
+      "description": "Server audit logs for sync events"
     }
   }
 }
+

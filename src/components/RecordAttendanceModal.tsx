@@ -267,6 +267,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         enrollmentId: enr?.id,
         status: item.status,
         isCharged: item.isCharged,
+        hours: session.hours,
+        hourlyRate: session.hourlyRate || enr?.hourlyRate || group?.hourlyRate,
         absenceReason: item.absenceReason,
         homeworkDone: item.homeworkDone,
         notes: item.notes || item.absenceReason,

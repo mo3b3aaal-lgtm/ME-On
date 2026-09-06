@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, BookOpen, Layers, CheckCircle2, Sparkles, Hash, AlignRight } from 'lucide-react';
+import { X, Calendar, Clock, BookOpen, Layers, CheckCircle2, Sparkles, Hash, AlignRight, Timer } from 'lucide-react';
 import { Student, Enrollment, Group } from '../types';
 import { db } from '../utils/storage';
 
@@ -38,6 +38,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const [date, setDate] = useState<string>(todayStr);
   const [startTime, setStartTime] = useState<string>(nowTime || '16:00');
   const [sessionCount, setSessionCount] = useState<number>(1);
+  const [hours, setHours] = useState<number>(1.5);
   const [attendanceType, setAttendanceType] = useState<'present' | 'absent_charged' | 'absent_free' | 'cancelled'>('present');
   const [absenceReason, setAbsenceReason] = useState<string>('الطالب ألغى');
   const [customReason, setCustomReason] = useState<string>('');
@@ -50,13 +51,24 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const activeGroup = activeEnrollment ? allGroups.find((g) => g.id === activeEnrollment.groupId) : undefined;
   const finSummary = activeEnrollment ? db.calculateEnrollmentFinancials(activeEnrollment.id) : undefined;
 
+  const isHourly =
+    activeEnrollment?.billingMode === 'hourly' ||
+    activeEnrollment?.billingType === 'hourly' ||
+    activeGroup?.billingMode === 'hourly' ||
+    activeGroup?.billingType === 'hourly';
+
+  const hourlyRate = activeEnrollment?.hourlyRate || activeGroup?.hourlyRate || activeEnrollment?.customPrice || 150;
+
   const isPackage =
-    activeEnrollment?.billingMode === 'package' ||
-    activeEnrollment?.billingType === 'package' ||
-    activeGroup?.billingMode === 'package' ||
-    activeGroup?.billingType === 'package';
+    !isHourly && (
+      activeEnrollment?.billingMode === 'package' ||
+      activeEnrollment?.billingType === 'package' ||
+      activeGroup?.billingMode === 'package' ||
+      activeGroup?.billingType === 'package'
+    );
 
   const isPrepaid =
+    !isHourly &&
     !isPackage && (
       activeEnrollment?.billingMode === 'prepaid' ||
       activeEnrollment?.billingType === 'prepaid' ||
@@ -64,6 +76,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     );
 
   const isPostpaid =
+    !isHourly &&
     !isPackage && (
       activeEnrollment?.billingMode === 'postpaid' ||
       activeEnrollment?.billingType === 'postpaid'
@@ -75,24 +88,26 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
   const packageTotalPrice = isPackage
     ? (activeEnrollment?.packagePrice ||
-       (activeGroup?.billingMode === 'package' || activeGroup?.billingType === 'package' ? groupDefaultPrice(activeGroup) : undefined) ||
+       (activeGroup?.billingMode === 'package' || activeGroup?.billingType === 'package' ? activeGroup.defaultPrice : undefined) ||
        activeEnrollment?.customPrice ||
        1000)
     : 1000;
 
-  function groupDefaultPrice(g?: Group) {
-    return g?.defaultPrice;
-  }
-
-  // Effective Session Price = Package Total Price ÷ Package Session Count (Never use Package Total Price as session price)
-  const effectiveSessionPrice = isPackage && packageSessionsCount > 0
+  // Effective Session Price
+  const effectiveSessionPrice = isHourly
+    ? Math.round(hours * hourlyRate)
+    : isPackage && packageSessionsCount > 0
     ? Math.round(packageTotalPrice / packageSessionsCount)
     : (activeEnrollment?.customPrice || activeGroup?.defaultPrice || 100);
 
   const isCharged = attendanceType === 'present' || attendanceType === 'absent_charged';
 
-  // Total Session Value = Session Count × Effective Session Price (0 if uncharged or cancelled)
-  const totalSessionValue = isCharged ? (Number(sessionCount) || 1) * effectiveSessionPrice : 0;
+  // Total Session Value
+  const totalSessionValue = isCharged
+    ? isHourly
+      ? Math.round(hours * hourlyRate)
+      : (Number(sessionCount) || 1) * effectiveSessionPrice
+    : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,7 +142,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
         groupId: targetGroupId,
         date: date || todayStr,
         startTime: startTime || '16:00',
-        sessionCount: count,
+        sessionCount: isHourly ? 1 : count,
+        hours: isHourly ? hours : undefined,
+        hourlyRate: isHourly ? hourlyRate : undefined,
         attendanceStatus: attendanceType,
         isCharged,
         absenceReason: finalReason,
@@ -156,7 +173,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             onClick={onClose}
             className="absolute top-4 left-4 p-2 rounded-full bg-[#F2ECE1] text-[#6B7567] hover:text-[#2D332A] hover:bg-[#EAE5D8] transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
 
           <div className="flex items-center gap-2.5">
@@ -180,19 +197,19 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
           {studentPrivateEnrollments.length > 1 && (
             <div className="space-y-1">
               <label className="font-bold text-[#2D332A] flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-[#D49B4B]" />
-                <span>اختر خدمة الدرس الخاص:</span>
+                <Layers className="w-3.5 h-3.5 text-[#D49B4B]" />
+                <span>اختر المادة / الاشتراك الخاص:</span>
               </label>
               <select
                 value={selectedEnrollmentId}
                 onChange={(e) => setSelectedEnrollmentId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-medium focus:ring-2 focus:ring-[#D49B4B] focus:border-transparent outline-hidden"
+                className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-bold text-[#2D332A] focus:ring-2 focus:ring-[#D49B4B] outline-hidden"
               >
                 {studentPrivateEnrollments.map((enr) => {
                   const grp = allGroups.find((g) => g.id === enr.groupId);
                   return (
                     <option key={enr.id} value={enr.id}>
-                      {grp?.name || 'درس خاص'} ({enr.customPrice} ج.م/حصة)
+                      {grp?.name || 'درس خاص'} ({enr.billingMode === 'hourly' ? 'بالساعة' : enr.billingMode === 'package' ? 'باقة' : enr.billingMode === 'postpaid' ? 'آجل' : 'مسبق'})
                     </option>
                   );
                 })}
@@ -200,10 +217,10 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             </div>
           )}
 
-          {/* Date & Time Row */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date & Time */}
+          <div className="grid grid-cols-2 gap-2.5">
             <div className="space-y-1">
-              <label className="font-bold text-[#2D332A] flex items-center gap-1.5">
+              <label className="font-bold text-[#2D332A] flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-[#748C70]" />
                 <span>التاريخ:</span>
               </label>
@@ -212,82 +229,137 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-medium focus:ring-2 focus:ring-[#748C70] focus:border-transparent outline-hidden"
+                className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-bold text-xs focus:ring-2 focus:ring-[#748C70] outline-hidden"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-[#2D332A] flex items-center gap-1.5">
+              <label className="font-bold text-[#2D332A] flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-[#748C70]" />
-                <span>الوقت:</span>
+                <span>وقت البدء:</span>
               </label>
               <input
                 type="time"
                 required
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-medium focus:ring-2 focus:ring-[#748C70] focus:border-transparent outline-hidden"
+                className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-bold text-xs focus:ring-2 focus:ring-[#748C70] outline-hidden"
               />
             </div>
           </div>
 
-          {/* Session Count Field */}
-          <div className="space-y-1.5 p-3.5 bg-white rounded-2xl border border-[#D49B4B]/30 bg-[#D49B4B]/5">
-            <div className="flex items-center justify-between">
-              <label className="font-bold text-[#2D332A] flex items-center gap-1.5">
-                <Hash className="w-4 h-4 text-[#D49B4B]" />
-                <span>عدد الحصص (Session Count):</span>
+          {/* Duration in Hours (If Hourly) OR Session Count */}
+          {isHourly ? (
+            <div className="space-y-2 p-3 bg-white rounded-2xl border border-[#D49B4B]/40">
+              <label className="font-bold text-[#2D332A] text-xs flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-[#9C6615]">
+                  <Timer className="w-4 h-4" />
+                  <span>مدة الحصة بالساعات:</span>
+                </span>
+                <span className="text-xs font-black text-[#D49B4B]">{hours} ساعة ({Math.round(hours * 60)} دقيقة)</span>
               </label>
-              <span className="text-[11px] font-bold text-[#9C6615] bg-[#D49B4B]/15 px-2 py-0.5 rounded-full">
-                الافتراضي: 1
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setSessionCount((prev) => Math.max(1, (Number(prev) || 1) - 1))}
-                className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                required
-                value={sessionCount}
-                onChange={(e) => setSessionCount(Math.max(1, parseInt(e.target.value) || 1))}
-                className="flex-1 p-2.5 text-center text-base font-black rounded-xl border border-[#E8E2D6] bg-white text-[#2D332A] focus:ring-2 focus:ring-[#D49B4B] focus:border-transparent outline-hidden"
-              />
-              <button
-                type="button"
-                onClick={() => setSessionCount((prev) => (Number(prev) || 1) + 1)}
-                className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
-              >
-                +
-              </button>
-            </div>
 
-            {/* Quick Presets for Sessions */}
-            <div className="flex items-center gap-1.5 pt-1">
-              <span className="text-[10px] text-[#8A9187] font-bold">اختيار سريع:</span>
-              {[1, 2, 3, 4].map((cnt) => (
+              <div className="flex items-center gap-2">
                 <button
-                  key={cnt}
                   type="button"
-                  onClick={() => setSessionCount(cnt)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                    sessionCount === cnt
-                      ? 'bg-[#D49B4B] text-white border-[#D49B4B]'
-                      : 'bg-white text-[#6B7567] border-[#E8E2D6] hover:bg-[#F9F7F2]'
-                  }`}
+                  onClick={() => setHours((prev) => Math.max(0.5, Number((prev - 0.5).toFixed(1))))}
+                  className="w-10 h-10 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
                 >
-                  {cnt} {cnt === 1 ? 'حصة' : 'حصص'}
+                  -
                 </button>
-              ))}
+                <input
+                  type="number"
+                  min="0.5"
+                  step="0.25"
+                  required
+                  value={hours}
+                  onChange={(e) => setHours(Math.max(0.25, parseFloat(e.target.value) || 1))}
+                  className="flex-1 p-2.5 text-center text-base font-black rounded-xl border border-[#E8E2D6] bg-white text-[#2D332A] focus:ring-2 focus:ring-[#D49B4B] outline-hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => setHours((prev) => Number((prev + 0.5).toFixed(1)))}
+                  className="w-10 h-10 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Quick presets for hours */}
+              <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8A9187] font-bold">خيارات سريعة:</span>
+                {[1, 1.5, 2, 2.5, 3].map((hVal) => (
+                  <button
+                    key={hVal}
+                    type="button"
+                    onClick={() => setHours(hVal)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                      hours === hVal
+                        ? 'bg-[#D49B4B] text-white border-[#D49B4B]'
+                        : 'bg-white text-[#6B7567] border-[#E8E2D6] hover:bg-[#F9F7F2]'
+                    }`}
+                  >
+                    {hVal} {hVal === 1 ? 'ساعة' : 'ساعات'}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2 p-3 bg-white rounded-2xl border border-[#E8E2D6]">
+              <label className="font-bold text-[#2D332A] text-xs flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Hash className="w-4 h-4 text-[#D49B4B]" />
+                  <span>عدد الحصص المسجلة:</span>
+                </span>
+                <span className="text-[11px] font-bold text-[#8A9187]">حصة واحدة أو أكثر</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSessionCount((prev) => Math.max(1, (Number(prev) || 1) - 1))}
+                  className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  value={sessionCount}
+                  onChange={(e) => setSessionCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="flex-1 p-2.5 text-center text-base font-black rounded-xl border border-[#E8E2D6] bg-white text-[#2D332A] focus:ring-2 focus:ring-[#D49B4B] outline-hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSessionCount((prev) => (Number(prev) || 1) + 1)}
+                  className="w-10 h-10 rounded-xl bg-white border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Quick Presets for Sessions */}
+              <div className="flex items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-[#8A9187] font-bold">اختيار سريع:</span>
+                {[1, 2, 3, 4].map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => setSessionCount(cnt)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                      sessionCount === cnt
+                        ? 'bg-[#D49B4B] text-white border-[#D49B4B]'
+                        : 'bg-white text-[#6B7567] border-[#E8E2D6] hover:bg-[#F9F7F2]'
+                    }`}
+                  >
+                    {cnt} {cnt === 1 ? 'حصة' : 'حصص'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Attendance Status Selection */}
           <div className="space-y-2 p-3.5 bg-white rounded-2xl border border-[#E8E2D6]">
@@ -399,7 +471,38 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
           {/* Pricing & Financial Calculation Preview Card */}
           <div className="p-3.5 bg-white rounded-2xl border border-[#E8E2D6] space-y-2.5">
-            {isPackage ? (
+            {isHourly ? (
+              <>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#8A9187]">نظام المحاسبة:</span>
+                  <span className="font-bold text-[#9C6615] px-2.5 py-0.5 rounded-full bg-[#D49B4B]/15 border border-[#D49B4B]/30">
+                    Hourly Billing (محاسبة بالساعة)
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#8A9187]">سعر الساعة:</span>
+                  <strong className="text-[#2D332A] font-bold">{hourlyRate} جنيه / ساعة</strong>
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#8A9187]">مدة الحصة:</span>
+                  <strong className="text-[#2D332A] font-bold">{hours} ساعة</strong>
+                </div>
+
+                <div className="pt-2 border-t border-[#E8E2D6] flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-xs text-[#2D332A] block">إجمالي قيمة الحصة:</span>
+                    <span className="text-[10px] text-[#8A9187] font-medium">{hours} ساعة × {hourlyRate} جنيه</span>
+                  </div>
+                  <span className="text-base font-black text-[#D49B4B]">{totalSessionValue} جنيه</span>
+                </div>
+
+                <div className="p-2 bg-[#748C70]/10 rounded-xl text-[10px] text-[#60755C] font-bold">
+                  ✓ سيتم إضافة {totalSessionValue} جنيه إلى إجمالي المستحق للمادة، ويتم تسجيل {hours} ساعة حضور.
+                </div>
+              </>
+            ) : isPackage ? (
               <>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#8A9187]">نظام المحاسبة:</span>
@@ -486,7 +589,6 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   <span className="text-sm font-black text-[#D49B4B]">{totalSessionValue} جنيه</span>
                 </div>
 
-                {/* Live Prepaid / Postpaid Impact Note */}
                 {isPrepaid && finSummary && (
                   <div className="p-2 bg-[#748C70]/10 rounded-xl text-[10px] text-[#60755C] space-y-1">
                     <div className="flex justify-between">
@@ -525,7 +627,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               placeholder="مثال: مراجعة الوحدة الأولى / حل تدريبات"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-medium focus:ring-2 focus:ring-[#748C70] focus:border-transparent outline-hidden"
+              className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-medium focus:ring-2 focus:ring-[#748C70] outline-hidden"
             />
           </div>
 
@@ -539,7 +641,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               placeholder="أي ملاحظات خاصة بأداء الطالب أو الحصة..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-medium focus:ring-2 focus:ring-[#748C70] focus:border-transparent outline-hidden"
+              className="w-full p-2.5 rounded-xl border border-[#E8E2D6] bg-white font-medium focus:ring-2 focus:ring-[#748C70] outline-hidden"
             />
           </div>
 
@@ -558,7 +660,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               className="flex-2 py-2.5 rounded-xl bg-[#D49B4B] hover:bg-[#B88237] text-white font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all disabled:opacity-50"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>تأكيد تسجيل ({sessionCount}) حصة Private</span>
+              <span>{isHourly ? `تأكيد تسجيل (${hours} ساعة) Private` : `تأكيد تسجيل (${sessionCount}) حصة Private`}</span>
             </button>
           </div>
 

@@ -55,6 +55,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   // Private direct configuration
   const [privSubject, setPrivSubject] = useState('رياضيات');
   const [privPrice, setPrivPrice] = useState<number>(150);
+  const [privHourlyRate, setPrivHourlyRate] = useState<number>(150);
   const [privBillingMode, setPrivBillingMode] = useState<BillingMode>('prepaid');
   const [privPackageSessions, setPrivPackageSessions] = useState<number>(10);
   const [privPackagePrice, setPrivPackagePrice] = useState<number>(900);
@@ -72,6 +73,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   const [perSessionSubMode, setPerSessionSubMode] = useState<'prepaid' | 'postpaid'>(
     selectedGroup?.billingMode === 'postpaid' || selectedGroup?.billingType === 'postpaid' ? 'postpaid' : 'prepaid'
   );
+  const [groupHourlyRate, setGroupHourlyRate] = useState<number>(selectedGroup?.hourlyRate || 150);
   const [pricingType, setPricingType] = useState<PricingModifierType>('same_as_group');
   const [pricingValue, setPricingValue] = useState<number>(0);
   const [baseSessionsPerMonth, setBaseSessionsPerMonth] = useState<number>(
@@ -120,11 +122,13 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
 
     if (enrollmentKind === 'private_service') {
       const isPkg = privBillingMode === 'package';
+      const isHr = privBillingMode === 'hourly';
       // Create independent private lesson for each selected student
       for (const studentId of selectedStudentIds) {
         db.createPrivateLessonService(studentId, {
           subject: privSubject.trim() || 'درس خاص',
           sessionPrice: isPkg ? (Number(privPackagePrice) || 900) : (Number(privPrice) || 100),
+          hourlyRate: isHr ? (Number(privHourlyRate) || 150) : undefined,
           billingType: privBillingMode as BillingType,
           billingMode: privBillingMode,
           packageSessionsCount: isPkg ? (Number(privPackageSessions) || 10) : undefined,
@@ -150,6 +154,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
           serviceType: selectedGroup?.type || 'group',
           billingType: resolvedBillingType,
           billingMode: resolvedBillingMode,
+          hourlyRate: resolvedBillingMode === 'hourly' ? (Number(groupHourlyRate) || 150) : undefined,
           pricingType,
           pricingValue,
           customPrice: calculatedFinalPrice,
@@ -329,10 +334,22 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     <option value="postpaid">دفع بالحصة - آجل (Postpaid)</option>
                     <option value="package">باقة حصص (Session Package)</option>
                     <option value="monthly">اشتراك شهري (Monthly)</option>
+                    <option value="hourly">محاسبة بالساعة (Hourly Rate)</option>
                   </select>
                 </div>
 
-                {privBillingMode !== 'package' ? (
+                {privBillingMode === 'hourly' ? (
+                  <div>
+                    <label className="block text-[10px] text-[#6B7567] mb-1 font-bold">سعر الساعة (ج.م) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={privHourlyRate}
+                      onChange={(e) => setPrivHourlyRate(Number(e.target.value))}
+                      className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs font-bold text-[#2D332A] focus:outline-none"
+                    />
+                  </div>
+                ) : privBillingMode !== 'package' ? (
                   <div>
                     <label className="block text-[10px] text-[#6B7567] mb-1 font-bold">
                       {privBillingMode === 'monthly' ? 'الاشتراك الشهري (ج.م) *' : 'سعر الحصة (ج.م) *'}
@@ -477,7 +494,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 </div>
                 
                 {/* Primary Billing Categories */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
                     type="button"
                     onClick={() => setBillingMode('monthly')}
@@ -515,7 +532,32 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                   >
                     باقة عدد حصص
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBillingMode('hourly')}
+                    className={`py-2 px-2 rounded-xl border text-center font-bold text-xs transition-all ${
+                      billingMode === 'hourly'
+                        ? 'bg-[#748C70] text-white border-[#748C70] shadow-sm'
+                        : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
+                    }`}
+                  >
+                    محاسبة بالساعة
+                  </button>
                 </div>
+
+                {billingMode === 'hourly' && (
+                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#6B7567]">
+                    <span>سعر الساعة لهذا الاشتراك (ج.م / ساعة):</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={groupHourlyRate}
+                      onChange={(e) => setGroupHourlyRate(Number(e.target.value) || 0)}
+                      className="w-24 p-1 text-center font-bold bg-[#F9F7F2] border border-[#E8E2D6] rounded-lg text-xs"
+                    />
+                  </div>
+                )}
 
                 {/* Sub-modes for Per Session Billing: Prepaid vs Postpaid */}
                 {(billingMode === 'prepaid' || billingMode === 'postpaid') && (

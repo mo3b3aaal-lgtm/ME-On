@@ -107,6 +107,8 @@ export function getBillingModeLabel(billingType?: string, billingMode?: string):
       return 'نظام الدفع بالحصة (Per Session)';
     case 'package':
       return 'باقة عدد حصص (Session Package)';
+    case 'hourly':
+      return 'محاسبة بالساعة (Hourly Billing)';
     default:
       return 'نظام الدفع بالحصة';
   }
@@ -115,6 +117,7 @@ export function getBillingModeLabel(billingType?: string, billingMode?: string):
 /**
  * دالة مساعدة مركزية لاحتساب سعر الحصة الفعلي (Effective Session Price)
  * للباقة: Package Total Price ÷ Package Session Count
+ * للمحاسبة بالساعة: hourlyRate أو customPrice
  * لغير الباقة: customPrice أو defaultPrice
  */
 export function getEffectiveSessionPrice(
@@ -122,6 +125,16 @@ export function getEffectiveSessionPrice(
   group?: Group | null
 ): number {
   if (!enrollment && !group) return 100;
+
+  const isHourly =
+    enrollment?.billingMode === 'hourly' ||
+    enrollment?.billingType === 'hourly' ||
+    group?.billingMode === 'hourly' ||
+    group?.billingType === 'hourly';
+
+  if (isHourly) {
+    return enrollment?.hourlyRate || enrollment?.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
+  }
 
   const isPackage =
     enrollment?.billingMode === 'package' ||
@@ -1107,6 +1120,7 @@ export const db = {
       subject: string;
       gradeLevel?: string;
       sessionPrice: number;
+      hourlyRate?: number;
       billingType?: BillingType;
       billingMode?: BillingMode;
       packageSessionsCount?: number;
@@ -1139,6 +1153,7 @@ export const db = {
       billingType: resolvedBilling,
       billingMode: resolvedMode,
       defaultPrice: isPackage && packagePrice ? packagePrice : options.sessionPrice,
+      hourlyRate: options.hourlyRate,
       packageSessionsCount: packageSessions,
       scheduleDays: options.scheduleDays || ['السبت'],
       scheduleTime: options.scheduleTime || '04:00 م',
@@ -1154,6 +1169,7 @@ export const db = {
       serviceType: 'private',
       billingType: resolvedBilling,
       billingMode: resolvedMode,
+      hourlyRate: options.hourlyRate,
       pricingType: 'same_as_group',
       customPrice: effectivePrice,
       packageSessionsCount: packageSessions,
@@ -1257,6 +1273,41 @@ export const db = {
     }
   },
 
+  /**
+   * تعديل نظام وأسعار محاسبة اشتراك طالب (بدون المساس بالسجلات والحصص السابقة)
+   */
+  updateEnrollmentBilling: (
+    enrollmentId: string,
+    updates: {
+      billingType: BillingType;
+      billingMode?: BillingMode;
+      customPrice: number;
+      hourlyRate?: number;
+      baseSessionsPerMonth?: number;
+      extraSessionPrice?: number;
+      packageSessionsCount?: number;
+      packagePrice?: number;
+    }
+  ): Enrollment | undefined => {
+    const enr = db.getEnrollmentById(enrollmentId);
+    if (!enr) return undefined;
+
+    const updated: Enrollment = {
+      ...enr,
+      billingType: updates.billingType,
+      billingMode: updates.billingMode || (updates.billingType as any),
+      customPrice: updates.customPrice,
+      hourlyRate: updates.hourlyRate,
+      baseSessionsPerMonth: updates.baseSessionsPerMonth,
+      extraSessionPrice: updates.extraSessionPrice,
+      packageSessionsCount: updates.packageSessionsCount,
+      packagePrice: updates.packagePrice,
+    };
+
+    db.updateEnrollment(updated);
+    return updated;
+  },
+
   // 4. Sessions (الحصص)
   getSessions: (userId?: string): Session[] => {
     const currentUserId = userId || getActiveUserId();
@@ -1295,6 +1346,8 @@ export const db = {
     date: string;
     startTime: string;
     sessionCount: number;
+    hours?: number;
+    hourlyRate?: number;
     title?: string;
     notes?: string;
     attendanceStatus?: AttendanceStatus | 'cancelled';
@@ -1308,11 +1361,23 @@ export const db = {
     const enrollment = db.getEnrollmentById(params.enrollmentId);
     const group = db.getGroupById(params.groupId);
 
+    const isHourly =
+      enrollment?.billingMode === 'hourly' ||
+      enrollment?.billingType === 'hourly' ||
+      group?.billingMode === 'hourly' ||
+      group?.billingType === 'hourly' ||
+      (params.hours !== undefined && params.hours > 0);
+
+    const hours = params.hours && params.hours > 0 ? params.hours : 1;
+    const hourlyRate = params.hourlyRate || enrollment?.hourlyRate || enrollment?.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
+
     const isPackage =
-      enrollment?.billingMode === 'package' ||
-      enrollment?.billingType === 'package' ||
-      group?.billingMode === 'package' ||
-      group?.billingType === 'package';
+      !isHourly && (
+        enrollment?.billingMode === 'package' ||
+        enrollment?.billingType === 'package' ||
+        group?.billingMode === 'package' ||
+        group?.billingType === 'package'
+      );
 
     const packageSessionsCount = isPackage
       ? (enrollment?.packageSessionsCount || group?.packageSessionsCount || 10)
@@ -1325,10 +1390,13 @@ export const db = {
          1000)
       : undefined;
 
-    // Effective Session Price = Package Total Price ÷ Package Session Count
-    const effectiveSessionPrice = isPackage && packageSessionsCount && packageTotalPrice
-      ? Math.round(packageTotalPrice / packageSessionsCount)
-      : (enrollment?.customPrice || group?.defaultPrice || 100);
+    // Effective Session Price
+    let effectiveSessionPrice = enrollment?.customPrice || group?.defaultPrice || 100;
+    if (isHourly) {
+      effectiveSessionPrice = hours * hourlyRate;
+    } else if (isPackage && packageSessionsCount && packageTotalPrice) {
+      effectiveSessionPrice = Math.round(packageTotalPrice / packageSessionsCount);
+    }
 
     const totalSessionValue = count * effectiveSessionPrice;
     const packageId = isPackage ? (enrollment?.groupId || group?.id || `pkg_${enrollment?.id}`) : undefined;
@@ -1378,6 +1446,8 @@ export const db = {
         startTime: params.startTime,
         status: finalSessionStatus,
         pricePerStudent: effectiveSessionPrice,
+        hours: isHourly ? hours : undefined,
+        hourlyRate: isHourly ? hourlyRate : undefined,
         sessionCount: 1,
         effectiveSessionPrice,
         totalSessionValue: effectiveSessionPrice,
@@ -1399,6 +1469,8 @@ export const db = {
         enrollmentId: params.enrollmentId,
         status: finalAttendanceStatus,
         isCharged: finalIsCharged,
+        hours: isHourly ? hours : undefined,
+        hourlyRate: isHourly ? hourlyRate : undefined,
         absenceReason: params.absenceReason || (isCancelled ? 'حصة ملغاة' : undefined),
         recordedAt: new Date().toISOString(),
         notes: params.notes || (params.absenceReason ? `سبب الغياب: ${params.absenceReason}` : undefined),
@@ -1940,6 +2012,29 @@ export const db = {
     let totalDue = 0;
     let extraSessionsTotal = 0;
 
+    const isHourly =
+      enrollment.billingType === 'hourly' ||
+      enrollment.billingMode === 'hourly' ||
+      group?.billingType === 'hourly' ||
+      group?.billingMode === 'hourly';
+
+    const isPackage = !isHourly && (enrollment.billingMode === 'package' || enrollment.billingType === 'package' || group?.billingType === 'package' || group?.billingMode === 'package');
+
+    const isPrepaid =
+      !isHourly &&
+      !isPackage && (
+        enrollment.billingMode === 'prepaid' ||
+        enrollment.billingType === 'prepaid' ||
+        (enrollment.billingType === 'per_session' && enrollment.billingMode !== 'postpaid')
+      );
+
+    const isPostpaid =
+      !isHourly &&
+      !isPackage && (
+        enrollment.billingMode === 'postpaid' ||
+        enrollment.billingType === 'postpaid'
+      );
+
     if (enrollment.billingType === 'monthly') {
       // Collect months where student has activity (enrollment join date, sessions, or payments)
       const monthsSet = new Set<string>();
@@ -2029,21 +2124,26 @@ export const db = {
 
         totalDue += totalRequired;
       }
-    } else if (
-      enrollment.billingType === 'per_session' ||
-      enrollment.billingType === 'prepaid' ||
-      enrollment.billingType === 'postpaid' ||
-      enrollment.billingMode === 'prepaid' ||
-      enrollment.billingMode === 'postpaid'
-    ) {
-      // Per session billing (Prepaid / Postpaid)
-      totalDue = attendedCount * enrollment.customPrice;
-    } else if (enrollment.billingType === 'package' || enrollment.billingMode === 'package') {
+    } else if (isHourly) {
+      // Hourly billing calculation
+      let hourlyGrossCharged = 0;
+      consumedAttendance.forEach((a) => {
+        const sess = sessions.find((s) => s.id === a.sessionId);
+        const hours = a.hours || sess?.hours || 1;
+        const rate = a.hourlyRate || sess?.hourlyRate || enrollment.hourlyRate || enrollment.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
+        hourlyGrossCharged += hours * rate;
+      });
+      totalDue = hourlyGrossCharged;
+    } else if (isPackage) {
       // Package billing
-      const packageSessions = enrollment.packageSessionsCount || 8;
-      const packagePrice = enrollment.packagePrice || enrollment.customPrice;
-      const unitRate = Math.round(packagePrice / packageSessions);
+      const packageSessions = enrollment.packageSessionsCount || group?.packageSessionsCount || 8;
+      const packagePrice = enrollment.packagePrice || group?.defaultPrice || enrollment.customPrice;
+      const unitRate = packageSessions > 0 ? Math.round(packagePrice / packageSessions) : 100;
       totalDue = attendedCount * unitRate;
+    } else {
+      // Per session billing (Prepaid / Postpaid)
+      const sessionRate = getEffectiveSessionPrice(enrollment, group);
+      totalDue = attendedCount * sessionRate;
     }
 
     const freeAttendance = attendanceRecords.filter((a) => {
@@ -2052,21 +2152,6 @@ export const db = {
       return a.status === 'absent_free' || a.status === 'excused';
     });
     const freeSessionsCount = freeAttendance.length;
-
-    const isPackage = enrollment.billingMode === 'package' || enrollment.billingType === 'package';
-
-    const isPrepaid =
-      !isPackage && (
-        enrollment.billingMode === 'prepaid' ||
-        enrollment.billingType === 'prepaid' ||
-        (enrollment.billingType === 'per_session' && enrollment.billingMode !== 'postpaid')
-      );
-
-    const isPostpaid =
-      !isPackage && (
-        enrollment.billingMode === 'postpaid' ||
-        enrollment.billingType === 'postpaid'
-      );
 
     const sessionRate = getEffectiveSessionPrice(enrollment, group);
     const totalPaid = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -2077,9 +2162,21 @@ export const db = {
     let sessionCreditValue = 0;
     let unpaidSessionsCount = 0;
     let settledSessionsCount = 0;
-    let remaining = 0;
+    let remaining = Math.max(0, totalDue - totalPaid);
 
-    if (isPrepaid) {
+    if (isHourly) {
+      // Hourly mode stats
+      usedSessionsCount = attendedCount;
+      if (totalPaid >= totalDue) {
+        remaining = 0;
+        settledSessionsCount = attendedCount;
+        unpaidSessionsCount = 0;
+      } else {
+        remaining = totalDue - totalPaid;
+        settledSessionsCount = sessionRate > 0 ? Math.floor(totalPaid / sessionRate) : 0;
+        unpaidSessionsCount = Math.max(0, attendedCount - settledSessionsCount);
+      }
+    } else if (isPrepaid) {
       // PREPAID Rules:
       const explicitPurchased = payments.reduce((sum, p) => {
         if (p.sessionsPurchased && p.sessionsPurchased > 0) return sum + p.sessionsPurchased;
@@ -2094,11 +2191,9 @@ export const db = {
       effectiveSessionCredit = Math.max(0, purchasedSessionsCount - attendedCount);
       sessionCreditValue = effectiveSessionCredit * sessionRate;
       unpaidSessionsCount = Math.max(0, attendedCount - purchasedSessionsCount);
-      remaining = unpaidSessionsCount * sessionRate;
-      totalDue = totalPaid + remaining;
+      remaining = Math.max(0, totalDue - totalPaid);
     } else if (isPostpaid) {
       // POSTPAID Rules:
-      totalDue = attendedCount * sessionRate;
       if (totalPaid >= totalDue) {
         settledSessionsCount = attendedCount;
         unpaidSessionsCount = 0;
@@ -2111,7 +2206,7 @@ export const db = {
       } else {
         settledSessionsCount = sessionRate > 0 ? Math.floor(totalPaid / sessionRate) : 0;
         unpaidSessionsCount = Math.max(0, attendedCount - settledSessionsCount);
-        remaining = unpaidSessionsCount * sessionRate;
+        remaining = Math.max(0, totalDue - totalPaid);
         effectiveSessionCredit = 0;
         sessionCreditValue = 0;
         purchasedSessionsCount = settledSessionsCount;
@@ -2127,8 +2222,8 @@ export const db = {
       remaining = Math.max(0, totalDue - totalPaid);
     } else {
       // Package or other
-      const packageSessions = enrollment.packageSessionsCount || 10;
-      const packagePrice = enrollment.packagePrice || enrollment.customPrice;
+      const packageSessions = enrollment.packageSessionsCount || group?.packageSessionsCount || 10;
+      const packagePrice = enrollment.packagePrice || group?.defaultPrice || enrollment.customPrice;
       const unitRate = packageSessions > 0 ? Math.round(packagePrice / packageSessions) : sessionRate;
 
       const explicitPurchased = payments.reduce((sum, p) => {
@@ -2144,8 +2239,7 @@ export const db = {
       effectiveSessionCredit = Math.max(0, purchasedSessionsCount - attendedCount);
       sessionCreditValue = effectiveSessionCredit * unitRate;
       unpaidSessionsCount = Math.max(0, attendedCount - purchasedSessionsCount);
-      remaining = unpaidSessionsCount * unitRate;
-      totalDue = totalPaid + remaining;
+      remaining = Math.max(0, totalDue - totalPaid);
     }
 
     const creditLogs = db.getEnrollmentCreditLogs(enrollment.id);

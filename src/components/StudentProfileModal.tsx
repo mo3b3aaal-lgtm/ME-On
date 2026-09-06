@@ -26,9 +26,11 @@ import {
   Filter,
   PlusCircle,
   Calendar,
+  Settings2,
 } from 'lucide-react';
-import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus } from '../types';
+import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode } from '../types';
 import { db, getArabicMonthName, getBillingModeLabel } from '../utils/storage';
+import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
 
 interface StudentProfileModalProps {
@@ -60,9 +62,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [isAddingPrivateService, setIsAddingPrivateService] = useState<boolean>(false);
   const [newPrivateSubject, setNewPrivateSubject] = useState<string>('درس خاص');
   const [newPrivatePrice, setNewPrivatePrice] = useState<number>(100);
-  const [newPrivateBillingMode, setNewPrivateBillingMode] = useState<'prepaid' | 'postpaid' | 'package'>('postpaid');
+  const [newPrivateHourlyRate, setNewPrivateHourlyRate] = useState<number>(150);
+  const [newPrivateBillingMode, setNewPrivateBillingMode] = useState<BillingMode>('postpaid');
   const [newPrivatePackageSessions, setNewPrivatePackageSessions] = useState<number>(10);
   const [newPrivatePackagePrice, setNewPrivatePackagePrice] = useState<number>(1000);
+
+  // Edit enrollment billing state
+  const [editingEnrollmentId, setEditingEnrollmentId] = useState<string | null>(null);
+  const [editBillingMode, setEditBillingMode] = useState<BillingMode>('prepaid');
+  const [editCustomPrice, setEditCustomPrice] = useState<number>(100);
+  const [editHourlyRate, setEditHourlyRate] = useState<number>(150);
+  const [editPackagePrice, setEditPackagePrice] = useState<number>(900);
+  const [editPackageSessions, setEditPackageSessions] = useState<number>(10);
 
   // Load relations and calculated financials
   const studentGroups = db.getStudentGroups(student.id);
@@ -87,13 +98,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const handleCreatePrivateService = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const isHourly = newPrivateBillingMode === 'hourly';
+      const isPkg = newPrivateBillingMode === 'package';
       db.createPrivateLessonService(student.id, {
         subject: newPrivateSubject.trim() || 'درس خاص',
-        sessionPrice: newPrivatePrice,
-        billingType: newPrivateBillingMode === 'postpaid' ? 'postpaid' : newPrivateBillingMode === 'package' ? 'package' : 'prepaid',
+        sessionPrice: isPkg ? newPrivatePackagePrice : isHourly ? newPrivateHourlyRate : newPrivatePrice,
+        billingType: newPrivateBillingMode as any,
         billingMode: newPrivateBillingMode,
-        packageSessionsCount: newPrivateBillingMode === 'package' ? newPrivatePackageSessions : undefined,
-        packagePrice: newPrivateBillingMode === 'package' ? newPrivatePackagePrice : undefined,
+        hourlyRate: isHourly ? newPrivateHourlyRate : undefined,
+        packageSessionsCount: isPkg ? newPrivatePackageSessions : undefined,
+        packagePrice: isPkg ? newPrivatePackagePrice : undefined,
       });
       setIsAddingPrivateService(false);
       onDataChanged();
@@ -101,6 +115,32 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       console.error(err);
       alert('حدث خطأ أثناء إضافة الخدمة الخاصة');
     }
+  };
+
+  const handleStartEditEnrollment = (enrId: string) => {
+    const enroll = db.getEnrollments().find((e) => e.id === enrId);
+    if (!enroll) return;
+    setEditingEnrollmentId(enrId);
+    setEditBillingMode((enroll.billingMode || enroll.billingType || 'prepaid') as BillingMode);
+    setEditCustomPrice(enroll.customPrice || 100);
+    setEditHourlyRate(enroll.hourlyRate || 150);
+    setEditPackagePrice(enroll.packagePrice || 900);
+    setEditPackageSessions(enroll.packageSessionsCount || 10);
+  };
+
+  const handleSaveEnrollmentBilling = (enrId: string) => {
+    const isHourly = editBillingMode === 'hourly';
+    const isPkg = editBillingMode === 'package';
+    db.updateEnrollmentBilling(enrId, {
+      billingMode: editBillingMode,
+      billingType: editBillingMode as any,
+      customPrice: isHourly ? editHourlyRate : isPkg ? editPackagePrice : editCustomPrice,
+      hourlyRate: isHourly ? editHourlyRate : undefined,
+      packagePrice: isPkg ? editPackagePrice : undefined,
+      packageSessionsCount: isPkg ? editPackageSessions : undefined,
+    });
+    setEditingEnrollmentId(null);
+    onDataChanged();
   };
 
   const handleUpdateAttendanceStatus = (sessionId: string, status: AttendanceStatus, isCharged: boolean, reason?: string) => {
@@ -166,12 +206,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </button>
 
           <div className="flex items-center gap-3.5 pl-10">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white text-xl shadow-md shrink-0"
-              style={{ backgroundColor: student.avatarColor || '#748C70' }}
-            >
-              {student.name.charAt(0)}
-            </div>
+            <StudentAvatar
+              student={student}
+              size="lg"
+              showFrame={true}
+              className="shrink-0"
+            />
 
             <div>
               <div className="flex items-center gap-2">
@@ -506,17 +546,31 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[11px] font-bold text-[#2D332A] block mb-1">سعر الحصة (ج.م):</label>
-                          <input
-                            type="number"
-                            min="0"
-                            required
-                            value={newPrivatePrice}
-                            onChange={(e) => setNewPrivatePrice(Number(e.target.value) || 0)}
-                            className="w-full p-2 text-xs rounded-xl border border-[#E8E2D6] bg-white font-bold focus:ring-2 focus:ring-[#D49B4B] outline-hidden"
-                          />
-                        </div>
+                        {newPrivateBillingMode === 'hourly' ? (
+                          <div>
+                            <label className="text-[11px] font-bold text-[#2D332A] block mb-1">سعر الساعة (ج.م):</label>
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              value={newPrivateHourlyRate}
+                              onChange={(e) => setNewPrivateHourlyRate(Number(e.target.value) || 0)}
+                              className="w-full p-2 text-xs rounded-xl border border-[#E8E2D6] bg-white font-bold focus:ring-2 focus:ring-[#D49B4B] outline-hidden"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="text-[11px] font-bold text-[#2D332A] block mb-1">سعر الحصة (ج.م):</label>
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              value={newPrivatePrice}
+                              onChange={(e) => setNewPrivatePrice(Number(e.target.value) || 0)}
+                              className="w-full p-2 text-xs rounded-xl border border-[#E8E2D6] bg-white font-bold focus:ring-2 focus:ring-[#D49B4B] outline-hidden"
+                            />
+                          </div>
+                        )}
                         <div>
                           <label className="text-[11px] font-bold text-[#2D332A] block mb-1">نظام المحاسبة:</label>
                           <select
@@ -527,6 +581,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <option value="postpaid">دفع آجل (Postpaid)</option>
                             <option value="prepaid">دفع مسبق (Prepaid)</option>
                             <option value="package">باقة حصص (Package)</option>
+                            <option value="hourly">محاسبة بالساعة (Hourly)</option>
                           </select>
                         </div>
                       </div>
@@ -632,6 +687,21 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editingEnrollmentId === summary.enrollmentId) {
+                                  setEditingEnrollmentId(null);
+                                } else {
+                                  handleStartEditEnrollment(summary.enrollmentId);
+                                }
+                              }}
+                              className="p-1.5 rounded-xl text-[#6B7567] hover:text-[#2D332A] hover:bg-[#F2ECE1] transition-colors border border-[#E8E2D6]"
+                              title="تعديل نظام المحاسبة والأسعار لهذا الطالب"
+                            >
+                              <Settings2 className="w-3.5 h-3.5" />
+                            </button>
+
                             {isPrivate && (
                               <button
                                 type="button"
@@ -656,6 +726,110 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             </button>
                           </div>
                         </div>
+
+                        {/* Inline Billing Editor */}
+                        {editingEnrollmentId === summary.enrollmentId && (
+                          <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#D49B4B]/40 space-y-2.5 animate-in fade-in text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[#2D332A] flex items-center gap-1">
+                                <Settings2 className="w-3.5 h-3.5 text-[#D49B4B]" />
+                                <span>تعديل نظام المحاسبة والأسعار:</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingEnrollmentId(null)}
+                                className="text-[#8A9187] hover:text-[#2D332A] text-xs font-bold"
+                              >
+                                ✕
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] font-bold text-[#2D332A] block mb-1">نظام المحاسبة:</label>
+                                <select
+                                  value={editBillingMode}
+                                  onChange={(e) => setEditBillingMode(e.target.value as BillingMode)}
+                                  className="w-full p-1.5 text-xs rounded-lg border border-[#E8E2D6] bg-white font-bold"
+                                >
+                                  <option value="prepaid">دفع مسبق (Prepaid)</option>
+                                  <option value="postpaid">دفع آجل (Postpaid)</option>
+                                  <option value="monthly">شهري ثابت (Monthly)</option>
+                                  <option value="package">باقة حصص (Package)</option>
+                                  <option value="hourly">محاسبة بالساعة (Hourly)</option>
+                                </select>
+                              </div>
+
+                              {editBillingMode === 'hourly' ? (
+                                <div>
+                                  <label className="text-[10px] font-bold text-[#2D332A] block mb-1">سعر الساعة (ج.م):</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={editHourlyRate}
+                                    onChange={(e) => setEditHourlyRate(Number(e.target.value) || 0)}
+                                    className="w-full p-1.5 text-xs rounded-lg border border-[#E8E2D6] bg-white font-bold"
+                                  />
+                                </div>
+                              ) : (
+                                <div>
+                                  <label className="text-[10px] font-bold text-[#2D332A] block mb-1">
+                                    {editBillingMode === 'monthly' ? 'الاشتراك الشهري (ج):' : 'سعر الحصة (ج):'}
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={editCustomPrice}
+                                    onChange={(e) => setEditCustomPrice(Number(e.target.value) || 0)}
+                                    className="w-full p-1.5 text-xs rounded-lg border border-[#E8E2D6] bg-white font-bold"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {editBillingMode === 'package' && (
+                              <div className="grid grid-cols-2 gap-2 p-2 bg-white rounded-lg border border-[#E8E2D6]">
+                                <div>
+                                  <label className="text-[10px] font-bold text-[#2D332A] block mb-1">عدد حصص الباقة:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={editPackageSessions}
+                                    onChange={(e) => setEditPackageSessions(Math.max(1, Number(e.target.value) || 1))}
+                                    className="w-full p-1 text-xs rounded border border-[#E8E2D6]"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-[#2D332A] block mb-1">سعر الباقة الإجمالي (ج):</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={editPackagePrice}
+                                    onChange={(e) => setEditPackagePrice(Number(e.target.value) || 0)}
+                                    className="w-full p-1 text-xs rounded border border-[#E8E2D6]"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingEnrollmentId(null)}
+                                className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-[#6B7567] bg-[#F2ECE1]"
+                              >
+                                إلغاء
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEnrollmentBilling(summary.enrollmentId)}
+                                className="px-3 py-1 rounded-lg text-[10px] font-bold text-white bg-[#748C70] hover:bg-[#60755C]"
+                              >
+                                حفظ التغييرات
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         {/* 1. Session Price & 2. Billing Mode Header */}
                         <div className="grid grid-cols-2 gap-2 text-[11px] bg-[#F9F7F2] p-2.5 rounded-xl border border-[#E8E2D6]">

@@ -5,14 +5,30 @@
 
 export type StudentStatus = 'active' | 'archived' | 'inactive';
 export type GroupType = 'group' | 'private';
-export type BillingType = 'monthly' | 'per_session' | 'package' | 'prepaid' | 'postpaid';
-export type BillingMode = 'monthly' | 'prepaid' | 'postpaid' | 'package';
+export type BillingType = 'monthly' | 'per_session' | 'package' | 'prepaid' | 'postpaid' | 'hourly';
+export type BillingMode = 'monthly' | 'prepaid' | 'postpaid' | 'package' | 'hourly';
 export type EnrollmentStatus = 'active' | 'paused' | 'stopped';
 export type SessionStatus = 'scheduled' | 'completed' | 'cancelled';
 export type AttendanceStatus = 'present' | 'absent_charged' | 'absent_free' | 'late' | 'excused' | 'absent';
 export type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay' | 'bank_transfer' | 'other';
 export type MonthBillStatus = 'unpaid' | 'partially_paid' | 'fully_paid';
 export type BillStatus = 'paid' | 'partial' | 'unpaid';
+
+// Student Achievement Frame
+export type AchievementFrame =
+  | 'none'
+  | 'gold'
+  | 'silver'
+  | 'platinum'
+  | 'crown'
+  | 'star'
+  | 'champion'
+  | 'default'
+  | 'bronze_star'
+  | 'silver_scholar'
+  | 'gold_champion'
+  | 'diamond_elite'
+  | 'emerald_honor';
 
 // Pricing modifier type when enrolling a student
 export type PricingModifierType =
@@ -42,11 +58,13 @@ export interface Student {
   parentName?: string;
   parentPhone?: string;
   parentRelation?: 'الأب' | 'الأم' | 'ولي الأمر';
-  gradeLevel?: string; // مثلاً: الصف الأول الثانوي، الصف الثالث الإعدادي...
+  gradeLevel?: string; // المرحلة الدراسية (ابتدائي 1-6، إعدادي 1-3، ثانوي 1-3)
   school?: string;
   notes?: string;
   status: StudentStatus;
   avatarColor: string;
+  profilePhoto?: string; // Lightweight base64 image data URL (< 30KB)
+  achievementFrame?: AchievementFrame; // إطار التميز (none, gold, silver, platinum, crown, star, champion)
   createdAt: string;
 }
 
@@ -58,9 +76,10 @@ export interface Group {
   subject: string; // المادة
   gradeLevel: string; // الصف الدراسي
   type: GroupType; // 'group' (مجموعة) | 'private' (درس خاص)
-  billingType: BillingType; // 'monthly' | 'per_session' | 'package' | 'prepaid' | 'postpaid'
-  billingMode?: BillingMode; // 'monthly' | 'prepaid' | 'postpaid' | 'package'
+  billingType: BillingType; // 'monthly' | 'per_session' | 'package' | 'prepaid' | 'postpaid' | 'hourly'
+  billingMode?: BillingMode; // 'monthly' | 'prepaid' | 'postpaid' | 'package' | 'hourly'
   defaultPrice: number; // السعر الافتراضي للحصة أو الاشتراك الشهري أو الباقة
+  hourlyRate?: number; // سعر الساعة عند اختيار نظام المحاسبة بالساعة
   baseSessionsPerMonth?: number; // عدد الحصص الأساسي شهرياً (افتراضي 8)
   packageSessionsCount?: number; // عدد حصص الباقة (افتراضي 8)
   scheduleDays: string[]; // ['السبت', 'الثلاثاء']
@@ -78,11 +97,12 @@ export interface Enrollment {
   studentId: string;
   groupId: string;
   serviceType: GroupType; // 'group' | 'private'
-  billingType: BillingType; // 'monthly' | 'per_session' | 'package' | 'prepaid' | 'postpaid'
-  billingMode?: BillingMode; // 'monthly' | 'prepaid' | 'postpaid' | 'package'
+  billingType: BillingType; // 'monthly' | 'per_session' | 'package' | 'prepaid' | 'postpaid' | 'hourly'
+  billingMode?: BillingMode; // 'monthly' | 'prepaid' | 'postpaid' | 'package' | 'hourly'
   pricingType?: PricingModifierType; // نوع تعديل السعر
   pricingValue?: number; // قيمة التعديل (مبلغ أو نسبة)
   customPrice: number; // السعر النهائي المحسوب والمحفوظ بشكل دائم لهذا الاشتراك
+  hourlyRate?: number; // سعر الساعة عند المحاسبة بالساعة
   baseSessionsPerMonth?: number; // عدد الحصص الأساسي شهرياً (افتراضي 8)
   extraSessionPrice?: number; // سعر الحصة الإضافية
   packageSessionsCount?: number; // عدد حصص الباقة
@@ -123,9 +143,11 @@ export interface Session {
   endTime?: string; // e.g. "17:30"
   sessionNumber?: number; // رقم الحصة التسلسلي
   pricePerStudent?: number; // سعر الحصة الفعلي
+  hours?: number; // عدد الساعات المنفذة للحصة (مثلاً: 1.5 أو 2)
+  hourlyRate?: number; // سعر الساعة المحسوبة للحصة
   sessionCount?: number; // عدد الحصص المسجلة
-  effectiveSessionPrice?: number; // سعر الحصة الفعلي (Effective Session Price = Package Total Price ÷ Package Session Count)
-  totalSessionValue?: number; // إجمالي قيمة الحصص المسجلة (Session Count × Effective Session Price)
+  effectiveSessionPrice?: number; // سعر الحصة الفعلي (Effective Session Price = Package Total Price ÷ Package Session Count أو Hours × HourlyRate)
+  totalSessionValue?: number; // إجمالي قيمة الحصص المسجلة
   packageTotalPrice?: number; // إجمالي سعر الباقة وقت التسجيل
   packageSessionsCount?: number; // عدد حصص الباقة وقت التسجيل
   status: SessionStatus;
@@ -142,6 +164,8 @@ export interface Attendance {
   enrollmentId?: string;
   status: AttendanceStatus; // حاضر | غائب - محسوبة | غائب - غير محسوبة | متأخر | معتذر
   isCharged?: boolean; // هل الحصة محسوبة ماليًا على الطالب؟
+  hours?: number; // عدد الساعات المسجلة للطالب
+  hourlyRate?: number; // سعر الساعة للطالب
   absenceReason?: string; // سبب عدم احتساب الغياب (الطالب ألغى | المدرس ألغى | مرض | ظرف طارئ | سبب آخر | مخصص)
   notes?: string;
   homeworkDone?: boolean; // حل الواجب

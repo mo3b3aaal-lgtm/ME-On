@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Layers, Clock, MapPin, DollarSign, Calendar } from 'lucide-react';
+import { X, Layers, Clock, MapPin, DollarSign, Calendar, GraduationCap } from 'lucide-react';
 import { Group, GroupType, BillingType } from '../types';
 import { db } from '../utils/storage';
+import { ALL_GRADE_LEVELS, STAGES_HIERARCHY } from '../utils/stages';
 
 interface AddEditGroupModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   const [type, setType] = useState<GroupType>('group');
   const [billingType, setBillingType] = useState<BillingType>('per_session');
   const [defaultPrice, setDefaultPrice] = useState<number>(100);
+  const [hourlyRate, setHourlyRate] = useState<number>(150);
   const [packageSessionsCount, setPackageSessionsCount] = useState<number>(10);
   const [scheduleDays, setScheduleDays] = useState<string[]>(['السبت', 'الثلاثاء']);
   const [scheduleTime, setScheduleTime] = useState('04:00 م');
@@ -51,6 +53,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setType(editingGroup.type);
       setBillingType(editingGroup.billingType);
       setDefaultPrice(editingGroup.defaultPrice);
+      setHourlyRate(editingGroup.hourlyRate || 150);
       setPackageSessionsCount(editingGroup.packageSessionsCount || 10);
       setScheduleDays(editingGroup.scheduleDays || []);
       setScheduleTime(editingGroup.scheduleTime || '');
@@ -64,6 +67,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setType('group');
       setBillingType('per_session');
       setDefaultPrice(100);
+      setHourlyRate(150);
       setPackageSessionsCount(10);
       setScheduleDays(['السبت', 'الثلاثاء']);
       setScheduleTime('04:00 م');
@@ -97,6 +101,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       type,
       billingType,
       defaultPrice: Number(defaultPrice) || 0,
+      hourlyRate: billingType === 'hourly' ? (Number(hourlyRate) || 150) : undefined,
       packageSessionsCount: billingType === 'package' ? (Number(packageSessionsCount) || 10) : undefined,
       scheduleDays,
       scheduleTime: scheduleTime.trim(),
@@ -197,14 +202,22 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
           {/* Grade Level & Location */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">المرحلة / الصف</label>
-              <input
-                type="text"
-                placeholder="مثال: الصف الثاني الثانوي"
+              <label className="block font-bold text-[#6B7567] mb-1">المرحلة / الصف الدراسية</label>
+              <select
                 value={gradeLevel}
                 onChange={(e) => setGradeLevel(e.target.value)}
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
-              />
+              >
+                {STAGES_HIERARCHY.map((stage) => (
+                  <optgroup key={stage.id} label={`${stage.nameAr} (${stage.nameEn})`}>
+                    {stage.grades.map((grade) => (
+                      <option key={grade.id} value={grade.nameAr}>
+                        {grade.nameAr}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -238,21 +251,37 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                   <option value="postpaid">دفع بالحصة - دفع بعد الحصة (Postpaid)</option>
                   <option value="package">باقة عدد حصص (Session Package)</option>
                   <option value="monthly">اشتراك شهري ثابت (Monthly)</option>
+                  <option value="hourly">محاسبة بالساعة (Hourly Rate)</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">
-                  السعر الافتراضي {billingType === 'monthly' ? 'الشهري' : billingType === 'package' ? 'للباقة الإجمالية' : 'للحصة'} (ج.م)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={defaultPrice}
-                  onChange={(e) => setDefaultPrice(Number(e.target.value))}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none font-bold"
-                />
-              </div>
+              {billingType === 'hourly' ? (
+                <div>
+                  <label className="block text-[11px] text-[#8A9187] mb-1">
+                    سعر الساعة الافتراضي (ج.م / ساعة)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(Number(e.target.value))}
+                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none font-bold"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[11px] text-[#8A9187] mb-1">
+                    السعر الافتراضي {billingType === 'monthly' ? 'الشهري' : billingType === 'package' ? 'للباقة الإجمالية' : 'للحصة'} (ج.م)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={defaultPrice}
+                    onChange={(e) => setDefaultPrice(Number(e.target.value))}
+                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none font-bold"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Package count selection & presets */}

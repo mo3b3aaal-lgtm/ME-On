@@ -1,7 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { X, UserPlus, GraduationCap, Phone, User, BookOpen, Check, Sparkles, Layers, DollarSign, Clock } from 'lucide-react';
-import { Student, Group, BillingMode, BillingType } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  UserPlus,
+  GraduationCap,
+  Phone,
+  User,
+  BookOpen,
+  Check,
+  Sparkles,
+  Layers,
+  DollarSign,
+  Clock,
+  Camera,
+  Upload,
+  Trash2,
+  Award,
+} from 'lucide-react';
+import { Student, Group, BillingMode, BillingType, AchievementFrame } from '../types';
 import { db } from '../utils/storage';
+import { compressImage } from '../utils/imageCompressor';
+import { StudentAvatar } from './StudentAvatar';
+import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade } from '../utils/stages';
+import { t } from '../utils/i18n';
 
 interface AddEditStudentModalProps {
   isOpen: boolean;
@@ -22,17 +42,13 @@ const AVATAR_COLORS = [
   '#8C847B', // Soft taupe
 ];
 
-const GRADE_LEVELS = [
-  'الصف الأول الإعدادي',
-  'الصف الثاني الإعدادي',
-  'الصف الثالث الإعدادي',
-  'الصف الأول الثانوي',
-  'الصف الثاني الثانوي',
-  'الصف الثالث الثانوي',
-  'الصف الرابع الابتدائي',
-  'الصف الخامس الابتدائي',
-  'الصف السادس الابتدائي',
-  'أخرى',
+const ACHIEVEMENT_FRAMES: { id: AchievementFrame; name: string; icon: string; color: string }[] = [
+  { id: 'default', name: 'بدون إطار (افتراضي)', icon: '⚪', color: '#8A9187' },
+  { id: 'bronze_star', name: 'نجمة برونزية (Bronze)', icon: '🥉', color: '#CD7F32' },
+  { id: 'silver_scholar', name: 'طالب فضي (Silver)', icon: '🥈', color: '#C0C0C0' },
+  { id: 'gold_champion', name: 'بطل ذهبي (Gold)', icon: '🥇', color: '#D4AF37' },
+  { id: 'diamond_elite', name: 'نخبة ماسية (Diamond)', icon: '💎', color: '#00B4D8' },
+  { id: 'emerald_honor', name: 'شرف زمردي (Emerald)', icon: '👑', color: '#2EC4B6' },
 ];
 
 export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
@@ -44,15 +60,26 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [parentName, setParentName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
   const [parentRelation, setParentRelation] = useState<'الأب' | 'الأم' | 'ولي الأمر'>('ولي الأمر');
-  const [gradeLevel, setGradeLevel] = useState(GRADE_LEVELS[3]);
+  
+  // Stage & Grade
+  const [selectedStageId, setSelectedStageId] = useState<string>('secondary');
+  const [gradeLevel, setGradeLevel] = useState<string>('الصف الأول الثانوي');
+  
   const [school, setSchool] = useState('');
   const [notes, setNotes] = useState('');
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  
+  // Profile Photo & Achievement Frame
+  const [profilePhoto, setProfilePhoto] = useState<string | undefined>(undefined);
+  const [achievementFrame, setAchievementFrame] = useState<AchievementFrame>('default');
+  const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
 
   // Subscription Type Mode for creation
   const [subscriptionMode, setSubscriptionMode] = useState<'none' | 'group' | 'private' | 'both'>('group');
@@ -61,6 +88,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   // Private lesson configuration
   const [privateSubject, setPrivateSubject] = useState('رياضيات');
   const [privatePrice, setPrivatePrice] = useState<number>(150);
+  const [privateHourlyRate, setPrivateHourlyRate] = useState<number>(150);
   const [privateBillingMode, setPrivateBillingMode] = useState<BillingMode>('prepaid');
   const [privatePackageSessions, setPrivatePackageSessions] = useState<number>(10);
   const [privatePackagePrice, setPrivatePackagePrice] = useState<number>(900);
@@ -75,10 +103,19 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setParentName(editingStudent.parentName || '');
       setParentPhone(editingStudent.parentPhone || '');
       setParentRelation(editingStudent.parentRelation || 'ولي الأمر');
-      setGradeLevel(editingStudent.gradeLevel || GRADE_LEVELS[3]);
+      
+      const currentGrade = editingStudent.gradeLevel || 'الصف الأول الثانوي';
+      setGradeLevel(currentGrade);
+      const matchedStageId = getStageByGrade(currentGrade);
+      if (matchedStageId) {
+        setSelectedStageId(matchedStageId);
+      }
+
       setSchool(editingStudent.school || '');
       setNotes(editingStudent.notes || '');
       setAvatarColor(editingStudent.avatarColor || AVATAR_COLORS[0]);
+      setProfilePhoto(editingStudent.profilePhoto);
+      setAchievementFrame(editingStudent.achievementFrame || 'default');
 
       // Load current enrollments
       const currentEnrs = db.getStudentEnrollments(editingStudent.id);
@@ -95,21 +132,59 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setParentName('');
       setParentPhone('');
       setParentRelation('ولي الأمر');
-      setGradeLevel(GRADE_LEVELS[3]);
+      setSelectedStageId('secondary');
+      setGradeLevel('الصف الأول الثانوي');
       setSchool('');
       setNotes('');
       setAvatarColor(AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]);
+      setProfilePhoto(undefined);
+      setAchievementFrame('default');
       const regular = allGroups.filter((g) => g.type !== 'private');
       setSelectedGroupIds(regular.length > 0 ? [regular[0].id] : []);
       setSubscriptionMode(regular.length > 0 ? 'group' : 'private');
       setPrivateSubject('رياضيات');
       setPrivatePrice(150);
+      setPrivateHourlyRate(150);
       setPrivateBillingMode('prepaid');
       setPrivateDays(['السبت']);
       setPrivateTime('04:00 م');
       setPrivateLocation('منزل الطالب / أونلاين');
     }
   }, [editingStudent, isOpen, allGroups.length]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsCompressingPhoto(true);
+      const compressedBase64 = await compressImage(file, 240, 240, 0.8);
+      setProfilePhoto(compressedBase64);
+    } catch (err) {
+      console.error('Failed to compress image:', err);
+      alert('تعذر معالجة الصورة، يرجى اختيار صورة أخرى');
+    } finally {
+      setIsCompressingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setProfilePhoto(undefined);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleStageChange = (stageId: string) => {
+    setSelectedStageId(stageId);
+    const stage = GRADE_STAGES.find((s) => s.id === stageId);
+    if (stage && stage.grades.length > 0) {
+      setGradeLevel(stage.grades[0].nameAr);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,6 +206,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       notes: notes.trim(),
       status: editingStudent ? editingStudent.status : 'active',
       avatarColor,
+      profilePhoto,
+      achievementFrame,
       createdAt: editingStudent ? editingStudent.createdAt : new Date().toISOString(),
     };
 
@@ -148,10 +225,15 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       // 2. Private lesson creation & enrollment
       if (subscriptionMode === 'private' || subscriptionMode === 'both') {
         const isPkg = privateBillingMode === 'package';
+        const isHourly = privateBillingMode === 'hourly';
         db.createPrivateLessonService(studentId, {
           subject: privateSubject.trim() || 'درس خاص',
           gradeLevel,
-          sessionPrice: isPkg ? (Number(privatePackagePrice) || 900) : (Number(privatePrice) || 100),
+          sessionPrice: isPkg
+            ? (Number(privatePackagePrice) || 900)
+            : isHourly
+            ? (Number(privateHourlyRate) || 150)
+            : (Number(privatePrice) || 100),
           billingType: privateBillingMode as BillingType,
           billingMode: privateBillingMode,
           packageSessionsCount: isPkg ? (Number(privatePackageSessions) || 10) : undefined,
@@ -193,6 +275,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   };
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
+  const currentStage = GRADE_STAGES.find((s) => s.id === selectedStageId) || GRADE_STAGES[2];
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
@@ -209,7 +292,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 {editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}
               </h2>
               <p className="text-[11px] text-[#8A9187]">
-                تسجيل بيانات الطالب والاشتراك في المجموعات أو الدروس الخاصة
+                تسجيل بيانات الطالب، الصورة الرمزية، المراحل التعليمية، ونظام المحاسبة
               </p>
             </div>
           </div>
@@ -224,6 +307,83 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#434B3E]">
           
+          {/* Avatar & Photo Card */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-[#748C70]" />
+                <span>الصورة الشخصية وإطار التميز (Achievement Frame)</span>
+              </h3>
+              <span className="text-[10px] text-[#748C70] font-bold">مضغوطة تلقائياً &lt; 30KB</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                <StudentAvatar
+                  student={{
+                    id: 'preview',
+                    name: name || 'طالب',
+                    avatarColor,
+                    profilePhoto,
+                    achievementFrame,
+                  }}
+                  size="xl"
+                />
+              </div>
+
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isCompressingPhoto}
+                    className="px-3 py-1.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isCompressingPhoto ? 'جاري المعالجة...' : 'رفع صورة'}</span>
+                  </button>
+
+                  {profilePhoto && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="p-1.5 rounded-xl bg-[#C97C5D]/15 text-[#C97C5D] hover:bg-[#C97C5D]/25 transition-colors"
+                      title="حذف الصورة"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Frame Selector */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#6B7567] mb-1 flex items-center gap-1">
+                    <Award className="w-3 h-3 text-[#D49B4B]" />
+                    <span>إطار التميز والإنجاز:</span>
+                  </label>
+                  <select
+                    value={achievementFrame}
+                    onChange={(e) => setAchievementFrame(e.target.value as AchievementFrame)}
+                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-1.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] font-bold"
+                  >
+                    {ACHIEVEMENT_FRAMES.map((frm) => (
+                      <option key={frm.id} value={frm.id}>
+                        {frm.icon} {frm.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Basic Student Info Card */}
           <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
             <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
@@ -255,23 +415,40 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 />
               </div>
 
+              {/* Stage Category Selector */}
               <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">المرحلة / الصف الدراسي</label>
+                <label className="block text-[11px] text-[#8A9187] mb-1">المرحلة التعليمية</label>
                 <select
-                  value={gradeLevel}
-                  onChange={(e) => setGradeLevel(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  value={selectedStageId}
+                  onChange={(e) => handleStageChange(e.target.value)}
+                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] font-bold"
                 >
-                  {GRADE_LEVELS.map((lvl) => (
-                    <option key={lvl} value={lvl}>
-                      {lvl}
+                  {GRADE_STAGES.map((stg) => (
+                    <option key={stg.id} value={stg.id}>
+                      {stg.nameAr} ({stg.nameEn})
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Grade Level Selector */}
               <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">المدرسة (اختياري)</label>
+                <label className="block text-[11px] text-[#8A9187] mb-1">الصف الدراسي المحدد</label>
+                <select
+                  value={gradeLevel}
+                  onChange={(e) => setGradeLevel(e.target.value)}
+                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] font-bold"
+                >
+                  {currentStage.grades.map((lvl) => (
+                    <option key={lvl.id} value={lvl.nameAr}>
+                      {lvl.nameAr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] text-[#8A9187] mb-1">المدرسة أو المعهد (اختياري)</label>
                 <input
                   type="text"
                   placeholder="اسم المدرسة..."
@@ -328,7 +505,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             </div>
           </div>
 
-          {/* Subscription Service Selection (Group vs Private vs Both) */}
+          {/* Subscription Service Selection */}
           {!editingStudent && (
             <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
@@ -387,7 +564,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 </button>
               </div>
 
-              {/* Group selection if Mode has Group */}
+              {/* Group selection */}
               {(subscriptionMode === 'group' || subscriptionMode === 'both') && (
                 <div className="space-y-2 pt-1 border-t border-[#E8E2D6]/60">
                   <span className="text-[11px] font-bold text-[#2D332A] flex items-center justify-between">
@@ -416,7 +593,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                             <div className="truncate">
                               <p className="font-bold text-[#2D332A] text-xs truncate">{g.name}</p>
                               <p className="text-[10px] text-[#8A9187] truncate">
-                                {g.subject} • {g.billingType === 'per_session' ? 'بالحصة' : 'شهري'} ({g.defaultPrice} ج)
+                                {g.subject} • {g.billingType === 'hourly' ? 'بالساعة' : g.billingType === 'per_session' ? 'بالحصة' : 'شهري'} ({g.defaultPrice} ج)
                               </p>
                             </div>
                             <div
@@ -436,7 +613,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 </div>
               )}
 
-              {/* Private lesson instant config if Mode has Private */}
+              {/* Private lesson instant config */}
               {(subscriptionMode === 'private' || subscriptionMode === 'both') && (
                 <div className="space-y-2.5 p-2.5 bg-[#D49B4B]/10 border border-[#D49B4B]/30 rounded-xl">
                   <div className="flex items-center justify-between text-[#9C6615] font-bold text-[11px]">
@@ -468,12 +645,24 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                       >
                         <option value="prepaid">دفع بالحصة - مسبق (Prepaid)</option>
                         <option value="postpaid">دفع بالحصة - آجل (Postpaid)</option>
+                        <option value="hourly">محاسبة بالساعة (Hourly Billing)</option>
                         <option value="package">باقة حصص (Session Package)</option>
                         <option value="monthly">اشتراك شهري (Monthly)</option>
                       </select>
                     </div>
 
-                    {privateBillingMode !== 'package' ? (
+                    {privateBillingMode === 'hourly' ? (
+                      <div>
+                        <label className="block text-[10px] text-[#6B7567] mb-1">سعر الساعة (ج.م) *</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={privateHourlyRate}
+                          onChange={(e) => setPrivateHourlyRate(Number(e.target.value))}
+                          className="w-full bg-white border border-[#E8E2D6] rounded-xl p-1.5 text-xs font-bold text-[#2D332A] focus:outline-none"
+                        />
+                      </div>
+                    ) : privateBillingMode !== 'package' ? (
                       <div>
                         <label className="block text-[10px] text-[#6B7567] mb-1">
                           {privateBillingMode === 'monthly' ? 'الاشتراك الشهري (ج.م) *' : 'سعر الحصة (ج.م) *'}
@@ -518,7 +707,6 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Quick preset buttons: 5, 8, 10, 15, 20 */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {[5, 8, 10, 15, 20].map((count) => {
                           const isSel = privatePackageSessions === count;
@@ -539,7 +727,6 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                         })}
                       </div>
 
-                      {/* Effective unit rate live calculation */}
                       <div className="p-2 bg-[#D49B4B]/10 rounded-lg flex items-center justify-between text-xs text-[#9C6615] font-bold">
                         <span>سعر الحصة الفعلي المحسوب:</span>
                         <span className="text-sm text-[#2D332A]">

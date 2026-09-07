@@ -153,6 +153,15 @@ export interface Session {
   status: SessionStatus;
   notes?: string;
   createdAt: string;
+  // Historical Billing Snapshots
+  billingModeSnapshot?: BillingMode;
+  billingTypeSnapshot?: BillingType;
+  hourlyRateSnapshot?: number;
+  sessionPriceSnapshot?: number;
+  effectivePriceSnapshot?: number;
+  packagePriceSnapshot?: number;
+  packageSessionsCountSnapshot?: number;
+  hoursSnapshot?: number;
 }
 
 // 6. Attendance Entity (سجل الحضور والغياب)
@@ -171,6 +180,15 @@ export interface Attendance {
   homeworkDone?: boolean; // حل الواجب
   quizScore?: number; // درجة الكويز إن وجد
   recordedAt: string;
+  // Historical Billing Snapshots
+  billingModeSnapshot?: BillingMode;
+  billingTypeSnapshot?: BillingType;
+  hourlyRateSnapshot?: number;
+  sessionPriceSnapshot?: number;
+  effectivePriceSnapshot?: number;
+  packagePriceSnapshot?: number;
+  packageSessionsCountSnapshot?: number;
+  hoursSnapshot?: number;
 }
 
 // 7. Payment Entity (سجل المدفوعات والتحصيلات)

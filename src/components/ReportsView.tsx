@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Student, Group, Session, Payment, ReportPeriodFilter } from '../types';
 import { db, getArabicMonthName } from '../utils/storage';
+import { getLocalizedStageName } from '../utils/stages';
 
 interface ReportsViewProps {
   students: Student[];
@@ -472,7 +473,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 .filter((s) => s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))
                 .map((st) => (
                   <option key={st.id} value={st.id}>
-                    {st.name} ({st.gradeLevel || 'غير محدد'})
+                    {st.name} ({getLocalizedStageName(st.gradeLevel) || 'غير محدد'})
                   </option>
                 ))}
             </select>
@@ -486,7 +487,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-base text-[#2D332A]">{selectedStudentObj.name}</h3>
-                    <p className="text-xs text-[#8A9187]">{selectedStudentObj.gradeLevel || 'الصف غير محدد'}</p>
+                    <p className="text-xs text-[#8A9187]">{getLocalizedStageName(selectedStudentObj.gradeLevel) || 'الصف غير محدد'}</p>
                   </div>
 
                   <div className="text-left">

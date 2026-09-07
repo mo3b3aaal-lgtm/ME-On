@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Student, Group } from '../types';
 import { db } from '../utils/storage';
+import { getLocalizedStageName } from '../utils/stages';
 
 interface StudentsViewProps {
   students: Student[];
@@ -114,7 +115,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <option value="all">كل المراحل الدراسية</option>
             {gradeLevels.map((lvl) => (
               <option key={lvl} value={lvl}>
-                {lvl}
+                {getLocalizedStageName(lvl)}
               </option>
             ))}
           </select>
@@ -195,7 +196,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         {student.name}
                       </h3>
                       <p className="text-[11px] text-[#8A9187] font-semibold">
-                        {student.gradeLevel || 'الصف غير محدد'}
+                        {getLocalizedStageName(student.gradeLevel) || 'الصف غير محدد'}
                         {student.phone ? ` • ${student.phone}` : ''}
                       </p>
                     </div>

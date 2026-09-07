@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Student, Group, Session, Payment, TeacherProfile } from '../types';
 import { db } from '../utils/storage';
+import { getLocalizedStageName } from '../utils/stages';
 
 interface DashboardViewProps {
   students: Student[];
@@ -330,7 +331,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div>
                       <h4 className="font-bold text-xs text-[#2D332A]">{group.name}</h4>
                       <p className="text-[10px] text-[#8A9187]">
-                        {group.subject} • {group.gradeLevel}
+                        {group.subject} • {getLocalizedStageName(group.gradeLevel)}
                       </p>
                     </div>
                   </div>

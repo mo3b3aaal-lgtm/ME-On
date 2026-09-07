@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Group, Student } from '../types';
 import { db } from '../utils/storage';
+import { getLocalizedStageName } from '../utils/stages';
 
 interface GroupsViewProps {
   groups: Group[];
@@ -160,7 +161,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                         {group.name}
                       </h3>
                       <p className="text-[11px] text-[#8A9187] font-semibold">
-                        {group.subject} • {group.gradeLevel}
+                        {group.subject} • {getLocalizedStageName(group.gradeLevel)}
                       </p>
                     </div>
                   </div>

@@ -32,6 +32,7 @@ import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceSta
 import { db, getArabicMonthName, getBillingModeLabel } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
+import { getLocalizedStageName } from '../utils/stages';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -254,7 +255,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className="text-[11px] font-bold text-[#6B7567] bg-[#F2ECE1] px-2.5 py-0.5 rounded-full border border-[#E8E2D6]">
-                  {student.gradeLevel || 'الصف غير محدد'}
+                  {getLocalizedStageName(student.gradeLevel) || 'الصف غير محدد'}
                 </span>
                 {student.school && (
                   <span className="text-[11px] text-[#8A9187] font-medium">

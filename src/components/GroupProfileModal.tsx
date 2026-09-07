@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Group, Student, Session, Enrollment } from '../types';
 import { db, getBillingModeLabel } from '../utils/storage';
+import { getLocalizedStageName } from '../utils/stages';
 
 interface GroupProfileModalProps {
   isOpen: boolean;
@@ -109,7 +110,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
-                مادة {group.subject} • {group.gradeLevel}
+                مادة {group.subject} • {getLocalizedStageName(group.gradeLevel)}
               </p>
             </div>
           </div>

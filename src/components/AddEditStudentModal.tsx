@@ -20,6 +20,7 @@ import { Student, Group, BillingMode, BillingType, AchievementFrame } from '../t
 import { db } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
 import { StudentAvatar } from './StudentAvatar';
+import { AchievementFrameSelector } from './AchievementFrameSelector';
 import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade } from '../utils/stages';
 import { t } from '../utils/i18n';
 
@@ -307,81 +308,52 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#434B3E]">
           
-          {/* Avatar & Photo Card */}
-          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
+          {/* Avatar, Photo & Luxury Gaming Achievement Frame */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3.5 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-[#748C70]" />
-                <span>الصورة الشخصية وإطار التميز (Achievement Frame)</span>
+                <span>الصورة الشخصية وإطار التميز (Luxury Achievement Frame)</span>
               </h3>
-              <span className="text-[10px] text-[#748C70] font-bold">مضغوطة تلقائياً &lt; 30KB</span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
-                <StudentAvatar
-                  student={{
-                    id: 'preview',
-                    name: name || 'طالب',
-                    avatarColor,
-                    profilePhoto,
-                    achievementFrame,
-                  }}
-                  size="xl"
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
                 />
-              </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isCompressingPhoto}
+                  className="px-2.5 py-1 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1 transition-all shadow-xs disabled:opacity-50"
+                >
+                  <Upload className="w-3 h-3" />
+                  <span>{isCompressingPhoto ? 'جاري الضغط...' : profilePhoto ? 'تغيير الصورة' : 'رفع صورة'}</span>
+                </button>
 
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
+                {profilePhoto && (
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isCompressingPhoto}
-                    className="px-3 py-1.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50"
+                    onClick={handleRemovePhoto}
+                    className="p-1 rounded-xl bg-[#C97C5D]/15 text-[#C97C5D] hover:bg-[#C97C5D]/25 transition-colors"
+                    title="حذف الصورة"
                   >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{isCompressingPhoto ? 'جاري المعالجة...' : 'رفع صورة'}</span>
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
-
-                  {profilePhoto && (
-                    <button
-                      type="button"
-                      onClick={handleRemovePhoto}
-                      className="p-1.5 rounded-xl bg-[#C97C5D]/15 text-[#C97C5D] hover:bg-[#C97C5D]/25 transition-colors"
-                      title="حذف الصورة"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Frame Selector */}
-                <div>
-                  <label className="block text-[10px] font-bold text-[#6B7567] mb-1 flex items-center gap-1">
-                    <Award className="w-3 h-3 text-[#D49B4B]" />
-                    <span>إطار التميز والإنجاز:</span>
-                  </label>
-                  <select
-                    value={achievementFrame}
-                    onChange={(e) => setAchievementFrame(e.target.value as AchievementFrame)}
-                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-1.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] font-bold"
-                  >
-                    {ACHIEVEMENT_FRAMES.map((frm) => (
-                      <option key={frm.id} value={frm.id}>
-                        {frm.icon} {frm.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                )}
               </div>
             </div>
+
+            {/* Visual Luxury Frame Selector with Live Interactive Preview */}
+            <AchievementFrameSelector
+              selectedFrame={achievementFrame}
+              onSelectFrame={(newFrame) => setAchievementFrame(newFrame)}
+              studentName={name || 'الطالب'}
+              profilePhoto={profilePhoto}
+              avatarColor={avatarColor}
+            />
           </div>
 
           {/* Basic Student Info Card */}

@@ -18,6 +18,7 @@ import {
 import { Group, Student, Session, Enrollment } from '../types';
 import { db, getBillingModeLabel } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
+import { StudentAvatar } from './StudentAvatar';
 
 interface GroupProfileModalProps {
   isOpen: boolean;
@@ -243,12 +244,12 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                           onClick={() => onOpenStudentProfile(st)}
                           className="flex items-center gap-2.5 cursor-pointer flex-1"
                         >
-                          <div
-                            className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-xs shrink-0"
-                            style={{ backgroundColor: st.avatarColor || '#748C70' }}
-                          >
-                            {st.name.charAt(0)}
-                          </div>
+                          <StudentAvatar
+                            student={st}
+                            size="sm"
+                            showFrame={true}
+                            className="shrink-0"
+                          />
                           <div>
                             <p className="font-bold text-[#2D332A] text-xs hover:text-[#748C70] transition-colors">
                               {st.name}

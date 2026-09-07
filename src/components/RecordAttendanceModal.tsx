@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Session, Group, Student, Attendance, AttendanceStatus } from '../types';
 import { db } from '../utils/storage';
+import { StudentAvatar } from './StudentAvatar';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -392,12 +393,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                   {/* Top Row: Name + Credit Badge + Homework Checkbox */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-xs shrink-0"
-                        style={{ backgroundColor: student.avatarColor || '#748C70' }}
-                      >
-                        {student.name.charAt(0)}
-                      </div>
+                      <StudentAvatar
+                        student={student}
+                        size="sm"
+                        showFrame={true}
+                        className="shrink-0"
+                      />
                       <div>
                         <h4 className="font-bold text-[#2D332A] text-xs leading-tight">{student.name}</h4>
                         <div className="flex items-center gap-1.5 mt-0.5">

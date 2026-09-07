@@ -112,17 +112,43 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
 // Dedicated Server-Authoritative Auth Endpoints
 app.post("/api/auth/login", async (req, res) => {
   try {
-    const identifier = req.body.identifier || req.body.email || req.body.phone || req.body.id;
-    const password = req.body.password;
+    const rawBody = req.body || {};
+    const bodyKeys = Object.keys(rawBody);
+    const identifier = rawBody.identifier || rawBody.email || rawBody.phone || rawBody.id || rawBody.username;
+    const hasPassword = Boolean(rawBody.password);
 
-    console.log(`[Auth API /api/auth/login] Attempting login for identifier: "${identifier}"`);
-
-    if (!identifier) {
-      return res.status(400).json({ success: false, error: "يرجى إدخال البريد الإلكتروني أو رقم الهاتف" });
+    // Determine identifier type for diagnostics
+    let idType = "unknown";
+    if (rawBody.email || (identifier && identifier.includes("@"))) {
+      idType = "email";
+    } else if (rawBody.phone || (identifier && /^[0-9+\s()-]+$/.test(identifier))) {
+      idType = "phone";
+    } else if (rawBody.id || (identifier && identifier.startsWith("acc_"))) {
+      idType = "userId";
+    } else if (identifier) {
+      idType = "name_or_string";
     }
 
-    const { user, token } = await authenticateUser(identifier, password);
-    console.log(`[Auth API /api/auth/login] Login successful! User ID: ${user.id}, Email: ${user.email}`);
+    console.log(`[Auth Diagnostic] Login Request Received:`, {
+      bodyKeys,
+      receivedIdentifierType: idType,
+      hasIdentifier: Boolean(identifier),
+      hasPassword,
+      clientIp: req.ip || req.headers["x-forwarded-for"],
+      userAgent: req.headers["user-agent"],
+    });
+
+    if (!identifier) {
+      console.warn(`[Auth Diagnostic] Login failed: Missing identifier in request body.`);
+      return res.status(400).json({
+        success: false,
+        error: "يرجى إدخال البريد الإلكتروني أو رقم الهاتف",
+        diagnostic: { reason: "MISSING_IDENTIFIER", receivedKeys: bodyKeys },
+      });
+    }
+
+    const { user, token } = await authenticateUser(identifier, rawBody.password);
+    console.log(`[Auth Diagnostic] Login successful! User ID: ${user.id}, Email: ${user.email}`);
 
     res.json({
       success: true,
@@ -140,15 +166,67 @@ app.post("/api/auth/login", async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.warn(`[Auth API /api/auth/login] Authentication failed:`, error.message);
-    res.status(401).json({ success: false, error: error.message || "فشل تسجيل الدخول" });
+    console.warn(`[Auth Diagnostic] Authentication failed:`, {
+      message: error.message,
+      code: error.code || "AUTH_FAILED",
+      stack: error.stack?.split("\n").slice(0, 3).join(" | "),
+    });
+    res.status(401).json({
+      success: false,
+      error: error.message || "فشل تسجيل الدخول",
+      errorCode: error.code || "AUTHENTICATION_FAILED",
+      diagnostic: {
+        errorMessage: error.message,
+        errorName: error.name,
+        errorCode: error.code,
+      },
+    });
   }
 });
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { id, email, name, phone, subject, centerOrSchool, password, recoveryPin } = req.body;
-    console.log(`[Auth API /api/auth/register] Registering account for: ${email || name}`);
+    const rawBody = req.body || {};
+    const receivedFields = Object.keys(rawBody);
+
+    const name = (rawBody.name || "").trim();
+    const email = (rawBody.email || "").trim().toLowerCase();
+    const phone = (rawBody.phone || "").trim();
+    const password = rawBody.password;
+    const subject = rawBody.subject || "عام";
+    const centerOrSchool = rawBody.centerOrSchool || rawBody.center_or_school || "";
+    const recoveryPin = rawBody.recoveryPin || rawBody.recovery_pin || "123456";
+    const id = rawBody.id;
+
+    const missingFields: string[] = [];
+    if (!name) missingFields.push("name (اسم المعلم)");
+    if (!email && !phone) missingFields.push("email or phone (البريد الإلكتروني أو الهاتف)");
+    if (!password) {
+      missingFields.push("password (كلمة المرور)");
+    } else if (String(password).length < 4) {
+      missingFields.push("password_too_short (كلمة المرور يجب ألا تقل عن 4 أحرف)");
+    }
+
+    console.log(`[Auth Diagnostic - REGISTER Request]`, {
+      receivedFields,
+      hasName: Boolean(name),
+      hasEmail: Boolean(email),
+      hasPhone: Boolean(phone),
+      hasPassword: Boolean(password),
+      missingFields,
+      clientIp: req.ip || req.headers["x-forwarded-for"],
+    });
+
+    if (missingFields.length > 0) {
+      const firstMissing = missingFields[0];
+      return res.status(400).json({
+        success: false,
+        error: `Missing field: ${firstMissing}`,
+        errorCode: "VALIDATION_FAILED",
+        missingFields,
+        receivedFields,
+      });
+    }
 
     const { user, token } = await registerUser({
       id,
@@ -180,7 +258,11 @@ app.post("/api/auth/register", async (req, res) => {
     });
   } catch (error: any) {
     console.error(`[Auth API /api/auth/register] Registration error:`, error);
-    res.status(400).json({ success: false, error: error.message || "فشل إنشاء الحساب" });
+    res.status(400).json({
+      success: false,
+      error: error.message || "فشل إنشاء الحساب",
+      errorCode: error.code || "REGISTRATION_FAILED",
+    });
   }
 });
 

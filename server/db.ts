@@ -72,8 +72,14 @@ export async function authenticateUser(
     throw new Error("يرجى إدخال البريد الإلكتروني أو رقم الهاتف أو اسم المستخدم");
   }
 
+  console.log(`[Auth Diagnostic - LOGIN]`, {
+    identifierReceived: clean,
+    hasPasswordProvided: Boolean(password),
+  });
+
   const usersColl = collection(db, "users");
   let matchedDoc: any = null;
+  const queryErrors: string[] = [];
 
   // 1. Direct document lookup (if identifier is a user ID like acc_...)
   try {
@@ -81,7 +87,10 @@ export async function authenticateUser(
     if (directDoc.exists()) {
       matchedDoc = directDoc;
     }
-  } catch (e) {}
+  } catch (e: any) {
+    queryErrors.push(`directDoc: [${e.code || "ERR"}] ${e.message}`);
+    console.warn(`[Auth Diagnostic] directDoc lookup error:`, e.message);
+  }
 
   // 2. Query by email (lowercase)
   if (!matchedDoc) {
@@ -91,7 +100,10 @@ export async function authenticateUser(
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
-    } catch (e) {}
+    } catch (e: any) {
+      queryErrors.push(`queryEmailLower: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qEmailLower lookup error:`, e.message);
+    }
   }
 
   // 3. Query by exact email (in case stored without lowercase)
@@ -102,7 +114,10 @@ export async function authenticateUser(
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
-    } catch (e) {}
+    } catch (e: any) {
+      queryErrors.push(`queryEmailRaw: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qEmailRaw lookup error:`, e.message);
+    }
   }
 
   // 4. Query by phone
@@ -113,7 +128,10 @@ export async function authenticateUser(
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
-    } catch (e) {}
+    } catch (e: any) {
+      queryErrors.push(`queryPhone: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qPhone lookup error:`, e.message);
+    }
   }
 
   // 5. Query by name
@@ -124,29 +142,59 @@ export async function authenticateUser(
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
-    } catch (e) {}
+    } catch (e: any) {
+      queryErrors.push(`queryName: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qName lookup error:`, e.message);
+    }
   }
 
+  const userFound = Boolean(matchedDoc);
+  console.log(`[Auth Diagnostic] Database Search Result:`, {
+    userFound,
+    matchedUserId: matchedDoc ? matchedDoc.id : null,
+    queryErrorsCount: queryErrors.length,
+    queryErrors: queryErrors.length > 0 ? queryErrors : undefined,
+  });
+
   if (!matchedDoc) {
+    if (queryErrors.length > 0 && queryErrors.some(err => err.includes("permission-denied") || err.includes("insufficient"))) {
+      throw new Error(`خطأ في صلاحيات قاعدة البيانات السحابية (Missing or insufficient permissions): ${queryErrors[0]}`);
+    }
     throw new Error("لم يتم العثور على حساب مسجل بهذا البريد الإلكتروني أو الهاتف في السيرفر السحابي");
   }
 
   const userData = matchedDoc.data() as ServerUser;
+  const storedHash = userData.password_hash || "";
+  const storedPlain = (userData as any).password || "";
+  const hasPasswordHash = Boolean(storedHash || storedPlain);
+
+  let verificationResult = false;
 
   // Authenticate password if provided
   if (password) {
     const inputHash = crypto.createHash("sha256").update(password).digest("hex");
-    const storedHash = userData.password_hash || "";
-    const storedPlain = (userData as any).password || "";
 
-    const isMatch =
+    verificationResult =
       (storedHash && storedHash === inputHash) ||
       (storedPlain && storedPlain === password) ||
       (!storedHash && !storedPlain);
 
-    if (!isMatch) {
+    console.log(`[Auth Diagnostic] Password Verification:`, {
+      passwordHashExists: hasPasswordHash,
+      verificationResult,
+      isHashMatch: Boolean(storedHash && storedHash === inputHash),
+      isPlainMatch: Boolean(storedPlain && storedPlain === password),
+      isEmptyFallback: Boolean(!storedHash && !storedPlain),
+    });
+
+    if (!verificationResult) {
       throw new Error("كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مجدداً");
     }
+  } else {
+    console.log(`[Auth Diagnostic] Password Verification: No password provided in request`, {
+      passwordHashExists: hasPasswordHash,
+      verificationResult: false,
+    });
   }
 
   const token = generateRandomSessionToken();
@@ -231,11 +279,30 @@ export async function registerUser(account: {
   };
 
   const userRef = doc(db, "users", userId);
-  await setDoc(userRef, {
-    ...newUser,
-    subject: account.subject || "عام",
-    centerOrSchool: account.centerOrSchool || "",
-  });
+  try {
+    await setDoc(userRef, {
+      ...newUser,
+      subject: account.subject || "عام",
+      centerOrSchool: account.centerOrSchool || "",
+    });
+
+    console.log(`[Auth Diagnostic - REGISTER]`, {
+      userCreated: true,
+      userDocumentPath: `users/${userId}`,
+      userId,
+      emailType: cleanEmail ? "provided" : "generated",
+      hasPasswordHash: Boolean(pwdHash),
+    });
+  } catch (err: any) {
+    console.error(`[Auth Diagnostic - REGISTER]`, {
+      userCreated: false,
+      userDocumentPath: `users/${userId}`,
+      userId,
+      error: err.message,
+      errorCode: err.code,
+    });
+    throw err;
+  }
 
   return { user: newUser, token };
 }
@@ -366,6 +433,7 @@ export async function saveCloudDataPackage(userId: string, dataPackage: any): Pr
       user_id: userId,
       version: dataPackage.version || "2.0",
       last_sync_time: now,
+      data_package: updatedPkg,
       package: updatedPkg,
       updated_at: now,
     },

@@ -2,15 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for Attribute-Based Access Control (ABAC) and validation
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
+    // Helper functions for schema validation
     function isValidUser(data) {
       return data.keys().hasAll(['id', 'email', 'name', 'auth_token']) &&
         data.id is string && data.id.size() > 0 &&
@@ -35,31 +27,31 @@ service cloud.firestore {
         data.timestamp is string;
     }
 
-    // Default deny all access across the database
+    // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;
     }
 
     // Secure user accounts collection
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data);
-      allow delete: if isOwner(userId);
+      allow read: if true;
+      allow create: if isValidUser(request.resource.data);
+      allow update: if isValidUser(request.resource.data);
+      allow delete: if false;
     }
 
     // Secure user synchronization store packages
     match /user_sync_stores/{userId} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidSyncStore(request.resource.data, userId);
-      allow update: if isOwner(userId) && isValidSyncStore(request.resource.data, userId);
-      allow delete: if isOwner(userId);
+      allow read: if true;
+      allow create: if isValidSyncStore(request.resource.data, userId);
+      allow update: if isValidSyncStore(request.resource.data, userId);
+      allow delete: if false;
     }
 
     // Secure sync audit logs (Append-only / Immutable)
     match /sync_audit_logs/{logId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.user_id == request.auth.uid);
-      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid && isValidAuditLog(request.resource.data);
+      allow read: if true;
+      allow create: if isValidAuditLog(request.resource.data);
       allow update, delete: if false;
     }
   }

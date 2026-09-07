@@ -37,6 +37,7 @@ import {
   AutoSyncConfig,
   AuthDiagnostics,
 } from '../types';
+import { getAppLanguage } from './i18n';
 
 export { getServerApiBaseUrl, getFullApiUrl, DEPLOYED_SERVER_API_URL };
 
@@ -96,6 +97,27 @@ export function getArabicDayName(dateString: string): string {
 
 export function getBillingModeLabel(billingType?: string, billingMode?: string): string {
   const mode = billingMode || billingType;
+  const isEn = getAppLanguage().startsWith('en');
+
+  if (isEn) {
+    switch (mode) {
+      case 'monthly':
+        return 'Monthly Subscription';
+      case 'prepaid':
+        return 'Prepaid (Per Session)';
+      case 'postpaid':
+        return 'Postpaid (Per Session)';
+      case 'per_session':
+        return 'Per Session';
+      case 'package':
+        return 'Session Package';
+      case 'hourly':
+        return 'Hourly Billing';
+      default:
+        return 'Per Session';
+    }
+  }
+
   switch (mode) {
     case 'monthly':
       return 'اشتراك شهري (Monthly)';

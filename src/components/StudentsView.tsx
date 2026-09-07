@@ -13,6 +13,8 @@ import {
 import { Student, Group } from '../types';
 import { db } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
+import { StudentAvatar } from './StudentAvatar';
+import { useTranslation } from '../utils/i18n';
 
 interface StudentsViewProps {
   students: Student[];
@@ -27,6 +29,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onOpenAddStudent,
   onOpenStudentProfile,
 }) => {
+  const { t, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('all');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
@@ -70,16 +73,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#2D332A] pb-24" dir="rtl">
-      
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#2D332A] pb-24" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold font-serif text-[#2D332A] tracking-tight">
-            دليل الطلاب ({students.length})
+            {t('studentsTitle')} ({students.length})
           </h1>
           <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
-            إدارة الطلاب والاشتراكات والمواقف المالية
+            {t('studentsSubtitle')}
           </p>
         </div>
 
@@ -88,20 +90,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           className="px-3 py-2 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
         >
           <UserPlus className="w-4 h-4" />
-          <span>إضافة طالب</span>
+          <span>{t('addStudent')}</span>
         </button>
       </div>
 
       {/* Search & Filter Bar */}
       <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
         <div className="relative">
-          <Search className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+          <Search className={`w-4 h-4 text-[#8A9187] absolute top-3 ${language === 'ar' ? 'right-3' : 'left-3'}`} />
           <input
             type="text"
-            placeholder="ابحث باسم الطالب، ولي الأمر، أو رقم الهاتف..."
+            placeholder={t('search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl pr-9 pl-3 py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]"
+            className={`w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70] font-bold ${
+              language === 'ar' ? 'pr-9 pl-3' : 'pl-9 pr-3'
+            }`}
           />
         </div>
 
@@ -112,7 +116,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             onChange={(e) => setSelectedGradeFilter(e.target.value)}
             className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl px-2.5 py-1 text-[11px] text-[#2D332A] font-bold focus:outline-none"
           >
-            <option value="all">كل المراحل الدراسية</option>
+            <option value="all">{t('all')}</option>
             {gradeLevels.map((lvl) => (
               <option key={lvl} value={lvl}>
                 {getLocalizedStageName(lvl)}
@@ -125,7 +129,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             onChange={(e) => setSelectedGroupFilter(e.target.value)}
             className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl px-2.5 py-1 text-[11px] text-[#2D332A] font-bold focus:outline-none"
           >
-            <option value="all">كل المجموعات</option>
+            <option value="all">{t('all')}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
@@ -142,7 +146,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6]'
             }`}
           >
-            عليهم مديونية فقط
+            {t('onlyDebtors')}
           </button>
         </div>
       </div>
@@ -151,22 +155,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {students.length === 0 ? (
         <div className="p-8 bg-white border border-[#E8E2D6] rounded-2xl text-center space-y-2 shadow-sm">
           <Users className="w-10 h-10 mx-auto text-[#8A9187] opacity-50 mb-1" />
-          <h3 className="font-bold text-sm text-[#2D332A]">لا يوجد طلاب مسجلين حتى الآن</h3>
+          <h3 className="font-bold text-sm text-[#2D332A]">{t('noStudentsFound')}</h3>
           <p className="text-xs text-[#8A9187] max-w-sm mx-auto">
-            قم بإضافة طالبك الأول لحفظ بياناته وتسكينه في مجموعاتك الدراسية وحساب مدفوعاته بدقة.
+            {t('studentsSubtitle')}
           </p>
           <button
             onClick={onOpenAddStudent}
             className="mt-3 px-4 py-2 rounded-xl bg-[#748C70] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm"
           >
             <UserPlus className="w-4 h-4" />
-            <span>إضافة طالب جديد الآن</span>
+            <span>{t('addStudent')}</span>
           </button>
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="p-8 bg-white border border-[#E8E2D6] rounded-2xl text-center text-[#8A9187] space-y-1">
           <AlertCircle className="w-8 h-8 mx-auto opacity-50" />
-          <p className="font-bold text-[#2D332A] text-xs">لا يوجد طلاب يطابقون خيارات البحث</p>
+          <p className="font-bold text-[#2D332A] text-xs">{t('noStudentsFound')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -181,22 +185,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#748C70]/60 transition-all cursor-pointer space-y-2.5 active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between">
-                  
                   {/* Left: Avatar + Name + Grade */}
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm shrink-0"
-                      style={{ backgroundColor: student.avatarColor || '#748C70' }}
-                    >
-                      {student.name.charAt(0)}
-                    </div>
+                    <StudentAvatar student={student} size="md" />
 
                     <div>
                       <h3 className="font-bold text-xs text-[#2D332A] tracking-tight hover:text-[#748C70] transition-colors">
                         {student.name}
                       </h3>
                       <p className="text-[11px] text-[#8A9187] font-semibold">
-                        {getLocalizedStageName(student.gradeLevel) || 'الصف غير محدد'}
+                        {getLocalizedStageName(student.gradeLevel) || '-'}
                         {student.phone ? ` • ${student.phone}` : ''}
                       </p>
                     </div>
@@ -214,20 +212,19 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       }`}
                     >
                       {fin.balance < 0
-                        ? `${Math.abs(fin.balance)} ج مديونية`
+                        ? `${Math.abs(fin.balance)} ${t('currency')} ${t('hasDue')}`
                         : fin.balance > 0
-                        ? `+${fin.balance} ج رصيد`
-                        : 'خالص الحساب'}
+                        ? `+${fin.balance} ${t('currency')} ${t('hasCredit')}`
+                        : t('settled')}
                     </span>
                   </div>
-
                 </div>
 
                 {/* Enrolled Groups Badges (Chips for every group without duplication) */}
                 <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[#E8E2D6]/60">
-                  <span className="text-[10px] font-bold text-[#8A9187]">المجموعات:</span>
+                  <span className="text-[10px] font-bold text-[#8A9187]">{t('navGroups')}:</span>
                   {studentGroups.length === 0 ? (
-                    <span className="text-[10px] text-[#8A9187] italic">غير مقيد بمجموعة</span>
+                    <span className="text-[10px] text-[#8A9187] italic">-</span>
                   ) : (
                     studentGroups.map(({ group, enrollment }) => (
                       <span
@@ -239,18 +236,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           style={{ backgroundColor: group.accentColor || '#748C70' }}
                         />
                         <span>{group.name}</span>
-                        <span className="text-[#8A9187]">({enrollment.customPrice}ج)</span>
+                        <span className="text-[#8A9187]">({enrollment.customPrice} {t('currency')})</span>
                       </span>
                     ))
                   )}
                 </div>
-
               </div>
             );
           })}
         </div>
       )}
-
     </div>
   );
 };

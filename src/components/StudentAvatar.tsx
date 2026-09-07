@@ -2,8 +2,15 @@ import React from 'react';
 import { Crown, Star, Award, Sparkles, Shield, User } from 'lucide-react';
 import { AchievementFrame } from '../types';
 
-interface StudentAvatarProps {
-  name: string;
+export interface StudentAvatarProps {
+  student?: {
+    id?: string;
+    name?: string;
+    avatarColor?: string;
+    profilePhoto?: string | null;
+    achievementFrame?: AchievementFrame | null;
+  } | null;
+  name?: string;
   avatarColor?: string;
   profilePhoto?: string | null;
   achievementFrame?: AchievementFrame | null;
@@ -189,22 +196,39 @@ export const ACHIEVEMENT_FRAME_INFO: Record<
 };
 
 export const StudentAvatar: React.FC<StudentAvatarProps> = ({
-  name,
-  avatarColor = '#748C70',
-  profilePhoto,
-  achievementFrame = 'none',
+  student,
+  name: propName,
+  avatarColor: propColor,
+  profilePhoto: propPhoto,
+  achievementFrame: propFrame,
   size = 'md',
   className = '',
   showBadge = true,
 }) => {
+  const finalName = student?.name || propName || 'طالب';
+  const finalColor = student?.avatarColor || propColor || '#748C70';
+  const finalPhoto = student?.profilePhoto !== undefined ? student?.profilePhoto : propPhoto;
+  const finalFrame = (student?.achievementFrame || propFrame || 'none') as AchievementFrame;
+
   const sizeConfig = SIZE_CONFIGS[size] || SIZE_CONFIGS.md;
-  const frameInfo = achievementFrame && achievementFrame !== 'none' ? ACHIEVEMENT_FRAME_INFO[achievementFrame] : null;
+  const frameInfo =
+    finalFrame && finalFrame !== 'none' && finalFrame !== 'default'
+      ? ACHIEVEMENT_FRAME_INFO[finalFrame] || ACHIEVEMENT_FRAME_INFO.gold
+      : null;
   const BadgeIcon = frameInfo ? frameInfo.icon : null;
 
   // Initial letter
-  const initial = name?.trim() ? name.trim().charAt(0).toUpperCase() : 'ط';
+  const initial = finalName.trim() ? finalName.trim().charAt(0).toUpperCase() : 'ط';
 
-  const hasPhoto = Boolean(profilePhoto && profilePhoto.startsWith('data:image'));
+  const hasPhoto = Boolean(
+    finalPhoto &&
+      typeof finalPhoto === 'string' &&
+      finalPhoto.trim().length > 10 &&
+      (finalPhoto.startsWith('data:image') ||
+        finalPhoto.startsWith('http') ||
+        finalPhoto.startsWith('blob:') ||
+        finalPhoto.startsWith('/'))
+  );
 
   return (
     <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
@@ -217,12 +241,12 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
         {/* Core Avatar Circle */}
         <div
           className={`${sizeConfig.container} rounded-full overflow-hidden flex items-center justify-center text-white font-bold select-none relative shadow-inner`}
-          style={{ backgroundColor: hasPhoto ? '#E8E2D6' : avatarColor }}
+          style={{ backgroundColor: hasPhoto ? '#E8E2D6' : finalColor }}
         >
           {hasPhoto ? (
             <img
-              src={profilePhoto!}
-              alt={name}
+              src={finalPhoto!}
+              alt={finalName}
               className="w-full h-full object-cover rounded-full"
               loading="lazy"
               onError={(e) => {

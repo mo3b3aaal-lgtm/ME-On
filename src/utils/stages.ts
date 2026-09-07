@@ -1,4 +1,4 @@
-import { AppLanguage } from './i18n';
+import { AppLanguage, getAppLanguage } from './i18n';
 
 export interface EducationalStage {
   id: string;
@@ -138,12 +138,13 @@ export const EDUCATIONAL_STAGES: EducationalStage[] = [
 ];
 
 // Helper to get localized stage name from any stored string or id
-export function getLocalizedStageName(stageIdentifier: string | undefined, lang: AppLanguage = 'ar'): string {
+export function getLocalizedStageName(stageIdentifier: string | undefined, lang?: AppLanguage): string {
   if (!stageIdentifier) return '';
+  const currentLang = lang || getAppLanguage();
 
   // Direct match by ID
   const foundById = EDUCATIONAL_STAGES.find((s) => s.id === stageIdentifier);
-  if (foundById) return foundById.names[lang] || foundById.names.ar;
+  if (foundById) return foundById.names[currentLang] || foundById.names.ar;
 
   // Match by any of the localized names
   const foundByName = EDUCATIONAL_STAGES.find((s) =>
@@ -151,23 +152,23 @@ export function getLocalizedStageName(stageIdentifier: string | undefined, lang:
     s.names['en-GB'] === stageIdentifier ||
     s.names['en-US'] === stageIdentifier
   );
-  if (foundByName) return foundByName.names[lang] || foundByName.names.ar;
+  if (foundByName) return foundByName.names[currentLang] || foundByName.names.ar;
 
   // Fuzzy matches for legacy stored values
-  if (stageIdentifier.includes('أول') && stageIdentifier.includes('ثانوي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'sec_1')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('ثاني') && stageIdentifier.includes('ثانوي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'sec_2')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('ثالث') && stageIdentifier.includes('ثانوي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'sec_3')?.names[lang] || stageIdentifier;
+  if (stageIdentifier.includes('أول') && stageIdentifier.includes('ثانوي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'sec_1')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('ثاني') && stageIdentifier.includes('ثانوي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'sec_2')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('ثالث') && stageIdentifier.includes('ثانوي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'sec_3')?.names[currentLang] || stageIdentifier;
 
-  if (stageIdentifier.includes('أول') && stageIdentifier.includes('إعدادي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'prep_1')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('ثاني') && stageIdentifier.includes('إعدادي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'prep_2')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('ثالث') && stageIdentifier.includes('إعدادي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'prep_3')?.names[lang] || stageIdentifier;
+  if (stageIdentifier.includes('أول') && stageIdentifier.includes('إعدادي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'prep_1')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('ثاني') && stageIdentifier.includes('إعدادي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'prep_2')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('ثالث') && stageIdentifier.includes('إعدادي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'prep_3')?.names[currentLang] || stageIdentifier;
 
-  if (stageIdentifier.includes('أول') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_1')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('ثاني') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_2')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('ثالث') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_3')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('رابع') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_4')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('خامس') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_5')?.names[lang] || stageIdentifier;
-  if (stageIdentifier.includes('سادس') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_6')?.names[lang] || stageIdentifier;
+  if (stageIdentifier.includes('أول') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_1')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('ثاني') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_2')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('ثالث') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_3')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('رابع') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_4')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('خامس') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_5')?.names[currentLang] || stageIdentifier;
+  if (stageIdentifier.includes('سادس') && stageIdentifier.includes('ابتدائي')) return EDUCATIONAL_STAGES.find((s) => s.id === 'primary_6')?.names[currentLang] || stageIdentifier;
 
   return stageIdentifier;
 }

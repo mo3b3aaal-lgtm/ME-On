@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Layers, Clock, MapPin, DollarSign, Calendar, GraduationCap } from 'lucide-react';
 import { Group, GroupType, BillingType } from '../types';
 import { db } from '../utils/storage';
-import { ALL_GRADE_LEVELS, STAGES_HIERARCHY } from '../utils/stages';
+import { ALL_GRADE_LEVELS, STAGES_HIERARCHY, getLocalizedStageName } from '../utils/stages';
+import { useTranslation } from '../utils/i18n';
 
 interface AddEditGroupModalProps {
   isOpen: boolean;
@@ -10,8 +11,6 @@ interface AddEditGroupModalProps {
   editingGroup?: Group | null;
   onSaveComplete: (savedGroup: Group) => void;
 }
-
-const WEEK_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
 const GROUP_COLORS = [
   '#748C70', // Sage green
@@ -29,6 +28,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   editingGroup,
   onSaveComplete,
 }) => {
+  const { t, isRTL, language } = useTranslation();
+
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [gradeLevel, setGradeLevel] = useState('الصف الأول الثانوي');
@@ -38,8 +39,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   const [hourlyRate, setHourlyRate] = useState<number>(150);
   const [packageSessionsCount, setPackageSessionsCount] = useState<number>(10);
   const [scheduleDays, setScheduleDays] = useState<string[]>(['السبت', 'الثلاثاء']);
-  const [scheduleTime, setScheduleTime] = useState('04:00 م');
-  const [roomOrLocation, setRoomOrLocation] = useState('قاعة 1 - السنتر');
+  const [scheduleTime, setScheduleTime] = useState('04:00 PM');
+  const [roomOrLocation, setRoomOrLocation] = useState('Room 1');
   const [accentColor, setAccentColor] = useState(GROUP_COLORS[0]);
   const [notes, setNotes] = useState('');
 
@@ -68,8 +69,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setHourlyRate(150);
       setPackageSessionsCount(10);
       setScheduleDays(['السبت', 'الثلاثاء']);
-      setScheduleTime('04:00 م');
-      setRoomOrLocation('قاعة 1');
+      setScheduleTime('04:00 PM');
+      setRoomOrLocation('Room 1');
       setAccentColor(GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)]);
       setNotes('');
     }
@@ -117,7 +118,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header */}
@@ -128,10 +129,10 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-[#2D332A]">
-                {editingGroup ? 'تعديل بيانات المجموعة' : 'إنشاء مجموعة جديدة'}
+                {editingGroup ? t('editGroupAction') : t('createGroupBtn')}
               </h2>
               <p className="text-[11px] text-[#8A9187]">
-                إعداد المجموعة ونظام المحاسبة والمواعيد الأسبوعية
+                {t('groupsSubtitle')}
               </p>
             </div>
           </div>
@@ -157,7 +158,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                   : 'text-[#6B7567] hover:text-[#2D332A]'
               }`}
             >
-              مجموعة عامة (سنتر / مدرسي)
+              {t('groupTypeGroup')}
             </button>
             <button
               type="button"
@@ -168,18 +169,18 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                   : 'text-[#6B7567] hover:text-[#2D332A]'
               }`}
             >
-              درس خاص / Private
+              {t('groupTypePrivate')}
             </button>
           </div>
 
           {/* Group Name & Subject */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">اسم المجموعة / الصف *</label>
+              <label className="block font-bold text-[#6B7567] mb-1">{t('groupName')} *</label>
               <input
                 type="text"
                 required
-                placeholder="مثال: مجموعة أوائل الفيزياء A"
+                placeholder="e.g. Physics A"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
@@ -187,11 +188,11 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">المادة الدراسية *</label>
+              <label className="block font-bold text-[#6B7567] mb-1">{t('subjectNameLabel')} *</label>
               <input
                 type="text"
                 required
-                placeholder="رياضيات، لغة عربية، علوم..."
+                placeholder="Math, Science..."
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
@@ -202,17 +203,17 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
           {/* Grade Level & Location */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">المرحلة / الصف الدراسية</label>
+              <label className="block font-bold text-[#6B7567] mb-1">{t('gradeLevel')}</label>
               <select
                 value={gradeLevel}
                 onChange={(e) => setGradeLevel(e.target.value)}
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
               >
                 {STAGES_HIERARCHY.map((stage) => (
-                  <optgroup key={stage.id} label={`${stage.nameAr} (${stage.nameEn})`}>
+                  <optgroup key={stage.id} label={language === 'ar' ? `${stage.nameAr} (${stage.nameEn})` : `${stage.nameEn} (${stage.nameAr})`}>
                     {stage.grades.map((grade) => (
                       <option key={grade.id} value={grade.nameAr}>
-                        {grade.nameAr}
+                        {getLocalizedStageName(grade.nameAr, language)}
                       </option>
                     ))}
                   </optgroup>
@@ -221,10 +222,10 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">المكان / القاعة</label>
+              <label className="block font-bold text-[#6B7567] mb-1">{t('location')}</label>
               <input
                 type="text"
-                placeholder="سنتر التميز - قاعة 2..."
+                placeholder="Center / Room 1..."
                 value={roomOrLocation}
                 onChange={(e) => setRoomOrLocation(e.target.value)}
                 className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
@@ -236,29 +237,29 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
           <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
             <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
               <DollarSign className="w-3.5 h-3.5 text-[#748C70]" />
-              <span>نظام المحاسبة الافتراضي للمجموعة</span>
+              <span>{t('billingMode')}</span>
             </h3>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">طريقة الحساب الافتراضية</label>
+                <label className="block text-[11px] text-[#8A9187] mb-1">{t('billingType')}</label>
                 <select
                   value={billingType}
                   onChange={(e) => setBillingType(e.target.value as BillingType)}
                   className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
                 >
-                  <option value="prepaid">دفع بالحصة - دفع مسبق (Prepaid)</option>
-                  <option value="postpaid">دفع بالحصة - دفع بعد الحصة (Postpaid)</option>
-                  <option value="package">باقة عدد حصص (Session Package)</option>
-                  <option value="monthly">اشتراك شهري ثابت (Monthly)</option>
-                  <option value="hourly">محاسبة بالساعة (Hourly Rate)</option>
+                  <option value="prepaid">{t('billingPrepaid')}</option>
+                  <option value="postpaid">{t('billingPostpaid')}</option>
+                  <option value="package">{t('billingPackage')}</option>
+                  <option value="monthly">{t('billingMonthly')}</option>
+                  <option value="hourly">{t('billingHourly')}</option>
                 </select>
               </div>
 
               {billingType === 'hourly' ? (
                 <div>
                   <label className="block text-[11px] text-[#8A9187] mb-1">
-                    سعر الساعة الافتراضي (ج.م / ساعة)
+                    {t('hourlyRateInputLabel')} ({t('currency')}/hr)
                   </label>
                   <input
                     type="number"
@@ -271,7 +272,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
               ) : (
                 <div>
                   <label className="block text-[11px] text-[#8A9187] mb-1">
-                    السعر الافتراضي {billingType === 'monthly' ? 'الشهري' : billingType === 'package' ? 'للباقة الإجمالية' : 'للحصة'} (ج.م)
+                    {t('defaultPrice')} ({t('currency')})
                   </label>
                   <input
                     type="number"
@@ -284,13 +285,12 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
               )}
             </div>
 
-            {/* Package count selection & presets */}
+            {/* Package count selection */}
             {billingType === 'package' && (
               <div className="p-2.5 bg-[#F9F7F2] rounded-xl border border-[#D49B4B]/40 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-[#2D332A]">عدد حصص الباقة:</label>
+                  <label className="text-[11px] font-bold text-[#2D332A]">{t('packageSessionsNumberLabel')}:</label>
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-[#8A9187]">حصص:</span>
                     <input
                       type="number"
                       min="1"
@@ -300,115 +300,89 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                     />
                   </div>
                 </div>
-
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {[5, 8, 10, 15, 20].map((count) => {
-                    const isSel = packageSessionsCount === count;
-                    return (
-                      <button
-                        key={count}
-                        type="button"
-                        onClick={() => setPackageSessionsCount(count)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                          isSel
-                            ? 'bg-[#D49B4B] text-white shadow-xs'
-                            : 'bg-white text-[#6B7567] border border-[#E8E2D6] hover:border-[#D49B4B]'
-                        }`}
-                      >
-                        {count} حصص
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="p-2 bg-[#D49B4B]/10 rounded-lg flex items-center justify-between text-xs text-[#9C6615] font-bold">
-                  <span>سعر الحصة الفعلي المحسوب:</span>
-                  <span className="text-sm text-[#2D332A]">
-                    {packageSessionsCount > 0 ? Math.round(defaultPrice / packageSessionsCount) : 0} ج.م / حصة
-                  </span>
-                </div>
               </div>
             )}
           </div>
 
-          {/* Schedule Days & Default Time */}
+          {/* Schedule Days & Time */}
           <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#748C70]" />
-                <span>أيام الحصص الأسبوعية</span>
-              </h3>
-              <div className="flex items-center gap-1 text-[11px] text-[#8A9187]">
-                <Clock className="w-3 h-3" />
-                <input
-                  type="text"
-                  placeholder="الموعد: 04:00 م"
-                  value={scheduleTime}
-                  onChange={(e) => setScheduleTime(e.target.value)}
-                  className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-lg px-2 py-0.5 text-xs text-[#2D332A] w-24 text-center focus:outline-none"
-                />
-              </div>
-            </div>
+            <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[#748C70]" />
+              <span>{t('scheduleDays')}</span>
+            </h3>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              {WEEK_DAYS.map((day) => {
-                const isSelected = scheduleDays.includes(day);
+              {[
+                { key: 'السبت', label: t('daySat') },
+                { key: 'الأحد', label: t('daySun') },
+                { key: 'الاثنين', label: t('dayMon') },
+                { key: 'الثلاثاء', label: t('dayTue') },
+                { key: 'الأربعاء', label: t('dayWed') },
+                { key: 'الخميس', label: t('dayThu') },
+                { key: 'الجمعة', label: t('dayFri') },
+              ].map(({ key, label }) => {
+                const isSelected = scheduleDays.includes(key);
                 return (
                   <button
-                    key={day}
+                    key={key}
                     type="button"
-                    onClick={() => toggleDay(day)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    onClick={() => toggleDay(key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                       isSelected
-                        ? 'bg-[#748C70] text-white shadow-sm'
-                        : 'bg-[#F9F7F2] text-[#6B7567] border border-[#E8E2D6] hover:border-[#748C70]/50'
+                        ? 'bg-[#748C70] text-white border-[#748C70] shadow-xs'
+                        : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
                     }`}
                   >
-                    {day}
+                    {label}
                   </button>
                 );
               })}
             </div>
-          </div>
 
-          {/* Color & Notes */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div>
-              <label className="block font-bold text-[#6B7567] mb-1.5">لون التمييز</label>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {GROUP_COLORS.map((col) => (
-                  <button
-                    key={col}
-                    type="button"
-                    onClick={() => setAccentColor(col)}
-                    className={`w-6 h-6 rounded-full transition-transform ${
-                      accentColor === col ? 'ring-2 ring-[#2D332A] scale-110' : 'opacity-80'
-                    }`}
-                    style={{ backgroundColor: col }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-[#6B7567] mb-1">ملاحظات عن المجموعة</label>
+            <div className="pt-2">
+              <label className="block text-[11px] text-[#8A9187] mb-1">{t('scheduleTime')}</label>
               <input
                 type="text"
-                placeholder="أهداف المنهج، اشتراطات الحضور..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                placeholder="04:00 PM"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Submit */}
-          <div className="pt-2">
+          {/* Accent Color */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-2 shadow-sm">
+            <label className="block font-bold text-[#6B7567] text-xs">{t('fallbackColorLabel')}</label>
+            <div className="flex items-center gap-2 flex-wrap">
+              {GROUP_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setAccentColor(color)}
+                  className={`w-7 h-7 rounded-xl transition-all border-2 ${
+                    accentColor === color ? 'scale-110 border-[#2D332A] shadow-xs' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-2xl border border-[#E8E2D6] bg-white text-[#6B7567] font-bold text-xs hover:bg-[#F2ECE1] transition-all"
+            >
+              {t('cancel')}
+            </button>
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs shadow-sm transition-all active:scale-[0.99]"
+              className="flex-1 py-3 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs shadow-md transition-all active:scale-95"
             >
-              {editingGroup ? 'حفظ تعديلات المجموعة' : 'إنشاء المجموعة'}
+              {editingGroup ? t('saveChanges') : t('save')}
             </button>
           </div>
 

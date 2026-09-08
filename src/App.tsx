@@ -19,6 +19,7 @@ import { SettingsView } from './components/SettingsView';
 import { AddEditStudentModal } from './components/AddEditStudentModal';
 import { AddEditGroupModal } from './components/AddEditGroupModal';
 import { AddEditSessionModal } from './components/AddEditSessionModal';
+import { BulkAddSessionModal } from './components/BulkAddSessionModal';
 import { EnrollExistingStudentModal } from './components/EnrollExistingStudentModal';
 import { StudentProfileModal } from './components/StudentProfileModal';
 import { GroupProfileModal } from './components/GroupProfileModal';
@@ -70,6 +71,10 @@ export default function App() {
   const [isAddSessionOpen, setIsAddSessionOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [sessionDefaultGroupId, setSessionDefaultGroupId] = useState<string | undefined>(undefined);
+
+  const [isBulkAddSessionOpen, setIsBulkAddSessionOpen] = useState(false);
+  const [bulkAddStudents, setBulkAddStudents] = useState<Student[]>([]);
+  const [bulkAddGroupId, setBulkAddGroupId] = useState<string | undefined>(undefined);
 
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [targetStudentForPayment, setTargetStudentForPayment] = useState<Student | null>(null);
@@ -123,6 +128,12 @@ export default function App() {
     setEditingSession(null);
     setSessionDefaultGroupId(defaultGroupId || groups[0]?.id);
     setIsAddSessionOpen(true);
+  };
+
+  const handleOpenBulkAddSession = (studentsToBulk: Student[], groupId?: string) => {
+    setBulkAddStudents(studentsToBulk);
+    setBulkAddGroupId(groupId);
+    setIsBulkAddSessionOpen(true);
   };
 
   const handleOpenEditSession = (session: Session) => {
@@ -191,6 +202,7 @@ export default function App() {
                   groups={groups}
                   onOpenAddStudent={handleOpenAddStudent}
                   onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
+                  onOpenBulkAddSession={(stList) => handleOpenBulkAddSession(stList)}
                 />
               )}
 
@@ -321,7 +333,24 @@ export default function App() {
           onAddSessionForGroup={(grp) => handleOpenAddSession(grp.id)}
           onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
           onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+          onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
           onDataChanged={refreshData}
+        />
+
+        {/* Bulk Add Sessions for Multiple Students Modal */}
+        <BulkAddSessionModal
+          isOpen={isBulkAddSessionOpen}
+          onClose={() => {
+            setIsBulkAddSessionOpen(false);
+            setBulkAddStudents([]);
+            setBulkAddGroupId(undefined);
+          }}
+          selectedStudents={bulkAddStudents}
+          preselectedGroupId={bulkAddGroupId}
+          allGroups={groups}
+          onSuccess={() => {
+            refreshData();
+          }}
         />
 
         {/* Record Attendance Modal */}

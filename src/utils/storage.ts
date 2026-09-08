@@ -36,12 +36,18 @@ import {
   AutoSyncStatus,
   AutoSyncConfig,
   AuthDiagnostics,
+  DeletionTombstone,
+  BulkStudentSessionTarget,
+  BulkCreateSessionsParams,
+  BulkCreateSessionsResult,
+  BulkStudentResultItem,
 } from '../types';
 import { getAppLanguage } from './i18n';
 
 export { getServerApiBaseUrl, getFullApiUrl, DEPLOYED_SERVER_API_URL };
 
 let lastAuthDiagnosticsRecord: AuthDiagnostics | null = null;
+const executedBulkBatches = new Map<string, BulkCreateSessionsResult>();
 
 const STORAGE_KEYS = {
   STUDENTS: 'tm_v2_students',
@@ -55,6 +61,8 @@ const STORAGE_KEYS = {
   ACCOUNTS: 'tm_v2_accounts',
   CURRENT_SESSION: 'tm_v2_current_session',
   AUTO_SYNC_CONFIG: 'tm_v2_auto_sync_config',
+  TOMBSTONES: 'tm_v2_deletion_tombstones',
+  RESET_ALL_BEFORE: 'tm_v2_reset_all_before',
 };
 
 const ARABIC_MONTH_NAMES = [
@@ -222,6 +230,90 @@ export function getActiveUserId(): string {
   return 'acc_master_teacher';
 }
 
+// Deletion Tombstone & Sync Management Helpers
+export function getDeletionTombstones(userId?: string): DeletionTombstone[] {
+  const targetUserId = userId || getActiveUserId();
+  const all = getList<DeletionTombstone>(STORAGE_KEYS.TOMBSTONES, []);
+  return all.filter((t) => (t.userId ? t.userId === targetUserId : targetUserId === 'acc_master_teacher'));
+}
+
+export function addDeletionTombstone(
+  entityType: DeletionTombstone['entityType'],
+  entityId: string,
+  userId?: string
+): void {
+  const targetUserId = userId || getActiveUserId();
+  const now = new Date().toISOString();
+  const all = getList<DeletionTombstone>(STORAGE_KEYS.TOMBSTONES, []);
+
+  const existingIdx = all.findIndex(
+    (t) => t.id === entityId && t.entityType === entityType && (t.userId === targetUserId || !t.userId)
+  );
+
+  const newTombstone: DeletionTombstone = {
+    id: entityId,
+    entityType,
+    userId: targetUserId,
+    deletedAt: now,
+  };
+
+  if (existingIdx >= 0) {
+    all[existingIdx] = newTombstone;
+  } else {
+    all.push(newTombstone);
+  }
+  saveList(STORAGE_KEYS.TOMBSTONES, all);
+}
+
+export function removeDeletionTombstone(
+  entityType: DeletionTombstone['entityType'],
+  entityId: string,
+  userId?: string
+): void {
+  const targetUserId = userId || getActiveUserId();
+  const all = getList<DeletionTombstone>(STORAGE_KEYS.TOMBSTONES, []);
+  const remaining = all.filter(
+    (t) => !(t.id === entityId && t.entityType === entityType && (t.userId === targetUserId || (!t.userId && targetUserId === 'acc_master_teacher')))
+  );
+  saveList(STORAGE_KEYS.TOMBSTONES, remaining);
+}
+
+export function saveDeletionTombstones(tombstones: DeletionTombstone[], userId?: string): void {
+  const targetUserId = userId || getActiveUserId();
+  const all = getList<DeletionTombstone>(STORAGE_KEYS.TOMBSTONES, []).filter(
+    (t) => (t.userId ? t.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
+  );
+
+  const map = new Map<string, DeletionTombstone>();
+  for (const t of tombstones || []) {
+    if (t && t.id && t.entityType) {
+      const key = `${t.entityType}:${t.id}`;
+      const existing = map.get(key);
+      if (!existing || new Date(t.deletedAt).getTime() > new Date(existing.deletedAt).getTime()) {
+        map.set(key, { ...t, userId: targetUserId });
+      }
+    }
+  }
+
+  saveList(STORAGE_KEYS.TOMBSTONES, [...all, ...Array.from(map.values())]);
+}
+
+export function getResetAllBefore(userId?: string): string | undefined {
+  const targetUserId = userId || getActiveUserId();
+  try {
+    const val = localStorage.getItem(`${STORAGE_KEYS.RESET_ALL_BEFORE}_${targetUserId}`);
+    if (val) return val;
+  } catch {}
+  return undefined;
+}
+
+export function setResetAllBefore(timestampIso: string, userId?: string): void {
+  const targetUserId = userId || getActiveUserId();
+  try {
+    localStorage.setItem(`${STORAGE_KEYS.RESET_ALL_BEFORE}_${targetUserId}`, timestampIso);
+  } catch {}
+}
+
 // Legacy Data Migration: Ensures all existing pre-auth records are assigned to the master account
 function ensureDataMigrated(): void {
   try {
@@ -349,6 +441,9 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   } catch {}
 
   const nowIso = new Date().toISOString();
+  const userTombstones = getDeletionTombstones(targetUserId);
+  const resetAllBefore = getResetAllBefore(targetUserId);
+
   const dataPackage: UserAccountDataPackage = {
     lastSyncTime: nowIso,
     version: '2.0',
@@ -361,6 +456,8 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
     payments: userPayments,
     creditLogs: userCreditLogs,
     teacherProfile: userProfile,
+    tombstones: userTombstones,
+    resetAllBefore,
     stats: {
       totalStudents: userStudents.length,
       totalGroups: userGroups.length,
@@ -995,10 +1092,14 @@ export const db = {
 
   saveStudent: (student: Student): void => {
     const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
     const studentWithUser: Student = {
       ...student,
       userId: student.userId || activeUserId,
+      updatedAt: now,
+      createdAt: student.createdAt || now,
     };
+    removeDeletionTombstone('student', student.id, activeUserId);
     const list = getList<Student>(STORAGE_KEYS.STUDENTS, []);
     const idx = list.findIndex((s) => s.id === student.id);
     if (idx >= 0) {
@@ -1012,20 +1113,31 @@ export const db = {
 
   deleteStudent: (id: string): void => {
     const activeUserId = getActiveUserId();
+
+    // 1. Add tombstone for student
+    addDeletionTombstone('student', id, activeUserId);
+
+    // 2. Cascade tombstones for associated enrollments
+    const enrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
+    const studentEnrollments = enrollments.filter((e) => e.studentId === id);
+    studentEnrollments.forEach((e) => addDeletionTombstone('enrollment', e.id, activeUserId));
+
+    // 3. Cascade tombstones for associated payments
+    const payments = getList<Payment>(STORAGE_KEYS.PAYMENTS, []);
+    const studentPayments = payments.filter((p) => p.studentId === id);
+    studentPayments.forEach((p) => addDeletionTombstone('payment', p.id, activeUserId));
+
+    // 4. Cascade tombstones for associated attendance
+    const attendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
+    const studentAtt = attendance.filter((a) => a.studentId === id);
+    studentAtt.forEach((a) => addDeletionTombstone('attendance', a.id, activeUserId));
+
+    // 5. Update local storage
     const list = getList<Student>(STORAGE_KEYS.STUDENTS, []).filter((s) => s.id !== id);
     saveList(STORAGE_KEYS.STUDENTS, list);
-
-    // Also remove associated enrollments to maintain referential integrity
-    const enrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []).filter((e) => e.studentId !== id);
-    saveList(STORAGE_KEYS.ENROLLMENTS, enrollments);
-
-    // Remove payments for this student
-    const payments = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter((p) => p.studentId !== id);
-    saveList(STORAGE_KEYS.PAYMENTS, payments);
-
-    // Remove attendance for this student
-    const attendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []).filter((a) => a.studentId !== id);
-    saveList(STORAGE_KEYS.ATTENDANCE, attendance);
+    saveList(STORAGE_KEYS.ENROLLMENTS, enrollments.filter((e) => e.studentId !== id));
+    saveList(STORAGE_KEYS.PAYMENTS, payments.filter((p) => p.studentId !== id));
+    saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => a.studentId !== id));
 
     autoSyncUserAccount(activeUserId);
   },
@@ -1043,10 +1155,14 @@ export const db = {
 
   saveGroup: (group: Group): void => {
     const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
     const groupWithUser: Group = {
       ...group,
       userId: group.userId || activeUserId,
+      updatedAt: now,
+      createdAt: group.createdAt || now,
     };
+    removeDeletionTombstone('group', group.id, activeUserId);
     const list = getList<Group>(STORAGE_KEYS.GROUPS, []);
     const idx = list.findIndex((g) => g.id === group.id);
     if (idx >= 0) {
@@ -1060,16 +1176,31 @@ export const db = {
 
   deleteGroup: (id: string): void => {
     const activeUserId = getActiveUserId();
+
+    // 1. Tombstone group
+    addDeletionTombstone('group', id, activeUserId);
+
+    // 2. Cascade tombstone enrollments
+    const enrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
+    const groupEnrollments = enrollments.filter((e) => e.groupId === id);
+    groupEnrollments.forEach((e) => addDeletionTombstone('enrollment', e.id, activeUserId));
+
+    // 3. Cascade tombstone sessions & attendance
+    const sessions = getList<Session>(STORAGE_KEYS.SESSIONS, []);
+    const groupSessions = sessions.filter((s) => s.groupId === id);
+    groupSessions.forEach((s) => addDeletionTombstone('session', s.id, activeUserId));
+
+    const sessionIds = new Set(groupSessions.map((s) => s.id));
+    const attendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
+    const groupAtt = attendance.filter((a) => sessionIds.has(a.sessionId));
+    groupAtt.forEach((a) => addDeletionTombstone('attendance', a.id, activeUserId));
+
+    // 4. Update local storage
     const list = getList<Group>(STORAGE_KEYS.GROUPS, []).filter((g) => g.id !== id);
     saveList(STORAGE_KEYS.GROUPS, list);
-
-    // Cascade delete enrollments for this group
-    const enrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []).filter((e) => e.groupId !== id);
-    saveList(STORAGE_KEYS.ENROLLMENTS, enrollments);
-
-    // Cascade delete sessions for this group
-    const sessions = getList<Session>(STORAGE_KEYS.SESSIONS, []).filter((s) => s.groupId !== id);
-    saveList(STORAGE_KEYS.SESSIONS, sessions);
+    saveList(STORAGE_KEYS.ENROLLMENTS, enrollments.filter((e) => e.groupId !== id));
+    saveList(STORAGE_KEYS.SESSIONS, sessions.filter((s) => s.groupId !== id));
+    saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => !sessionIds.has(a.sessionId)));
 
     autoSyncUserAccount(activeUserId);
   },
@@ -1244,6 +1375,7 @@ export const db = {
       return found;
     }
 
+    const now = new Date().toISOString();
     const newEnrollment: Enrollment = {
       id: `enr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       userId: activeUserId,
@@ -1265,8 +1397,11 @@ export const db = {
       status: options?.status || 'active',
       joinedAt: options?.joinedAt || new Date().toISOString().split('T')[0],
       notes: options?.notes || '',
+      updatedAt: now,
+      createdAt: now,
     };
 
+    removeDeletionTombstone('enrollment', newEnrollment.id, activeUserId);
     const allEnrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
     allEnrollments.unshift(newEnrollment);
     saveList(STORAGE_KEYS.ENROLLMENTS, allEnrollments);
@@ -1276,6 +1411,7 @@ export const db = {
 
   removeEnrollment: (enrollmentId: string): void => {
     const activeUserId = getActiveUserId();
+    addDeletionTombstone('enrollment', enrollmentId, activeUserId);
     const list = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []).filter((e) => e.id !== enrollmentId);
     saveList(STORAGE_KEYS.ENROLLMENTS, list);
     autoSyncUserAccount(activeUserId);
@@ -1283,12 +1419,15 @@ export const db = {
 
   updateEnrollment: (enrollment: Enrollment): void => {
     const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
+    removeDeletionTombstone('enrollment', enrollment.id, activeUserId);
     const list = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
     const idx = list.findIndex((e) => e.id === enrollment.id);
     if (idx >= 0) {
       list[idx] = {
         ...enrollment,
         userId: enrollment.userId || list[idx].userId || activeUserId,
+        updatedAt: now,
       };
       saveList(STORAGE_KEYS.ENROLLMENTS, list);
       autoSyncUserAccount(activeUserId);
@@ -1343,10 +1482,14 @@ export const db = {
 
   saveSession: (session: Session): void => {
     const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
     const sessionWithUser: Session = {
       ...session,
       userId: session.userId || activeUserId,
+      updatedAt: now,
+      createdAt: session.createdAt || now,
     };
+    removeDeletionTombstone('session', session.id, activeUserId);
     const list = getList<Session>(STORAGE_KEYS.SESSIONS, []);
     const idx = list.findIndex((s) => s.id === session.id);
     if (idx >= 0) {
@@ -1504,14 +1647,234 @@ export const db = {
     return createdSessions;
   },
 
-  deleteSession: (id: string): void => {
-    const list = getList<Session>(STORAGE_KEYS.SESSIONS, []).filter((s) => s.id !== id);
-    saveList(STORAGE_KEYS.SESSIONS, list);
+  /**
+   * تسجيل حصة أو أكثر لعدة طلاب دفعة واحدة، مع احتساب النظام المالي والتسعير الخاص بكل طالب
+   */
+  recordBulkSessionsForStudents: (params: BulkCreateSessionsParams): BulkCreateSessionsResult => {
+    const activeUserId = getActiveUserId();
+    const count = Math.max(1, Math.floor(params.sessionCount || 1));
+    const idempotencyKey = params.idempotencyKey?.trim();
 
-    // Also remove attendance for this session and refund credit if prepaid
+    if (idempotencyKey && executedBulkBatches.has(idempotencyKey)) {
+      return executedBulkBatches.get(idempotencyKey)!;
+    }
+
+    const createdSessions: Session[] = [];
+    const results: BulkStudentResultItem[] = [];
+    let totalCreated = 0;
+
+    const parsedDate = new Date(params.date);
+    const month = !isNaN(parsedDate.getTime()) ? parsedDate.getMonth() + 1 : new Date().getMonth() + 1;
+    const year = !isNaN(parsedDate.getTime()) ? parsedDate.getFullYear() : new Date().getFullYear();
+    const dayName = !isNaN(parsedDate.getTime()) ? getArabicDayName(params.date) : 'السبت';
+
+    for (const target of params.students) {
+      const student = db.getStudentById(target.studentId);
+      const enrollment = db.getEnrollmentById(target.enrollmentId);
+      const group = db.getGroupById(target.groupId);
+
+      if (!student) {
+        results.push({
+          studentId: target.studentId,
+          studentName: 'غير معروف',
+          enrollmentId: target.enrollmentId,
+          groupId: target.groupId,
+          groupName: group?.name || 'غير محدد',
+          sessionsCreated: 0,
+          billingMode: 'postpaid',
+          chargedAmountPerSession: 0,
+          totalAmount: 0,
+          success: false,
+          error: 'Student not found in database',
+        });
+        continue;
+      }
+
+      if (!enrollment || !group) {
+        results.push({
+          studentId: target.studentId,
+          studentName: student.name,
+          enrollmentId: target.enrollmentId,
+          groupId: target.groupId,
+          groupName: group?.name || 'غير محدد',
+          sessionsCreated: 0,
+          billingMode: 'postpaid',
+          chargedAmountPerSession: 0,
+          totalAmount: 0,
+          success: false,
+          error: 'Enrollment or Group not found',
+        });
+        continue;
+      }
+
+      const billingMode: BillingMode =
+        enrollment.billingMode ||
+        (enrollment.billingType === 'hourly' ? 'hourly' : enrollment.billingType === 'monthly' ? 'monthly' : enrollment.billingType === 'package' ? 'package' : enrollment.billingType === 'prepaid' ? 'prepaid' : 'postpaid') ||
+        group.billingMode ||
+        (group.billingType === 'hourly' ? 'hourly' : group.billingType === 'monthly' ? 'monthly' : group.billingType === 'package' ? 'package' : group.billingType === 'prepaid' ? 'prepaid' : 'postpaid') ||
+        'postpaid';
+
+      const isHourly =
+        billingMode === 'hourly' ||
+        enrollment.billingType === 'hourly' ||
+        group.billingType === 'hourly' ||
+        (target.hours !== undefined && target.hours > 0);
+
+      const hours = target.hours && target.hours > 0 ? target.hours : 1;
+      const hourlyRate =
+        target.hourlyRate ||
+        enrollment.hourlyRate ||
+        enrollment.customPrice ||
+        group.hourlyRate ||
+        group.defaultPrice ||
+        100;
+
+      const isPackage =
+        !isHourly &&
+        (billingMode === 'package' ||
+          enrollment.billingType === 'package' ||
+          group.billingType === 'package');
+
+      const packageSessionsCount = isPackage
+        ? (enrollment.packageSessionsCount || group.packageSessionsCount || 10)
+        : undefined;
+
+      const packageTotalPrice = isPackage
+        ? (enrollment.packagePrice ||
+            (group.billingMode === 'package' || group.billingType === 'package' ? group.defaultPrice : undefined) ||
+            enrollment.customPrice ||
+            1000)
+        : undefined;
+
+      // Effective Session Price
+      let effectiveSessionPrice = enrollment.customPrice || group.defaultPrice || 100;
+      if (isHourly) {
+        effectiveSessionPrice = hours * hourlyRate;
+      } else if (isPackage && packageSessionsCount && packageTotalPrice) {
+        effectiveSessionPrice = Math.round(packageTotalPrice / packageSessionsCount);
+      }
+
+      const totalStudentValue = count * effectiveSessionPrice;
+      const packageId = isPackage ? (enrollment.groupId || group.id || `pkg_${enrollment.id}`) : undefined;
+      const baseTitle = params.title?.trim() || `حصة دراسية: ${student.name}`;
+
+      let studentSessionsCreated = 0;
+
+      for (let i = 1; i <= count; i++) {
+        const sessionSuffix = count > 1 ? ` (حصة ${i} من ${count})` : '';
+        const sessionId = `ses_bulk_${Date.now()}_${student.id}_${i}_${Math.random().toString(36).substr(2, 6)}`;
+
+        const newSession: Session = {
+          id: sessionId,
+          userId: activeUserId,
+          groupId: target.groupId,
+          enrollmentId: target.enrollmentId,
+          studentId: target.studentId,
+          packageId,
+          title: `${baseTitle}${sessionSuffix}`,
+          date: params.date,
+          dayName,
+          month,
+          year,
+          startTime: params.startTime || '16:00',
+          endTime: params.endTime,
+          status: params.status || 'completed',
+          pricePerStudent: effectiveSessionPrice,
+          hours: isHourly ? hours : undefined,
+          hourlyRate: isHourly ? hourlyRate : undefined,
+          sessionCount: 1,
+          effectiveSessionPrice,
+          totalSessionValue: effectiveSessionPrice,
+          packageTotalPrice,
+          packageSessionsCount,
+          notes: params.notes || '',
+          createdAt: new Date().toISOString(),
+          billingModeSnapshot: billingMode,
+          billingTypeSnapshot: enrollment.billingType,
+          hourlyRateSnapshot: isHourly ? hourlyRate : undefined,
+          sessionPriceSnapshot: enrollment.customPrice || group.defaultPrice,
+          effectivePriceSnapshot: effectiveSessionPrice,
+          packagePriceSnapshot: packageTotalPrice,
+          packageSessionsCountSnapshot: packageSessionsCount,
+          hoursSnapshot: isHourly ? hours : undefined,
+        };
+
+        db.saveSession(newSession);
+        createdSessions.push(newSession);
+
+        const attendanceRec: Attendance = {
+          id: `att_bulk_${Date.now()}_${student.id}_${i}_${Math.random().toString(36).substr(2, 6)}`,
+          userId: activeUserId,
+          sessionId: newSession.id,
+          studentId: target.studentId,
+          enrollmentId: target.enrollmentId,
+          status: params.attendanceStatus || 'present',
+          isCharged: params.isCharged !== undefined ? params.isCharged : true,
+          hours: isHourly ? hours : undefined,
+          hourlyRate: isHourly ? hourlyRate : undefined,
+          recordedAt: new Date().toISOString(),
+          notes: params.notes || '',
+          billingModeSnapshot: billingMode,
+          billingTypeSnapshot: enrollment.billingType,
+          hourlyRateSnapshot: isHourly ? hourlyRate : undefined,
+          sessionPriceSnapshot: enrollment.customPrice || group.defaultPrice,
+          effectivePriceSnapshot: effectiveSessionPrice,
+          packagePriceSnapshot: packageTotalPrice,
+          packageSessionsCountSnapshot: packageSessionsCount,
+          hoursSnapshot: isHourly ? hours : undefined,
+        };
+
+        db.saveAttendanceBatch(newSession.id, [attendanceRec]);
+        studentSessionsCreated++;
+        totalCreated++;
+      }
+
+      results.push({
+        studentId: student.id,
+        studentName: student.name,
+        enrollmentId: target.enrollmentId,
+        groupId: target.groupId,
+        groupName: group.name,
+        sessionsCreated: studentSessionsCreated,
+        billingMode,
+        chargedAmountPerSession: effectiveSessionPrice,
+        totalAmount: totalStudentValue,
+        success: true,
+      });
+    }
+
+    const finalResult: BulkCreateSessionsResult = {
+      success: results.some((r) => r.success),
+      totalCreated,
+      totalRequested: params.students.length * count,
+      sessionsPerStudent: count,
+      studentCount: params.students.length,
+      createdSessions,
+      results,
+    };
+
+    if (idempotencyKey) {
+      executedBulkBatches.set(idempotencyKey, finalResult);
+      if (executedBulkBatches.size > 200) {
+        const firstKey = executedBulkBatches.keys().next().value;
+        if (firstKey) executedBulkBatches.delete(firstKey);
+      }
+    }
+
+    return finalResult;
+  },
+
+  deleteSession: (id: string): void => {
+    const activeUserId = getActiveUserId();
+
+    // 1. Tombstone session
+    addDeletionTombstone('session', id, activeUserId);
+
+    // 2. Cascade tombstones for attendance and refund credit if prepaid
     const attendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
     const sessionAtt = attendance.filter((a) => a.sessionId === id);
-    
+    sessionAtt.forEach((a) => addDeletionTombstone('attendance', a.id, activeUserId));
+
     sessionAtt.forEach((att) => {
       const isCharged = att.isCharged !== undefined ? att.isCharged : (att.status === 'present' || att.status === 'late' || att.status === 'absent_charged' || att.status === 'absent');
       if (isCharged) {
@@ -1537,9 +1900,12 @@ export const db = {
       }
     });
 
+    const list = getList<Session>(STORAGE_KEYS.SESSIONS, []).filter((s) => s.id !== id);
+    saveList(STORAGE_KEYS.SESSIONS, list);
+
     const remainingAtt = attendance.filter((a) => a.sessionId !== id);
     saveList(STORAGE_KEYS.ATTENDANCE, remainingAtt);
-    autoSyncUserAccount();
+    autoSyncUserAccount(activeUserId);
   },
 
   // 5. Attendance (الحضور والغياب)
@@ -1688,7 +2054,16 @@ export const db = {
       }
     });
 
-    const recordsWithUserId = records.map((r) => ({ ...r, userId: r.userId || activeUserId }));
+    const now = new Date().toISOString();
+    const recordsWithUserId = records.map((r) => {
+      removeDeletionTombstone('attendance', r.id, activeUserId);
+      return {
+        ...r,
+        userId: r.userId || activeUserId,
+        updatedAt: now,
+        recordedAt: r.recordedAt || now,
+      };
+    });
     const combined = [...recordsWithUserId, ...otherSessionsAtt];
     saveList(STORAGE_KEYS.ATTENDANCE, combined);
     autoSyncUserAccount(activeUserId);
@@ -1913,6 +2288,7 @@ export const db = {
       db.updateEnrollment(targetEnrollment);
     }
 
+    const now = new Date().toISOString();
     const newPayment: Payment = {
       ...paymentData,
       userId: paymentData.userId || activeUserId,
@@ -1923,9 +2299,11 @@ export const db = {
       financialCreditAdded,
       financialCreditConverted,
       autoSessionsConverted,
-      createdAt: new Date().toISOString(),
+      createdAt: (paymentData as any).createdAt || now,
+      updatedAt: now,
     };
 
+    removeDeletionTombstone('payment', paymentId, activeUserId);
     payments.unshift(newPayment);
     saveList(STORAGE_KEYS.PAYMENTS, payments);
     autoSyncUserAccount(activeUserId);
@@ -1934,10 +2312,14 @@ export const db = {
 
   savePayment: (payment: Payment): void => {
     const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
     const paymentWithUser = {
       ...payment,
       userId: payment.userId || activeUserId,
+      updatedAt: now,
+      createdAt: payment.createdAt || now,
     };
+    removeDeletionTombstone('payment', payment.id, activeUserId);
     const list = getList<Payment>(STORAGE_KEYS.PAYMENTS, []);
     const idx = list.findIndex((p) => p.id === payment.id);
     if (idx >= 0) {
@@ -1951,6 +2333,7 @@ export const db = {
 
   deletePayment: (id: string): void => {
     const activeUserId = getActiveUserId();
+    addDeletionTombstone('payment', id, activeUserId);
     const list = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter((p) => p.id !== id);
     saveList(STORAGE_KEYS.PAYMENTS, list);
     autoSyncUserAccount(activeUserId);
@@ -2641,6 +3024,16 @@ export const db = {
         saveList(STORAGE_KEYS.CREDIT_LOGS, [...restoredLogs, ...otherLogs]);
       }
 
+      // Restore tombstones
+      if (Array.isArray(dataToRestore.tombstones)) {
+        saveDeletionTombstones(dataToRestore.tombstones, targetUserId);
+      }
+
+      // Restore resetAllBefore
+      if (dataToRestore.resetAllBefore) {
+        setResetAllBefore(dataToRestore.resetAllBefore, targetUserId);
+      }
+
       // Restore profile
       if (dataToRestore.teacherProfile) {
         db.saveTeacherProfile(dataToRestore.teacherProfile, targetUserId);
@@ -3090,7 +3483,34 @@ export const db = {
     }
   },
 
+  clearUserData: (userId?: string): void => {
+    const targetUserId = userId || getActiveUserId();
+    const now = new Date().toISOString();
+    setResetAllBefore(now, targetUserId);
+
+    // Filter out target user from all entities
+    const filterUser = <T extends { userId?: string }>(key: string) => {
+      const list = getList<T>(key, []);
+      const remaining = list.filter((item) => (item.userId ? item.userId !== targetUserId : targetUserId !== 'acc_master_teacher'));
+      saveList(key, remaining);
+    };
+
+    filterUser(STORAGE_KEYS.STUDENTS);
+    filterUser(STORAGE_KEYS.GROUPS);
+    filterUser(STORAGE_KEYS.ENROLLMENTS);
+    filterUser(STORAGE_KEYS.SESSIONS);
+    filterUser(STORAGE_KEYS.ATTENDANCE);
+    filterUser(STORAGE_KEYS.PAYMENTS);
+    filterUser(STORAGE_KEYS.CREDIT_LOGS);
+    filterUser(STORAGE_KEYS.TOMBSTONES);
+
+    autoSyncUserAccount(targetUserId);
+  },
+
   clearAllData: (): void => {
+    const now = new Date().toISOString();
+    const activeUserId = getActiveUserId();
+    setResetAllBefore(now, activeUserId);
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.getItem(k) && localStorage.removeItem(k));
   },
 

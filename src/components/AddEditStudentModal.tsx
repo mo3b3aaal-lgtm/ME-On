@@ -21,13 +21,14 @@ import { db } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
 import { StudentAvatar } from './StudentAvatar';
 import { AchievementFrameSelector } from './AchievementFrameSelector';
-import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade } from '../utils/stages';
-import { t } from '../utils/i18n';
+import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade, getLocalizedStageName } from '../utils/stages';
+import { useTranslation } from '../utils/i18n';
 
 interface AddEditStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingStudent?: Student | null;
+  defaultGroupId?: string;
   allGroups: Group[];
   onSaveComplete: (savedStudent: Student) => void;
 }
@@ -43,22 +44,15 @@ const AVATAR_COLORS = [
   '#8C847B', // Soft taupe
 ];
 
-const ACHIEVEMENT_FRAMES: { id: AchievementFrame; name: string; icon: string; color: string }[] = [
-  { id: 'default', name: 'بدون إطار (افتراضي)', icon: '⚪', color: '#8A9187' },
-  { id: 'bronze_star', name: 'نجمة برونزية (Bronze)', icon: '🥉', color: '#CD7F32' },
-  { id: 'silver_scholar', name: 'طالب فضي (Silver)', icon: '🥈', color: '#C0C0C0' },
-  { id: 'gold_champion', name: 'بطل ذهبي (Gold)', icon: '🥇', color: '#D4AF37' },
-  { id: 'diamond_elite', name: 'نخبة ماسية (Diamond)', icon: '💎', color: '#00B4D8' },
-  { id: 'emerald_honor', name: 'شرف زمردي (Emerald)', icon: '👑', color: '#2EC4B6' },
-];
-
 export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   isOpen,
   onClose,
   editingStudent,
+  defaultGroupId,
   allGroups,
   onSaveComplete,
 }) => {
+  const { t, isRTL, language } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
@@ -138,9 +132,16 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setAvatarColor(AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]);
       setProfilePhoto(undefined);
       setAchievementFrame('default');
+      
       const regular = allGroups.filter((g) => g.type !== 'private');
-      setSelectedGroupIds(regular.length > 0 ? [regular[0].id] : []);
-      setSubscriptionMode(regular.length > 0 ? 'group' : 'private');
+      if (defaultGroupId) {
+        setSelectedGroupIds([defaultGroupId]);
+        setSubscriptionMode('group');
+      } else {
+        setSelectedGroupIds(regular.length > 0 ? [regular[0].id] : []);
+        setSubscriptionMode(regular.length > 0 ? 'group' : 'private');
+      }
+
       setPrivateSubject('رياضيات');
       setPrivatePrice(150);
       setPrivateHourlyRate(150);
@@ -149,7 +150,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setPrivateTime('04:00 م');
       setPrivateLocation('منزل الطالب / أونلاين');
     }
-  }, [editingStudent, isOpen, allGroups.length]);
+  }, [editingStudent, isOpen, allGroups.length, defaultGroupId]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,7 +162,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setProfilePhoto(compressedBase64);
     } catch (err) {
       console.error('Failed to compress image:', err);
-      alert('تعذر معالجة الصورة، يرجى اختيار صورة أخرى');
+      alert('Could not compress photo, please try another image');
     } finally {
       setIsCompressingPhoto(false);
       if (fileInputRef.current) {
@@ -181,17 +182,17 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
     setSelectedStageId(stageId);
     const stage = GRADE_STAGES.find((s) => s.id === stageId);
     if (stage && stage.grades.length > 0) {
-      setGradeLevel(stage.grades[0].nameAr);
+      setGradeLevel(stage.grades[0]);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
     const studentId = editingStudent
       ? editingStudent.id
-      : `st_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      : `stu_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
     const savedStudent: Student = {
       id: studentId,
@@ -226,13 +227,14 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         const isPkg = privateBillingMode === 'package';
         const isHourly = privateBillingMode === 'hourly';
         db.createPrivateLessonService(studentId, {
-          subject: privateSubject.trim() || 'درس خاص',
+          subject: privateSubject.trim() || t('groupTypePrivate'),
           gradeLevel,
           sessionPrice: isPkg
             ? (Number(privatePackagePrice) || 900)
             : isHourly
             ? (Number(privateHourlyRate) || 150)
             : (Number(privatePrice) || 100),
+          hourlyRate: isHourly ? (Number(privateHourlyRate) || 150) : undefined,
           billingType: privateBillingMode as BillingType,
           billingMode: privateBillingMode,
           packageSessionsCount: isPkg ? (Number(privatePackageSessions) || 10) : undefined,
@@ -279,501 +281,503 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
-        {/* Header */}
+        {/* Modal Header */}
         <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#748C70] text-white shadow-sm">
+            <div className="p-2.5 rounded-2xl bg-[#748C70] text-white shadow-sm">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-[#2D332A]">
-                {editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}
+                {editingStudent ? t('editStudent') : t('newStudent')}
               </h2>
-              <p className="text-[11px] text-[#8A9187]">
-                تسجيل بيانات الطالب، الصورة الرمزية، المراحل التعليمية، ونظام المحاسبة
+              <p className="text-[11px] text-[#8A9187] font-medium">
+                {editingStudent ? t('editStudent') : t('studentsSubtitle')}
               </p>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-[#F2ECE1] text-[#6B7567] hover:text-[#2D332A] hover:bg-[#EAE5D8]"
+            className="p-1.5 rounded-full bg-[#F2ECE1] text-[#6B7567] hover:text-[#2D332A] hover:bg-[#EAE5D8] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#434B3E]">
+        {/* Modal Form Content */}
+        <form onSubmit={handleSave} className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#434B3E]">
           
-          {/* Avatar, Photo & Luxury Gaming Achievement Frame */}
+          {/* SECTION: Profile Photo, Achievement Frame & Avatar Color */}
           <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
-                <Camera className="w-3.5 h-3.5 text-[#748C70]" />
-                <span>الصورة الشخصية وإطار التميز (Luxury Achievement Frame)</span>
-              </h3>
-              <div className="flex items-center gap-2">
+              <label className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-[#748C70]" />
+                <span>{t('profilePhoto')}</span>
+              </label>
+              <span className="text-[10px] text-[#8A9187]">{t('photoOptionalTip')}</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Photo Preview with Selected Achievement Frame */}
+              <div className="relative shrink-0 flex items-center justify-center p-2">
+                <StudentAvatar
+                  student={{
+                    id: 'temp',
+                    name: name || t('newStudent'),
+                    avatarColor,
+                    profilePhoto,
+                    achievementFrame,
+                  } as Student}
+                  size="xl"
+                  showFrame={true}
+                />
+              </div>
+
+              {/* Upload / Change / Remove Controls */}
+              <div className="flex-1 space-y-2">
                 <input
-                  type="file"
                   ref={fileInputRef}
+                  type="file"
                   accept="image/*"
                   onChange={handlePhotoUpload}
                   className="hidden"
                 />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isCompressingPhoto}
-                  className="px-2.5 py-1 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1 transition-all shadow-xs disabled:opacity-50"
-                >
-                  <Upload className="w-3 h-3" />
-                  <span>{isCompressingPhoto ? 'جاري الضغط...' : profilePhoto ? 'تغيير الصورة' : 'رفع صورة'}</span>
-                </button>
 
-                {profilePhoto && (
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleRemovePhoto}
-                    className="p-1 rounded-xl bg-[#C97C5D]/15 text-[#C97C5D] hover:bg-[#C97C5D]/25 transition-colors"
-                    title="حذف الصورة"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isCompressingPhoto}
+                    className="px-3 py-1.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isCompressingPhoto ? '...' : profilePhoto ? t('changePhotoBtn') : t('uploadPhotoBtn')}</span>
                   </button>
-                )}
-              </div>
-            </div>
 
-            {/* Visual Luxury Frame Selector with Live Interactive Preview */}
-            <AchievementFrameSelector
-              selectedFrame={achievementFrame}
-              onSelectFrame={(newFrame) => setAchievementFrame(newFrame)}
-              studentName={name || 'الطالب'}
-              profilePhoto={profilePhoto}
-              avatarColor={avatarColor}
-            />
-          </div>
-
-          {/* Basic Student Info Card */}
-          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
-            <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#748C70]" />
-              <span>البيانات الأساسية للطالب</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">اسم الطالب رباعي *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: يوسف أحمد محمد"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">رقم هاتف الطالب (واتساب)</label>
-                <input
-                  type="tel"
-                  placeholder="010XXXXXXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
-                />
-              </div>
-
-              {/* Stage Category Selector */}
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">المرحلة التعليمية</label>
-                <select
-                  value={selectedStageId}
-                  onChange={(e) => handleStageChange(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] font-bold"
-                >
-                  {GRADE_STAGES.map((stg) => (
-                    <option key={stg.id} value={stg.id}>
-                      {stg.nameAr} ({stg.nameEn})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Grade Level Selector */}
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">الصف الدراسي المحدد</label>
-                <select
-                  value={gradeLevel}
-                  onChange={(e) => setGradeLevel(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] font-bold"
-                >
-                  {currentStage.grades.map((lvl) => (
-                    <option key={lvl.id} value={lvl.nameAr}>
-                      {lvl.nameAr}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] text-[#8A9187] mb-1">المدرسة أو المعهد (اختياري)</label>
-                <input
-                  type="text"
-                  placeholder="اسم المدرسة..."
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Parent Info Card */}
-          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
-            <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
-              <Phone className="w-3.5 h-3.5 text-[#748C70]" />
-              <span>بيانات ولي الأمر</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">اسم ولي الأمر</label>
-                <input
-                  type="text"
-                  placeholder="مثال: أحمد محمد علي"
-                  value={parentName}
-                  onChange={(e) => setParentName(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">صلة القرابة</label>
-                <select
-                  value={parentRelation}
-                  onChange={(e) => setParentRelation(e.target.value as any)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
-                >
-                  <option value="الأب">الأب</option>
-                  <option value="الأم">الأم</option>
-                  <option value="ولي الأمر">ولي الأمر</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-[#8A9187] mb-1">هاتف ولي الأمر (واتساب)</label>
-                <input
-                  type="tel"
-                  placeholder="011XXXXXXXX"
-                  value={parentPhone}
-                  onChange={(e) => setParentPhone(e.target.value)}
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Subscription Service Selection */}
-          {!editingStudent && (
-            <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-[#748C70]" />
-                  <span>تسكين الطالب ونوع الاشتراك:</span>
-                </h3>
-                <span className="text-[10px] text-[#748C70] font-bold">حسابات منفصلة تماماً</span>
-              </div>
-
-              {/* Service Tabs */}
-              <div className="grid grid-cols-4 gap-1.5 p-1 bg-[#F9F7F2] rounded-xl border border-[#E8E2D6] text-center text-[10px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setSubscriptionMode('group')}
-                  className={`py-1.5 px-1 rounded-lg transition-all ${
-                    subscriptionMode === 'group'
-                      ? 'bg-white text-[#2D332A] shadow-xs'
-                      : 'text-[#6B7567] hover:text-[#2D332A]'
-                  }`}
-                >
-                  مجموعة فقط
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubscriptionMode('private')}
-                  className={`py-1.5 px-1 rounded-lg transition-all ${
-                    subscriptionMode === 'private'
-                      ? 'bg-white text-[#D49B4B] shadow-xs'
-                      : 'text-[#6B7567] hover:text-[#2D332A]'
-                  }`}
-                >
-                  Private فقط
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubscriptionMode('both')}
-                  className={`py-1.5 px-1 rounded-lg transition-all ${
-                    subscriptionMode === 'both'
-                      ? 'bg-white text-[#748C70] shadow-xs'
-                      : 'text-[#6B7567] hover:text-[#2D332A]'
-                  }`}
-                >
-                  مجموعة + Private
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubscriptionMode('none')}
-                  className={`py-1.5 px-1 rounded-lg transition-all ${
-                    subscriptionMode === 'none'
-                      ? 'bg-white text-[#6B7567] shadow-xs'
-                      : 'text-[#6B7567] hover:text-[#2D332A]'
-                  }`}
-                >
-                  بدون اشتراك
-                </button>
-              </div>
-
-              {/* Group selection */}
-              {(subscriptionMode === 'group' || subscriptionMode === 'both') && (
-                <div className="space-y-2 pt-1 border-t border-[#E8E2D6]/60">
-                  <span className="text-[11px] font-bold text-[#2D332A] flex items-center justify-between">
-                    <span>اختر المجموعات العامة:</span>
-                    <span className="text-[10px] text-[#8A9187]">{selectedGroupIds.length} محددة</span>
-                  </span>
-
-                  {regularGroups.length === 0 ? (
-                    <p className="text-[10px] text-[#8A9187] p-2 bg-[#F9F7F2] rounded-xl border border-[#E8E2D6]">
-                      لا توجد مجموعات عامة مسجلة بعد. يمكنك إنشاء مجموعة لاحقاً.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-32 overflow-y-auto">
-                      {regularGroups.map((g) => {
-                        const isChecked = selectedGroupIds.includes(g.id);
-                        return (
-                          <div
-                            key={g.id}
-                            onClick={() => toggleGroup(g.id)}
-                            className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                              isChecked
-                                ? 'bg-[#748C70]/10 border-[#748C70]'
-                                : 'bg-[#F9F7F2] border-[#E8E2D6] hover:border-[#748C70]/40'
-                            }`}
-                          >
-                            <div className="truncate">
-                              <p className="font-bold text-[#2D332A] text-xs truncate">{g.name}</p>
-                              <p className="text-[10px] text-[#8A9187] truncate">
-                                {g.subject} • {g.billingType === 'hourly' ? 'بالساعة' : g.billingType === 'per_session' ? 'بالحصة' : 'شهري'} ({g.defaultPrice} ج)
-                              </p>
-                            </div>
-                            <div
-                              className={`w-4 h-4 rounded-md flex items-center justify-center border shrink-0 ${
-                                isChecked
-                                  ? 'bg-[#748C70] border-[#748C70] text-white'
-                                  : 'border-[#E8E2D6] bg-white text-transparent'
-                              }`}
-                            >
-                              <Check className="w-3 h-3" />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  {profilePhoto && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="px-2.5 py-1.5 rounded-xl bg-[#FCF6F4] text-[#C97C5D] border border-[#C97C5D]/30 hover:bg-[#F8ECE8] font-bold text-xs flex items-center gap-1 transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{t('removePhotoBtn')}</span>
+                    </button>
                   )}
                 </div>
-              )}
 
-              {/* Private lesson instant config */}
-              {(subscriptionMode === 'private' || subscriptionMode === 'both') && (
-                <div className="space-y-2.5 p-2.5 bg-[#D49B4B]/10 border border-[#D49B4B]/30 rounded-xl">
-                  <div className="flex items-center justify-between text-[#9C6615] font-bold text-[11px]">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>إعداد خدمة الدرس الخاص (Private المستقل):</span>
-                    </span>
-                    <span className="text-[9px] bg-[#D49B4B]/20 px-2 py-0.5 rounded-full">حساب منفصل</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-[#6B7567] mb-1">المادة</label>
-                      <input
-                        type="text"
-                        value={privateSubject}
-                        onChange={(e) => setPrivateSubject(e.target.value)}
-                        placeholder="رياضيات، فيزياء..."
-                        className="w-full bg-white border border-[#E8E2D6] rounded-xl p-1.5 text-xs text-[#2D332A] focus:outline-none"
+                {/* Avatar Color Picker for Fallback */}
+                <div className="space-y-1 pt-1 border-t border-[#E8E2D6]/60">
+                  <span className="text-[10px] text-[#8A9187] block font-semibold">{t('fallbackColorLabel')}:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {AVATAR_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setAvatarColor(c)}
+                        className={`w-5 h-5 rounded-full border-2 transition-transform ${
+                          avatarColor === c ? 'scale-110 border-[#2D332A]' : 'border-transparent'
+                        }`}
+                        style={{ backgroundColor: c }}
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-[#6B7567] mb-1">نظام المحاسبة</label>
-                      <select
-                        value={privateBillingMode}
-                        onChange={(e) => setPrivateBillingMode(e.target.value as BillingMode)}
-                        className="w-full bg-white border border-[#E8E2D6] rounded-xl p-1.5 text-xs font-bold text-[#2D332A] focus:outline-none"
-                      >
-                        <option value="prepaid">دفع بالحصة - مسبق (Prepaid)</option>
-                        <option value="postpaid">دفع بالحصة - آجل (Postpaid)</option>
-                        <option value="hourly">محاسبة بالساعة (Hourly Billing)</option>
-                        <option value="package">باقة حصص (Session Package)</option>
-                        <option value="monthly">اشتراك شهري (Monthly)</option>
-                      </select>
-                    </div>
-
-                    {privateBillingMode === 'hourly' ? (
-                      <div>
-                        <label className="block text-[10px] text-[#6B7567] mb-1">سعر الساعة (ج.م) *</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={privateHourlyRate}
-                          onChange={(e) => setPrivateHourlyRate(Number(e.target.value))}
-                          className="w-full bg-white border border-[#E8E2D6] rounded-xl p-1.5 text-xs font-bold text-[#2D332A] focus:outline-none"
-                        />
-                      </div>
-                    ) : privateBillingMode !== 'package' ? (
-                      <div>
-                        <label className="block text-[10px] text-[#6B7567] mb-1">
-                          {privateBillingMode === 'monthly' ? 'الاشتراك الشهري (ج.م) *' : 'سعر الحصة (ج.م) *'}
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={privatePrice}
-                          onChange={(e) => setPrivatePrice(Number(e.target.value))}
-                          className="w-full bg-white border border-[#E8E2D6] rounded-xl p-1.5 text-xs font-bold text-[#2D332A] focus:outline-none"
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-[10px] text-[#6B7567] mb-1">سعر الباقة الإجمالي (ج.م) *</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={privatePackagePrice}
-                          onChange={(e) => setPrivatePackagePrice(Number(e.target.value))}
-                          placeholder="مثال: 900"
-                          className="w-full bg-white border border-[#E8E2D6] rounded-xl p-1.5 text-xs font-bold text-[#2D332A] focus:outline-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* If Package selected: show session count presets and custom input */}
-                  {privateBillingMode === 'package' && (
-                    <div className="p-2.5 bg-white rounded-xl border border-[#D49B4B]/40 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-[#2D332A]">عدد حصص الباقة (تحديد مخصص حر):</label>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-[#8A9187]">حصص:</span>
-                          <input
-                            type="number"
-                            min="1"
-                            value={privatePackageSessions}
-                            onChange={(e) => setPrivatePackageSessions(Math.max(1, Number(e.target.value)))}
-                            className="w-16 bg-[#F9F7F2] border border-[#E8E2D6] rounded-lg p-1 text-xs font-bold text-[#2D332A] text-center focus:outline-none focus:border-[#D49B4B]"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {[5, 8, 10, 15, 20].map((count) => {
-                          const isSel = privatePackageSessions === count;
-                          return (
-                            <button
-                              key={count}
-                              type="button"
-                              onClick={() => setPrivatePackageSessions(count)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                                isSel
-                                  ? 'bg-[#D49B4B] text-white shadow-xs'
-                                  : 'bg-[#F9F7F2] text-[#6B7567] border border-[#E8E2D6] hover:border-[#D49B4B]'
-                              }`}
-                            >
-                              {count} حصص
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div className="p-2 bg-[#D49B4B]/10 rounded-lg flex items-center justify-between text-xs text-[#9C6615] font-bold">
-                        <span>سعر الحصة الفعلي المحسوب:</span>
-                        <span className="text-sm text-[#2D332A]">
-                          {privatePackageSessions > 0 ? Math.round(privatePackagePrice / privatePackageSessions) : 0} ج.م / حصة
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Schedule days */}
-                  <div className="space-y-1">
-                    <label className="block text-[10px] text-[#6B7567]">مواعيد الحصة الأسبوعية:</label>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'].map((day) => {
-                        const isDayChecked = privateDays.includes(day);
-                        return (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => togglePrivateDay(day)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
-                              isDayChecked
-                                ? 'bg-[#D49B4B] text-white border-[#D49B4B]'
-                                : 'bg-white text-[#6B7567] border-[#E8E2D6]'
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Color & Notes */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div>
-              <label className="block font-bold text-[#6B7567] mb-1.5">لون الأفاتار</label>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {AVATAR_COLORS.map((col) => (
-                  <button
-                    key={col}
-                    type="button"
-                    onClick={() => setAvatarColor(col)}
-                    className={`w-6 h-6 rounded-full transition-transform ${
-                      avatarColor === col ? 'ring-2 ring-[#2D332A] scale-110' : 'opacity-80'
-                    }`}
-                    style={{ backgroundColor: col }}
-                  />
-                ))}
               </div>
             </div>
 
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-[#6B7567] mb-1">ملاحظات إضافية</label>
-              <input
-                type="text"
-                placeholder="مستوى الطالب، نقاط القوة أو الضعف..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+            {/* Achievement Frame Selector */}
+            <div className="pt-2 border-t border-[#E8E2D6]/60">
+              <AchievementFrameSelector
+                selectedFrame={achievementFrame}
+                onSelectFrame={(frame) => setAchievementFrame(frame)}
               />
             </div>
           </div>
 
-          {/* Submit Action */}
-          <div className="pt-2">
+          {/* Basic Student Info Card */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
+            <div>
+              <label className="block text-xs font-bold text-[#2D332A] mb-1">
+                {t('studentName')} *
+              </label>
+              <div className="relative">
+                <User className={`w-4 h-4 text-[#8A9187] absolute ${isRTL ? 'right-3' : 'left-3'} top-3`} />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Ahmed Mohamed"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={`w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2.5 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70] font-medium`}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-[#2D332A] mb-1">
+                  {t('studentPhone')}
+                </label>
+                <div className="relative">
+                  <Phone className={`w-4 h-4 text-[#8A9187] absolute ${isRTL ? 'right-3' : 'left-3'} top-3`} />
+                  <input
+                    type="tel"
+                    placeholder="010XXXXXXXX"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={`w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2.5 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70] font-medium`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#2D332A] mb-1">
+                  {t('schoolNameLabel')}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Alexandria Language School"
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl px-3 py-2.5 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70] font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Educational Stage & Grade Level Card */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
+            <label className="block text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
+              <GraduationCap className="w-4 h-4 text-[#748C70]" />
+              <span>{t('gradeLevel')}</span>
+            </label>
+
+            {/* Stage Selector Tabs */}
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl">
+              {GRADE_STAGES.map((stg) => (
+                <button
+                  key={stg.id}
+                  type="button"
+                  onClick={() => handleStageChange(stg.id)}
+                  className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                    selectedStageId === stg.id
+                      ? 'bg-[#748C70] text-white shadow-xs'
+                      : 'text-[#6B7567] hover:bg-[#EAE5D8]'
+                  }`}
+                >
+                  {language === 'ar' ? stg.nameAr : stg.nameEn}
+                </button>
+              ))}
+            </div>
+
+            {/* Specific Grades in Selected Stage */}
+            <div className="grid grid-cols-3 gap-1.5">
+              {currentStage.grades.map((grd) => {
+                const gradeName = grd.nameAr;
+                const isSelected = gradeLevel === gradeName;
+                return (
+                  <button
+                    key={grd.id}
+                    type="button"
+                    onClick={() => setGradeLevel(gradeName)}
+                    className={`p-2 rounded-xl border text-center font-bold text-xs transition-all ${
+                      isSelected
+                        ? 'bg-[#748C70] text-white border-[#748C70] shadow-xs'
+                        : 'bg-[#F9F7F2] text-[#434B3E] border-[#E8E2D6] hover:bg-[#EAE5D8]'
+                    }`}
+                  >
+                    {getLocalizedStageName(gradeName, language)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Guardian / Parent Card */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
+            <label className="block text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
+              <User className="w-4 h-4 text-[#748C70]" />
+              <span>{t('parentName')}</span>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-[#6B7567] mb-1">{t('parentName')}</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mohamed Ali"
+                  value={parentName}
+                  onChange={(e) => setParentName(e.target.value)}
+                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl px-3 py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[#6B7567] mb-1">{t('parentPhone')}</label>
+                <input
+                  type="tel"
+                  placeholder="010XXXXXXXX"
+                  value={parentPhone}
+                  onChange={(e) => setParentPhone(e.target.value)}
+                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl px-3 py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Subscriptions Card */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[#748C70]" />
+                <span>{t('subscriptionTypeLabel')}</span>
+              </label>
+              <span className="text-[10px] text-[#8A9187] font-semibold">{t('flexibleEnrollmentSupport')}</span>
+            </div>
+
+            {/* Subscription Type Selector */}
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl">
+              <button
+                type="button"
+                onClick={() => setSubscriptionMode('group')}
+                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                  subscriptionMode === 'group'
+                    ? 'bg-[#748C70] text-white shadow-xs'
+                    : 'text-[#6B7567] hover:bg-[#EAE5D8]'
+                }`}
+              >
+                {t('groupTypeGroup')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubscriptionMode('private')}
+                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                  subscriptionMode === 'private'
+                    ? 'bg-[#748C70] text-white shadow-xs'
+                    : 'text-[#6B7567] hover:bg-[#EAE5D8]'
+                }`}
+              >
+                {t('groupTypePrivate')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubscriptionMode('both')}
+                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                  subscriptionMode === 'both'
+                    ? 'bg-[#748C70] text-white shadow-xs'
+                    : 'text-[#6B7567] hover:bg-[#EAE5D8]'
+                }`}
+              >
+                {t('bothTypes')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubscriptionMode('none')}
+                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                  subscriptionMode === 'none'
+                    ? 'bg-[#748C70] text-white shadow-xs'
+                    : 'text-[#6B7567] hover:bg-[#EAE5D8]'
+                }`}
+              >
+                {t('unassigned')}
+              </button>
+            </div>
+
+            {/* 1. Group Selection when 'group' or 'both' */}
+            {(subscriptionMode === 'group' || subscriptionMode === 'both') && (
+              <div className="space-y-2 pt-2 border-t border-[#E8E2D6]/60">
+                <span className="text-[11px] font-bold text-[#6B7567] block">
+                  {t('selectGroupsPrompt')}:
+                </span>
+
+                {regularGroups.length === 0 ? (
+                  <p className="text-xs text-[#8A9187] p-3 bg-[#F9F7F2] rounded-xl text-center">
+                    {t('noGroupsRegisteredYet')}
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {regularGroups.map((grp) => {
+                      const isChecked = selectedGroupIds.includes(grp.id);
+                      return (
+                        <div
+                          key={grp.id}
+                          onClick={() => toggleGroup(grp.id)}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-[#748C70]/10 border-[#748C70] text-[#2D332A]'
+                              : 'bg-[#F9F7F2] border-[#E8E2D6] text-[#6B7567] hover:bg-[#EAE5D8]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center border ${
+                                isChecked
+                                  ? 'bg-[#748C70] border-[#748C70] text-white'
+                                  : 'border-[#D6CDC2] bg-white'
+                              }`}
+                            >
+                              {isChecked && <Check className="w-3 h-3" />}
+                            </div>
+                            <span className="font-bold text-xs">{grp.name}</span>
+                            <span className="text-[10px] text-[#8A9187]">
+                              ({grp.subject} • {getLocalizedStageName(grp.gradeLevel, language)})
+                            </span>
+                          </div>
+
+                          <span className="text-[11px] font-bold text-[#748C70]">
+                            {grp.defaultPrice} {t('currency')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. Private Lesson Configuration when 'private' or 'both' */}
+            {(subscriptionMode === 'private' || subscriptionMode === 'both') && (
+              <div className="space-y-2.5 pt-2 border-t border-[#E8E2D6]/60">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[#D49B4B] flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{t('privateLessonSetupTitle')}</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-[#6B7567] mb-0.5">{t('subjectNameLabel')} *</label>
+                    <input
+                      type="text"
+                      value={privateSubject}
+                      onChange={(e) => setPrivateSubject(e.target.value)}
+                      placeholder="e.g. Physics"
+                      className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs font-bold text-[#2D332A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-[#6B7567] mb-0.5">{t('billingType')}</label>
+                    <select
+                      value={privateBillingMode}
+                      onChange={(e) => setPrivateBillingMode(e.target.value as BillingMode)}
+                      className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs font-bold text-[#2D332A] focus:outline-none"
+                    >
+                      <option value="prepaid">{t('billingPrepaid')}</option>
+                      <option value="postpaid">{t('billingPostpaid')}</option>
+                      <option value="package">{t('billingPackage')}</option>
+                      <option value="monthly">{t('billingMonthly')}</option>
+                      <option value="hourly">{t('billingHourly')}</option>
+                    </select>
+                  </div>
+
+                  {privateBillingMode === 'hourly' ? (
+                    <div>
+                      <label className="block text-[10px] text-[#6B7567] mb-0.5">{t('hourlyRateInputLabel')} *</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={privateHourlyRate}
+                        onChange={(e) => setPrivateHourlyRate(Number(e.target.value))}
+                        className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs font-bold text-[#2D332A] focus:outline-none"
+                      />
+                    </div>
+                  ) : privateBillingMode !== 'package' ? (
+                    <div>
+                      <label className="block text-[10px] text-[#6B7567] mb-0.5">
+                        {privateBillingMode === 'monthly' ? t('monthlyFeeLabel') : t('perSessionRateLabel')} *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={privatePrice}
+                        onChange={(e) => setPrivatePrice(Number(e.target.value))}
+                        className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs font-bold text-[#2D332A] focus:outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[10px] text-[#6B7567] mb-0.5">{t('packageTotalFeeLabel')} *</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={privatePackagePrice}
+                        onChange={(e) => setPrivatePackagePrice(Number(e.target.value))}
+                        placeholder="e.g. 900"
+                        className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs font-bold text-[#2D332A] focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Days */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-[#6B7567]">{t('scheduleDays')}:</label>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { key: 'السبت', label: t('daySat') },
+                      { key: 'الأحد', label: t('daySun') },
+                      { key: 'الاثنين', label: t('dayMon') },
+                      { key: 'الثلاثاء', label: t('dayTue') },
+                      { key: 'الأربعاء', label: t('dayWed') },
+                      { key: 'الخميس', label: t('dayThu') },
+                      { key: 'الجمعة', label: t('dayFri') },
+                    ].map(({ key, label }) => {
+                      const isDayChecked = privateDays.includes(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => togglePrivateDay(key)}
+                          className={`px-2 py-0.5 rounded-lg text-xs font-bold border transition-all ${
+                            isDayChecked
+                              ? 'bg-[#D49B4B] text-white border-[#D49B4B]'
+                              : 'bg-white text-[#6B7567] border-[#E8E2D6]'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Notes Card */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-1 shadow-sm">
+            <label className="block text-xs font-bold text-[#2D332A] mb-1">{t('notes')}</label>
+            <textarea
+              rows={2}
+              placeholder={t('notesPlaceholder')}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-2xl border border-[#E8E2D6] bg-white text-[#6B7567] font-bold text-xs hover:bg-[#F2ECE1] transition-all"
+            >
+              {t('cancel')}
+            </button>
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs shadow-sm transition-all active:scale-[0.99]"
+              className="flex-1 py-3 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
             >
-              {editingStudent ? 'حفظ التعديلات' : 'إضافة الطالب'}
+              <Check className="w-4 h-4" />
+              <span>{editingStudent ? t('saveChanges') : t('save')}</span>
             </button>
           </div>
 

@@ -18,6 +18,7 @@ import {
 import { Group, Student, Session, Enrollment } from '../types';
 import { db, getBillingModeLabel } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
+import { useTranslation } from '../utils/i18n';
 import { StudentAvatar } from './StudentAvatar';
 
 interface GroupProfileModalProps {
@@ -30,6 +31,7 @@ interface GroupProfileModalProps {
   onAddSessionForGroup: (group: Group) => void;
   onOpenAttendanceModal: (session: Session) => void;
   onOpenStudentProfile: (student: Student) => void;
+  onOpenBulkAddSession?: (students: Student[], groupId?: string) => void;
   onDataChanged: () => void;
 }
 
@@ -43,8 +45,10 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   onAddSessionForGroup,
   onOpenAttendanceModal,
   onOpenStudentProfile,
+  onOpenBulkAddSession,
   onDataChanged,
 }) => {
+  const { t, isRTL, language } = useTranslation();
   const [activeSubTab, setActiveSubTab] = useState<'students' | 'sessions' | 'stats'>('students');
 
   // Load data
@@ -65,7 +69,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
     if (!group) return;
     const enr = enrollments.find((e) => e.studentId === studentId);
     if (!enr) return;
-    if (confirm(`هل أنت متأكد من إزالة ${studentName} من هذه المجموعة؟`)) {
+    if (confirm(t('confirmRemoveStudentFromGroup') + ` (${studentName})`)) {
       db.removeEnrollment(enr.id);
       onDataChanged();
     }
@@ -73,7 +77,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
 
   const handleDeleteGroup = () => {
     if (!group) return;
-    if (confirm(`هل أنت متأكد من حذف مجموعة ${group.name}؟ لن يتم حذف الطلاب من النظام.`)) {
+    if (confirm(t('confirmDeleteGroup') + ` (${group.name})`)) {
       db.deleteGroup(group.id);
       onDataChanged();
       onClose();
@@ -83,19 +87,19 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   if (!isOpen || !group) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header */}
         <div className="p-4 bg-white border-b border-[#E8E2D6] relative">
           <button
             onClick={onClose}
-            className="absolute top-4 left-4 p-2 rounded-full bg-[#F2ECE1] text-[#6B7567] hover:text-[#2D332A] hover:bg-[#EAE5D8] transition-colors"
+            className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-full bg-[#F2ECE1] text-[#6B7567] hover:text-[#2D332A] hover:bg-[#EAE5D8] transition-colors`}
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-3.5 pl-10">
+          <div className={`flex items-center gap-3.5 ${isRTL ? 'pl-10' : 'pr-10'}`}>
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white text-xl shadow-md shrink-0"
               style={{ backgroundColor: group.accentColor || '#748C70' }}
@@ -107,11 +111,11 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-[#2D332A] tracking-tight">{group.name}</h2>
                 <span className="text-[10px] font-bold bg-[#F2ECE1] text-[#6B7567] px-2.5 py-0.5 rounded-full border border-[#E8E2D6]">
-                  {group.type === 'private' ? 'درس خاص' : 'مجموعة عامة'}
+                  {group.type === 'private' ? t('groupTypePrivate') : t('groupTypeGroup')}
                 </span>
               </div>
               <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
-                مادة {group.subject} • {getLocalizedStageName(group.gradeLevel)}
+                {group.subject} • {getLocalizedStageName(group.gradeLevel, language)}
               </p>
             </div>
           </div>
@@ -120,18 +124,18 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           <div className="grid grid-cols-3 gap-2 mt-4 text-center">
             <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
               <p className="text-sm font-black text-[#748C70]">{enrolledStudents.length}</p>
-              <p className="text-[10px] font-bold text-[#8A9187]">الطلاب المسجلين</p>
+              <p className="text-[10px] font-bold text-[#8A9187]">{t('enrolledStudentsCount')}</p>
             </div>
             
             <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
               <p className="text-sm font-black text-[#D49B4B]">{stats.completedSessions}</p>
-              <p className="text-[10px] font-bold text-[#8A9187]">الحصص المنفذة</p>
+              <p className="text-[10px] font-bold text-[#8A9187]">{t('dashTotalSessions')}</p>
             </div>
 
             <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
-              <p className="text-sm font-black text-[#2D332A]">{group.defaultPrice} ج</p>
+              <p className="text-sm font-black text-[#2D332A]">{group.defaultPrice} {t('currency')}</p>
               <p className="text-[10px] font-bold text-[#8A9187]">
-                {group.billingType === 'per_session' ? 'سعر الحصة' : 'الاشتراك الشهري'}
+                {group.billingType === 'per_session' ? t('sessionPrice') : group.billingType === 'package' ? t('packagePrice') : t('billingMonthly')}
               </p>
             </div>
           </div>
@@ -140,7 +144,9 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           <div className="mt-3 pt-3 border-t border-[#E8E2D6]/60 flex items-center justify-between text-xs text-[#6B7567] flex-wrap gap-2">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-[#748C70]" />
-              <span>المواعيد: <strong>{group.scheduleDays.join('، ') || 'مرنة'}</strong> {group.scheduleTime ? `(${group.scheduleTime})` : ''}</span>
+              <span>
+                {t('scheduleDays')}: <strong>{group.scheduleDays.join('، ') || 'Flexible'}</strong> {group.scheduleTime ? `(${group.scheduleTime})` : ''}
+              </span>
             </div>
 
             {group.roomOrLocation && (
@@ -162,7 +168,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 : 'border-transparent text-[#8A9187] hover:text-[#2D332A]'
             }`}
           >
-            الطلاب المسجلين ({enrolledStudents.length})
+            {t('groupEnrolledTab')} ({enrolledStudents.length})
           </button>
           <button
             onClick={() => setActiveSubTab('sessions')}
@@ -172,7 +178,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 : 'border-transparent text-[#8A9187] hover:text-[#2D332A]'
             }`}
           >
-            الحصص والجدول ({groupSessions.length})
+            {t('groupSessionsTab')} ({groupSessions.length})
           </button>
           <button
             onClick={() => setActiveSubTab('stats')}
@@ -182,7 +188,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 : 'border-transparent text-[#8A9187] hover:text-[#2D332A]'
             }`}
           >
-            الإحصائيات والتحصيلات
+            {t('groupStatsTab')}
           </button>
         </div>
 
@@ -192,40 +198,56 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           {/* TAB 1: Enrolled Students */}
           {activeSubTab === 'students' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-[#6B7567]">قائمة طلاب المجموعة:</span>
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-bold text-[#6B7567]">{t('groupStudentsListTitle')}</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {enrolledStudents.length > 0 && onOpenBulkAddSession && (
+                    <button
+                      onClick={() => onOpenBulkAddSession(enrolledStudents, group.id)}
+                      className="px-2.5 py-1.5 rounded-xl bg-[#748C70]/15 hover:bg-[#748C70]/25 text-[#748C70] font-bold text-[11px] flex items-center gap-1 border border-[#748C70]/30 transition-all active:scale-95"
+                    >
+                      <CalendarCheck2 className="w-3.5 h-3.5" />
+                      <span>{t('addBulkSessionShort')} ({enrolledStudents.length})</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => onAddExistingStudent(group)}
                     className="px-2.5 py-1.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all active:scale-95"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span>إضافة طالب موجود</span>
+                    <span>{t('addExistingStudentAction')}</span>
                   </button>
                   <button
                     onClick={() => onAddNewStudentToGroup(group)}
-                    className="px-2 py-1.5 rounded-xl bg-[#F2ECE1] hover:bg-[#EAE5D8] text-[#2D332A] font-bold text-[11px] flex items-center gap-1 border border-[#E8E2D6]"
+                    className="px-2.5 py-1.5 rounded-xl bg-[#F2ECE1] hover:bg-[#EAE5D8] text-[#2D332A] font-bold text-[11px] flex items-center gap-1 border border-[#E8E2D6] transition-all active:scale-95"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>طالب جديد</span>
+                    <span>{t('addNewStudentAction')}</span>
                   </button>
                 </div>
               </div>
 
               {enrolledStudents.length === 0 ? (
-                <div className="p-6 bg-white rounded-2xl border border-[#E8E2D6] text-center space-y-2">
+                <div className="p-6 bg-white rounded-2xl border border-[#E8E2D6] text-center space-y-2.5">
                   <Users className="w-8 h-8 mx-auto text-[#8A9187] opacity-50" />
-                  <p className="font-bold text-[#2D332A]">لا يوجد طلاب مسجلين بهذه المجموعة حتى الآن</p>
-                  <p className="text-[11px] text-[#8A9187]">
-                    يمكنك إضافة طلاب مسجلين مسبقاً في النظام أو تسجيل طلاب جدد فوراً
+                  <p className="font-bold text-[#2D332A]">{t('noEnrolledStudentsInGroup')}</p>
+                  <p className="text-[11px] text-[#8A9187] max-w-xs mx-auto">
+                    {t('noEnrolledStudentsInGroupDesc')}
                   </p>
-                  <div className="pt-2 flex items-center justify-center gap-2">
+                  <div className="pt-2 flex items-center justify-center gap-2 flex-wrap">
                     <button
                       onClick={() => onAddExistingStudent(group)}
-                      className="px-3 py-2 rounded-xl bg-[#748C70] text-white font-bold text-xs inline-flex items-center gap-1.5"
+                      className="px-3.5 py-2 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all"
                     >
                       <UserPlus className="w-4 h-4" />
-                      <span>إضافة طالب موجود بالسيستم</span>
+                      <span>{t('addExistingStudentFromSystem')}</span>
+                    </button>
+                    <button
+                      onClick={() => onAddNewStudentToGroup(group)}
+                      className="px-3.5 py-2 rounded-xl bg-[#F2ECE1] hover:bg-[#EAE5D8] text-[#2D332A] font-bold text-xs inline-flex items-center gap-1.5 border border-[#E8E2D6] transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{t('addNewStudentAction')}</span>
                     </button>
                   </div>
                 </div>
@@ -255,7 +277,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                               {st.name}
                             </p>
                             <p className="text-[10px] text-[#8A9187]">
-                              {getBillingModeLabel(enr?.billingType, enr?.billingMode)} • {enr?.customPrice || group.defaultPrice} ج
+                              {getBillingModeLabel(enr?.billingType, enr?.billingMode)} • {enr?.customPrice || group.defaultPrice} {t('currency')}
                               {st.phone ? ` • ${st.phone}` : ''}
                             </p>
                           </div>
@@ -263,12 +285,12 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
 
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${stFin.balance < 0 ? 'bg-[#C97C5D]/15 text-[#C97C5D]' : 'bg-[#748C70]/15 text-[#748C70]'}`}>
-                            {stFin.balance < 0 ? `${Math.abs(stFin.balance)} ج مديونية` : 'خالص'}
+                            {stFin.balance < 0 ? `${Math.abs(stFin.balance)} ${t('currency')} ${t('hasDue')}` : t('settled')}
                           </span>
                           <button
                             onClick={() => handleRemoveStudentFromGroup(st.id, st.name)}
                             className="p-1.5 text-[#8A9187] hover:text-[#C97C5D] transition-colors"
-                            title="إزالة من المجموعة"
+                            title={t('confirmRemoveStudentFromGroup')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -285,29 +307,29 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           {activeSubTab === 'sessions' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-[#6B7567]">حصص المجموعة:</span>
+                <span className="font-bold text-[#6B7567]">{t('groupSessionsListTitle')}</span>
                 <button
                   onClick={() => onAddSessionForGroup(group)}
                   className="px-2.5 py-1 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-[11px] flex items-center gap-1 shadow-sm transition-all active:scale-95"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>جدولة حصة جديدة</span>
+                  <span>{t('scheduleSessionAction')}</span>
                 </button>
               </div>
 
               {groupSessions.length === 0 ? (
                 <div className="p-6 bg-white rounded-2xl border border-[#E8E2D6] text-center space-y-2">
                   <CalendarCheck2 className="w-8 h-8 mx-auto text-[#8A9187] opacity-50" />
-                  <p className="font-bold text-[#2D332A]">لا توجد حصص مجدولة لهذه المجموعة بعد</p>
+                  <p className="font-bold text-[#2D332A]">{t('noGroupSessionsFound')}</p>
                   <p className="text-[11px] text-[#8A9187]">
-                    يمكنك جدولة حصة بتحديد التاريخ والموعد وموضوع الدرس
+                    {t('noGroupSessionsDesc')}
                   </p>
                   <button
                     onClick={() => onAddSessionForGroup(group)}
                     className="px-3 py-1.5 rounded-xl bg-[#748C70] text-white font-bold text-xs inline-flex items-center gap-1 mt-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>إضافة حصة</span>
+                    <span>{t('addSession')}</span>
                   </button>
                 </div>
               ) : (
@@ -318,9 +340,9 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                       className="p-3 rounded-2xl bg-white border border-[#E8E2D6] flex items-center justify-between shadow-sm"
                     >
                       <div>
-                        <p className="font-bold text-[#2D332A] text-xs">{ses.title || 'حصة دراسية'}</p>
+                        <p className="font-bold text-[#2D332A] text-xs">{ses.title || t('navSessions')}</p>
                         <p className="text-[10px] text-[#8A9187]">
-                          {ses.dayName} • {ses.date} • الساعة {ses.startTime || 'غير محدد'}
+                          {ses.dayName} • {ses.date} • {ses.startTime || ''}
                         </p>
                       </div>
 
@@ -330,7 +352,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                           className="px-2.5 py-1 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-[11px] flex items-center gap-1 shadow-sm"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>رصد الحضور</span>
+                          <span>{t('recordAttendanceAction')}</span>
                         </button>
                       </div>
                     </div>
@@ -344,15 +366,15 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           {activeSubTab === 'stats' && (
             <div className="space-y-3">
               <div className="p-4 rounded-2xl bg-white border border-[#E8E2D6] space-y-3 shadow-sm">
-                <h3 className="font-bold text-[#2D332A] text-xs">ملخص أداء المجموعة</h3>
+                <h3 className="font-bold text-[#2D332A] text-xs">{t('groupPerformanceTitle')}</h3>
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="p-3 bg-[#F9F7F2] rounded-xl border border-[#E8E2D6]">
                     <p className="text-sm font-black text-[#748C70]">{stats.attendanceRate}%</p>
-                    <p className="text-[10px] text-[#8A9187] font-bold">متوسط نسبة الحضور</p>
+                    <p className="text-[10px] text-[#8A9187] font-bold">{t('averageAttendanceRateLabel')}</p>
                   </div>
                   <div className="p-3 bg-[#F9F7F2] rounded-xl border border-[#E8E2D6]">
-                    <p className="text-sm font-black text-[#D49B4B]">{stats.totalRevenue} ج</p>
-                    <p className="text-[10px] text-[#8A9187] font-bold">إجمالي المحصل</p>
+                    <p className="text-sm font-black text-[#D49B4B]">{stats.totalRevenue} {t('currency')}</p>
+                    <p className="text-[10px] text-[#8A9187] font-bold">{t('totalCollectedRevenueLabel')}</p>
                   </div>
                 </div>
               </div>
@@ -371,7 +393,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
             className="flex-1 py-2.5 px-3 rounded-xl bg-[#F2ECE1] hover:bg-[#EAE5D8] text-[#2D332A] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-[#E8E2D6]"
           >
             <Edit2 className="w-3.5 h-3.5" />
-            <span>تعديل المجموعة</span>
+            <span>{t('editGroupAction')}</span>
           </button>
 
           <button
@@ -381,13 +403,13 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
             className="flex-1 py-2.5 px-3 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
           >
             <CalendarCheck2 className="w-3.5 h-3.5" />
-            <span>جدولة حصة</span>
+            <span>{t('scheduleSessionAction')}</span>
           </button>
 
           <button
             onClick={handleDeleteGroup}
             className="p-2.5 rounded-xl bg-[#FCF6F4] hover:bg-[#F8ECE8] text-[#C97C5D] border border-[#C97C5D]/30"
-            title="حذف المجموعة"
+            title={t('deleteGroupAction')}
           >
             <Trash2 className="w-4 h-4" />
           </button>

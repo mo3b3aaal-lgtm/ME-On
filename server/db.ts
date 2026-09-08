@@ -461,35 +461,95 @@ export async function saveCloudDataPackage(userId: string, dataPackage: any): Pr
   return { lastSyncTime: now, stats: updatedPkg.stats };
 }
 
-function mergeEntities<T extends { id?: string; updatedAt?: string; createdAt?: string }>(
-  localList: T[] = [],
-  cloudList: T[] = []
-): T[] {
-  const map = new Map<string, T>();
+export interface ServerDeletionTombstone {
+  id: string;
+  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog';
+  userId: string;
+  deletedAt: string;
+}
 
-  // Add cloud items first
-  for (const item of cloudList) {
-    if (item && item.id) {
-      map.set(item.id, item);
+function mergeTombstones(
+  localTombstones: ServerDeletionTombstone[] = [],
+  cloudTombstones: ServerDeletionTombstone[] = []
+): ServerDeletionTombstone[] {
+  const map = new Map<string, ServerDeletionTombstone>();
+  for (const t of [...(cloudTombstones || []), ...(localTombstones || [])]) {
+    if (!t || !t.id || !t.entityType) continue;
+    const key = `${t.entityType}:${t.id}`;
+    const existing = map.get(key);
+    if (!existing || new Date(t.deletedAt).getTime() > new Date(existing.deletedAt).getTime()) {
+      map.set(key, t);
     }
   }
+  return Array.from(map.values());
+}
 
-  // Merge/add local items without overwriting newer data with older data
-  for (const item of localList) {
-    if (item && item.id) {
-      const existing = map.get(item.id);
-      if (existing) {
-        const existingTime = existing.updatedAt || existing.createdAt || "";
-        const localTime = item.updatedAt || item.createdAt || "";
+function mergeEntities<T extends { id?: string; updatedAt?: string; createdAt?: string }>(
+  entityType: ServerDeletionTombstone['entityType'],
+  localList: T[] = [],
+  cloudList: T[] = [],
+  tombstoneMap: Map<string, string>,
+  resetAllBefore?: string
+): T[] {
+  const map = new Map<string, T>();
+  const resetTime = resetAllBefore ? new Date(resetAllBefore).getTime() : 0;
 
-        if (existingTime && localTime && new Date(existingTime).getTime() > new Date(localTime).getTime()) {
-          map.set(item.id, { ...item, ...existing });
-        } else {
-          map.set(item.id, { ...existing, ...item });
-        }
-      } else {
-        map.set(item.id, item);
+  // 1. Process cloud items
+  for (const item of (cloudList || [])) {
+    if (!item || !item.id) continue;
+    const itemTimeStr = item.updatedAt || item.createdAt || "";
+    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+
+    // Filter out if wiped by a resetAllBefore operation that occurred after item creation/update
+    if (resetTime > 0 && itemTime <= resetTime) {
+      continue;
+    }
+
+    // Filter out if tombstone deleted this entity
+    const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
+    if (deletedAt) {
+      const delTime = new Date(deletedAt).getTime();
+      if (itemTime <= delTime) {
+        // Deleted and not updated afterwards
+        continue;
       }
+    }
+
+    map.set(item.id, item);
+  }
+
+  // 2. Process local items
+  for (const item of (localList || [])) {
+    if (!item || !item.id) continue;
+    const itemTimeStr = item.updatedAt || item.createdAt || "";
+    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+
+    // Filter out if wiped by resetAllBefore
+    if (resetTime > 0 && itemTime <= resetTime) {
+      continue;
+    }
+
+    // Filter out if tombstone deleted this entity
+    const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
+    if (deletedAt) {
+      const delTime = new Date(deletedAt).getTime();
+      if (itemTime <= delTime) {
+        continue;
+      }
+    }
+
+    const existing = map.get(item.id);
+    if (existing) {
+      const existingTimeStr = existing.updatedAt || existing.createdAt || "";
+      const existingTime = existingTimeStr ? new Date(existingTimeStr).getTime() : 0;
+
+      if (existingTime > itemTime) {
+        map.set(item.id, { ...item, ...existing });
+      } else {
+        map.set(item.id, { ...existing, ...item });
+      }
+    } else {
+      map.set(item.id, item);
     }
   }
 
@@ -500,20 +560,72 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
   const existingCloud = await getCloudDataPackage(userId);
   const now = new Date().toISOString();
 
+  // Merge tombstones from local and cloud
+  const mergedTombstones = mergeTombstones(
+    incomingPackage?.tombstones || [],
+    existingCloud?.tombstones || []
+  );
+
+  // Build tombstone map: `${entityType}:${id}` -> deletedAt
+  const tombstoneMap = new Map<string, string>();
+  for (const t of mergedTombstones) {
+    if (t && t.id && t.entityType) {
+      tombstoneMap.set(`${t.entityType}:${t.id}`, t.deletedAt);
+    }
+  }
+
+  // Determine effective resetAllBefore
+  let effectiveResetAllBefore: string | undefined = undefined;
+  const localReset = incomingPackage?.resetAllBefore;
+  const cloudReset = existingCloud?.resetAllBefore;
+  if (localReset && cloudReset) {
+    effectiveResetAllBefore = new Date(localReset).getTime() >= new Date(cloudReset).getTime() ? localReset : cloudReset;
+  } else {
+    effectiveResetAllBefore = localReset || cloudReset;
+  }
+
   if (!existingCloud) {
-    const saved = { ...incomingPackage, userId, lastSyncTime: now };
+    // Filter initial incoming package through tombstones and resetAllBefore
+    const initialStudents = mergeEntities('student', incomingPackage.students || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialGroups = mergeEntities('group', incomingPackage.groups || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialEnrollments = mergeEntities('enrollment', incomingPackage.enrollments || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialSessions = mergeEntities('session', incomingPackage.sessions || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialAttendance = mergeEntities('attendance', incomingPackage.attendance || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialPayments = mergeEntities('payment', incomingPackage.payments || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialCreditLogs = mergeEntities('creditLog', incomingPackage.creditLogs || [], [], tombstoneMap, effectiveResetAllBefore);
+
+    const saved = {
+      ...incomingPackage,
+      userId,
+      lastSyncTime: now,
+      students: initialStudents,
+      groups: initialGroups,
+      enrollments: initialEnrollments,
+      sessions: initialSessions,
+      attendance: initialAttendance,
+      payments: initialPayments,
+      creditLogs: initialCreditLogs,
+      tombstones: mergedTombstones,
+      resetAllBefore: effectiveResetAllBefore,
+      stats: {
+        totalStudents: initialStudents.length,
+        totalGroups: initialGroups.length,
+        totalSessions: initialSessions.length,
+        totalPayments: initialPayments.length,
+      },
+    };
     await saveCloudDataPackage(userId, saved);
     return { dataPackage: saved, merged: false };
   }
 
-  const mergedStudents = mergeEntities(incomingPackage.students, existingCloud.students);
-  const mergedGroups = mergeEntities(incomingPackage.groups, existingCloud.groups);
-  const mergedEnrollments = mergeEntities(incomingPackage.enrollments, existingCloud.enrollments);
-  const mergedSessions = mergeEntities(incomingPackage.sessions, existingCloud.sessions);
-  const mergedAttendance = mergeEntities(incomingPackage.attendance, existingCloud.attendance);
-  const mergedPayments = mergeEntities(incomingPackage.payments, existingCloud.payments);
-  const mergedCreditLogs = mergeEntities(incomingPackage.creditLogs || [], existingCloud.creditLogs || []);
-  const mergedMonthlyInvoices = mergeEntities(incomingPackage.monthlyInvoices || [], existingCloud.monthlyInvoices || []);
+  const mergedStudents = mergeEntities('student', incomingPackage.students, existingCloud.students, tombstoneMap, effectiveResetAllBefore);
+  const mergedGroups = mergeEntities('group', incomingPackage.groups, existingCloud.groups, tombstoneMap, effectiveResetAllBefore);
+  const mergedEnrollments = mergeEntities('enrollment', incomingPackage.enrollments, existingCloud.enrollments, tombstoneMap, effectiveResetAllBefore);
+  const mergedSessions = mergeEntities('session', incomingPackage.sessions, existingCloud.sessions, tombstoneMap, effectiveResetAllBefore);
+  const mergedAttendance = mergeEntities('attendance', incomingPackage.attendance, existingCloud.attendance, tombstoneMap, effectiveResetAllBefore);
+  const mergedPayments = mergeEntities('payment', incomingPackage.payments, existingCloud.payments, tombstoneMap, effectiveResetAllBefore);
+  const mergedCreditLogs = mergeEntities('creditLog', incomingPackage.creditLogs || [], existingCloud.creditLogs || [], tombstoneMap, effectiveResetAllBefore);
+  const mergedMonthlyInvoices = incomingPackage.monthlyInvoices || existingCloud.monthlyInvoices || [];
   const mergedProfile = { ...(existingCloud.teacherProfile || {}), ...(incomingPackage.teacherProfile || {}) };
 
   const mergedPackage = {
@@ -529,6 +641,8 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
     creditLogs: mergedCreditLogs,
     monthlyInvoices: mergedMonthlyInvoices,
     teacherProfile: mergedProfile,
+    tombstones: mergedTombstones,
+    resetAllBefore: effectiveResetAllBefore,
     stats: {
       totalStudents: mergedStudents.length,
       totalGroups: mergedGroups.length,

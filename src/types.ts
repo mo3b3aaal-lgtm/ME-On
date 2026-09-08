@@ -30,6 +30,14 @@ export type AchievementFrame =
   | 'diamond_elite'
   | 'emerald_honor';
 
+// Deletion Tombstone for synchronization across devices and Cloud
+export interface DeletionTombstone {
+  id: string;
+  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog' | 'any';
+  deletedAt: string;
+  userId?: string;
+}
+
 // Pricing modifier type when enrolling a student
 export type PricingModifierType =
   | 'same_as_group' // نفس سعر المجموعة
@@ -66,6 +74,7 @@ export interface Student {
   profilePhoto?: string; // Lightweight base64 image data URL (< 30KB)
   achievementFrame?: AchievementFrame; // إطار التميز (none, gold, silver, platinum, crown, star, champion)
   createdAt: string;
+  updatedAt?: string;
 }
 
 // 2. Group Entity (مجموعة دراسية أو درس خاص)
@@ -88,6 +97,7 @@ export interface Group {
   accentColor: string; // اللون المميز للمجموعة
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // 3. Enrollment Entity (علاقة اشتراك الطالب في المجموعة - تسعير ونظام محاسبة مستقل لكل اشتراك)
@@ -113,6 +123,8 @@ export interface Enrollment {
   status: EnrollmentStatus;
   joinedAt: string;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // 4. Private Lesson Service (خدمة الدروس الخصوصية)
@@ -153,6 +165,7 @@ export interface Session {
   status: SessionStatus;
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
   // Historical Billing Snapshots
   billingModeSnapshot?: BillingMode;
   billingTypeSnapshot?: BillingType;
@@ -180,6 +193,7 @@ export interface Attendance {
   homeworkDone?: boolean; // حل الواجب
   quizScore?: number; // درجة الكويز إن وجد
   recordedAt: string;
+  updatedAt?: string;
   // Historical Billing Snapshots
   billingModeSnapshot?: BillingMode;
   billingTypeSnapshot?: BillingType;
@@ -214,6 +228,7 @@ export interface Payment {
   notes?: string;
   referenceNumber?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // 7.1 Session Credit Log Entity (سجل حركة رصيد الحصص الدفع المسبق)
@@ -232,6 +247,7 @@ export interface SessionCreditLog {
   sessionId?: string;
   paymentId?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // 8. Monthly Billing Ledger Record
@@ -389,6 +405,17 @@ export interface UserAccountDataPackage {
   payments: Payment[];
   creditLogs?: SessionCreditLog[];
   teacherProfile?: TeacherProfile;
+  tombstones?: DeletionTombstone[];
+  deletedIds?: {
+    students?: string[];
+    groups?: string[];
+    enrollments?: string[];
+    sessions?: string[];
+    attendance?: string[];
+    payments?: string[];
+    creditLogs?: string[];
+  };
+  resetAllBefore?: string; // ISO timestamp when user intentionally cleared all data
   stats?: {
     totalStudents: number;
     totalGroups: number;
@@ -450,4 +477,51 @@ export interface AuthDiagnostics {
   restoreSuccess: boolean;
   restoreMessage?: string;
   timestamp: string;
+}
+
+// Bulk Session Creation Types
+export interface BulkStudentSessionTarget {
+  studentId: string;
+  enrollmentId: string;
+  groupId: string;
+  hours?: number;
+  hourlyRate?: number;
+}
+
+export interface BulkCreateSessionsParams {
+  students: BulkStudentSessionTarget[];
+  sessionCount: number;
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  title?: string;
+  notes?: string;
+  status?: SessionStatus;
+  attendanceStatus?: AttendanceStatus;
+  isCharged?: boolean;
+  idempotencyKey?: string;
+}
+
+export interface BulkStudentResultItem {
+  studentId: string;
+  studentName: string;
+  enrollmentId: string;
+  groupId: string;
+  groupName: string;
+  sessionsCreated: number;
+  billingMode: BillingMode;
+  chargedAmountPerSession: number;
+  totalAmount: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkCreateSessionsResult {
+  success: boolean;
+  totalCreated: number;
+  totalRequested: number;
+  sessionsPerStudent: number;
+  studentCount: number;
+  createdSessions: Session[];
+  results: BulkStudentResultItem[];
 }

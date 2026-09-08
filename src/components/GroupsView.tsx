@@ -10,10 +10,12 @@ import {
   DollarSign,
   AlertCircle,
   Sparkles,
+  UserPlus,
 } from 'lucide-react';
 import { Group, Student } from '../types';
 import { db } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
+import { useTranslation } from '../utils/i18n';
 
 interface GroupsViewProps {
   groups: Group[];
@@ -28,6 +30,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   onOpenAddGroup,
   onOpenGroupProfile,
 }) => {
+  const { t, isRTL, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'group' | 'private'>('all');
 
@@ -44,16 +47,16 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#2D332A] pb-24" dir="rtl">
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#2D332A] pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold font-serif text-[#2D332A] tracking-tight">
-            المجموعات والدروس ({groups.length})
+            {t('groupsTitle')} ({groups.length})
           </h1>
           <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
-            إدارة المجموعات العامة والدروس الخصوصية ومواعيدها
+            {t('groupsSubtitle')}
           </p>
         </div>
 
@@ -62,20 +65,20 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           className="px-3 py-2 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          <span>إنشاء مجموعة</span>
+          <span>{t('createGroupBtn')}</span>
         </button>
       </div>
 
       {/* Search & Filter Bar */}
       <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
         <div className="relative">
-          <Search className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+          <Search className={`w-4 h-4 text-[#8A9187] absolute ${isRTL ? 'right-3' : 'left-3'} top-3`} />
           <input
             type="text"
-            placeholder="ابحث باسم المجموعة، المادة، أو الصف..."
+            placeholder={t('groupsSearchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl pr-9 pl-3 py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]"
+            className={`w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]`}
           />
         </div>
 
@@ -89,7 +92,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 : 'bg-[#F9F7F2] text-[#6B7567] border border-[#E8E2D6]'
             }`}
           >
-            الكل ({groups.length})
+            {t('all')} ({groups.length})
           </button>
           <button
             onClick={() => setTypeFilter('group')}
@@ -99,7 +102,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 : 'bg-[#F9F7F2] text-[#6B7567] border border-[#E8E2D6]'
             }`}
           >
-            مجموعات عامة
+            {t('groupTypeGroup')}
           </button>
           <button
             onClick={() => setTypeFilter('private')}
@@ -109,7 +112,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 : 'bg-[#F9F7F2] text-[#6B7567] border border-[#E8E2D6]'
             }`}
           >
-            دروس خاصة / Private
+            {t('groupTypePrivate')}
           </button>
         </div>
       </div>
@@ -118,28 +121,27 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
       {groups.length === 0 ? (
         <div className="p-8 bg-white border border-[#E8E2D6] rounded-2xl text-center space-y-2 shadow-sm">
           <Layers className="w-10 h-10 mx-auto text-[#8A9187] opacity-50 mb-1" />
-          <h3 className="font-bold text-sm text-[#2D332A]">لا توجد مجموعات مسجلة بعد</h3>
+          <h3 className="font-bold text-sm text-[#2D332A]">{t('noGroupsRegisteredYet')}</h3>
           <p className="text-xs text-[#8A9187] max-w-sm mx-auto">
-            قم بإنشاء مجموعتك الأولى لتحديد مواعيد الحصص ونظام المحاسبة وإضافة الطلاب إليها.
+            {t('createFirstGroupPrompt')}
           </p>
           <button
             onClick={onOpenAddGroup}
             className="mt-3 px-4 py-2 rounded-xl bg-[#748C70] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            <span>إنشاء مجموعة جديدة الآن</span>
+            <span>{t('createGroupBtn')}</span>
           </button>
         </div>
       ) : filteredGroups.length === 0 ? (
         <div className="p-8 bg-white border border-[#E8E2D6] rounded-2xl text-center text-[#8A9187] space-y-1">
           <AlertCircle className="w-8 h-8 mx-auto opacity-50" />
-          <p className="font-bold text-[#2D332A] text-xs">لا توجد نتائج تطابق البحث</p>
+          <p className="font-bold text-[#2D332A] text-xs">{t('noMatchingSearchResults')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {filteredGroups.map((group) => {
             const enrollments = db.getGroupEnrollments(group.id);
-            const stats = db.calculateGroupStats(group.id);
 
             return (
               <div
@@ -161,33 +163,33 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                         {group.name}
                       </h3>
                       <p className="text-[11px] text-[#8A9187] font-semibold">
-                        {group.subject} • {getLocalizedStageName(group.gradeLevel)}
+                        {group.subject} • {getLocalizedStageName(group.gradeLevel, language)}
                       </p>
                     </div>
                   </div>
 
                   <span className="text-[10px] font-bold bg-[#F2ECE1] text-[#6B7567] px-2.5 py-1 rounded-full border border-[#E8E2D6]">
-                    {group.type === 'private' ? 'درس خاص' : 'مجموعة'}
+                    {group.type === 'private' ? t('groupTypePrivate') : t('groupTypeGroup')}
                   </span>
                 </div>
 
                 {/* Pricing & Student Counts Strip */}
                 <div className="grid grid-cols-2 gap-2 bg-[#F9F7F2] p-2.5 rounded-xl text-xs">
                   <div>
-                    <span className="text-[10px] text-[#8A9187] block">الطلاب المسجلين</span>
+                    <span className="text-[10px] text-[#8A9187] block">{t('enrolledStudentsCount')}</span>
                     <strong className="text-xs font-black text-[#2D332A] flex items-center gap-1 mt-0.5">
                       <Users className="w-3.5 h-3.5 text-[#748C70]" />
-                      <span>{enrollments.length} طالب</span>
+                      <span>{enrollments.length} {t('navStudents')}</span>
                     </strong>
                   </div>
 
                   <div>
                     <span className="text-[10px] text-[#8A9187] block">
-                      {group.billingType === 'monthly' ? 'الاشتراك الشهري' : group.billingType === 'package' ? 'سعر الباقة' : 'سعر الحصة'}
+                      {group.billingType === 'monthly' ? t('billingMonthly') : group.billingType === 'package' ? t('packagePrice') : t('sessionPrice')}
                     </span>
                     <strong className="text-xs font-black text-[#748C70] flex items-center gap-1 mt-0.5">
                       <DollarSign className="w-3.5 h-3.5 text-[#748C70]" />
-                      <span>{group.defaultPrice} ج.م</span>
+                      <span>{group.defaultPrice} {t('currency')}</span>
                     </strong>
                   </div>
                 </div>
@@ -196,7 +198,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 <div className="flex items-center justify-between text-[11px] text-[#8A9187] pt-1 border-t border-[#E8E2D6]/60">
                   <div className="flex items-center gap-1 truncate">
                     <Calendar className="w-3.5 h-3.5 text-[#748C70] shrink-0" />
-                    <span className="truncate">{group.scheduleDays.join('، ') || 'مواعيد متغيرة'}</span>
+                    <span className="truncate">{group.scheduleDays.join('، ') || 'Flexible'}</span>
                   </div>
 
                   {group.scheduleTime && (

@@ -9,6 +9,11 @@ import {
   DollarSign,
   AlertCircle,
   Plus,
+  CheckSquare,
+  Square,
+  CheckCheck,
+  CalendarCheck2,
+  X,
 } from 'lucide-react';
 import { Student, Group } from '../types';
 import { db } from '../utils/storage';
@@ -21,6 +26,7 @@ interface StudentsViewProps {
   groups: Group[];
   onOpenAddStudent: () => void;
   onOpenStudentProfile: (student: Student) => void;
+  onOpenBulkAddSession?: (students: Student[]) => void;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
@@ -28,12 +34,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   groups,
   onOpenAddStudent,
   onOpenStudentProfile,
+  onOpenBulkAddSession,
 }) => {
   const { t, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('all');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
   const [onlyDebtors, setOnlyDebtors] = useState(false);
+
+  // Selection Mode State
+  const [isSelectionMode, setIsSelectionMode] = useState<boolean>(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
   // Collect distinct grade levels
   const gradeLevels = Array.from(
@@ -72,8 +83,51 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     return true;
   });
 
+  // Toggle single student selection
+  const toggleSelectStudent = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Select all visible filtered students
+  const handleSelectAllFiltered = () => {
+    const allFilteredIds = filteredStudents.map((s) => s.id);
+    setSelectedStudentIds(new Set(allFilteredIds));
+  };
+
+  // Clear selection
+  const handleDeselectAll = () => {
+    setSelectedStudentIds(new Set());
+  };
+
+  // Exit selection mode
+  const handleExitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedStudentIds(new Set());
+  };
+
+  // Trigger bulk add session
+  const handleBulkAddSession = () => {
+    if (selectedStudentIds.size === 0 || !onOpenBulkAddSession) return;
+    const selectedList = students.filter((s) => selectedStudentIds.has(s.id));
+    onOpenBulkAddSession(selectedList);
+  };
+
+  const selectedCount = selectedStudentIds.size;
+  const isAllFilteredSelected =
+    filteredStudents.length > 0 &&
+    filteredStudents.every((s) => selectedStudentIds.has(s.id));
+
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#2D332A] pb-24" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#2D332A] pb-32" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -85,14 +139,66 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenAddStudent}
-          className="px-3 py-2 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>{t('addStudent')}</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Select Mode Toggle Button */}
+          {students.length > 0 && (
+            <button
+              onClick={() => {
+                if (isSelectionMode) {
+                  handleExitSelectionMode();
+                } else {
+                  setIsSelectionMode(true);
+                }
+              }}
+              className={`px-3 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 border ${
+                isSelectionMode
+                  ? 'bg-[#E8E2D6] text-[#2D332A] border-[#D4CEBF]'
+                  : 'bg-white hover:bg-[#F2ECE1] text-[#6B7567] border-[#E8E2D6]'
+              }`}
+            >
+              <CheckSquare className="w-4 h-4 text-[#748C70]" />
+              <span>{isSelectionMode ? t('exitSelectionMode') : t('selectStudents')}</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenAddStudent}
+            className="px-3 py-2 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>{t('addStudent')}</span>
+          </button>
+        </div>
       </div>
+
+      {/* Selection Mode Toolbar Banner */}
+      {isSelectionMode && (
+        <div className="p-3 bg-[#748C70]/10 border border-[#748C70]/30 rounded-2xl flex items-center justify-between gap-2 animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-[#2D332A] text-xs">
+              {t('selectedCount', { count: selectedCount.toString() })}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={isAllFilteredSelected ? handleDeselectAll : handleSelectAllFiltered}
+              className="px-2.5 py-1 rounded-xl bg-white border border-[#E8E2D6] text-[#2D332A] font-bold text-[11px] hover:bg-[#F9F7F2] transition-colors"
+            >
+              {isAllFilteredSelected ? t('deselectAll') : t('selectAll')}
+            </button>
+            <button
+              type="button"
+              onClick={handleExitSelectionMode}
+              className="p-1 rounded-xl text-[#8A9187] hover:text-[#2D332A] transition-colors"
+              title={t('exitSelectionMode')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search & Filter Bar */}
       <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
@@ -177,16 +283,41 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           {filteredStudents.map((student) => {
             const studentGroups = db.getStudentGroups(student.id);
             const fin = db.calculateStudentFinancials(student.id);
+            const isSelected = selectedStudentIds.has(student.id);
 
             return (
               <div
                 key={student.id}
-                onClick={() => onOpenStudentProfile(student)}
-                className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#748C70]/60 transition-all cursor-pointer space-y-2.5 active:scale-[0.99]"
+                onClick={() => {
+                  if (isSelectionMode) {
+                    toggleSelectStudent(student.id);
+                  } else {
+                    onOpenStudentProfile(student);
+                  }
+                }}
+                className={`p-3.5 rounded-2xl border shadow-sm transition-all cursor-pointer space-y-2.5 active:scale-[0.99] ${
+                  isSelected
+                    ? 'bg-[#748C70]/10 border-[#748C70]'
+                    : 'bg-white border-[#E8E2D6] hover:border-[#748C70]/60'
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  {/* Left: Avatar + Name + Grade */}
+                  {/* Left: Checkbox (if in selection mode) + Avatar + Name + Grade */}
                   <div className="flex items-center gap-3">
+                    {isSelectionMode && (
+                      <button
+                        type="button"
+                        onClick={(e) => toggleSelectStudent(student.id, e)}
+                        className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                          isSelected
+                            ? 'bg-[#748C70] border-[#748C70] text-white shadow-xs'
+                            : 'bg-white border-[#D4CEBF] text-transparent hover:border-[#748C70]'
+                        }`}
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
                     <StudentAvatar student={student} size="md" />
 
                     <div>
@@ -244,6 +375,31 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Floating Bottom Action Bar when students are selected */}
+      {isSelectionMode && selectedCount > 0 && (
+        <div className="fixed bottom-16 inset-x-0 z-40 max-w-lg mx-auto px-4 pb-2 animate-in slide-in-from-bottom-3 duration-200">
+          <div className="bg-[#2D332A] text-white p-3 rounded-2xl shadow-xl flex items-center justify-between border border-[#434B3E]">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-xl bg-[#748C70] flex items-center justify-center font-black text-xs">
+                {selectedCount}
+              </span>
+              <span className="font-bold text-xs">
+                {t('selectedCountShort', { count: selectedCount.toString() })}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleBulkAddSession}
+              className="px-4 py-2 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+            >
+              <CalendarCheck2 className="w-4 h-4" />
+              <span>{t('addBulkSession')} ({selectedCount})</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

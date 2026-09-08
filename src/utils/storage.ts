@@ -508,11 +508,21 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
 
 export function getAuthTokenForUser(userId: string): string {
   try {
+    const rawTok = localStorage.getItem(`tm_v2_auth_token_${userId}`);
+    if (rawTok && rawTok.trim()) return rawTok.trim();
+  } catch {}
+  try {
     const accounts = db.getAccounts();
     const acc = accounts.find((a) => a.id === userId);
-    if (acc && acc.authToken) return acc.authToken;
+    if (acc && acc.authToken && acc.authToken.trim()) return acc.authToken.trim();
   } catch {}
-  return `auth_tk_${userId}`;
+  try {
+    const current = db.getCurrentSession();
+    if (current && current.id === userId && current.authToken && current.authToken.trim()) {
+      return current.authToken.trim();
+    }
+  } catch {}
+  return '';
 }
 
 export interface AutoSyncSchedulerPlugin {
@@ -3137,7 +3147,10 @@ export const db = {
       if (!raw) return null;
       const user = JSON.parse(raw) as UserAccount;
       if (user && !user.authToken) {
-        user.authToken = `auth_tk_${user.id}`;
+        const storedToken = localStorage.getItem(`tm_v2_auth_token_${user.id}`);
+        if (storedToken && storedToken.trim()) {
+          user.authToken = storedToken.trim();
+        }
       }
       return user;
     } catch {
@@ -3150,7 +3163,15 @@ export const db = {
       localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
     } else {
       if (!user.authToken) {
-        user.authToken = `auth_tk_${user.id}`;
+        const storedToken = localStorage.getItem(`tm_v2_auth_token_${user.id}`);
+        if (storedToken && storedToken.trim()) {
+          user.authToken = storedToken.trim();
+        }
+      }
+      if (user.authToken && user.authToken.trim()) {
+        try {
+          localStorage.setItem(`tm_v2_auth_token_${user.id}`, user.authToken.trim());
+        } catch {}
       }
       localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(user));
     }
@@ -3179,7 +3200,7 @@ export const db = {
 
       if (res.ok && res.data && res.data.success && res.data.user) {
         const serverUser = res.data.user;
-        const token = res.data.token || `auth_tk_${serverUser.id}`;
+        const token = (res.data.token && typeof res.data.token === 'string') ? res.data.token.trim() : '';
 
         const newAccount: UserAccount = {
           id: serverUser.id,
@@ -3198,7 +3219,9 @@ export const db = {
         };
 
         // Cache locally
-        localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
+        if (token) {
+          localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
+        }
         const existing = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []).filter((a) => a.id !== newAccount.id);
         db.saveAccounts([newAccount, ...existing]);
 
@@ -3283,7 +3306,7 @@ export const db = {
 
       if (res.ok && res.data && res.data.success && res.data.user) {
         const serverUser = res.data.user;
-        const token = res.data.token || `auth_tk_${serverUser.id}`;
+        const token = (res.data.token && typeof res.data.token === 'string') ? res.data.token.trim() : '';
 
         diag.loginSuccess = true;
         diag.authenticatedUserId = serverUser.id;
@@ -3306,11 +3329,13 @@ export const db = {
         };
 
         // Cache token locally
-        try {
-          localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
-          diag.tokenSaved = true;
-        } catch {
-          diag.tokenSaved = false;
+        if (token) {
+          try {
+            localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
+            diag.tokenSaved = true;
+          } catch {
+            diag.tokenSaved = false;
+          }
         }
 
         // Update local accounts array (offline cache)
@@ -3335,53 +3360,55 @@ export const db = {
         db.setCurrentSession(userAccount);
 
         // 2. Immediately call authenticated /api/sync/pull to restore all Firestore cloud data
-        const pullUrl = getFullApiUrl('/api/sync/pull');
-        console.log('[Auth -> Restore] 6. Pull Request URL:', pullUrl);
-        console.log('[Auth -> Restore] 7. Pull Token:', token.substring(0, 10) + '...');
+        if (token) {
+          const pullUrl = getFullApiUrl('/api/sync/pull');
+          console.log('[Auth -> Restore] 6. Pull Request URL:', pullUrl);
 
-        try {
-          const pullRes = await universalApiFetch(pullUrl, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'x-auth-token': token,
-            },
-            timeoutMs: 20000,
-          });
-
-          diag.syncPullStatus = pullRes.status;
-          console.log('[Auth -> Restore] 8. Pull Request Status:', pullRes.status, 'Ok:', pullRes.ok);
-
-          if (pullRes.ok && pullRes.data && pullRes.data.success && pullRes.data.dataPackage) {
-            const cloudPkg: UserAccountDataPackage = pullRes.data.dataPackage;
-            diag.studentsReceived = cloudPkg.students?.length || 0;
-            diag.groupsReceived = cloudPkg.groups?.length || 0;
-            diag.sessionsReceived = cloudPkg.sessions?.length || 0;
-            diag.paymentsReceived = cloudPkg.payments?.length || 0;
-
-            console.log('[Auth -> Restore] 9. Cloud Data Counts from Firestore:', {
-              students: diag.studentsReceived,
-              groups: diag.groupsReceived,
-              sessions: diag.sessionsReceived,
-              payments: diag.paymentsReceived,
-              enrollments: cloudPkg.enrollments?.length || 0,
-              attendance: cloudPkg.attendance?.length || 0,
-              creditLogs: cloudPkg.creditLogs?.length || 0,
+          try {
+            const pullRes = await universalApiFetch(pullUrl, {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'x-auth-token': token,
+              },
+              timeoutMs: 20000,
             });
 
-            const restoreRes = db.restoreAccountData(serverUser.id, cloudPkg);
-            diag.restoreSuccess = restoreRes.success;
-            diag.restoreMessage = restoreRes.message;
-            console.log('[Auth -> Restore] 10. Restore Counts locally:', restoreRes.count, 'Success:', restoreRes.success);
-          } else {
-            diag.restoreSuccess = true;
-            diag.restoreMessage = 'لا توجد بيانات سابقة مسجلة لهذا الحساب بالسيرفر السحابي.';
-            console.log('[Auth -> Restore] 9. No existing cloud data package found in Firestore for this user.');
+            diag.syncPullStatus = pullRes.status;
+            console.log('[Auth -> Restore] 8. Pull Request Status:', pullRes.status, 'Ok:', pullRes.ok);
+
+            if (pullRes.ok && pullRes.data && pullRes.data.success && pullRes.data.dataPackage) {
+              const cloudPkg: UserAccountDataPackage = pullRes.data.dataPackage;
+              diag.studentsReceived = cloudPkg.students?.length || 0;
+              diag.groupsReceived = cloudPkg.groups?.length || 0;
+              diag.sessionsReceived = cloudPkg.sessions?.length || 0;
+              diag.paymentsReceived = cloudPkg.payments?.length || 0;
+
+              console.log('[Auth -> Restore] 9. Cloud Data Counts from Firestore:', {
+                students: diag.studentsReceived,
+                groups: diag.groupsReceived,
+                sessions: diag.sessionsReceived,
+                payments: diag.paymentsReceived,
+                enrollments: cloudPkg.enrollments?.length || 0,
+                attendance: cloudPkg.attendance?.length || 0,
+                creditLogs: cloudPkg.creditLogs?.length || 0,
+                resetAllBefore: cloudPkg.resetAllBefore,
+              });
+
+              const restoreRes = db.restoreAccountData(serverUser.id, cloudPkg);
+              diag.restoreSuccess = restoreRes.success;
+              diag.restoreMessage = restoreRes.message;
+              console.log('[Auth -> Restore] 10. Restore Counts locally:', restoreRes.count, 'Success:', restoreRes.success);
+            } else {
+              diag.restoreSuccess = true;
+              diag.restoreMessage = 'لا توجد بيانات سابقة مسجلة لهذا الحساب بالسيرفر السحابي.';
+              console.log('[Auth -> Restore] 9. No existing cloud data package found in Firestore for this user.');
+            }
+          } catch (pullErr: any) {
+            diag.syncPullStatus = `error: ${pullErr.message}`;
+            diag.restoreMessage = `فشل سحب البيانات: ${pullErr.message}`;
+            console.warn('[Auth -> Restore] Error pulling cloud data after login:', pullErr);
           }
-        } catch (pullErr: any) {
-          diag.syncPullStatus = `error: ${pullErr.message}`;
-          diag.restoreMessage = `فشل سحب البيانات: ${pullErr.message}`;
-          console.warn('[Auth -> Restore] Error pulling cloud data after login:', pullErr);
         }
 
         // Initialize background auto-sync scheduler for this account
@@ -3486,9 +3513,12 @@ export const db = {
   clearUserData: (userId?: string): void => {
     const targetUserId = userId || getActiveUserId();
     const now = new Date().toISOString();
+
+    // 1. Set the resetAllBefore timestamp for the user (MUST be preserved)
     setResetAllBefore(now, targetUserId);
 
-    // Filter out target user from all entities
+    // 2. Clear ONLY the domain user-data collections for this user
+    // Preserving: RESET_ALL_BEFORE, CURRENT_SESSION, ACCOUNTS, auth tokens, AUTO_SYNC_CONFIG, TEACHER_PROFILE, TOMBSTONES
     const filterUser = <T extends { userId?: string }>(key: string) => {
       const list = getList<T>(key, []);
       const remaining = list.filter((item) => (item.userId ? item.userId !== targetUserId : targetUserId !== 'acc_master_teacher'));
@@ -3502,16 +3532,19 @@ export const db = {
     filterUser(STORAGE_KEYS.ATTENDANCE);
     filterUser(STORAGE_KEYS.PAYMENTS);
     filterUser(STORAGE_KEYS.CREDIT_LOGS);
-    filterUser(STORAGE_KEYS.TOMBSTONES);
 
+    // 3. Build data package containing resetAllBefore marker and empty arrays
     autoSyncUserAccount(targetUserId);
+
+    // 4. Immediately trigger full sync to transmit the reset marker to the cloud backend
+    performFullSync(targetUserId, false).catch((err) => {
+      console.warn('[Storage] Clear user data cloud sync notice:', err);
+    });
   },
 
   clearAllData: (): void => {
-    const now = new Date().toISOString();
     const activeUserId = getActiveUserId();
-    setResetAllBefore(now, activeUserId);
-    Object.values(STORAGE_KEYS).forEach((k) => localStorage.getItem(k) && localStorage.removeItem(k));
+    db.clearUserData(activeUserId);
   },
 
   // Auto-Sync Scheduling Helpers

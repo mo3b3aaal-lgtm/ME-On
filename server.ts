@@ -366,42 +366,30 @@ app.post("/api/sync/merge", requireAuth, async (req, res) => {
 
 // AI Lesson Plan Generator
 app.post("/api/ai/lesson-plan", async (req, res) => {
+  const { topic, subject, gradeLevel, duration = "45 mins", objectives } = req.body;
+  const ai = getGenAI();
+
+  const fallbackPlan = `# خطة درس: ${topic || "المفاهيم الأساسية"}
+**المادة:** ${subject || "عام"} | **الصف:** ${gradeLevel || "المرحلة الدراسية"} | **المدة:** ${duration}
+
+## 🎯 الأهداف التعليمية
+- فهم الطالب للمفاهيم الأساسية لـ ${topic || "موضوع الدرس"}.
+- تطبيق 3 أمثلة عملية وتمارين تفاعلية.
+- تقييم استيعاب الطلاب ومتابعة الأداء.
+
+## ⏱️ سير الحصة والأنشطة
+1. **التهيئة والتمهيد (5-8 دقائق):** مراجعة سريعة وطرح سؤال تفاعلي مشوق.
+2. **الشرح والتدريس المباشر (15 دقيقة):** توضيح المفاهيم والأفكار مع أمثلة على السبورة.
+3. **التطبيق والممارسة الموجهة (12 دقيقة):** حل مسائل وتمارين ثنائية بمشاركة الطلاب.
+4. **التقييم التكويني (7 دقائق):** سؤال سريع للتحقق من الفهم والتطبيق.
+5. **الخاتمة والواجب (3 دقائق):** تلخيص النقاط الهامة وتحديد الواجب المنزلي.`;
+
+  if (!ai) {
+    return res.json({ plan: fallbackPlan });
+  }
+
   try {
-    const { topic, subject, gradeLevel, duration = "45 mins", objectives } = req.body;
-    const ai = getGenAI();
-
-    if (!ai) {
-      // High-quality smart fallback
-      return res.json({
-        plan: `# Lesson Plan: ${topic || "Core Principles"}
-**Subject:** ${subject || "General Science"} | **Grade Level:** ${gradeLevel || "Grade 10"} | **Duration:** ${duration}
-
-## 🎯 Learning Objectives
-- Students will understand the fundamental concepts of ${topic || "the topic"}.
-- Students will identify 3 key practical applications in real-world scenarios.
-- Students will collaborate in pairs to analyze and present a 2-minute solution.
-
-## ⏱️ Lesson Structure
-1. **Hook & Warm-up (5-8 mins):** 
-   - Provocative real-world question: "How does ${topic} impact our daily technology or environment?"
-   - Quick 2-minute think-pair-share.
-2. **Direct Instruction (15 mins):**
-   - Concept breakdown with visual diagrams on the board.
-   - Demonstration of key vocabulary and step-by-step example problem.
-3. **Guided Practice (12 mins):**
-   - Small group activity: Analyzing a case scenario with teacher roving check-ins.
-4. **Independent Work / Formative Check (7 mins):**
-   - 3-question exit ticket checking for core concept retention.
-5. **Closure & Homework (3 mins):**
-   - Summary recap by two volunteer students; assigned reading / reflection prompt.
-
-## 💡 Differentiated Learning Support
-- **For Advanced Learners:** Challenge problem involving multi-step synthesis.
-- **For Scaffolding:** Graphic organizer with pre-filled vocabulary terms.`
-      });
-    }
-
-    const prompt = `You are a master educator and pedagogical specialist. Create a detailed, highly practical, engaging lesson plan for a teacher.
+    const prompt = `You are a master educator. Create a detailed, highly practical, engaging lesson plan for a teacher in Arabic (or matching the language requested).
 Subject: ${subject}
 Grade Level: ${gradeLevel}
 Topic: ${topic}
@@ -411,52 +399,52 @@ Specific Goals/Notes: ${objectives || "Engaging hands-on activity, clear formati
 Format your response cleanly in Markdown with bold headers, bullet points, time breakdown, interactive activities, and an exit ticket.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
-    res.json({ plan: response.text || "Failed to generate lesson plan." });
+    res.json({ plan: response.text || fallbackPlan });
   } catch (error: any) {
-    console.error("Lesson plan error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate lesson plan." });
+    console.warn("Lesson plan AI call notice, returning fallback:", error?.message);
+    res.json({ plan: fallbackPlan });
   }
 });
 
 // AI Parent Message Drafter
 app.post("/api/ai/parent-message", async (req, res) => {
+  const { studentName, parentName, reason, tone = "professional & warm", details, teacherName = "المعلم" } = req.body;
+  const ai = getGenAI();
+
+  let fallbackSubject = `تقرير متابعة بخصوص الطالب/ة ${studentName || "المحترم/ة"}`;
+  let fallbackBody = `السلام عليكم ورحمة الله وبركاته ولي أمر الطالب/ة ${studentName || "المحترم/ة"}،\n\nنود إحاطتكم علماً بمتابعة أداء الطالب/ة في الحصص الدراسية.\n${details ? `ملاحظات: ${details}\n` : ''}\nشاكرين ومقدرين حسن تعاونكم معنا.\nمع أطيب التحيات،\n${teacherName}`;
+
+  if (reason === "attendance") {
+    fallbackSubject = `إشعار بخصوص حضور وغياب الطالب/ة ${studentName}`;
+    fallbackBody = `السلام عليكم ورحمة الله وبركاته،\n\nنحيطكم علماً بغياب الطالب/ة ${studentName} عن الحصة المقررة اليوم. نرجو الاطمئنان عليه والتواصل معنا لترتيب تعويض المحتوى الدراسي.\n\nمع خالص التقدير،\n${teacherName}`;
+  } else if (reason === "praise") {
+    fallbackSubject = `شهادة شكر وتميز للطالب/ة ${studentName} 🌟`;
+    fallbackBody = `السلام عليكم ورحمة الله وبركاته،\n\nيسعدنا إبلاغكم بالمستوى المتميز والتفاعل الإيجابي الرائع للطالب/ة ${studentName} خلال الحصة، مما يعكس تفوقه وحرصه الدائم.\n\nدمتم فخورين به دائماً،\n${teacherName}`;
+  }
+
+  if (!ai) {
+    return res.json({ subject: fallbackSubject, message: fallbackBody });
+  }
+
   try {
-    const { studentName, parentName, reason, tone = "professional & warm", details, teacherName = "Teacher" } = req.body;
-    const ai = getGenAI();
-
-    if (!ai) {
-      let subjectLine = `Update regarding ${studentName}`;
-      let bodyText = `Dear ${parentName || "Parent/Guardian"},\n\nI hope this message finds you well. I am writing to share a brief update regarding ${studentName}.\n\n${details || "We are tracking their progress in class and wanted to keep you informed."}\n\nPlease let me know if you have any questions or would like to arrange a brief call.\n\nWarm regards,\n${teacherName}\nClassroom Teacher`;
-
-      if (reason === "attendance") {
-        subjectLine = `Attendance Notice: ${studentName}`;
-        bodyText = `Dear ${parentName || "Parent/Guardian"},\n\nI am reaching out regarding ${studentName}'s attendance in our class today. We missed having them with us and want to ensure they stay on track with our current lessons.\n\nPlease reply to let us know the reason for the absence and if we can provide any study materials.\n\nBest regards,\n${teacherName}`;
-      } else if (reason === "praise") {
-        subjectLine = `Positive Note: ${studentName}'s Outstanding Effort! 🌟`;
-        bodyText = `Dear ${parentName || "Parent/Guardian"},\n\nI wanted to take a quick moment to commend ${studentName} for their wonderful participation and effort in class recently! They demonstrated great enthusiasm and teamwork.\n\nThank you for your ongoing support at home!\n\nWarmly,\n${teacherName}`;
-      }
-
-      return res.json({ subject: subjectLine, message: bodyText });
-    }
-
-    const prompt = `You are an empathetic, professional teacher communicating with a student's parent/guardian.
+    const prompt = `You are an empathetic, professional teacher communicating with a student's parent/guardian in Arabic.
 Teacher Name: ${teacherName}
 Student Name: ${studentName}
-Parent Name: ${parentName || "Parent/Guardian"}
-Type/Reason: ${reason} (e.g. attendance alert, academic praise, missing assignment, behavioral feedback, conference invitation)
+Parent Name: ${parentName || "ولي الأمر"}
+Type/Reason: ${reason}
 Tone: ${tone}
 Specific Notes: ${details || "None"}
 
 Generate a JSON object with two fields:
-"subject": A concise, clear email/SMS subject line
-"message": The body of the message (ready to send, polite, constructive, with placeholders where needed).`;
+"subject": A concise, clear email/SMS subject line in Arabic
+"message": The body of the message in Arabic.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -468,51 +456,44 @@ Generate a JSON object with two fields:
       res.json(parsed);
     } catch {
       res.json({
-        subject: `Update regarding ${studentName}`,
-        message: response.text,
+        subject: fallbackSubject,
+        message: response.text || fallbackBody,
       });
     }
   } catch (error: any) {
-    console.error("Parent message error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate parent message." });
+    console.warn("Parent message AI notice, returning fallback:", error?.message);
+    res.json({ subject: fallbackSubject, message: fallbackBody });
   }
 });
 
 // AI Quiz / Test Question Generator
 app.post("/api/ai/quiz-generator", async (req, res) => {
-  try {
-    const { topic, subject, gradeLevel, questionCount = 4, difficulty = "Medium" } = req.body;
-    const ai = getGenAI();
+  const { topic, subject, gradeLevel, questionCount = 4, difficulty = "Medium" } = req.body;
+  const ai = getGenAI();
 
-    if (!ai) {
-      return res.json({
-        questions: [
-          {
-            id: "q1",
-            question: `What is the primary function or principle of ${topic || "this topic"}?`,
-            options: ["A core foundational process", "A secondary auxiliary factor", "An unrelated environmental condition", "A historical anomaly"],
-            correctAnswer: "A core foundational process",
-            explanation: `The foundational definition directly establishes how ${topic} operates in standard conditions.`
-          },
-          {
-            id: "q2",
-            question: `Which of the following best exemplifies ${topic || "this concept"} in practical application?`,
-            options: ["Standard controlled experiment", "Unmonitored random variance", "Passive observation without metrics", "Isolated numerical calculation"],
-            correctAnswer: "Standard controlled experiment",
-            explanation: "Controlled experiments allow direct verification of key variables."
-          },
-          {
-            id: "q3",
-            question: `When analyzing key results in ${subject || "this subject"}, what should be evaluated first?`,
-            options: ["Hypothesis and baseline data", "Final conclusion only", "External unsolicited opinions", "Random guesses"],
-            correctAnswer: "Hypothesis and baseline data",
-            explanation: "Baseline data provides the benchmark for assessing any statistical or empirical change."
-          }
-        ]
-      });
+  const fallbackQuestions = [
+    {
+      id: "q1",
+      question: `ما هو المفهوم الأساسي المرتبط بـ (${topic || "هذا الموضوع"})؟`,
+      options: ["مفهوم رئيسي محوري", "عامل ثانوي غير مباشر", "حالة شاذة مؤقتة", "معلومة غير مرتبطة"],
+      correctAnswer: "مفهوم رئيسي محوري",
+      explanation: "هذا هو الأساس الذي ينبني عليه الدرس."
+    },
+    {
+      id: "q2",
+      question: `أي مما يلي يمثل أفضل تطبيق عملي لـ (${topic || "المحتوى"})؟`,
+      options: ["التجربة والتحليل المنطقي", "التخمين العشوائي", "تجاهل الشروط الأساسية", "الافتراض غير المدروس"],
+      correctAnswer: "التجربة والتحليل المنطقي",
+      explanation: "التطبيق العملي السليم يتطلب تحليلاً وتجربة دقيقة."
     }
+  ];
 
-    const prompt = `Generate a ${questionCount}-question multiple-choice quiz on:
+  if (!ai) {
+    return res.json({ questions: fallbackQuestions });
+  }
+
+  try {
+    const prompt = `Generate a ${questionCount}-question multiple-choice quiz in Arabic on:
 Subject: ${subject}
 Grade Level: ${gradeLevel}
 Topic: ${topic}
@@ -522,15 +503,15 @@ Return a valid JSON array of objects with the structure:
 [
   {
     "id": "q1",
-    "question": "question text",
+    "question": "question text in Arabic",
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctAnswer": "Option A",
-    "explanation": "Brief reasoning for the correct answer"
+    "explanation": "Brief reasoning in Arabic"
   }
 ]`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -538,10 +519,10 @@ Return a valid JSON array of objects with the structure:
     });
 
     const parsed = JSON.parse(response.text || "[]");
-    res.json({ questions: Array.isArray(parsed) ? parsed : parsed.questions || [] });
+    res.json({ questions: Array.isArray(parsed) ? parsed : parsed.questions || fallbackQuestions });
   } catch (error: any) {
-    console.error("Quiz generator error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate quiz." });
+    console.warn("Quiz generator AI notice, returning fallback:", error?.message);
+    res.json({ questions: fallbackQuestions });
   }
 });
 

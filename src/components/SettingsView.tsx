@@ -314,16 +314,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (
       confirm(
-        'تحذير: هل أنت متأكد تماماً من حذف جميع بيانات التطبيق لهذا الحساب؟ يمكنك لاحقاً استعادة بياناتك إذا كانت متزامنة مسبقاً.'
+        'تحذير: هل أنت متأكد تماماً من تصفير وحذف جميع بيانات التطبيق لهذا الحساب؟ سيتم مسح البيانات محلياً وسحابياً وتحديث المزامنة فوراً.'
       )
     ) {
-      db.clearAllData();
-      onDataReset();
-      setSyncFeedback({ type: 'info', message: 'تم مسح البيانات المحلية.' });
-      setTimeout(() => setSyncFeedback(null), 3000);
+      setIsSyncing(true);
+      try {
+        const result = await db.clearAllData();
+        onDataReset();
+        setSyncFeedback({
+          type: result.success ? 'success' : 'info',
+          message: result.message || 'تم مسح البيانات وتصفير السحابة بنجاح.',
+        });
+      } catch (err: any) {
+        onDataReset();
+        setSyncFeedback({
+          type: 'info',
+          message: 'تم مسح البيانات محلياً بنجاح.',
+        });
+      } finally {
+        setIsSyncing(false);
+        setTimeout(() => setSyncFeedback(null), 4000);
+      }
     }
   };
 

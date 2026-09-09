@@ -409,22 +409,112 @@ export async function getCloudDataPackage(userId: string): Promise<any | null> {
   try {
     const syncDocRef = doc(db, "user_sync_stores", userId);
     const snap = await getDoc(syncDocRef);
-    if (!snap.exists()) return null;
+    if (!snap.exists()) {
+      console.log(`[Server Cloud Storage] No sync package document found in Firestore for user ${userId}`);
+      return null;
+    }
     const data = snap.data();
-    return data.package || data.data_package || null;
+    const rawPkg = data.package || data.data_package || null;
+    if (!rawPkg) {
+      console.log(`[Server Cloud Storage] Sync store document for user ${userId} contains empty package`);
+      return null;
+    }
+
+    const resetTime = rawPkg.resetAllBefore ? new Date(rawPkg.resetAllBefore).getTime() : 0;
+    const tombstoneMap = new Map<string, string>();
+    for (const t of (rawPkg.tombstones || [])) {
+      if (t && t.id && t.entityType) {
+        const key = `${t.entityType}:${t.id}`;
+        const existing = tombstoneMap.get(key);
+        if (!existing || new Date(t.deletedAt).getTime() > new Date(existing).getTime()) {
+          tombstoneMap.set(key, t.deletedAt);
+        }
+      }
+    }
+
+    const filterList = (entityType: string, list: any[] = []) => {
+      if (!Array.isArray(list)) return [];
+      return list.filter((item) => {
+        if (!item || !item.id) return false;
+        const itemTimeStr = item.updatedAt || item.createdAt || "";
+        const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+        if (resetTime > 0 && itemTime <= resetTime) {
+          return false;
+        }
+        const delTimeStr = tombstoneMap.get(`${entityType}:${item.id}`);
+        if (delTimeStr && itemTime <= new Date(delTimeStr).getTime()) {
+          return false;
+        }
+        return true;
+      });
+    };
+
+    const sanitizedStudents = filterList('student', rawPkg.students);
+    const sanitizedGroups = filterList('group', rawPkg.groups);
+    const sanitizedEnrollments = filterList('enrollment', rawPkg.enrollments);
+    const sanitizedSessions = filterList('session', rawPkg.sessions);
+    const sanitizedAttendance = filterList('attendance', rawPkg.attendance);
+    const sanitizedPayments = filterList('payment', rawPkg.payments);
+    const sanitizedCreditLogs = filterList('creditLog', rawPkg.creditLogs);
+
+    const sanitizedPkg = {
+      ...rawPkg,
+      students: sanitizedStudents,
+      groups: sanitizedGroups,
+      enrollments: sanitizedEnrollments,
+      sessions: sanitizedSessions,
+      attendance: sanitizedAttendance,
+      payments: sanitizedPayments,
+      creditLogs: sanitizedCreditLogs,
+      stats: {
+        totalStudents: sanitizedStudents.length,
+        totalGroups: sanitizedGroups.length,
+        totalSessions: sanitizedSessions.length,
+        totalPayments: sanitizedPayments.length,
+      },
+    };
+
+    console.log(`[Server Cloud Storage] getCloudDataPackage sanitized for user ${userId}:`, {
+      resetAllBefore: sanitizedPkg.resetAllBefore,
+      students: sanitizedStudents.length,
+      groups: sanitizedGroups.length,
+      sessions: sanitizedSessions.length,
+      payments: sanitizedPayments.length,
+      tombstones: rawPkg.tombstones?.length || 0,
+    });
+
+    return sanitizedPkg;
   } catch (err) {
     console.error(`Error reading cloud data package from Firestore for ${userId}:`, err);
     return null;
   }
 }
 
+function sanitizeForFirestore(val: any): any {
+  if (val === undefined) return null;
+  if (val === null) return null;
+  if (Array.isArray(val)) {
+    return val.map((item) => sanitizeForFirestore(item));
+  }
+  if (typeof val === "object") {
+    const res: any = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v !== undefined) {
+        res[k] = sanitizeForFirestore(v);
+      }
+    }
+    return res;
+  }
+  return val;
+}
+
 export async function saveCloudDataPackage(userId: string, dataPackage: any): Promise<{ lastSyncTime: string; stats?: any }> {
   const now = new Date().toISOString();
-  const updatedPkg = {
+  const updatedPkg = sanitizeForFirestore({
     ...dataPackage,
     userId,
     lastSyncTime: now,
-  };
+  });
 
   const syncDocRef = doc(db, "user_sync_stores", userId);
   await setDoc(
@@ -560,6 +650,15 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
   const existingCloud = await getCloudDataPackage(userId);
   const now = new Date().toISOString();
 
+  console.log(`[Server Cloud Merge] Starting merge for user ${userId}:`, {
+    incomingResetAllBefore: incomingPackage?.resetAllBefore,
+    existingCloudResetAllBefore: existingCloud?.resetAllBefore,
+    incomingStudentsCount: incomingPackage?.students?.length || 0,
+    existingCloudStudentsCount: existingCloud?.students?.length || 0,
+    incomingTombstonesCount: incomingPackage?.tombstones?.length || 0,
+    existingCloudTombstonesCount: existingCloud?.tombstones?.length || 0,
+  });
+
   // Merge tombstones from local and cloud
   const mergedTombstones = mergeTombstones(
     incomingPackage?.tombstones || [],
@@ -583,6 +682,8 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
   } else {
     effectiveResetAllBefore = localReset || cloudReset;
   }
+
+  console.log(`[Server Cloud Merge] Effective resetAllBefore for ${userId}: ${effectiveResetAllBefore}`);
 
   if (!existingCloud) {
     // Filter initial incoming package through tombstones and resetAllBefore
@@ -615,6 +716,7 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
       },
     };
     await saveCloudDataPackage(userId, saved);
+    console.log(`[Server Cloud Merge] Created initial package for user ${userId}:`, saved.stats);
     return { dataPackage: saved, merged: false };
   }
 
@@ -652,5 +754,9 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
   };
 
   await saveCloudDataPackage(userId, mergedPackage);
+  console.log(`[Server Cloud Merge] Successfully saved merged package for ${userId}:`, {
+    effectiveResetAllBefore,
+    stats: mergedPackage.stats,
+  });
   return { dataPackage: mergedPackage, merged: true };
 }

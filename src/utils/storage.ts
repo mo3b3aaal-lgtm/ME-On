@@ -1150,6 +1150,7 @@ export const db = {
     saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => a.studentId !== id));
 
     autoSyncUserAccount(activeUserId);
+    performFullSync(activeUserId, false).catch(() => {});
   },
 
   // 2. Groups (المجموعات والدروس الخاصة)
@@ -1213,6 +1214,7 @@ export const db = {
     saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => !sessionIds.has(a.sessionId)));
 
     autoSyncUserAccount(activeUserId);
+    performFullSync(activeUserId, false).catch(() => {});
   },
 
   // 3. Enrollments (تسجيلات الطلاب في المجموعات والدروس الخاصة)
@@ -1916,6 +1918,7 @@ export const db = {
     const remainingAtt = attendance.filter((a) => a.sessionId !== id);
     saveList(STORAGE_KEYS.ATTENDANCE, remainingAtt);
     autoSyncUserAccount(activeUserId);
+    performFullSync(activeUserId, false).catch(() => {});
   },
 
   // 5. Attendance (الحضور والغياب)
@@ -2347,6 +2350,7 @@ export const db = {
     const list = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter((p) => p.id !== id);
     saveList(STORAGE_KEYS.PAYMENTS, list);
     autoSyncUserAccount(activeUserId);
+    performFullSync(activeUserId, false).catch(() => {});
   },
 
   // 7. Teacher Profile (ملف المدرس)
@@ -2971,94 +2975,135 @@ export const db = {
     }
 
     try {
-      // Restore students
-      if (Array.isArray(dataToRestore.students)) {
-        const otherStudents = getList<Student>(STORAGE_KEYS.STUDENTS, []).filter(
-          (s) => (s.userId ? s.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
+      // 1. Resolve effective resetAllBefore
+      const localReset = getResetAllBefore(targetUserId);
+      const incomingReset = dataToRestore.resetAllBefore;
+      let effectiveResetAllBefore: string | undefined = undefined;
+      if (localReset && incomingReset) {
+        effectiveResetAllBefore = new Date(localReset).getTime() >= new Date(incomingReset).getTime() ? localReset : incomingReset;
+      } else {
+        effectiveResetAllBefore = incomingReset || localReset;
+      }
+
+      if (effectiveResetAllBefore) {
+        setResetAllBefore(effectiveResetAllBefore, targetUserId);
+      }
+      const resetTime = effectiveResetAllBefore ? new Date(effectiveResetAllBefore).getTime() : 0;
+
+      // 2. Merge and persist tombstones
+      const localTombstones = getDeletionTombstones(targetUserId);
+      const incomingTombstones = dataToRestore.tombstones || [];
+      const tombstoneMap = new Map<string, string>();
+      for (const t of [...localTombstones, ...incomingTombstones]) {
+        if (t && t.id && t.entityType) {
+          const key = `${t.entityType}:${t.id}`;
+          const existing = tombstoneMap.get(key);
+          if (!existing || new Date(t.deletedAt).getTime() > new Date(existing).getTime()) {
+            tombstoneMap.set(key, t.deletedAt);
+          }
+        }
+      }
+      const mergedTombstones: DeletionTombstone[] = Array.from(tombstoneMap.entries()).map(([key, deletedAt]) => {
+        const [entityType, id] = key.split(':');
+        return {
+          id,
+          entityType: entityType as DeletionTombstone['entityType'],
+          userId: targetUserId,
+          deletedAt,
+        };
+      });
+      saveDeletionTombstones(mergedTombstones, targetUserId);
+
+      // Helper to test if an entity is alive (not wiped by resetAllBefore or tombstones)
+      const isEntityAlive = (entityType: string, item: any): boolean => {
+        if (!item || !item.id) return false;
+        const itemTimeStr = item.updatedAt || item.createdAt || "";
+        const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+        if (resetTime > 0 && itemTime <= resetTime) {
+          return false;
+        }
+        const delTimeStr = tombstoneMap.get(`${entityType}:${item.id}`);
+        if (delTimeStr && itemTime <= new Date(delTimeStr).getTime()) {
+          return false;
+        }
+        return true;
+      };
+
+      // 3. Merge entity collections cleanly
+      const mergeEntityList = <T extends { id: string; userId?: string; updatedAt?: string; createdAt?: string }>(
+        entityType: string,
+        key: string,
+        incomingList: T[] = []
+      ): T[] => {
+        const otherUsersItems = getList<T>(key, []).filter(
+          (item) => (item.userId ? item.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
         );
-        const restoredStudents = dataToRestore.students.map((s) => ({ ...s, userId: targetUserId }));
-        saveList(STORAGE_KEYS.STUDENTS, [...restoredStudents, ...otherStudents]);
-      }
 
-      // Restore groups
-      if (Array.isArray(dataToRestore.groups)) {
-        const otherGroups = getList<Group>(STORAGE_KEYS.GROUPS, []).filter(
-          (g) => (g.userId ? g.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
+        const currentLocalItems = getList<T>(key, []).filter(
+          (item) => (item.userId ? item.userId === targetUserId : targetUserId === 'acc_master_teacher')
         );
-        const restoredGroups = dataToRestore.groups.map((g) => ({ ...g, userId: targetUserId }));
-        saveList(STORAGE_KEYS.GROUPS, [...restoredGroups, ...otherGroups]);
-      }
 
-      // Restore enrollments
-      if (Array.isArray(dataToRestore.enrollments)) {
-        const otherEnrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []).filter(
-          (e) => (e.userId ? e.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
-        );
-        const restoredEnrollments = dataToRestore.enrollments.map((e) => ({ ...e, userId: targetUserId }));
-        saveList(STORAGE_KEYS.ENROLLMENTS, [...restoredEnrollments, ...otherEnrollments]);
-      }
+        const itemMap = new Map<string, T>();
 
-      // Restore sessions
-      if (Array.isArray(dataToRestore.sessions)) {
-        const otherSessions = getList<Session>(STORAGE_KEYS.SESSIONS, []).filter(
-          (s) => (s.userId ? s.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
-        );
-        const restoredSessions = dataToRestore.sessions.map((s) => ({ ...s, userId: targetUserId }));
-        saveList(STORAGE_KEYS.SESSIONS, [...restoredSessions, ...otherSessions]);
-      }
+        // Process incoming
+        for (const item of (incomingList || [])) {
+          if (isEntityAlive(entityType, item)) {
+            itemMap.set(item.id, { ...item, userId: targetUserId });
+          }
+        }
 
-      // Restore attendance
-      if (Array.isArray(dataToRestore.attendance)) {
-        const otherAtt = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []).filter(
-          (a) => (a.userId ? a.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
-        );
-        const restoredAtt = dataToRestore.attendance.map((a) => ({ ...a, userId: targetUserId }));
-        saveList(STORAGE_KEYS.ATTENDANCE, [...restoredAtt, ...otherAtt]);
-      }
+        // Process local items (allowing newer local modifications to override if alive)
+        for (const item of currentLocalItems) {
+          if (isEntityAlive(entityType, item)) {
+            const existing = itemMap.get(item.id);
+            if (existing) {
+              const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
+              const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+              if (itemTime > existingTime) {
+                itemMap.set(item.id, { ...existing, ...item, userId: targetUserId });
+              }
+            } else {
+              itemMap.set(item.id, { ...item, userId: targetUserId });
+            }
+          }
+        }
 
-      // Restore payments
-      if (Array.isArray(dataToRestore.payments)) {
-        const otherPay = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter(
-          (p) => (p.userId ? p.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
-        );
-        const restoredPay = dataToRestore.payments.map((p) => ({ ...p, userId: targetUserId }));
-        saveList(STORAGE_KEYS.PAYMENTS, [...restoredPay, ...otherPay]);
-      }
+        const finalUserItems = Array.from(itemMap.values());
+        saveList(key, [...finalUserItems, ...otherUsersItems]);
+        return finalUserItems;
+      };
 
-      // Restore credit logs
-      if (Array.isArray(dataToRestore.creditLogs)) {
-        const otherLogs = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []).filter(
-          (l) => (l.userId ? l.userId !== targetUserId : targetUserId !== 'acc_master_teacher')
-        );
-        const restoredLogs = dataToRestore.creditLogs.map((l) => ({ ...l, userId: targetUserId }));
-        saveList(STORAGE_KEYS.CREDIT_LOGS, [...restoredLogs, ...otherLogs]);
-      }
-
-      // Restore tombstones
-      if (Array.isArray(dataToRestore.tombstones)) {
-        saveDeletionTombstones(dataToRestore.tombstones, targetUserId);
-      }
-
-      // Restore resetAllBefore
-      if (dataToRestore.resetAllBefore) {
-        setResetAllBefore(dataToRestore.resetAllBefore, targetUserId);
-      }
+      const restoredStudents = mergeEntityList('student', STORAGE_KEYS.STUDENTS, dataToRestore.students);
+      const restoredGroups = mergeEntityList('group', STORAGE_KEYS.GROUPS, dataToRestore.groups);
+      const restoredEnrollments = mergeEntityList('enrollment', STORAGE_KEYS.ENROLLMENTS, dataToRestore.enrollments);
+      const restoredSessions = mergeEntityList('session', STORAGE_KEYS.SESSIONS, dataToRestore.sessions);
+      const restoredAttendance = mergeEntityList('attendance', STORAGE_KEYS.ATTENDANCE, dataToRestore.attendance);
+      const restoredPayments = mergeEntityList('payment', STORAGE_KEYS.PAYMENTS, dataToRestore.payments);
+      const restoredCreditLogs = mergeEntityList('creditLog', STORAGE_KEYS.CREDIT_LOGS, dataToRestore.creditLogs);
 
       // Restore profile
       if (dataToRestore.teacherProfile) {
         db.saveTeacherProfile(dataToRestore.teacherProfile, targetUserId);
       }
 
+      console.log(`[Storage] restoreAccountData completed for ${targetUserId}:`, {
+        effectiveResetAllBefore,
+        studentsCount: restoredStudents.length,
+        groupsCount: restoredGroups.length,
+        sessionsCount: restoredSessions.length,
+        paymentsCount: restoredPayments.length,
+      });
+
       autoSyncUserAccount(targetUserId);
 
       return {
         success: true,
-        message: 'تمت استعادة كافة بيانات الحساب بنجاح وتحديث شاشات التطبيق.',
+        message: 'تمت استعادة ومزامنة بيانات الحساب بنجاح وتحديث شاشات التطبيق.',
         count: {
-          students: dataToRestore.students?.length || 0,
-          groups: dataToRestore.groups?.length || 0,
-          sessions: dataToRestore.sessions?.length || 0,
-          payments: dataToRestore.payments?.length || 0,
+          students: restoredStudents.length,
+          groups: restoredGroups.length,
+          sessions: restoredSessions.length,
+          payments: restoredPayments.length,
         },
       };
     } catch (err) {
@@ -3510,15 +3555,19 @@ export const db = {
     }
   },
 
-  clearUserData: (userId?: string): void => {
+  clearUserData: async (
+    userId?: string
+  ): Promise<{ success: boolean; message: string; dataPackage?: UserAccountDataPackage; error?: string }> => {
     const targetUserId = userId || getActiveUserId();
     const now = new Date().toISOString();
 
-    // 1. Set the resetAllBefore timestamp for the user (MUST be preserved)
+    console.log(`[Storage] clearUserData triggered for ${targetUserId} with reset timestamp ${now}`);
+
+    // 1. Set the resetAllBefore timestamp for the user (MUST be preserved across all local and cloud ops)
     setResetAllBefore(now, targetUserId);
 
     // 2. Clear ONLY the domain user-data collections for this user
-    // Preserving: RESET_ALL_BEFORE, CURRENT_SESSION, ACCOUNTS, auth tokens, AUTO_SYNC_CONFIG, TEACHER_PROFILE, TOMBSTONES
+    // Preserving: RESET_ALL_BEFORE, CURRENT_SESSION, ACCOUNTS, auth tokens, AUTO_SYNC_CONFIG, TEACHER_PROFILE
     const filterUser = <T extends { userId?: string }>(key: string) => {
       const list = getList<T>(key, []);
       const remaining = list.filter((item) => (item.userId ? item.userId !== targetUserId : targetUserId !== 'acc_master_teacher'));
@@ -3533,18 +3582,36 @@ export const db = {
     filterUser(STORAGE_KEYS.PAYMENTS);
     filterUser(STORAGE_KEYS.CREDIT_LOGS);
 
-    // 3. Build data package containing resetAllBefore marker and empty arrays
-    autoSyncUserAccount(targetUserId);
+    // 3. Clear local tombstones for this user since resetAllBefore clears all prior history
+    saveDeletionTombstones([], targetUserId);
 
-    // 4. Immediately trigger full sync to transmit the reset marker to the cloud backend
-    performFullSync(targetUserId, false).catch((err) => {
-      console.warn('[Storage] Clear user data cloud sync notice:', err);
-    });
+    // 4. Build data package containing resetAllBefore marker and empty arrays
+    const localPkg = autoSyncUserAccount(targetUserId);
+
+    // 5. Transmit the reset marker and empty collections directly to the cloud backend and await completion
+    try {
+      console.log(`[Storage] clearUserData pushing reset to cloud backend for ${targetUserId}...`);
+      const syncResult = await performFullSync(targetUserId, true);
+      console.log(`[Storage] clearUserData cloud sync result for ${targetUserId}:`, syncResult.success, syncResult.message);
+      return {
+        success: true,
+        message: 'تم مسح كافة البيانات ومزامنة التصفير مع السيرفر السحابي بنجاح.',
+        dataPackage: syncResult.dataPackage || localPkg,
+      };
+    } catch (err: any) {
+      console.warn('[Storage] Clear user data cloud sync warning (local wipe preserved):', err);
+      return {
+        success: true,
+        message: 'تم مسح كافة البيانات محلياً بأمان. ستتم مزامنة التصفير سحابياً عند استقرار الاتصال.',
+        dataPackage: localPkg,
+        error: err.message,
+      };
+    }
   },
 
-  clearAllData: (): void => {
+  clearAllData: async (): Promise<{ success: boolean; message: string; dataPackage?: UserAccountDataPackage; error?: string }> => {
     const activeUserId = getActiveUserId();
-    db.clearUserData(activeUserId);
+    return db.clearUserData(activeUserId);
   },
 
   // Auto-Sync Scheduling Helpers

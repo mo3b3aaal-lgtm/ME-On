@@ -46,8 +46,8 @@ try {
 }
 var app = (0, import_app.getApps)().length === 0 ? (0, import_app.initializeApp)(firebaseConfig) : (0, import_app.getApp)();
 var db = firebaseConfig.firestoreDatabaseId ? (0, import_firestore.getFirestore)(app, firebaseConfig.firestoreDatabaseId) : (0, import_firestore.getFirestore)(app);
-function generateDeterministicToken(userId, salt = "teachermanager_secret_seed") {
-  return import_node_crypto.default.createHmac("sha256", salt).update(userId).digest("hex");
+function generateRandomSessionToken() {
+  return import_node_crypto.default.randomBytes(32).toString("hex");
 }
 async function authenticateUser(identifierOrParams, explicitPassword) {
   let clean = "";
@@ -63,14 +63,21 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
   if (!clean) {
     throw new Error("\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 \u0623\u0648 \u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645");
   }
+  console.log(`[Auth Diagnostic - LOGIN]`, {
+    identifierReceived: clean,
+    hasPasswordProvided: Boolean(password)
+  });
   const usersColl = (0, import_firestore.collection)(db, "users");
   let matchedDoc = null;
+  const queryErrors = [];
   try {
     const directDoc = await (0, import_firestore.getDoc)((0, import_firestore.doc)(db, "users", clean));
     if (directDoc.exists()) {
       matchedDoc = directDoc;
     }
   } catch (e) {
+    queryErrors.push(`directDoc: [${e.code || "ERR"}] ${e.message}`);
+    console.warn(`[Auth Diagnostic] directDoc lookup error:`, e.message);
   }
   if (!matchedDoc) {
     try {
@@ -80,6 +87,8 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
         matchedDoc = snap.docs[0];
       }
     } catch (e) {
+      queryErrors.push(`queryEmailLower: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qEmailLower lookup error:`, e.message);
     }
   }
   if (!matchedDoc) {
@@ -90,6 +99,8 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
         matchedDoc = snap.docs[0];
       }
     } catch (e) {
+      queryErrors.push(`queryEmailRaw: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qEmailRaw lookup error:`, e.message);
     }
   }
   if (!matchedDoc) {
@@ -100,6 +111,8 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
         matchedDoc = snap.docs[0];
       }
     } catch (e) {
+      queryErrors.push(`queryPhone: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qPhone lookup error:`, e.message);
     }
   }
   if (!matchedDoc) {
@@ -110,22 +123,48 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
         matchedDoc = snap.docs[0];
       }
     } catch (e) {
+      queryErrors.push(`queryName: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qName lookup error:`, e.message);
     }
   }
+  const userFound = Boolean(matchedDoc);
+  console.log(`[Auth Diagnostic] Database Search Result:`, {
+    userFound,
+    matchedUserId: matchedDoc ? matchedDoc.id : null,
+    queryErrorsCount: queryErrors.length,
+    queryErrors: queryErrors.length > 0 ? queryErrors : void 0
+  });
   if (!matchedDoc) {
+    if (queryErrors.length > 0 && queryErrors.some((err) => err.includes("permission-denied") || err.includes("insufficient"))) {
+      throw new Error(`\u062E\u0637\u0623 \u0641\u064A \u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0642\u0627\u0639\u062F\u0629 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0633\u062D\u0627\u0628\u064A\u0629 (Missing or insufficient permissions): ${queryErrors[0]}`);
+    }
     throw new Error("\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628 \u0645\u0633\u062C\u0644 \u0628\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0627\u0644\u0647\u0627\u062A\u0641 \u0641\u064A \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0633\u062D\u0627\u0628\u064A");
   }
   const userData = matchedDoc.data();
+  const storedHash = userData.password_hash || "";
+  const storedPlain = userData.password || "";
+  const hasPasswordHash = Boolean(storedHash || storedPlain);
+  let verificationResult = false;
   if (password) {
     const inputHash = import_node_crypto.default.createHash("sha256").update(password).digest("hex");
-    const storedHash = userData.password_hash || "";
-    const storedPlain = userData.password || "";
-    const isMatch = storedHash && storedHash === inputHash || storedPlain && storedPlain === password || !storedHash && !storedPlain;
-    if (!isMatch) {
+    verificationResult = storedHash && storedHash === inputHash || storedPlain && storedPlain === password || !storedHash && !storedPlain;
+    console.log(`[Auth Diagnostic] Password Verification:`, {
+      passwordHashExists: hasPasswordHash,
+      verificationResult,
+      isHashMatch: Boolean(storedHash && storedHash === inputHash),
+      isPlainMatch: Boolean(storedPlain && storedPlain === password),
+      isEmptyFallback: Boolean(!storedHash && !storedPlain)
+    });
+    if (!verificationResult) {
       throw new Error("\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D\u0629\u060C \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0623\u0643\u062F \u0648\u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0645\u062C\u062F\u062F\u0627\u064B");
     }
+  } else {
+    console.log(`[Auth Diagnostic] Password Verification: No password provided in request`, {
+      passwordHashExists: hasPasswordHash,
+      verificationResult: false
+    });
   }
-  const token = generateDeterministicToken(userData.id);
+  const token = generateRandomSessionToken();
   const now = (/* @__PURE__ */ new Date()).toISOString();
   await (0, import_firestore.setDoc)(
     matchedDoc.ref,
@@ -155,13 +194,23 @@ async function registerUser(account) {
       if (pwdHash2 && existing.password_hash && pwdHash2 !== existing.password_hash) {
         throw new Error("\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0645\u0633\u062C\u0644 \u0628\u0627\u0644\u0641\u0639\u0644 \u0628\u062D\u0633\u0627\u0628 \u0622\u062E\u0631 \u0628\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0645\u062E\u062A\u0644\u0641\u0629.");
       }
-      const token2 = generateDeterministicToken(existing.id);
-      return { user: existing, token: token2 };
+      const token2 = generateRandomSessionToken();
+      const now2 = (/* @__PURE__ */ new Date()).toISOString();
+      await (0, import_firestore.setDoc)(
+        snap.docs[0].ref,
+        {
+          auth_token: token2,
+          last_login_at: now2,
+          updated_at: now2
+        },
+        { merge: true }
+      );
+      return { user: { ...existing, auth_token: token2 }, token: token2 };
     }
   }
   const userId = account.id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const now = (/* @__PURE__ */ new Date()).toISOString();
-  const token = generateDeterministicToken(userId);
+  const token = generateRandomSessionToken();
   const pwdHash = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
   const newUser = {
     id: userId,
@@ -175,11 +224,29 @@ async function registerUser(account) {
     updated_at: now
   };
   const userRef = (0, import_firestore.doc)(db, "users", userId);
-  await (0, import_firestore.setDoc)(userRef, {
-    ...newUser,
-    subject: account.subject || "\u0639\u0627\u0645",
-    centerOrSchool: account.centerOrSchool || ""
-  });
+  try {
+    await (0, import_firestore.setDoc)(userRef, {
+      ...newUser,
+      subject: account.subject || "\u0639\u0627\u0645",
+      centerOrSchool: account.centerOrSchool || ""
+    });
+    console.log(`[Auth Diagnostic - REGISTER]`, {
+      userCreated: true,
+      userDocumentPath: `users/${userId}`,
+      userId,
+      emailType: cleanEmail ? "provided" : "generated",
+      hasPasswordHash: Boolean(pwdHash)
+    });
+  } catch (err) {
+    console.error(`[Auth Diagnostic - REGISTER]`, {
+      userCreated: false,
+      userDocumentPath: `users/${userId}`,
+      userId,
+      error: err.message,
+      errorCode: err.code
+    });
+    throw err;
+  }
   return { user: newUser, token };
 }
 async function resetUserPasswordInFirestore(identifier, newPassword, recoveryPin) {
@@ -205,16 +272,18 @@ async function resetUserPasswordInFirestore(identifier, newPassword, recoveryPin
     throw new Error("\u0643\u0648\u062F \u0627\u0644\u0627\u0633\u062A\u0631\u062F\u0627\u062F \u0627\u0644\u0633\u0631\u064A (PIN) \u063A\u064A\u0631 \u0635\u062D\u064A\u062D.");
   }
   const newHash = import_node_crypto.default.createHash("sha256").update(newPassword).digest("hex");
+  const newToken = generateRandomSessionToken();
   const now = (/* @__PURE__ */ new Date()).toISOString();
   await (0, import_firestore.setDoc)(
     matchedDoc.ref,
     {
       password_hash: newHash,
+      auth_token: newToken,
       updated_at: now
     },
     { merge: true }
   );
-  return { success: true, message: "\u062A\u0645 \u062A\u062D\u062F\u064A\u062B \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0628\u0646\u062C\u0627\u062D \u0641\u064A \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0633\u062D\u0627\u0628\u064A." };
+  return { success: true, message: "\u062A\u0645 \u062A\u062D\u062F\u064A\u062B \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0628\u0646\u062C\u0627\u062D \u0641\u064A \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0633\u062D\u0627\u0628\u064A \u0648\u062A\u062C\u062F\u064A\u062F \u062C\u0644\u0633\u0629 \u0627\u0644\u0623\u0645\u0627\u0646." };
 }
 async function registerOrAuthenticateUser(account) {
   return registerUser(account);
@@ -232,38 +301,109 @@ async function getUserByToken(token) {
     return null;
   }
 }
-async function getUserById(userId) {
-  if (!userId) return null;
-  try {
-    const userRef = (0, import_firestore.doc)(db, "users", userId);
-    const snap = await (0, import_firestore.getDoc)(userRef);
-    if (!snap.exists()) return null;
-    return snap.data();
-  } catch (err) {
-    console.error("Error getting user by id from Firestore:", err);
-    return null;
-  }
-}
 async function getCloudDataPackage(userId) {
   if (!userId) return null;
   try {
     const syncDocRef = (0, import_firestore.doc)(db, "user_sync_stores", userId);
     const snap = await (0, import_firestore.getDoc)(syncDocRef);
-    if (!snap.exists()) return null;
+    if (!snap.exists()) {
+      console.log(`[Server Cloud Storage] No sync package document found in Firestore for user ${userId}`);
+      return null;
+    }
     const data = snap.data();
-    return data.package || data.data_package || null;
+    const rawPkg = data.package || data.data_package || null;
+    if (!rawPkg) {
+      console.log(`[Server Cloud Storage] Sync store document for user ${userId} contains empty package`);
+      return null;
+    }
+    const resetTime = rawPkg.resetAllBefore ? new Date(rawPkg.resetAllBefore).getTime() : 0;
+    const tombstoneMap = /* @__PURE__ */ new Map();
+    for (const t of rawPkg.tombstones || []) {
+      if (t && t.id && t.entityType) {
+        const key = `${t.entityType}:${t.id}`;
+        const existing = tombstoneMap.get(key);
+        if (!existing || new Date(t.deletedAt).getTime() > new Date(existing).getTime()) {
+          tombstoneMap.set(key, t.deletedAt);
+        }
+      }
+    }
+    const filterList = (entityType, list = []) => {
+      if (!Array.isArray(list)) return [];
+      return list.filter((item) => {
+        if (!item || !item.id) return false;
+        const itemTimeStr = item.updatedAt || item.createdAt || "";
+        const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+        if (resetTime > 0 && itemTime <= resetTime) {
+          return false;
+        }
+        const delTimeStr = tombstoneMap.get(`${entityType}:${item.id}`);
+        if (delTimeStr && itemTime <= new Date(delTimeStr).getTime()) {
+          return false;
+        }
+        return true;
+      });
+    };
+    const sanitizedStudents = filterList("student", rawPkg.students);
+    const sanitizedGroups = filterList("group", rawPkg.groups);
+    const sanitizedEnrollments = filterList("enrollment", rawPkg.enrollments);
+    const sanitizedSessions = filterList("session", rawPkg.sessions);
+    const sanitizedAttendance = filterList("attendance", rawPkg.attendance);
+    const sanitizedPayments = filterList("payment", rawPkg.payments);
+    const sanitizedCreditLogs = filterList("creditLog", rawPkg.creditLogs);
+    const sanitizedPkg = {
+      ...rawPkg,
+      students: sanitizedStudents,
+      groups: sanitizedGroups,
+      enrollments: sanitizedEnrollments,
+      sessions: sanitizedSessions,
+      attendance: sanitizedAttendance,
+      payments: sanitizedPayments,
+      creditLogs: sanitizedCreditLogs,
+      stats: {
+        totalStudents: sanitizedStudents.length,
+        totalGroups: sanitizedGroups.length,
+        totalSessions: sanitizedSessions.length,
+        totalPayments: sanitizedPayments.length
+      }
+    };
+    console.log(`[Server Cloud Storage] getCloudDataPackage sanitized for user ${userId}:`, {
+      resetAllBefore: sanitizedPkg.resetAllBefore,
+      students: sanitizedStudents.length,
+      groups: sanitizedGroups.length,
+      sessions: sanitizedSessions.length,
+      payments: sanitizedPayments.length,
+      tombstones: rawPkg.tombstones?.length || 0
+    });
+    return sanitizedPkg;
   } catch (err) {
     console.error(`Error reading cloud data package from Firestore for ${userId}:`, err);
     return null;
   }
 }
+function sanitizeForFirestore(val) {
+  if (val === void 0) return null;
+  if (val === null) return null;
+  if (Array.isArray(val)) {
+    return val.map((item) => sanitizeForFirestore(item));
+  }
+  if (typeof val === "object") {
+    const res = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v !== void 0) {
+        res[k] = sanitizeForFirestore(v);
+      }
+    }
+    return res;
+  }
+  return val;
+}
 async function saveCloudDataPackage(userId, dataPackage) {
   const now = (/* @__PURE__ */ new Date()).toISOString();
-  const updatedPkg = {
+  const updatedPkg = sanitizeForFirestore({
     ...dataPackage,
     userId,
     lastSyncTime: now
-  };
+  });
   const syncDocRef = (0, import_firestore.doc)(db, "user_sync_stores", userId);
   await (0, import_firestore.setDoc)(
     syncDocRef,
@@ -271,6 +411,7 @@ async function saveCloudDataPackage(userId, dataPackage) {
       user_id: userId,
       version: dataPackage.version || "2.0",
       last_sync_time: now,
+      data_package: updatedPkg,
       package: updatedPkg,
       updated_at: now
     },
@@ -292,27 +433,62 @@ async function saveCloudDataPackage(userId, dataPackage) {
   }
   return { lastSyncTime: now, stats: updatedPkg.stats };
 }
-function mergeEntities(localList = [], cloudList = []) {
+function mergeTombstones(localTombstones = [], cloudTombstones = []) {
   const map = /* @__PURE__ */ new Map();
-  for (const item of cloudList) {
-    if (item && item.id) {
-      map.set(item.id, item);
+  for (const t of [...cloudTombstones || [], ...localTombstones || []]) {
+    if (!t || !t.id || !t.entityType) continue;
+    const key = `${t.entityType}:${t.id}`;
+    const existing = map.get(key);
+    if (!existing || new Date(t.deletedAt).getTime() > new Date(existing.deletedAt).getTime()) {
+      map.set(key, t);
     }
   }
-  for (const item of localList) {
-    if (item && item.id) {
-      const existing = map.get(item.id);
-      if (existing) {
-        const existingTime = existing.updatedAt || existing.createdAt || "";
-        const localTime = item.updatedAt || item.createdAt || "";
-        if (existingTime && localTime && new Date(existingTime).getTime() > new Date(localTime).getTime()) {
-          map.set(item.id, { ...item, ...existing });
-        } else {
-          map.set(item.id, { ...existing, ...item });
-        }
-      } else {
-        map.set(item.id, item);
+  return Array.from(map.values());
+}
+function mergeEntities(entityType, localList = [], cloudList = [], tombstoneMap, resetAllBefore) {
+  const map = /* @__PURE__ */ new Map();
+  const resetTime = resetAllBefore ? new Date(resetAllBefore).getTime() : 0;
+  for (const item of cloudList || []) {
+    if (!item || !item.id) continue;
+    const itemTimeStr = item.updatedAt || item.createdAt || "";
+    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+    if (resetTime > 0 && itemTime <= resetTime) {
+      continue;
+    }
+    const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
+    if (deletedAt) {
+      const delTime = new Date(deletedAt).getTime();
+      if (itemTime <= delTime) {
+        continue;
       }
+    }
+    map.set(item.id, item);
+  }
+  for (const item of localList || []) {
+    if (!item || !item.id) continue;
+    const itemTimeStr = item.updatedAt || item.createdAt || "";
+    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+    if (resetTime > 0 && itemTime <= resetTime) {
+      continue;
+    }
+    const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
+    if (deletedAt) {
+      const delTime = new Date(deletedAt).getTime();
+      if (itemTime <= delTime) {
+        continue;
+      }
+    }
+    const existing = map.get(item.id);
+    if (existing) {
+      const existingTimeStr = existing.updatedAt || existing.createdAt || "";
+      const existingTime = existingTimeStr ? new Date(existingTimeStr).getTime() : 0;
+      if (existingTime > itemTime) {
+        map.set(item.id, { ...item, ...existing });
+      } else {
+        map.set(item.id, { ...existing, ...item });
+      }
+    } else {
+      map.set(item.id, item);
     }
   }
   return Array.from(map.values());
@@ -320,19 +496,73 @@ function mergeEntities(localList = [], cloudList = []) {
 async function mergeCloudDataPackage(userId, incomingPackage) {
   const existingCloud = await getCloudDataPackage(userId);
   const now = (/* @__PURE__ */ new Date()).toISOString();
+  console.log(`[Server Cloud Merge] Starting merge for user ${userId}:`, {
+    incomingResetAllBefore: incomingPackage?.resetAllBefore,
+    existingCloudResetAllBefore: existingCloud?.resetAllBefore,
+    incomingStudentsCount: incomingPackage?.students?.length || 0,
+    existingCloudStudentsCount: existingCloud?.students?.length || 0,
+    incomingTombstonesCount: incomingPackage?.tombstones?.length || 0,
+    existingCloudTombstonesCount: existingCloud?.tombstones?.length || 0
+  });
+  const mergedTombstones = mergeTombstones(
+    incomingPackage?.tombstones || [],
+    existingCloud?.tombstones || []
+  );
+  const tombstoneMap = /* @__PURE__ */ new Map();
+  for (const t of mergedTombstones) {
+    if (t && t.id && t.entityType) {
+      tombstoneMap.set(`${t.entityType}:${t.id}`, t.deletedAt);
+    }
+  }
+  let effectiveResetAllBefore = void 0;
+  const localReset = incomingPackage?.resetAllBefore;
+  const cloudReset = existingCloud?.resetAllBefore;
+  if (localReset && cloudReset) {
+    effectiveResetAllBefore = new Date(localReset).getTime() >= new Date(cloudReset).getTime() ? localReset : cloudReset;
+  } else {
+    effectiveResetAllBefore = localReset || cloudReset;
+  }
+  console.log(`[Server Cloud Merge] Effective resetAllBefore for ${userId}: ${effectiveResetAllBefore}`);
   if (!existingCloud) {
-    const saved = { ...incomingPackage, userId, lastSyncTime: now };
+    const initialStudents = mergeEntities("student", incomingPackage.students || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialGroups = mergeEntities("group", incomingPackage.groups || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialEnrollments = mergeEntities("enrollment", incomingPackage.enrollments || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialSessions = mergeEntities("session", incomingPackage.sessions || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialAttendance = mergeEntities("attendance", incomingPackage.attendance || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialPayments = mergeEntities("payment", incomingPackage.payments || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialCreditLogs = mergeEntities("creditLog", incomingPackage.creditLogs || [], [], tombstoneMap, effectiveResetAllBefore);
+    const saved = {
+      ...incomingPackage,
+      userId,
+      lastSyncTime: now,
+      students: initialStudents,
+      groups: initialGroups,
+      enrollments: initialEnrollments,
+      sessions: initialSessions,
+      attendance: initialAttendance,
+      payments: initialPayments,
+      creditLogs: initialCreditLogs,
+      tombstones: mergedTombstones,
+      resetAllBefore: effectiveResetAllBefore,
+      stats: {
+        totalStudents: initialStudents.length,
+        totalGroups: initialGroups.length,
+        totalSessions: initialSessions.length,
+        totalPayments: initialPayments.length
+      }
+    };
     await saveCloudDataPackage(userId, saved);
+    console.log(`[Server Cloud Merge] Created initial package for user ${userId}:`, saved.stats);
     return { dataPackage: saved, merged: false };
   }
-  const mergedStudents = mergeEntities(incomingPackage.students, existingCloud.students);
-  const mergedGroups = mergeEntities(incomingPackage.groups, existingCloud.groups);
-  const mergedEnrollments = mergeEntities(incomingPackage.enrollments, existingCloud.enrollments);
-  const mergedSessions = mergeEntities(incomingPackage.sessions, existingCloud.sessions);
-  const mergedAttendance = mergeEntities(incomingPackage.attendance, existingCloud.attendance);
-  const mergedPayments = mergeEntities(incomingPackage.payments, existingCloud.payments);
-  const mergedCreditLogs = mergeEntities(incomingPackage.creditLogs || [], existingCloud.creditLogs || []);
-  const mergedMonthlyInvoices = mergeEntities(incomingPackage.monthlyInvoices || [], existingCloud.monthlyInvoices || []);
+  const mergedStudents = mergeEntities("student", incomingPackage.students, existingCloud.students, tombstoneMap, effectiveResetAllBefore);
+  const mergedGroups = mergeEntities("group", incomingPackage.groups, existingCloud.groups, tombstoneMap, effectiveResetAllBefore);
+  const mergedEnrollments = mergeEntities("enrollment", incomingPackage.enrollments, existingCloud.enrollments, tombstoneMap, effectiveResetAllBefore);
+  const mergedSessions = mergeEntities("session", incomingPackage.sessions, existingCloud.sessions, tombstoneMap, effectiveResetAllBefore);
+  const mergedAttendance = mergeEntities("attendance", incomingPackage.attendance, existingCloud.attendance, tombstoneMap, effectiveResetAllBefore);
+  const mergedPayments = mergeEntities("payment", incomingPackage.payments, existingCloud.payments, tombstoneMap, effectiveResetAllBefore);
+  const mergedCreditLogs = mergeEntities("creditLog", incomingPackage.creditLogs || [], existingCloud.creditLogs || [], tombstoneMap, effectiveResetAllBefore);
+  const mergedMonthlyInvoices = incomingPackage.monthlyInvoices || existingCloud.monthlyInvoices || [];
   const mergedProfile = { ...existingCloud.teacherProfile || {}, ...incomingPackage.teacherProfile || {} };
   const mergedPackage = {
     version: incomingPackage.version || "2.0",
@@ -347,6 +577,8 @@ async function mergeCloudDataPackage(userId, incomingPackage) {
     creditLogs: mergedCreditLogs,
     monthlyInvoices: mergedMonthlyInvoices,
     teacherProfile: mergedProfile,
+    tombstones: mergedTombstones,
+    resetAllBefore: effectiveResetAllBefore,
     stats: {
       totalStudents: mergedStudents.length,
       totalGroups: mergedGroups.length,
@@ -355,6 +587,10 @@ async function mergeCloudDataPackage(userId, incomingPackage) {
     }
   };
   await saveCloudDataPackage(userId, mergedPackage);
+  console.log(`[Server Cloud Merge] Successfully saved merged package for ${userId}:`, {
+    effectiveResetAllBefore,
+    stats: mergedPackage.stats
+  });
   return { dataPackage: mergedPackage, merged: true };
 }
 
@@ -415,26 +651,17 @@ async function requireAuth(req, res, next) {
     } else if (req.body && req.body.token) {
       token = String(req.body.token).trim();
     }
-    let user = null;
-    if (token) {
-      user = await getUserByToken(token);
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Missing authentication token."
+      });
     }
-    if (!user && req.body && req.body.userId) {
-      const rawId = String(req.body.userId).trim();
-      user = await getUserById(rawId);
-      if (!user) {
-        const result = await registerOrAuthenticateUser({
-          id: rawId,
-          email: req.body.email || `${rawId}@teachermanager.local`,
-          name: req.body.teacherProfile?.name || "\u0645\u0639\u0644\u0645"
-        });
-        user = result.user;
-      }
-    }
+    const user = await getUserByToken(token);
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: "Unauthorized: Invalid or missing authentication credentials."
+        error: "Unauthorized: Invalid or expired authentication session token."
       });
     }
     req.user = user;
@@ -446,14 +673,38 @@ async function requireAuth(req, res, next) {
 }
 app2.post("/api/auth/login", async (req, res) => {
   try {
-    const identifier = req.body.identifier || req.body.email || req.body.phone || req.body.id;
-    const password = req.body.password;
-    console.log(`[Auth API /api/auth/login] Attempting login for identifier: "${identifier}"`);
-    if (!identifier) {
-      return res.status(400).json({ success: false, error: "\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641" });
+    const rawBody = req.body || {};
+    const bodyKeys = Object.keys(rawBody);
+    const identifier = rawBody.identifier || rawBody.email || rawBody.phone || rawBody.id || rawBody.username;
+    const hasPassword = Boolean(rawBody.password);
+    let idType = "unknown";
+    if (rawBody.email || identifier && identifier.includes("@")) {
+      idType = "email";
+    } else if (rawBody.phone || identifier && /^[0-9+\s()-]+$/.test(identifier)) {
+      idType = "phone";
+    } else if (rawBody.id || identifier && identifier.startsWith("acc_")) {
+      idType = "userId";
+    } else if (identifier) {
+      idType = "name_or_string";
     }
-    const { user, token } = await authenticateUser(identifier, password);
-    console.log(`[Auth API /api/auth/login] Login successful! User ID: ${user.id}, Email: ${user.email}`);
+    console.log(`[Auth Diagnostic] Login Request Received:`, {
+      bodyKeys,
+      receivedIdentifierType: idType,
+      hasIdentifier: Boolean(identifier),
+      hasPassword,
+      clientIp: req.ip || req.headers["x-forwarded-for"],
+      userAgent: req.headers["user-agent"]
+    });
+    if (!identifier) {
+      console.warn(`[Auth Diagnostic] Login failed: Missing identifier in request body.`);
+      return res.status(400).json({
+        success: false,
+        error: "\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641",
+        diagnostic: { reason: "MISSING_IDENTIFIER", receivedKeys: bodyKeys }
+      });
+    }
+    const { user, token } = await authenticateUser(identifier, rawBody.password);
+    console.log(`[Auth Diagnostic] Login successful! User ID: ${user.id}, Email: ${user.email}`);
     res.json({
       success: true,
       token,
@@ -470,14 +721,62 @@ app2.post("/api/auth/login", async (req, res) => {
       }
     });
   } catch (error) {
-    console.warn(`[Auth API /api/auth/login] Authentication failed:`, error.message);
-    res.status(401).json({ success: false, error: error.message || "\u0641\u0634\u0644 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    console.warn(`[Auth Diagnostic] Authentication failed:`, {
+      message: error.message,
+      code: error.code || "AUTH_FAILED",
+      stack: error.stack?.split("\n").slice(0, 3).join(" | ")
+    });
+    res.status(401).json({
+      success: false,
+      error: error.message || "\u0641\u0634\u0644 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644",
+      errorCode: error.code || "AUTHENTICATION_FAILED",
+      diagnostic: {
+        errorMessage: error.message,
+        errorName: error.name,
+        errorCode: error.code
+      }
+    });
   }
 });
 app2.post("/api/auth/register", async (req, res) => {
   try {
-    const { id, email, name, phone, subject, centerOrSchool, password, recoveryPin } = req.body;
-    console.log(`[Auth API /api/auth/register] Registering account for: ${email || name}`);
+    const rawBody = req.body || {};
+    const receivedFields = Object.keys(rawBody);
+    const name = (rawBody.name || "").trim();
+    const email = (rawBody.email || "").trim().toLowerCase();
+    const phone = (rawBody.phone || "").trim();
+    const password = rawBody.password;
+    const subject = rawBody.subject || "\u0639\u0627\u0645";
+    const centerOrSchool = rawBody.centerOrSchool || rawBody.center_or_school || "";
+    const recoveryPin = rawBody.recoveryPin || rawBody.recovery_pin || "123456";
+    const id = rawBody.id;
+    const missingFields = [];
+    if (!name) missingFields.push("name (\u0627\u0633\u0645 \u0627\u0644\u0645\u0639\u0644\u0645)");
+    if (!email && !phone) missingFields.push("email or phone (\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0627\u0644\u0647\u0627\u062A\u0641)");
+    if (!password) {
+      missingFields.push("password (\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631)");
+    } else if (String(password).length < 4) {
+      missingFields.push("password_too_short (\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u064A\u062C\u0628 \u0623\u0644\u0627 \u062A\u0642\u0644 \u0639\u0646 4 \u0623\u062D\u0631\u0641)");
+    }
+    console.log(`[Auth Diagnostic - REGISTER Request]`, {
+      receivedFields,
+      hasName: Boolean(name),
+      hasEmail: Boolean(email),
+      hasPhone: Boolean(phone),
+      hasPassword: Boolean(password),
+      missingFields,
+      clientIp: req.ip || req.headers["x-forwarded-for"]
+    });
+    if (missingFields.length > 0) {
+      const firstMissing = missingFields[0];
+      return res.status(400).json({
+        success: false,
+        error: `Missing field: ${firstMissing}`,
+        errorCode: "VALIDATION_FAILED",
+        missingFields,
+        receivedFields
+      });
+    }
     const { user, token } = await registerUser({
       id,
       email,
@@ -506,7 +805,11 @@ app2.post("/api/auth/register", async (req, res) => {
     });
   } catch (error) {
     console.error(`[Auth API /api/auth/register] Registration error:`, error);
-    res.status(400).json({ success: false, error: error.message || "\u0641\u0634\u0644 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628" });
+    res.status(400).json({
+      success: false,
+      error: error.message || "\u0641\u0634\u0644 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628",
+      errorCode: error.code || "REGISTRATION_FAILED"
+    });
   }
 });
 app2.post("/api/auth/reset-password", async (req, res) => {
@@ -592,39 +895,27 @@ app2.post("/api/sync/merge", requireAuth, async (req, res) => {
   }
 });
 app2.post("/api/ai/lesson-plan", async (req, res) => {
+  const { topic, subject, gradeLevel, duration = "45 mins", objectives } = req.body;
+  const ai = getGenAI();
+  const fallbackPlan = `# \u062E\u0637\u0629 \u062F\u0631\u0633: ${topic || "\u0627\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629"}
+**\u0627\u0644\u0645\u0627\u062F\u0629:** ${subject || "\u0639\u0627\u0645"} | **\u0627\u0644\u0635\u0641:** ${gradeLevel || "\u0627\u0644\u0645\u0631\u062D\u0644\u0629 \u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629"} | **\u0627\u0644\u0645\u062F\u0629:** ${duration}
+
+## \u{1F3AF} \u0627\u0644\u0623\u0647\u062F\u0627\u0641 \u0627\u0644\u062A\u0639\u0644\u064A\u0645\u064A\u0629
+- \u0641\u0647\u0645 \u0627\u0644\u0637\u0627\u0644\u0628 \u0644\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629 \u0644\u0640 ${topic || "\u0645\u0648\u0636\u0648\u0639 \u0627\u0644\u062F\u0631\u0633"}.
+- \u062A\u0637\u0628\u064A\u0642 3 \u0623\u0645\u062B\u0644\u0629 \u0639\u0645\u0644\u064A\u0629 \u0648\u062A\u0645\u0627\u0631\u064A\u0646 \u062A\u0641\u0627\u0639\u0644\u064A\u0629.
+- \u062A\u0642\u064A\u064A\u0645 \u0627\u0633\u062A\u064A\u0639\u0627\u0628 \u0627\u0644\u0637\u0644\u0627\u0628 \u0648\u0645\u062A\u0627\u0628\u0639\u0629 \u0627\u0644\u0623\u062F\u0627\u0621.
+
+## \u23F1\uFE0F \u0633\u064A\u0631 \u0627\u0644\u062D\u0635\u0629 \u0648\u0627\u0644\u0623\u0646\u0634\u0637\u0629
+1. **\u0627\u0644\u062A\u0647\u064A\u0626\u0629 \u0648\u0627\u0644\u062A\u0645\u0647\u064A\u062F (5-8 \u062F\u0642\u0627\u0626\u0642):** \u0645\u0631\u0627\u062C\u0639\u0629 \u0633\u0631\u064A\u0639\u0629 \u0648\u0637\u0631\u062D \u0633\u0624\u0627\u0644 \u062A\u0641\u0627\u0639\u0644\u064A \u0645\u0634\u0648\u0642.
+2. **\u0627\u0644\u0634\u0631\u062D \u0648\u0627\u0644\u062A\u062F\u0631\u064A\u0633 \u0627\u0644\u0645\u0628\u0627\u0634\u0631 (15 \u062F\u0642\u064A\u0642\u0629):** \u062A\u0648\u0636\u064A\u062D \u0627\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0648\u0627\u0644\u0623\u0641\u0643\u0627\u0631 \u0645\u0639 \u0623\u0645\u062B\u0644\u0629 \u0639\u0644\u0649 \u0627\u0644\u0633\u0628\u0648\u0631\u0629.
+3. **\u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0648\u0627\u0644\u0645\u0645\u0627\u0631\u0633\u0629 \u0627\u0644\u0645\u0648\u062C\u0647\u0629 (12 \u062F\u0642\u064A\u0642\u0629):** \u062D\u0644 \u0645\u0633\u0627\u0626\u0644 \u0648\u062A\u0645\u0627\u0631\u064A\u0646 \u062B\u0646\u0627\u0626\u064A\u0629 \u0628\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0637\u0644\u0627\u0628.
+4. **\u0627\u0644\u062A\u0642\u064A\u064A\u0645 \u0627\u0644\u062A\u0643\u0648\u064A\u0646\u064A (7 \u062F\u0642\u0627\u0626\u0642):** \u0633\u0624\u0627\u0644 \u0633\u0631\u064A\u0639 \u0644\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0641\u0647\u0645 \u0648\u0627\u0644\u062A\u0637\u0628\u064A\u0642.
+5. **\u0627\u0644\u062E\u0627\u062A\u0645\u0629 \u0648\u0627\u0644\u0648\u0627\u062C\u0628 (3 \u062F\u0642\u0627\u0626\u0642):** \u062A\u0644\u062E\u064A\u0635 \u0627\u0644\u0646\u0642\u0627\u0637 \u0627\u0644\u0647\u0627\u0645\u0629 \u0648\u062A\u062D\u062F\u064A\u062F \u0627\u0644\u0648\u0627\u062C\u0628 \u0627\u0644\u0645\u0646\u0632\u0644\u064A.`;
+  if (!ai) {
+    return res.json({ plan: fallbackPlan });
+  }
   try {
-    const { topic, subject, gradeLevel, duration = "45 mins", objectives } = req.body;
-    const ai = getGenAI();
-    if (!ai) {
-      return res.json({
-        plan: `# Lesson Plan: ${topic || "Core Principles"}
-**Subject:** ${subject || "General Science"} | **Grade Level:** ${gradeLevel || "Grade 10"} | **Duration:** ${duration}
-
-## \u{1F3AF} Learning Objectives
-- Students will understand the fundamental concepts of ${topic || "the topic"}.
-- Students will identify 3 key practical applications in real-world scenarios.
-- Students will collaborate in pairs to analyze and present a 2-minute solution.
-
-## \u23F1\uFE0F Lesson Structure
-1. **Hook & Warm-up (5-8 mins):** 
-   - Provocative real-world question: "How does ${topic} impact our daily technology or environment?"
-   - Quick 2-minute think-pair-share.
-2. **Direct Instruction (15 mins):**
-   - Concept breakdown with visual diagrams on the board.
-   - Demonstration of key vocabulary and step-by-step example problem.
-3. **Guided Practice (12 mins):**
-   - Small group activity: Analyzing a case scenario with teacher roving check-ins.
-4. **Independent Work / Formative Check (7 mins):**
-   - 3-question exit ticket checking for core concept retention.
-5. **Closure & Homework (3 mins):**
-   - Summary recap by two volunteer students; assigned reading / reflection prompt.
-
-## \u{1F4A1} Differentiated Learning Support
-- **For Advanced Learners:** Challenge problem involving multi-step synthesis.
-- **For Scaffolding:** Graphic organizer with pre-filled vocabulary terms.`
-      });
-    }
-    const prompt = `You are a master educator and pedagogical specialist. Create a detailed, highly practical, engaging lesson plan for a teacher.
+    const prompt = `You are a master educator. Create a detailed, highly practical, engaging lesson plan for a teacher in Arabic (or matching the language requested).
 Subject: ${subject}
 Grade Level: ${gradeLevel}
 Topic: ${topic}
@@ -633,68 +924,61 @@ Specific Goals/Notes: ${objectives || "Engaging hands-on activity, clear formati
 
 Format your response cleanly in Markdown with bold headers, bullet points, time breakdown, interactive activities, and an exit ticket.`;
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-2.5-flash",
       contents: prompt
     });
-    res.json({ plan: response.text || "Failed to generate lesson plan." });
+    res.json({ plan: response.text || fallbackPlan });
   } catch (error) {
-    console.error("Lesson plan error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate lesson plan." });
+    console.warn("Lesson plan AI call notice, returning fallback:", error?.message);
+    res.json({ plan: fallbackPlan });
   }
 });
 app2.post("/api/ai/parent-message", async (req, res) => {
+  const { studentName, parentName, reason, tone = "professional & warm", details, teacherName = "\u0627\u0644\u0645\u0639\u0644\u0645" } = req.body;
+  const ai = getGenAI();
+  let fallbackSubject = `\u062A\u0642\u0631\u064A\u0631 \u0645\u062A\u0627\u0628\u0639\u0629 \u0628\u062E\u0635\u0648\u0635 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName || "\u0627\u0644\u0645\u062D\u062A\u0631\u0645/\u0629"}`;
+  let fallbackBody = `\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645 \u0648\u0631\u062D\u0645\u0629 \u0627\u0644\u0644\u0647 \u0648\u0628\u0631\u0643\u0627\u062A\u0647 \u0648\u0644\u064A \u0623\u0645\u0631 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName || "\u0627\u0644\u0645\u062D\u062A\u0631\u0645/\u0629"}\u060C
+
+\u0646\u0648\u062F \u0625\u062D\u0627\u0637\u062A\u0643\u0645 \u0639\u0644\u0645\u0627\u064B \u0628\u0645\u062A\u0627\u0628\u0639\u0629 \u0623\u062F\u0627\u0621 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 \u0641\u064A \u0627\u0644\u062D\u0635\u0635 \u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629.
+${details ? `\u0645\u0644\u0627\u062D\u0638\u0627\u062A: ${details}
+` : ""}
+\u0634\u0627\u0643\u0631\u064A\u0646 \u0648\u0645\u0642\u062F\u0631\u064A\u0646 \u062D\u0633\u0646 \u062A\u0639\u0627\u0648\u0646\u0643\u0645 \u0645\u0639\u0646\u0627.
+\u0645\u0639 \u0623\u0637\u064A\u0628 \u0627\u0644\u062A\u062D\u064A\u0627\u062A\u060C
+${teacherName}`;
+  if (reason === "attendance") {
+    fallbackSubject = `\u0625\u0634\u0639\u0627\u0631 \u0628\u062E\u0635\u0648\u0635 \u062D\u0636\u0648\u0631 \u0648\u063A\u064A\u0627\u0628 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName}`;
+    fallbackBody = `\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645 \u0648\u0631\u062D\u0645\u0629 \u0627\u0644\u0644\u0647 \u0648\u0628\u0631\u0643\u0627\u062A\u0647\u060C
+
+\u0646\u062D\u064A\u0637\u0643\u0645 \u0639\u0644\u0645\u0627\u064B \u0628\u063A\u064A\u0627\u0628 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName} \u0639\u0646 \u0627\u0644\u062D\u0635\u0629 \u0627\u0644\u0645\u0642\u0631\u0631\u0629 \u0627\u0644\u064A\u0648\u0645. \u0646\u0631\u062C\u0648 \u0627\u0644\u0627\u0637\u0645\u0626\u0646\u0627\u0646 \u0639\u0644\u064A\u0647 \u0648\u0627\u0644\u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0646\u0627 \u0644\u062A\u0631\u062A\u064A\u0628 \u062A\u0639\u0648\u064A\u0636 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u062F\u0631\u0627\u0633\u064A.
+
+\u0645\u0639 \u062E\u0627\u0644\u0635 \u0627\u0644\u062A\u0642\u062F\u064A\u0631\u060C
+${teacherName}`;
+  } else if (reason === "praise") {
+    fallbackSubject = `\u0634\u0647\u0627\u062F\u0629 \u0634\u0643\u0631 \u0648\u062A\u0645\u064A\u0632 \u0644\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName} \u{1F31F}`;
+    fallbackBody = `\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645 \u0648\u0631\u062D\u0645\u0629 \u0627\u0644\u0644\u0647 \u0648\u0628\u0631\u0643\u0627\u062A\u0647\u060C
+
+\u064A\u0633\u0639\u062F\u0646\u0627 \u0625\u0628\u0644\u0627\u063A\u0643\u0645 \u0628\u0627\u0644\u0645\u0633\u062A\u0648\u0649 \u0627\u0644\u0645\u062A\u0645\u064A\u0632 \u0648\u0627\u0644\u062A\u0641\u0627\u0639\u0644 \u0627\u0644\u0625\u064A\u062C\u0627\u0628\u064A \u0627\u0644\u0631\u0627\u0626\u0639 \u0644\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName} \u062E\u0644\u0627\u0644 \u0627\u0644\u062D\u0635\u0629\u060C \u0645\u0645\u0627 \u064A\u0639\u0643\u0633 \u062A\u0641\u0648\u0642\u0647 \u0648\u062D\u0631\u0635\u0647 \u0627\u0644\u062F\u0627\u0626\u0645.
+
+\u062F\u0645\u062A\u0645 \u0641\u062E\u0648\u0631\u064A\u0646 \u0628\u0647 \u062F\u0627\u0626\u0645\u0627\u064B\u060C
+${teacherName}`;
+  }
+  if (!ai) {
+    return res.json({ subject: fallbackSubject, message: fallbackBody });
+  }
   try {
-    const { studentName, parentName, reason, tone = "professional & warm", details, teacherName = "Teacher" } = req.body;
-    const ai = getGenAI();
-    if (!ai) {
-      let subjectLine = `Update regarding ${studentName}`;
-      let bodyText = `Dear ${parentName || "Parent/Guardian"},
-
-I hope this message finds you well. I am writing to share a brief update regarding ${studentName}.
-
-${details || "We are tracking their progress in class and wanted to keep you informed."}
-
-Please let me know if you have any questions or would like to arrange a brief call.
-
-Warm regards,
-${teacherName}
-Classroom Teacher`;
-      if (reason === "attendance") {
-        subjectLine = `Attendance Notice: ${studentName}`;
-        bodyText = `Dear ${parentName || "Parent/Guardian"},
-
-I am reaching out regarding ${studentName}'s attendance in our class today. We missed having them with us and want to ensure they stay on track with our current lessons.
-
-Please reply to let us know the reason for the absence and if we can provide any study materials.
-
-Best regards,
-${teacherName}`;
-      } else if (reason === "praise") {
-        subjectLine = `Positive Note: ${studentName}'s Outstanding Effort! \u{1F31F}`;
-        bodyText = `Dear ${parentName || "Parent/Guardian"},
-
-I wanted to take a quick moment to commend ${studentName} for their wonderful participation and effort in class recently! They demonstrated great enthusiasm and teamwork.
-
-Thank you for your ongoing support at home!
-
-Warmly,
-${teacherName}`;
-      }
-      return res.json({ subject: subjectLine, message: bodyText });
-    }
-    const prompt = `You are an empathetic, professional teacher communicating with a student's parent/guardian.
+    const prompt = `You are an empathetic, professional teacher communicating with a student's parent/guardian in Arabic.
 Teacher Name: ${teacherName}
 Student Name: ${studentName}
-Parent Name: ${parentName || "Parent/Guardian"}
-Type/Reason: ${reason} (e.g. attendance alert, academic praise, missing assignment, behavioral feedback, conference invitation)
+Parent Name: ${parentName || "\u0648\u0644\u064A \u0627\u0644\u0623\u0645\u0631"}
+Type/Reason: ${reason}
 Tone: ${tone}
 Specific Notes: ${details || "None"}
 
 Generate a JSON object with two fields:
-"subject": A concise, clear email/SMS subject line
-"message": The body of the message (ready to send, polite, constructive, with placeholders where needed).`;
+"subject": A concise, clear email/SMS subject line in Arabic
+"message": The body of the message in Arabic.`;
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json"
@@ -705,47 +989,39 @@ Generate a JSON object with two fields:
       res.json(parsed);
     } catch {
       res.json({
-        subject: `Update regarding ${studentName}`,
-        message: response.text
+        subject: fallbackSubject,
+        message: response.text || fallbackBody
       });
     }
   } catch (error) {
-    console.error("Parent message error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate parent message." });
+    console.warn("Parent message AI notice, returning fallback:", error?.message);
+    res.json({ subject: fallbackSubject, message: fallbackBody });
   }
 });
 app2.post("/api/ai/quiz-generator", async (req, res) => {
-  try {
-    const { topic, subject, gradeLevel, questionCount = 4, difficulty = "Medium" } = req.body;
-    const ai = getGenAI();
-    if (!ai) {
-      return res.json({
-        questions: [
-          {
-            id: "q1",
-            question: `What is the primary function or principle of ${topic || "this topic"}?`,
-            options: ["A core foundational process", "A secondary auxiliary factor", "An unrelated environmental condition", "A historical anomaly"],
-            correctAnswer: "A core foundational process",
-            explanation: `The foundational definition directly establishes how ${topic} operates in standard conditions.`
-          },
-          {
-            id: "q2",
-            question: `Which of the following best exemplifies ${topic || "this concept"} in practical application?`,
-            options: ["Standard controlled experiment", "Unmonitored random variance", "Passive observation without metrics", "Isolated numerical calculation"],
-            correctAnswer: "Standard controlled experiment",
-            explanation: "Controlled experiments allow direct verification of key variables."
-          },
-          {
-            id: "q3",
-            question: `When analyzing key results in ${subject || "this subject"}, what should be evaluated first?`,
-            options: ["Hypothesis and baseline data", "Final conclusion only", "External unsolicited opinions", "Random guesses"],
-            correctAnswer: "Hypothesis and baseline data",
-            explanation: "Baseline data provides the benchmark for assessing any statistical or empirical change."
-          }
-        ]
-      });
+  const { topic, subject, gradeLevel, questionCount = 4, difficulty = "Medium" } = req.body;
+  const ai = getGenAI();
+  const fallbackQuestions = [
+    {
+      id: "q1",
+      question: `\u0645\u0627 \u0647\u0648 \u0627\u0644\u0645\u0641\u0647\u0648\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A \u0627\u0644\u0645\u0631\u062A\u0628\u0637 \u0628\u0640 (${topic || "\u0647\u0630\u0627 \u0627\u0644\u0645\u0648\u0636\u0648\u0639"})\u061F`,
+      options: ["\u0645\u0641\u0647\u0648\u0645 \u0631\u0626\u064A\u0633\u064A \u0645\u062D\u0648\u0631\u064A", "\u0639\u0627\u0645\u0644 \u062B\u0627\u0646\u0648\u064A \u063A\u064A\u0631 \u0645\u0628\u0627\u0634\u0631", "\u062D\u0627\u0644\u0629 \u0634\u0627\u0630\u0629 \u0645\u0624\u0642\u062A\u0629", "\u0645\u0639\u0644\u0648\u0645\u0629 \u063A\u064A\u0631 \u0645\u0631\u062A\u0628\u0637\u0629"],
+      correctAnswer: "\u0645\u0641\u0647\u0648\u0645 \u0631\u0626\u064A\u0633\u064A \u0645\u062D\u0648\u0631\u064A",
+      explanation: "\u0647\u0630\u0627 \u0647\u0648 \u0627\u0644\u0623\u0633\u0627\u0633 \u0627\u0644\u0630\u064A \u064A\u0646\u0628\u0646\u064A \u0639\u0644\u064A\u0647 \u0627\u0644\u062F\u0631\u0633."
+    },
+    {
+      id: "q2",
+      question: `\u0623\u064A \u0645\u0645\u0627 \u064A\u0644\u064A \u064A\u0645\u062B\u0644 \u0623\u0641\u0636\u0644 \u062A\u0637\u0628\u064A\u0642 \u0639\u0645\u0644\u064A \u0644\u0640 (${topic || "\u0627\u0644\u0645\u062D\u062A\u0648\u0649"})\u061F`,
+      options: ["\u0627\u0644\u062A\u062C\u0631\u0628\u0629 \u0648\u0627\u0644\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0637\u0642\u064A", "\u0627\u0644\u062A\u062E\u0645\u064A\u0646 \u0627\u0644\u0639\u0634\u0648\u0627\u0626\u064A", "\u062A\u062C\u0627\u0647\u0644 \u0627\u0644\u0634\u0631\u0648\u0637 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629", "\u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636 \u063A\u064A\u0631 \u0627\u0644\u0645\u062F\u0631\u0648\u0633"],
+      correctAnswer: "\u0627\u0644\u062A\u062C\u0631\u0628\u0629 \u0648\u0627\u0644\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0637\u0642\u064A",
+      explanation: "\u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0639\u0645\u0644\u064A \u0627\u0644\u0633\u0644\u064A\u0645 \u064A\u062A\u0637\u0644\u0628 \u062A\u062D\u0644\u064A\u0644\u0627\u064B \u0648\u062A\u062C\u0631\u0628\u0629 \u062F\u0642\u064A\u0642\u0629."
     }
-    const prompt = `Generate a ${questionCount}-question multiple-choice quiz on:
+  ];
+  if (!ai) {
+    return res.json({ questions: fallbackQuestions });
+  }
+  try {
+    const prompt = `Generate a ${questionCount}-question multiple-choice quiz in Arabic on:
 Subject: ${subject}
 Grade Level: ${gradeLevel}
 Topic: ${topic}
@@ -755,24 +1031,24 @@ Return a valid JSON array of objects with the structure:
 [
   {
     "id": "q1",
-    "question": "question text",
+    "question": "question text in Arabic",
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctAnswer": "Option A",
-    "explanation": "Brief reasoning for the correct answer"
+    "explanation": "Brief reasoning in Arabic"
   }
 ]`;
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json"
       }
     });
     const parsed = JSON.parse(response.text || "[]");
-    res.json({ questions: Array.isArray(parsed) ? parsed : parsed.questions || [] });
+    res.json({ questions: Array.isArray(parsed) ? parsed : parsed.questions || fallbackQuestions });
   } catch (error) {
-    console.error("Quiz generator error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate quiz." });
+    console.warn("Quiz generator AI notice, returning fallback:", error?.message);
+    res.json({ questions: fallbackQuestions });
   }
 });
 app2.post("/api/ai/student-remark", async (req, res) => {

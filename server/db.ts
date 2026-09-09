@@ -760,3 +760,129 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
   });
   return { dataPackage: mergedPackage, merged: true };
 }
+
+export async function resetUserCloudData(
+  userId: string,
+  resetAllBefore?: string
+): Promise<{
+  success: boolean;
+  acknowledged: boolean;
+  resetAllBefore: string;
+  verifiedActiveStudents: number;
+  verifiedActiveGroups: number;
+  verifiedActiveSessions: number;
+}> {
+  const resetTimestamp = resetAllBefore || new Date().toISOString();
+  const resetTime = new Date(resetTimestamp).getTime();
+
+  console.log(`[Server Cloud Reset] Processing reset for user ${userId} with timestamp ${resetTimestamp}...`);
+
+  // 1. Fetch current cloud document if any
+  const syncDocRef = doc(db, "user_sync_stores", userId);
+  const snap = await getDoc(syncDocRef);
+  let existingPkg: any = {};
+  if (snap.exists()) {
+    const d = snap.data();
+    existingPkg = d.package || d.data_package || {};
+  }
+
+  // Determine effective resetAllBefore (keep greatest timestamp if an existing reset was newer)
+  let effectiveReset = resetTimestamp;
+  if (existingPkg.resetAllBefore) {
+    if (new Date(existingPkg.resetAllBefore).getTime() > resetTime) {
+      effectiveReset = existingPkg.resetAllBefore;
+    }
+  }
+
+  const effectiveResetTime = new Date(effectiveReset).getTime();
+
+  // Filter items: only keep items strictly created/updated AFTER effectiveResetTime
+  const filterPostReset = (items: any[] = []) => {
+    if (!Array.isArray(items)) return [];
+    return items.filter((it) => {
+      if (!it || !it.id) return false;
+      const tStr = it.updatedAt || it.createdAt || "";
+      const t = tStr ? new Date(tStr).getTime() : 0;
+      return t > effectiveResetTime;
+    });
+  };
+
+  const remainingStudents = filterPostReset(existingPkg.students);
+  const remainingGroups = filterPostReset(existingPkg.groups);
+  const remainingEnrollments = filterPostReset(existingPkg.enrollments);
+  const remainingSessions = filterPostReset(existingPkg.sessions);
+  const remainingAttendance = filterPostReset(existingPkg.attendance);
+  const remainingPayments = filterPostReset(existingPkg.payments);
+  const remainingCreditLogs = filterPostReset(existingPkg.creditLogs);
+
+  const now = new Date().toISOString();
+  const resetPackage = sanitizeForFirestore({
+    version: "2.0",
+    userId,
+    lastSyncTime: now,
+    resetAllBefore: effectiveReset,
+    students: remainingStudents,
+    groups: remainingGroups,
+    enrollments: remainingEnrollments,
+    sessions: remainingSessions,
+    attendance: remainingAttendance,
+    payments: remainingPayments,
+    creditLogs: remainingCreditLogs,
+    monthlyInvoices: [],
+    teacherProfile: existingPkg.teacherProfile || null,
+    tombstones: [],
+    stats: {
+      totalStudents: remainingStudents.length,
+      totalGroups: remainingGroups.length,
+      totalSessions: remainingSessions.length,
+      totalPayments: remainingPayments.length,
+    },
+  });
+
+  // Write to Firestore and await completion
+  await setDoc(
+    syncDocRef,
+    {
+      user_id: userId,
+      version: "2.0",
+      last_sync_time: now,
+      data_package: resetPackage,
+      package: resetPackage,
+      updated_at: now,
+    },
+    { merge: false }
+  );
+
+  // 2. Perform Read-After-Write Verification directly on Firestore
+  const verifySnap = await getDoc(syncDocRef);
+  if (!verifySnap.exists()) {
+    throw new Error("Firestore read-after-write verification failed: sync store document not found");
+  }
+
+  const verifyData = verifySnap.data();
+  const verifyPkg = verifyData.package || verifyData.data_package;
+  if (!verifyPkg || verifyPkg.resetAllBefore !== effectiveReset) {
+    throw new Error("Firestore read-after-write verification failed: resetAllBefore mismatch");
+  }
+
+  const verifiedActiveStudents = verifyPkg.students?.length || 0;
+  const verifiedActiveGroups = verifyPkg.groups?.length || 0;
+  const verifiedActiveSessions = verifyPkg.sessions?.length || 0;
+
+  console.log(`[Server Cloud Reset] Cloud reset acknowledged and verified for ${userId}:`, {
+    resetAllBefore: effectiveReset,
+    verifiedActiveStudents,
+    verifiedActiveGroups,
+    verifiedActiveSessions,
+  });
+
+  return {
+    success: true,
+    acknowledged: true,
+    resetAllBefore: effectiveReset,
+    verifiedActiveStudents,
+    verifiedActiveGroups,
+    verifiedActiveSessions,
+  };
+}
+

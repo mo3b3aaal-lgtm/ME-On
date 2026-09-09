@@ -424,6 +424,14 @@ export interface UserAccountDataPackage {
   };
 }
 
+// Pending Reset Record for durable client-side crash-safe wipe operations
+export interface PendingResetRecord {
+  userId: string;
+  resetAllBefore: string;
+  timestamp: string;
+  attempts: number;
+}
+
 // حساب المستخدم والمعلم لتسجيل الدخول
 export interface UserAccount {
   id: string;
@@ -441,6 +449,8 @@ export interface UserAccount {
   lastLoginAt?: string;
   lastSyncAt?: string;
   syncedData?: UserAccountDataPackage;
+  resetAllBefore?: string;
+  pendingReset?: PendingResetRecord;
 }
 
 // التبويبات الرئيسية للتطبيق

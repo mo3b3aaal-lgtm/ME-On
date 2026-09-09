@@ -14,6 +14,7 @@ import {
   getCloudDataPackage,
   saveCloudDataPackage,
   mergeCloudDataPackage,
+  resetUserCloudData,
   ServerUser,
 } from "./server/db";
 
@@ -361,6 +362,26 @@ app.post("/api/sync/merge", requireAuth, async (req, res) => {
   } catch (error: any) {
     console.error("Sync merge error:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to merge sync data" });
+  }
+});
+
+// 4. Dedicated Cloud Sync Reset (Atomically persists reset barrier and wipes all old data prior to resetAllBefore)
+app.post("/api/sync/reset", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = (req as any).user.id;
+    const { resetAllBefore } = req.body;
+    const result = await resetUserCloudData(authenticatedUserId, resetAllBefore);
+    res.json({
+      success: true,
+      acknowledged: true,
+      resetAllBefore: result.resetAllBefore,
+      verifiedActiveStudents: result.verifiedActiveStudents,
+      verifiedActiveGroups: result.verifiedActiveGroups,
+      verifiedActiveSessions: result.verifiedActiveSessions,
+    });
+  } catch (error: any) {
+    console.error("Sync reset error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to reset cloud sync data" });
   }
 });
 

@@ -49,6 +49,11 @@ export default function App() {
     setTeacherProfile(db.getTeacherProfile());
   }, []);
 
+  // Process any pending resets on startup or network recovery
+  useEffect(() => {
+    db.processPendingResets().catch(() => {});
+  }, []);
+
   // Auth Handlers
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);

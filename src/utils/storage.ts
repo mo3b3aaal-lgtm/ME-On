@@ -37,6 +37,7 @@ import {
   AutoSyncConfig,
   AuthDiagnostics,
   DeletionTombstone,
+  PendingResetRecord,
   BulkStudentSessionTarget,
   BulkCreateSessionsParams,
   BulkCreateSessionsResult,
@@ -63,6 +64,8 @@ const STORAGE_KEYS = {
   AUTO_SYNC_CONFIG: 'tm_v2_auto_sync_config',
   TOMBSTONES: 'tm_v2_deletion_tombstones',
   RESET_ALL_BEFORE: 'tm_v2_reset_all_before',
+  PENDING_RESET_PREFIX: 'tm_v2_pending_reset_',
+  PENDING_RESETS_LIST: 'tm_v2_pending_resets_list',
 };
 
 const ARABIC_MONTH_NAMES = [
@@ -312,6 +315,197 @@ export function setResetAllBefore(timestampIso: string, userId?: string): void {
   try {
     localStorage.setItem(`${STORAGE_KEYS.RESET_ALL_BEFORE}_${targetUserId}`, timestampIso);
   } catch {}
+}
+
+export function getPendingReset(userId?: string): PendingResetRecord | null {
+  const targetUserId = userId || getActiveUserId();
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEYS.PENDING_RESET_PREFIX}${targetUserId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.resetAllBefore) return parsed;
+    }
+  } catch {}
+
+  // Check accounts list fallback
+  try {
+    const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    const acc = accounts.find((a) => a.id === targetUserId);
+    if (acc?.pendingReset && acc.pendingReset.resetAllBefore) {
+      return acc.pendingReset;
+    }
+  } catch {}
+
+  return null;
+}
+
+export function getAllPendingResets(): PendingResetRecord[] {
+  const map = new Map<string, PendingResetRecord>();
+  try {
+    const rawList = localStorage.getItem(STORAGE_KEYS.PENDING_RESETS_LIST);
+    if (rawList) {
+      const list: PendingResetRecord[] = JSON.parse(rawList);
+      for (const item of list) {
+        if (item && item.userId && item.resetAllBefore) {
+          map.set(item.userId, item);
+        }
+      }
+    }
+  } catch {}
+
+  try {
+    const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    for (const acc of accounts) {
+      if (acc.pendingReset && acc.pendingReset.userId && acc.pendingReset.resetAllBefore) {
+        map.set(acc.pendingReset.userId, acc.pendingReset);
+      }
+    }
+  } catch {}
+
+  return Array.from(map.values());
+}
+
+export function setPendingReset(record: PendingResetRecord): void {
+  try {
+    localStorage.setItem(
+      `${STORAGE_KEYS.PENDING_RESET_PREFIX}${record.userId}`,
+      JSON.stringify(record)
+    );
+  } catch {}
+
+  try {
+    const all = getAllPendingResets().filter((r) => r.userId !== record.userId);
+    localStorage.setItem(STORAGE_KEYS.PENDING_RESETS_LIST, JSON.stringify([record, ...all]));
+  } catch {}
+
+  // Also sync into accounts
+  try {
+    const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    const updated = accounts.map((acc) => {
+      if (acc.id === record.userId) {
+        return {
+          ...acc,
+          resetAllBefore: record.resetAllBefore,
+          pendingReset: record,
+        };
+      }
+      return acc;
+    });
+    saveList(STORAGE_KEYS.ACCOUNTS, updated);
+  } catch {}
+}
+
+export function clearPendingReset(userId: string): void {
+  try {
+    localStorage.removeItem(`${STORAGE_KEYS.PENDING_RESET_PREFIX}${userId}`);
+  } catch {}
+
+  try {
+    const all = getAllPendingResets().filter((r) => r.userId !== userId);
+    localStorage.setItem(STORAGE_KEYS.PENDING_RESETS_LIST, JSON.stringify(all));
+  } catch {}
+
+  try {
+    const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    const updated = accounts.map((acc) => {
+      if (acc.id === userId) {
+        const { pendingReset, ...rest } = acc;
+        return rest;
+      }
+      return acc;
+    });
+    saveList(STORAGE_KEYS.ACCOUNTS, updated);
+  } catch {}
+}
+
+export async function syncResetToCloud(
+  userId: string,
+  resetAllBefore: string,
+  explicitToken?: string
+): Promise<{
+  success: boolean;
+  acknowledged: boolean;
+  verifiedActiveStudents?: number;
+  error?: string;
+}> {
+  const resetUrl = getFullApiUrl('/api/sync/reset');
+  let token = explicitToken;
+  if (!token) {
+    try {
+      token = localStorage.getItem(`tm_v2_auth_token_${userId}`) || undefined;
+    } catch {}
+  }
+  if (!token) {
+    try {
+      const session = db.getCurrentSession();
+      if (session?.id === userId && session.authToken) {
+        token = session.authToken;
+      }
+    } catch {}
+  }
+
+  console.log(`[Storage -> Cloud Reset] Sending awaited reset request for ${userId} to ${resetUrl} with resetAllBefore ${resetAllBefore}`);
+
+  try {
+    const res = await universalApiFetch(resetUrl, {
+      method: 'POST',
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+            'x-auth-token': token,
+          }
+        : undefined,
+      body: {
+        resetAllBefore,
+      },
+      timeoutMs: 15000,
+    });
+
+    if (res.ok && res.data && res.data.success && res.data.acknowledged) {
+      console.log(`[Storage -> Cloud Reset] Server confirmed and acknowledged reset for ${userId}:`, res.data);
+      clearPendingReset(userId);
+      setResetAllBefore(res.data.resetAllBefore || resetAllBefore, userId);
+      return {
+        success: true,
+        acknowledged: true,
+        verifiedActiveStudents: res.data.verifiedActiveStudents ?? 0,
+      };
+    } else {
+      const err = res.data?.error || res.error || 'Server did not acknowledge reset';
+      console.warn(`[Storage -> Cloud Reset] Server reset failed or not acknowledged:`, err);
+      return {
+        success: false,
+        acknowledged: false,
+        error: err,
+      };
+    }
+  } catch (err: any) {
+    console.warn(`[Storage -> Cloud Reset] Network exception during cloud reset:`, err);
+    return {
+      success: false,
+      acknowledged: false,
+      error: err.message || 'Network error during cloud reset',
+    };
+  }
+}
+
+export async function processPendingResets(targetUserId?: string): Promise<void> {
+  const resets = targetUserId
+    ? [getPendingReset(targetUserId)].filter(Boolean) as PendingResetRecord[]
+    : getAllPendingResets();
+
+  for (const record of resets) {
+    if (!record || !record.userId || !record.resetAllBefore) continue;
+    try {
+      console.log(`[Storage -> Process Pending Resets] Retrying cloud reset for ${record.userId}...`);
+      const res = await syncResetToCloud(record.userId, record.resetAllBefore);
+      if (res.acknowledged) {
+        console.log(`[Storage -> Process Pending Resets] Successfully cleared pending reset for ${record.userId}`);
+      }
+    } catch (e) {
+      console.warn(`[Storage -> Process Pending Resets] Failed retry for ${record.userId}:`, e);
+    }
+  }
 }
 
 // Legacy Data Migration: Ensures all existing pre-auth records are assigned to the master account
@@ -2975,14 +3169,20 @@ export const db = {
     }
 
     try {
-      // 1. Resolve effective resetAllBefore
+      // 1. Resolve effective resetAllBefore (considering local store, durable pending resets, and cloud package)
       const localReset = getResetAllBefore(targetUserId);
+      const pendingReset = getPendingReset(targetUserId);
       const incomingReset = dataToRestore.resetAllBefore;
+
+      const resetCandidates = [localReset, pendingReset?.resetAllBefore, incomingReset]
+        .filter(Boolean)
+        .map((ts) => ({ ts: ts!, time: new Date(ts!).getTime() }))
+        .filter((item) => !isNaN(item.time));
+
       let effectiveResetAllBefore: string | undefined = undefined;
-      if (localReset && incomingReset) {
-        effectiveResetAllBefore = new Date(localReset).getTime() >= new Date(incomingReset).getTime() ? localReset : incomingReset;
-      } else {
-        effectiveResetAllBefore = incomingReset || localReset;
+      if (resetCandidates.length > 0) {
+        resetCandidates.sort((a, b) => b.time - a.time);
+        effectiveResetAllBefore = resetCandidates[0].ts;
       }
 
       if (effectiveResetAllBefore) {
@@ -3404,6 +3604,21 @@ export const db = {
         // Set session
         db.setCurrentSession(userAccount);
 
+        // Process any pending reset for this user BEFORE performing cloud pull
+        const pendingReset = getPendingReset(serverUser.id);
+        const localReset = getResetAllBefore(serverUser.id);
+        const effectiveResetBarrier = pendingReset?.resetAllBefore || localReset;
+
+        if (effectiveResetBarrier && token) {
+          console.log(`[Auth -> Login] Found reset barrier ${effectiveResetBarrier} for user ${serverUser.id}. Ensuring server acknowledges reset before pulling...`);
+          try {
+            const resetAck = await syncResetToCloud(serverUser.id, effectiveResetBarrier, token);
+            console.log('[Auth -> Login] syncResetToCloud result before pull:', resetAck.success, resetAck.acknowledged);
+          } catch (resetErr) {
+            console.warn('[Auth -> Login] Failed to synchronize reset to cloud before pull, will still enforce local reset barrier on incoming pull data:', resetErr);
+          }
+        }
+
         // 2. Immediately call authenticated /api/sync/pull to restore all Firestore cloud data
         if (token) {
           const pullUrl = getFullApiUrl('/api/sync/pull');
@@ -3566,7 +3781,16 @@ export const db = {
     // 1. Set the resetAllBefore timestamp for the user (MUST be preserved across all local and cloud ops)
     setResetAllBefore(now, targetUserId);
 
-    // 2. Clear ONLY the domain user-data collections for this user
+    // 2. Persist durable PendingResetRecord BEFORE starting any network operation
+    const pendingRecord: PendingResetRecord = {
+      userId: targetUserId,
+      resetAllBefore: now,
+      timestamp: now,
+      attempts: 0,
+    };
+    setPendingReset(pendingRecord);
+
+    // 3. Clear ONLY the domain user-data collections for this user immediately
     // Preserving: RESET_ALL_BEFORE, CURRENT_SESSION, ACCOUNTS, auth tokens, AUTO_SYNC_CONFIG, TEACHER_PROFILE
     const filterUser = <T extends { userId?: string }>(key: string) => {
       const list = getList<T>(key, []);
@@ -3582,22 +3806,51 @@ export const db = {
     filterUser(STORAGE_KEYS.PAYMENTS);
     filterUser(STORAGE_KEYS.CREDIT_LOGS);
 
-    // 3. Clear local tombstones for this user since resetAllBefore clears all prior history
+    // 4. Clear local tombstones for this user since resetAllBefore clears all prior history
     saveDeletionTombstones([], targetUserId);
 
-    // 4. Build data package containing resetAllBefore marker and empty arrays
+    // 5. Clear backup and userAccount.syncedData
+    try {
+      localStorage.removeItem(`tm_v2_user_backup_${targetUserId}`);
+    } catch {}
+
+    const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    const updatedAccounts = accounts.map((acc) => {
+      if (acc.id === targetUserId) {
+        return {
+          ...acc,
+          resetAllBefore: now,
+          pendingReset: pendingRecord,
+          syncedData: undefined,
+        };
+      }
+      return acc;
+    });
+    db.saveAccounts(updatedAccounts);
+
+    // 6. Build data package containing resetAllBefore marker and empty arrays
     const localPkg = autoSyncUserAccount(targetUserId);
 
-    // 5. Transmit the reset marker and empty collections directly to the cloud backend and await completion
+    // 7. Transmit the reset marker directly to cloud backend with explicit server acknowledgment
     try {
       console.log(`[Storage] clearUserData pushing reset to cloud backend for ${targetUserId}...`);
-      const syncResult = await performFullSync(targetUserId, true);
-      console.log(`[Storage] clearUserData cloud sync result for ${targetUserId}:`, syncResult.success, syncResult.message);
-      return {
-        success: true,
-        message: 'تم مسح كافة البيانات ومزامنة التصفير مع السيرفر السحابي بنجاح.',
-        dataPackage: syncResult.dataPackage || localPkg,
-      };
+      const resetResult = await syncResetToCloud(targetUserId, now);
+      console.log(`[Storage] clearUserData cloud reset result for ${targetUserId}:`, resetResult.success, resetResult.acknowledged);
+
+      if (resetResult.success && resetResult.acknowledged) {
+        return {
+          success: true,
+          message: 'تم مسح كافة البيانات وتأكيد التصفير مع السيرفر السحابي بنجاح.',
+          dataPackage: localPkg,
+        };
+      } else {
+        return {
+          success: true,
+          message: 'تم مسح كافة البيانات محلياً بأمان. ستتم مزامنة التصفير سحابياً عند استقرار الاتصال.',
+          dataPackage: localPkg,
+          error: resetResult.error,
+        };
+      }
     } catch (err: any) {
       console.warn('[Storage] Clear user data cloud sync warning (local wipe preserved):', err);
       return {
@@ -3612,6 +3865,35 @@ export const db = {
   clearAllData: async (): Promise<{ success: boolean; message: string; dataPackage?: UserAccountDataPackage; error?: string }> => {
     const activeUserId = getActiveUserId();
     return db.clearUserData(activeUserId);
+  },
+
+  // Pending Reset Management
+  getPendingReset: (userId?: string): PendingResetRecord | null => {
+    return getPendingReset(userId);
+  },
+
+  getAllPendingResets: (): PendingResetRecord[] => {
+    return getAllPendingResets();
+  },
+
+  setPendingReset: (record: PendingResetRecord): void => {
+    setPendingReset(record);
+  },
+
+  clearPendingReset: (userId: string): void => {
+    clearPendingReset(userId);
+  },
+
+  syncResetToCloud: async (
+    userId: string,
+    resetAllBefore: string,
+    explicitToken?: string
+  ): Promise<{ success: boolean; acknowledged: boolean; verifiedActiveStudents?: number; error?: string }> => {
+    return syncResetToCloud(userId, resetAllBefore, explicitToken);
+  },
+
+  processPendingResets: async (targetUserId?: string): Promise<void> => {
+    return processPendingResets(targetUserId);
   },
 
   // Auto-Sync Scheduling Helpers

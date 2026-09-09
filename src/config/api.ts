@@ -82,6 +82,7 @@ export const API_ROUTES = {
   SYNC_PUSH: '/api/sync/push',
   SYNC_PULL: '/api/sync/pull',
   SYNC_MERGE: '/api/sync/merge',
+  SYNC_RESET: '/api/sync/reset',
   AI_LESSON_PLAN: '/api/ai/lesson-plan',
   AI_QUIZ: '/api/ai/quiz',
   AI_REPORT: '/api/ai/report',

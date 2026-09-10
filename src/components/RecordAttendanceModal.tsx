@@ -69,6 +69,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   const [batchReason, setBatchReason] = useState<string>('المدرس ألغى');
   const [batchCustomReason, setBatchCustomReason] = useState<string>('');
 
+  // Subtle success feedback state
+  const [isSavedSuccess, setIsSavedSuccess] = useState(false);
+
   useEffect(() => {
     const map: Record<string, StudentAttendanceRecord> = {};
 
@@ -255,7 +258,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   };
 
   const handleSave = () => {
-    if (!session) return;
+    if (!session || isSavedSuccess) return;
     const listToSave: Attendance[] = [];
 
     Object.entries(records).forEach(([studentId, item]: [string, StudentAttendanceRecord]) => {
@@ -285,8 +288,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     }
 
     db.saveAttendanceBatch(session.id, listToSave);
-    onSaveComplete();
-    onClose();
+    setIsSavedSuccess(true);
+    
+    // Subtle brief feedback before dismissal
+    setTimeout(() => {
+      onSaveComplete();
+      onClose();
+    }, 650);
   };
 
   // Summary counts
@@ -536,17 +544,32 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 rounded-2xl border border-[#E8E2D6] bg-white text-[#6B7567] font-bold text-xs hover:bg-[#F2ECE1] transition-all"
+            disabled={isSavedSuccess}
+            className="flex-1 py-3 rounded-2xl border border-[#E8E2D6] bg-white text-[#6B7567] font-bold text-xs hover:bg-[#F2ECE1] transition-all disabled:opacity-50"
           >
             إلغاء
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 py-3 rounded-2xl bg-[#748C70] hover:bg-[#60755C] text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+            disabled={isSavedSuccess}
+            className={`flex-1 py-3 rounded-2xl text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 ${
+              isSavedSuccess
+                ? 'bg-[#5B7857] scale-[0.99] ring-2 ring-[#748C70]/50'
+                : 'bg-[#748C70] hover:bg-[#60755C] active:scale-95'
+            }`}
           >
-            <Save className="w-4 h-4" />
-            <span>حفظ الحضور وتحديث الأرصدة</span>
+            {isSavedSuccess ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 animate-in zoom-in-50" />
+                <span>تم حفظ الحضور وتحديث الأرصدة بنجاح!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>حفظ الحضور وتحديث الأرصدة</span>
+              </>
+            )}
           </button>
         </div>
 

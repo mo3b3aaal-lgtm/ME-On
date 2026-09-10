@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Sparkles,
   UserPlus,
+  X,
 } from 'lucide-react';
 import { Group, Student } from '../types';
 import { db } from '../utils/storage';
@@ -78,8 +79,19 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
             placeholder={t('groupsSearchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]`}
+            className={`w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl ${isRTL ? 'pr-9 pl-8' : 'pl-9 pr-8'} py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70]`}
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className={`absolute top-2.5 text-[#8A9187] hover:text-[#2D332A] p-0.5 rounded-full ${
+                isRTL ? 'left-2.5' : 'right-2.5'
+              }`}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Filter Tabs */}

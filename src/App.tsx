@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 import { ActiveTab, Student, Group, Session, Payment, TeacherProfile, UserAccount } from './types';
 import { db } from './utils/storage';
 import { useTranslation } from './utils/i18n';
@@ -107,6 +108,99 @@ export default function App() {
       setSelectedGroupForProfile(refreshed || null);
     }
   }, [groups]);
+
+  // Native Android Back Button & Escape Key Handling
+  useEffect(() => {
+    let backListener: any = null;
+
+    const handleBackAction = () => {
+      if (selectedSessionForAttendance) {
+        setSelectedSessionForAttendance(null);
+        return true;
+      }
+      if (selectedStudentForProfile) {
+        setSelectedStudentForProfile(null);
+        return true;
+      }
+      if (selectedGroupForProfile) {
+        setSelectedGroupForProfile(null);
+        return true;
+      }
+      if (isAddPaymentOpen) {
+        setIsAddPaymentOpen(false);
+        return true;
+      }
+      if (isAddStudentOpen) {
+        setIsAddStudentOpen(false);
+        return true;
+      }
+      if (isAddGroupOpen) {
+        setIsAddGroupOpen(false);
+        return true;
+      }
+      if (isAddSessionOpen) {
+        setIsAddSessionOpen(false);
+        return true;
+      }
+      if (isBulkAddSessionOpen) {
+        setIsBulkAddSessionOpen(false);
+        return true;
+      }
+      if (isEnrollModalOpen) {
+        setIsEnrollModalOpen(false);
+        return true;
+      }
+
+      if (activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        return true;
+      }
+
+      return false; // At root dashboard
+    };
+
+    const setupCapacitorBack = async () => {
+      try {
+        backListener = await CapacitorApp.addListener('backButton', () => {
+          const handled = handleBackAction();
+          if (!handled) {
+            if (window.confirm('هل تريد الخروج من التطبيق؟')) {
+              CapacitorApp.exitApp();
+            }
+          }
+        });
+      } catch {
+        // Not running in Capacitor native runtime
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleBackAction();
+      }
+    };
+
+    setupCapacitorBack();
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      if (backListener && backListener.remove) {
+        backListener.remove();
+      }
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    selectedSessionForAttendance,
+    selectedStudentForProfile,
+    selectedGroupForProfile,
+    isAddPaymentOpen,
+    isAddStudentOpen,
+    isAddGroupOpen,
+    isAddSessionOpen,
+    isBulkAddSessionOpen,
+    isEnrollModalOpen,
+    activeTab,
+  ]);
 
   // Handlers for Add/Edit
   const handleOpenAddStudent = () => {

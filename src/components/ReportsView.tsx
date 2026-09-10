@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart3,
   DollarSign,
@@ -26,6 +26,7 @@ import {
   ArrowUpRight,
   Clock,
   PieChart,
+  X,
 } from 'lucide-react';
 import { Student, Group, Session, Payment, ReportPeriodFilter } from '../types';
 import { db, getArabicMonthName } from '../utils/storage';
@@ -48,14 +49,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   onOpenAddPayment,
   onOpenStudentProfile,
 }) => {
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
+  const currentMonth = useMemo(() => new Date().getMonth() + 1, []);
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   // Tab State: 1. تقرير المدرس العام | 2. تقرير المجموعة | 3. تقرير الطالب | 4. كشف المديونيات
   const [reportType, setReportType] = useState<'teacher_overview' | 'group_report' | 'student_report' | 'overdue_list'>('teacher_overview');
 
   // Filter Period
-  const [periodFilter, setPeriodFilter] = useState<ReportPeriodFilter>('all_time');
+  const [periodFilter, setPeriodFilter] = useState<ReportPeriodFilter>('this_month');
   const [selectedSpecificMonth, setSelectedSpecificMonth] = useState<number>(currentMonth);
   const [selectedSpecificYear, setSelectedSpecificYear] = useState<number>(currentYear);
   const [customStartDate, setCustomStartDate] = useState<string>('');
@@ -66,109 +67,151 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || '');
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
+  const [overdueSearchQuery, setOverdueSearchQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
 
   // 1. Overall Teacher Calculations
-  const teacherSummary = db.calculateTeacherFinancialOverview(periodFilter);
+  const teacherSummary = useMemo(() => {
+    return db.calculateTeacherFinancialOverview(periodFilter);
+  }, [periodFilter, students, payments, sessions]);
 
   // Filter payments by period
-  const filteredPayments = payments.filter((p) => {
-    // Search query
-    if (paymentSearchQuery.trim()) {
-      const q = paymentSearchQuery.toLowerCase();
-      const student = students.find((s) => s.id === p.studentId);
-      const studentMatches = student?.name.toLowerCase().includes(q);
-      const notesMatches = p.notes?.toLowerCase().includes(q);
-      if (!studentMatches && !notesMatches) return false;
-    }
+  const filteredPayments = useMemo(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
 
-    // Method filter
-    if (methodFilter !== 'all') {
-      if (p.paymentMethod !== methodFilter) return false;
-    }
+    const d7 = new Date();
+    d7.setDate(d7.getDate() - 7);
+    const d7Str = d7.toISOString().split('T')[0];
 
-    // Period filter
-    if (periodFilter === 'all_time') return true;
-    if (periodFilter === 'today') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      return p.date === todayStr;
-    }
-    if (periodFilter === 'this_month') {
-      return p.month === currentMonth && p.year === currentYear;
-    }
-    if (periodFilter === 'specific_month') {
-      return p.month === selectedSpecificMonth && p.year === selectedSpecificYear;
-    }
-    if (periodFilter === 'custom_range' && customStartDate && customEndDate) {
-      return p.date >= customStartDate && p.date <= customEndDate;
-    }
-    return true;
-  });
+    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
 
-  const periodRevenue = filteredPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    return payments.filter((p) => {
+      // Search query
+      if (paymentSearchQuery.trim()) {
+        const q = paymentSearchQuery.toLowerCase();
+        const student = students.find((s) => s.id === p.studentId);
+        const studentMatches = student?.name.toLowerCase().includes(q);
+        const notesMatches = p.notes?.toLowerCase().includes(q);
+        if (!studentMatches && !notesMatches) return false;
+      }
+
+      // Method filter
+      if (methodFilter !== 'all') {
+        if (p.paymentMethod !== methodFilter) return false;
+      }
+
+      // Period filter
+      if (periodFilter === 'all_time') return true;
+      if (periodFilter === 'today') {
+        return p.date === todayStr;
+      }
+      if (periodFilter === 'last_7_days') {
+        return p.date >= d7Str && p.date <= todayStr;
+      }
+      if (periodFilter === 'this_month') {
+        return p.month === currentMonth && p.year === currentYear;
+      }
+      if (periodFilter === 'last_month') {
+        return p.month === lastMonth && p.year === lastMonthYear;
+      }
+      if (periodFilter === 'specific_month') {
+        return p.month === selectedSpecificMonth && p.year === selectedSpecificYear;
+      }
+      if (periodFilter === 'custom_range' && customStartDate && customEndDate) {
+        return p.date >= customStartDate && p.date <= customEndDate;
+      }
+      return true;
+    });
+  }, [payments, paymentSearchQuery, students, methodFilter, periodFilter, currentMonth, currentYear, selectedSpecificMonth, selectedSpecificYear, customStartDate, customEndDate]);
+
+  const periodRevenue = useMemo(() => {
+    return filteredPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  }, [filteredPayments]);
 
   // Payment Methods Breakdown Calculations
-  const methodStats = {
-    cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#748C70' },
-    vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#C97C5D' },
-    instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#5C788A' },
-    bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#D49B4B' },
-    other: { label: 'أخرى', amount: 0, count: 0, color: '#8A9187' },
-  };
+  const methodStats = useMemo(() => {
+    const stats = {
+      cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#748C70' },
+      vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#C97C5D' },
+      instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#5C788A' },
+      bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#D49B4B' },
+      other: { label: 'أخرى', amount: 0, count: 0, color: '#8A9187' },
+    };
 
-  filteredPayments.forEach((p) => {
-    const amt = Number(p.amount) || 0;
-    const m = (p.paymentMethod || 'cash') as keyof typeof methodStats;
-    if (methodStats[m]) {
-      methodStats[m].amount += amt;
-      methodStats[m].count++;
-    } else {
-      methodStats.other.amount += amt;
-      methodStats.other.count++;
-    }
-  });
+    filteredPayments.forEach((p) => {
+      const amt = Number(p.amount) || 0;
+      const m = (p.paymentMethod || 'cash') as keyof typeof stats;
+      if (stats[m]) {
+        stats[m].amount += amt;
+        stats[m].count++;
+      } else {
+        stats.other.amount += amt;
+        stats.other.count++;
+      }
+    });
+
+    return stats;
+  }, [filteredPayments]);
 
   // Calculate Overdue Students List
-  const activeStudents = students.filter((s) => s.status !== 'archived');
-  const overdueStudentsList: {
-    student: Student;
-    grandTotalDue: number;
-    grandTotalPaid: number;
-    grandRemaining: number;
-    lastPayment?: Payment;
-    enrollmentsSummary: any[];
-  }[] = [];
+  const overdueStudentsList = useMemo(() => {
+    const activeStudents = students.filter((s) => s.status !== 'archived');
+    const list: {
+      student: Student;
+      grandTotalDue: number;
+      grandTotalPaid: number;
+      grandRemaining: number;
+      lastPayment?: Payment;
+      enrollmentsSummary: any[];
+    }[] = [];
 
-  activeStudents.forEach((st) => {
-    const fin = db.calculateStudentGrandFinancials(st.id);
-    if (fin.grandRemaining > 0) {
-      const studentPayments = payments.filter((p) => p.studentId === st.id);
-      const lastPayment = studentPayments.sort((a, b) => b.date.localeCompare(a.date))[0];
-      overdueStudentsList.push({
-        student: st,
-        grandTotalDue: fin.grandTotalDue,
-        grandTotalPaid: fin.grandTotalPaid,
-        grandRemaining: fin.grandRemaining,
-        lastPayment,
-        enrollmentsSummary: fin.enrollmentsSummary,
-      });
-    }
-  });
+    activeStudents.forEach((st) => {
+      const fin = db.calculateStudentGrandFinancials(st.id);
+      if (fin.grandRemaining > 0) {
+        // Apply search if present
+        if (overdueSearchQuery.trim()) {
+          const q = overdueSearchQuery.toLowerCase();
+          const matches = st.name.toLowerCase().includes(q) || (st.phone && st.phone.includes(q)) || (st.parentPhone && st.parentPhone.includes(q));
+          if (!matches) return;
+        }
 
-  // Sort by highest overdue amount first
-  overdueStudentsList.sort((a, b) => b.grandRemaining - a.grandRemaining);
+        const studentPayments = payments.filter((p) => p.studentId === st.id);
+        const lastPayment = studentPayments.sort((a, b) => b.date.localeCompare(a.date))[0];
+        list.push({
+          student: st,
+          grandTotalDue: fin.grandTotalDue,
+          grandTotalPaid: fin.grandTotalPaid,
+          grandRemaining: fin.grandRemaining,
+          lastPayment,
+          enrollmentsSummary: fin.enrollmentsSummary,
+        });
+      }
+    });
+
+    // Sort by highest overdue amount first
+    list.sort((a, b) => b.grandRemaining - a.grandRemaining);
+    return list;
+  }, [students, payments, overdueSearchQuery]);
 
   // 2. Selected Student Dossier
-  const selectedStudentGrandFin = selectedStudentId
-    ? db.calculateStudentGrandFinancials(selectedStudentId)
-    : null;
-  const selectedStudentObj = students.find((s) => s.id === selectedStudentId);
+  const selectedStudentGrandFin = useMemo(() => {
+    return selectedStudentId ? db.calculateStudentGrandFinancials(selectedStudentId) : null;
+  }, [selectedStudentId, students, payments, sessions]);
+
+  const selectedStudentObj = useMemo(() => {
+    return students.find((s) => s.id === selectedStudentId);
+  }, [students, selectedStudentId]);
 
   // 3. Selected Group Dossier
-  const selectedGroupFin = selectedGroupId
-    ? db.calculateGroupFinancials(selectedGroupId)
-    : null;
-  const selectedGroupObj = groups.find((g) => g.id === selectedGroupId);
+  const selectedGroupFin = useMemo(() => {
+    return selectedGroupId ? db.calculateGroupFinancials(selectedGroupId) : null;
+  }, [selectedGroupId, groups, students, sessions, payments]);
+
+  const selectedGroupObj = useMemo(() => {
+    return groups.find((g) => g.id === selectedGroupId);
+  }, [groups, selectedGroupId]);
 
   const handlePrint = () => {
     window.print();
@@ -197,59 +240,61 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         </button>
       </div>
 
-      {/* 4 Report Navigation Tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-white border border-[#E8E2D6] rounded-2xl shadow-xs text-xs font-bold">
-        <button
-          type="button"
-          onClick={() => setReportType('teacher_overview')}
-          className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
-            reportType === 'teacher_overview'
-              ? 'bg-[#748C70] text-white shadow-xs'
-              : 'text-[#6B7567] hover:bg-[#F9F7F2]'
-          }`}
-        >
-          <BarChart3 className="w-3.5 h-3.5" />
-          <span>اللوحة المالية للمدرس</span>
-        </button>
+      {/* 4 Report Navigation Tabs - Sticky on Mobile & Desktop */}
+      <div className="sticky top-0 z-20 bg-[#F9F7F2]/95 backdrop-blur-xs pt-1 pb-1 -mx-1 px-1">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-white border border-[#E8E2D6] rounded-2xl shadow-xs text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setReportType('teacher_overview')}
+            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+              reportType === 'teacher_overview'
+                ? 'bg-[#748C70] text-white shadow-xs'
+                : 'text-[#6B7567] hover:bg-[#F9F7F2]'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">اللوحة المالية</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setReportType('overdue_list')}
-          className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
-            reportType === 'overdue_list'
-              ? 'bg-[#748C70] text-white shadow-xs'
-              : 'text-[#6B7567] hover:bg-[#F9F7F2]'
-          }`}
-        >
-          <Receipt className="w-3.5 h-3.5" />
-          <span>المستحقات المتأخرة ({overdueStudentsList.length})</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setReportType('overdue_list')}
+            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+              reportType === 'overdue_list'
+                ? 'bg-[#748C70] text-white shadow-xs'
+                : 'text-[#6B7567] hover:bg-[#F9F7F2]'
+            }`}
+          >
+            <Receipt className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">المستحقات ({overdueStudentsList.length})</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setReportType('group_report')}
-          className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
-            reportType === 'group_report'
-              ? 'bg-[#748C70] text-white shadow-xs'
-              : 'text-[#6B7567] hover:bg-[#F9F7F2]'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>تقرير المجموعات</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setReportType('group_report')}
+            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+              reportType === 'group_report'
+                ? 'bg-[#748C70] text-white shadow-xs'
+                : 'text-[#6B7567] hover:bg-[#F9F7F2]'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">المجموعات</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setReportType('student_report')}
-          className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
-            reportType === 'student_report'
-              ? 'bg-[#748C70] text-white shadow-xs'
-              : 'text-[#6B7567] hover:bg-[#F9F7F2]'
-          }`}
-        >
-          <User className="w-3.5 h-3.5" />
-          <span>تقرير الطالب</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setReportType('student_report')}
+            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+              reportType === 'student_report'
+                ? 'bg-[#748C70] text-white shadow-xs'
+                : 'text-[#6B7567] hover:bg-[#F9F7F2]'
+            }`}
+          >
+            <User className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">تقرير الطالب</span>
+          </button>
+        </div>
       </div>
 
       {/* Time Period Filter Bar (Common for Reports) */}
@@ -258,36 +303,56 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <div className="flex items-center justify-between flex-wrap gap-2">
             <span className="font-bold text-[#2D332A] flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-[#748C70]" />
-              <span>الفترة الزمنية للتقرير:</span>
+              <span>الفترة الزمنية:</span>
             </span>
 
             <div className="flex items-center gap-1 flex-wrap">
               <button
-                onClick={() => setPeriodFilter('today')}
+                onClick={() => setPeriodFilter('last_7_days')}
                 className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-all ${
-                  periodFilter === 'today'
+                  periodFilter === 'last_7_days'
                     ? 'bg-[#748C70] text-white border-[#748C70]'
-                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6]'
+                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
                 }`}
               >
-                اليوم
+                آخر 7 أيام
               </button>
               <button
                 onClick={() => setPeriodFilter('this_month')}
                 className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-all ${
                   periodFilter === 'this_month'
                     ? 'bg-[#748C70] text-white border-[#748C70]'
-                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6]'
+                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
                 }`}
               >
                 هذا الشهر
+              </button>
+              <button
+                onClick={() => setPeriodFilter('last_month')}
+                className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-all ${
+                  periodFilter === 'last_month'
+                    ? 'bg-[#748C70] text-white border-[#748C70]'
+                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
+                }`}
+              >
+                الشهر الماضي
+              </button>
+              <button
+                onClick={() => setPeriodFilter('all_time')}
+                className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-all ${
+                  periodFilter === 'all_time'
+                    ? 'bg-[#748C70] text-white border-[#748C70]'
+                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
+                }`}
+              >
+                كل الوقت
               </button>
               <button
                 onClick={() => setPeriodFilter('specific_month')}
                 className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-all ${
                   periodFilter === 'specific_month'
                     ? 'bg-[#748C70] text-white border-[#748C70]'
-                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6]'
+                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
                 }`}
               >
                 شهر محدد
@@ -297,20 +362,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-all ${
                   periodFilter === 'custom_range'
                     ? 'bg-[#748C70] text-white border-[#748C70]'
-                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6]'
+                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6] hover:bg-[#EAE5D8]'
                 }`}
               >
                 فترة مخصصة
-              </button>
-              <button
-                onClick={() => setPeriodFilter('all_time')}
-                className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-all ${
-                  periodFilter === 'all_time'
-                    ? 'bg-[#748C70] text-white border-[#748C70]'
-                    : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6]'
-                }`}
-              >
-                كل الوقت
               </button>
             </div>
           </div>
@@ -426,7 +481,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {Object.entries(methodStats).map(([key, stat]) => {
+              {(Object.entries(methodStats) as [string, { label: string; amount: number; count: number; color: string }][]).map(([key, stat]) => {
                 const percentage = periodRevenue > 0 ? Math.round((stat.amount / periodRevenue) * 100) : 0;
                 return (
                   <div
@@ -508,8 +563,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     value={paymentSearchQuery}
                     onChange={(e) => setPaymentSearchQuery(e.target.value)}
                     placeholder="بحث في المدفوعات..."
-                    className="w-full pr-8 pl-2 py-1.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-[11px]"
+                    className="w-full pr-8 pl-7 py-1.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-[11px]"
                   />
+                  {paymentSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentSearchQuery('')}
+                      className="absolute left-2 top-2 text-[#8A9187] hover:text-[#2D332A]"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -553,22 +617,45 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {/* ========================================== */}
       {reportType === 'overdue_list' && (
         <div className="space-y-3">
-          <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl shadow-xs flex items-center justify-between">
+          <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl shadow-xs flex items-center justify-between flex-wrap gap-2">
             <div>
               <h3 className="font-bold text-xs text-[#2D332A]">كشف حساب الطلاب ذوي المستحقات المتأخرة</h3>
               <p className="text-[11px] text-[#8A9187]">
                 إجمالي الديون المعلقة: <strong className="text-[#C97C5D]">{teacherSummary.totalRemaining} ج.م</strong> على {overdueStudentsList.length} طالب
               </p>
             </div>
-            {onOpenAddPayment && (
-              <button
-                onClick={() => onOpenAddPayment()}
-                className="px-3 py-1.5 rounded-xl bg-[#748C70] text-white font-bold text-xs flex items-center gap-1 shadow-xs"
-              >
-                <DollarSign className="w-3.5 h-3.5" />
-                <span>تسجيل دفعة جديدة</span>
-              </button>
-            )}
+
+            <div className="flex items-center gap-2">
+              <div className="relative w-40 sm:w-48">
+                <Search className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-[#8A9187]" />
+                <input
+                  type="text"
+                  value={overdueSearchQuery}
+                  onChange={(e) => setOverdueSearchQuery(e.target.value)}
+                  placeholder="بحث في المتأخرات..."
+                  className="w-full pr-8 pl-7 py-1.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-[11px]"
+                />
+                {overdueSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setOverdueSearchQuery('')}
+                    className="absolute left-2 top-2 text-[#8A9187] hover:text-[#2D332A]"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {onOpenAddPayment && (
+                <button
+                  onClick={() => onOpenAddPayment()}
+                  className="px-3 py-1.5 rounded-xl bg-[#748C70] text-white font-bold text-xs flex items-center gap-1 shadow-xs"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>تسجيل دفعة</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {overdueStudentsList.length === 0 ? (
@@ -775,8 +862,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   value={studentSearchQuery}
                   onChange={(e) => setStudentSearchQuery(e.target.value)}
                   placeholder="بحث عن طالب..."
-                  className="w-full pr-8 pl-2 py-1.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-[11px] focus:outline-none focus:border-[#748C70]"
+                  className="w-full pr-8 pl-7 py-1.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-[11px] focus:outline-none focus:border-[#748C70]"
                 />
+                {studentSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setStudentSearchQuery('')}
+                    className="absolute left-2 top-2 text-[#8A9187] hover:text-[#2D332A]"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 

@@ -55,7 +55,7 @@ export type PaymentTargetType =
   | 'custom_amount'; // 4. سداد مبلغ مالي حر
 
 // Time period filter for reports
-export type ReportPeriodFilter = 'today' | 'this_week' | 'this_month' | 'specific_month' | 'custom_range' | 'all_time';
+export type ReportPeriodFilter = 'today' | 'last_7_days' | 'this_week' | 'this_month' | 'last_month' | 'specific_month' | 'custom_range' | 'all_time';
 
 // 1. Student Entity (طالب واحد فقط دون استنساخ)
 export interface Student {

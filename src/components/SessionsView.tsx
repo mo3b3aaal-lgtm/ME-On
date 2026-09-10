@@ -37,7 +37,13 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   const handleDelete = (session: Session) => {
-    if (confirm(`هل أنت متأكد من حذف حصة "${session.title}"؟`)) {
+    const sessionAtt = db.getAttendance().filter((a) => a.sessionId === session.id);
+    const hasRecordedAttendance = sessionAtt.length > 0;
+    const warningMsg = hasRecordedAttendance
+      ? `تحذير هام: الحصة "${session.title}" مسجل لها كشف حضور لعدد (${sessionAtt.length}) طالب.\n\nحذف الحصة سيؤدي إلى مسح سجلات الحضور وإلغاء أي مستحقات أو خصومات مالية مترتبة عليها.\n\nهل أنت متأكد من الحذف النهائي؟`
+      : `هل أنت متأكد من حذف حصة "${session.title}" نهائياً؟`;
+
+    if (confirm(warningMsg)) {
       db.deleteSession(session.id);
       onSessionDeleted();
     }

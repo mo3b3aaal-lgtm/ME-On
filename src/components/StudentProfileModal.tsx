@@ -308,7 +308,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    if (confirm('هل أنت متأكد من حذف هذه الحصة نهائياً؟')) {
+    const sessionAtt = db.getAttendance().filter((a) => a.sessionId === sessionId);
+    const hasRecordedAttendance = sessionAtt.length > 0;
+    const warningMsg = hasRecordedAttendance
+      ? `تحذير هام: هذه الحصة مسجل لها كشف حضور لعدد (${sessionAtt.length}) طالب.\n\nحذف الحصة سيؤدي إلى مسح سجلات الحضور وإلغاء أي مستحقات مالية متعلقة بها.\n\nهل أنت متأكد من الحذف النهائي؟`
+      : 'هل أنت متأكد من حذف هذه الحصة نهائياً؟';
+
+    if (confirm(warningMsg)) {
       db.deleteSession(sessionId);
       onDataChanged();
     }
@@ -438,8 +444,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </div>
         </div>
 
-        {/* Sub Navigation Tabs */}
-        <div className="flex border-b border-[#E8E2D6] bg-white px-2 overflow-x-auto no-scrollbar">
+        {/* Sub Navigation Tabs (Sticky) */}
+        <div className="flex border-b border-[#E8E2D6] bg-white px-2 overflow-x-auto no-scrollbar shrink-0 shadow-xs z-10 sticky top-0">
           <button
             onClick={() => setActiveSubTab('overview')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users,
   Layers,
@@ -26,6 +26,7 @@ import {
   UserCheck,
   X,
   CreditCard,
+  Mail,
 } from 'lucide-react';
 import { Student, Group, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, Enrollment } from '../types';
 import { db } from '../utils/storage';
@@ -66,9 +67,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToTab,
   onDataChanged,
 }) => {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const currentMonth = useMemo(() => new Date().getMonth() + 1, []);
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   // State for expanded quick attendance cards
   const [expandedAttendanceCardId, setExpandedAttendanceCardId] = useState<string | null>(null);
@@ -80,50 +81,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   // Filter today's sessions
-  const todaySessions = sessions.filter((s) => s.date === todayStr && s.status !== 'cancelled');
-  const enrollments = db.getEnrollments();
-  const allAttendance = db.getAttendance();
+  const todaySessions = useMemo(() => {
+    return sessions.filter((s) => s.date === todayStr && s.status !== 'cancelled');
+  }, [sessions, todayStr]);
+
+  const enrollments = useMemo(() => db.getEnrollments(), [students, groups]);
+  const allAttendance = useMemo(() => db.getAttendance(), [sessions]);
 
   // Scheduled classes for today
-  const scheduledToday = getScheduledClassesForDate(new Date(), groups, students, enrollments, true);
+  const scheduledToday = useMemo(() => {
+    return getScheduledClassesForDate(new Date(), groups, students, enrollments, true);
+  }, [groups, students, enrollments]);
 
   // Completed vs Remaining sessions count today
-  const completedTodaySessionsCount = todaySessions.filter((s) => {
-    const att = db.getSessionAttendance(s.id);
-    return att.length > 0 || s.status === 'completed';
-  }).length;
-  const totalTodayClassesCount = Math.max(scheduledToday.length, todaySessions.length);
-  const remainingTodaySessionsCount = Math.max(0, totalTodayClassesCount - completedTodaySessionsCount);
+  const completedTodaySessionsCount = useMemo(() => {
+    return todaySessions.filter((s) => {
+      const att = db.getSessionAttendance(s.id);
+      return att.length > 0 || s.status === 'completed';
+    }).length;
+  }, [todaySessions]);
+
+  const totalTodayClassesCount = useMemo(() => {
+    return Math.max(scheduledToday.length, todaySessions.length);
+  }, [scheduledToday.length, todaySessions.length]);
+
+  const remainingTodaySessionsCount = useMemo(() => {
+    return Math.max(0, totalTodayClassesCount - completedTodaySessionsCount);
+  }, [totalTodayClassesCount, completedTodaySessionsCount]);
 
   // Revenue stats
-  const monthPayments = payments.filter((p) => p.month === currentMonth && p.year === currentYear);
-  const totalMonthRevenue = monthPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-  const todayPayments = payments.filter((p) => p.date === todayStr);
-  const totalTodayRevenue = todayPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  const { totalMonthRevenue, totalTodayRevenue } = useMemo(() => {
+    const monthPayments = payments.filter((p) => p.month === currentMonth && p.year === currentYear);
+    const mRev = monthPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    const tPayments = payments.filter((p) => p.date === todayStr);
+    const tRev = tPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    return { totalMonthRevenue: mRev, totalTodayRevenue: tRev };
+  }, [payments, currentMonth, currentYear, todayStr]);
 
   // Outstanding balances & Low credit calculations across active students
-  const activeStudents = students.filter((s) => s.status !== 'archived');
-  let totalOutstandingDues = 0;
-  let overdueStudentsCount = 0;
-  let lowCreditStudentsCount = 0;
+  const { totalOutstandingDues, overdueStudentsCount, lowCreditStudentsCount } = useMemo(() => {
+    const activeStudents = students.filter((s) => s.status !== 'archived');
+    let outDues = 0;
+    let overdueCount = 0;
+    let lowCreditCount = 0;
 
-  activeStudents.forEach((st) => {
-    const fin = db.calculateStudentGrandFinancials(st.id);
-    if (fin.grandRemaining > 0) {
-      totalOutstandingDues += fin.grandRemaining;
-      overdueStudentsCount++;
-    }
-    const hasLow = fin.enrollmentsSummary.some((e) => {
-      const isPkg = e.billingMode === 'package' || e.billingType === 'package' || e.billingMode === 'prepaid' || e.billingType === 'prepaid';
-      return isPkg && e.sessionCredit <= 2;
+    activeStudents.forEach((st) => {
+      const fin = db.calculateStudentGrandFinancials(st.id);
+      if (fin.grandRemaining > 0) {
+        outDues += fin.grandRemaining;
+        overdueCount++;
+      }
+      const hasLow = fin.enrollmentsSummary.some((e) => {
+        const isPkg = e.billingMode === 'package' || e.billingType === 'package' || e.billingMode === 'prepaid' || e.billingType === 'prepaid';
+        return isPkg && e.sessionCredit <= 2;
+      });
+      if (hasLow) {
+        lowCreditCount++;
+      }
     });
-    if (hasLow) {
-      lowCreditStudentsCount++;
-    }
-  });
+
+    return {
+      totalOutstandingDues: outDues,
+      overdueStudentsCount: overdueCount,
+      lowCreditStudentsCount: lowCreditCount,
+    };
+  }, [students, payments, sessions]);
 
   // Smart Reminders
-  const smartReminders = getSmartReminders(students, groups, sessions, enrollments, allAttendance);
+  const smartReminders = useMemo(() => {
+    return getSmartReminders(students, groups, sessions, enrollments, allAttendance);
+  }, [students, groups, sessions, enrollments, allAttendance]);
 
   // Quick Attendance Actions
   const getOrCreateSessionForSchedule = (item: ScheduledClassItem): Session => {
@@ -611,49 +638,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'present', true)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
                                     stStatus === 'present'
                                       ? 'bg-[#748C70] text-white shadow-xs'
                                       : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#748C70]/20'
                                   }`}
+                                  title="حاضر ومحسوب"
                                 >
-                                  حاضر
+                                  <Check className="w-3 h-3" />
+                                  <span>حاضر</span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_charged', true)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
                                     stStatus === 'absent_charged' || (stStatus === 'absent' && currentRecord?.isCharged !== false)
                                       ? 'bg-[#C97C5D] text-white shadow-xs'
                                       : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#C97C5D]/20'
                                   }`}
+                                  title="غياب محسوب ماليًا"
                                 >
-                                  غياب محسوب
+                                  <X className="w-3 h-3" />
+                                  <span>غياب محسوب</span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_free', false)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
                                     stStatus === 'absent_free' || stStatus === 'excused' || (stStatus === 'absent' && currentRecord?.isCharged === false)
                                       ? 'bg-[#8A9187] text-white shadow-xs'
                                       : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#8A9187]/20'
                                   }`}
+                                  title="غياب معذور / غير محسوب"
                                 >
-                                  معتذر
+                                  <Mail className="w-3 h-3" />
+                                  <span>معتذر</span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'late', true)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
                                     stStatus === 'late'
                                       ? 'bg-[#D49B4B] text-white shadow-xs'
                                       : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#D49B4B]/20'
                                   }`}
+                                  title="حاضر متأخر"
                                 >
-                                  متأخر
+                                  <Clock className="w-3 h-3" />
+                                  <span>متأخر</span>
                                 </button>
                               </div>
                             </div>

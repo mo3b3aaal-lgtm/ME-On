@@ -162,10 +162,10 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
+      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         
-        {/* Header */}
-        <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white">
+        {/* Header - Fixed Top */}
+        <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 rounded-2xl bg-[#748C70] text-white shadow-sm">
               <DollarSign className="w-5 h-5" />
@@ -187,8 +187,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#434B3E]">
+        {/* Scrollable Form Body */}
+        <form id="add-payment-form" onSubmit={handleSubmit} className="p-4 overflow-y-auto overscroll-contain android-scrollbar flex-1 space-y-4 text-xs text-[#434B3E]">
           
           {/* 1. Student Picker (if not fixed) */}
           {!targetStudent && (
@@ -568,26 +568,27 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
             </span>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 rounded-2xl border border-[#E8E2D6] bg-white text-[#6B7567] font-bold text-xs hover:bg-[#F2ECE1] transition-all"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              disabled={!studentId || !activeEnrollment || customAmountInput <= 0}
-              className="flex-1 py-3 rounded-2xl bg-[#748C70] hover:bg-[#60755C] disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>تأكيد تسجيل الدفعة</span>
-            </button>
-          </div>
-
         </form>
+
+        {/* Pinned Sticky Action Footer */}
+        <div className="p-3.5 bg-white border-t border-[#E8E2D6] flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-2xl border border-[#E8E2D6] bg-white text-[#6B7567] font-bold text-xs hover:bg-[#F2ECE1] transition-all"
+          >
+            إلغاء
+          </button>
+          <button
+            type="submit"
+            form="add-payment-form"
+            disabled={!studentId || !activeEnrollment || customAmountInput <= 0}
+            className="flex-1 py-3 rounded-2xl bg-[#748C70] hover:bg-[#60755C] disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>تأكيد تسجيل الدفعة</span>
+          </button>
+        </div>
 
       </div>
     </div>

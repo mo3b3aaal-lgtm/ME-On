@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Phone,
@@ -27,12 +27,21 @@ import {
   PlusCircle,
   Calendar,
   Settings2,
+  FileText,
+  Activity,
+  Check,
+  Save,
+  ChevronLeft,
+  BookMarked,
+  MapPin,
+  CalendarDays,
 } from 'lucide-react';
 import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode } from '../types';
 import { db, getArabicMonthName, getBillingModeLabel } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
 import { getLocalizedStageName } from '../utils/stages';
+import { getUpcomingClassesForStudent, UpcomingStudentClass } from '../utils/schedule';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -55,7 +64,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onOpenAddPayment,
   onDataChanged,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'finances' | 'credit_logs' | 'groups' | 'history' | 'attendance'>('finances');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'finances' | 'attendance' | 'history' | 'groups' | 'credit_logs'>('overview');
   const [serviceFilter, setServiceFilter] = useState<'all' | 'group' | 'private'>('all');
   const [isRecordPrivateModalOpen, setIsRecordPrivateModalOpen] = useState<boolean>(false);
   const [isAddingPrivateService, setIsAddingPrivateService] = useState<boolean>(false);
@@ -65,6 +74,29 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [newPrivateBillingMode, setNewPrivateBillingMode] = useState<BillingMode>('postpaid');
   const [newPrivatePackageSessions, setNewPrivatePackageSessions] = useState<number>(10);
   const [newPrivatePackagePrice, setNewPrivatePackagePrice] = useState<number>(1000);
+
+  // Student persistent teacher notes
+  const [notesText, setNotesText] = useState<string>('');
+  const [isNotesSaved, setIsNotesSaved] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (student) {
+      setNotesText(student.notes || '');
+      setIsNotesSaved(false);
+    }
+  }, [student?.id, student?.notes]);
+
+  const handleSaveNotes = () => {
+    if (!student) return;
+    const updated = {
+      ...student,
+      notes: notesText.trim(),
+    };
+    db.saveStudent(updated);
+    setIsNotesSaved(true);
+    setTimeout(() => setIsNotesSaved(false), 2500);
+    onDataChanged();
+  };
 
   // Edit enrollment billing state
   const [editingEnrollmentId, setEditingEnrollmentId] = useState<string | null>(null);
@@ -76,6 +108,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   // Load relations and calculated financials
   const studentGroups = student ? db.getStudentGroups(student.id) : [];
+  const enrollments = db.getEnrollments();
   const grandFinancials = student ? db.calculateStudentGrandFinancials(student.id) : {
     studentId: '',
     studentName: '',
@@ -93,6 +126,100 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const allSessions = db.getSessions();
   const allCreditLogs = student ? db.getCreditLogs().filter((l) => l.studentId === student.id) : [];
   const serviceType = student ? db.getStudentServiceType(student.id) : 'none';
+
+  // Upcoming scheduled classes for student
+  const upcomingClasses = student
+    ? getUpcomingClassesForStudent(student.id, allGroups, enrollments, 5, true)
+    : [];
+  const nextClass = upcomingClasses[0] || null;
+
+  // Attendance metrics calculation
+  const totalScheduledSessions = attendanceList.length;
+  const presentCount = attendanceList.filter((a) => a.status === 'present').length;
+  const absentChargedCount = attendanceList.filter(
+    (a) => a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false)
+  ).length;
+  const absentExcusedCount = attendanceList.filter(
+    (a) => a.status === 'absent_free' || a.status === 'excused' || a.isCharged === false
+  ).length;
+  const lateCount = attendanceList.filter((a) => a.status === 'late').length;
+  const cancelledCount = allSessions.filter(
+    (s) => s.status === 'cancelled' && (s.studentId === student?.id || studentGroups.some((g) => g.group.id === s.groupId))
+  ).length;
+  const totalCounted = presentCount + absentChargedCount + absentExcusedCount + lateCount;
+  const attendanceRate = totalCounted > 0 ? Math.round(((presentCount + lateCount) / totalCounted) * 100) : 100;
+
+  // Payment methods breakdown
+  const paymentMethodsSummary = allPayments.reduce((acc, p) => {
+    const method = p.paymentMethod || 'cash';
+    acc[method] = (acc[method] || 0) + (Number(p.amount) || 0);
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Recent activity stream (Attendance, Payments, Added sessions, Credit logs)
+  interface ActivityItem {
+    id: string;
+    type: 'attendance' | 'payment' | 'credit' | 'session';
+    date: string;
+    title: string;
+    subtitle: string;
+    badge: string;
+    badgeColor: string;
+    timestamp: number;
+  }
+
+  const recentActivity: ActivityItem[] = [];
+
+  // 1. Add attendance activities
+  attendanceList.slice(0, 8).forEach((att) => {
+    const ses = allSessions.find((s) => s.id === att.sessionId);
+    const grp = allGroups.find((g) => g.id === ses?.groupId);
+    const isPres = att.status === 'present';
+    const isLate = att.status === 'late';
+    const isCharged = att.status === 'absent_charged' || (att.status === 'absent' && att.isCharged !== false);
+    
+    recentActivity.push({
+      id: `act_att_${att.id}`,
+      type: 'attendance',
+      date: ses?.date || att.recordedAt?.split('T')[0] || '',
+      title: ses?.title || grp?.name || 'حصة دراسية',
+      subtitle: isPres ? 'حضور كامل' : isLate ? 'حضور متأخر' : isCharged ? 'غياب محسوب' : `غياب معفى (${att.absenceReason || 'معتذر'})`,
+      badge: isPres ? 'حاضر' : isLate ? 'متأخر' : isCharged ? 'غياب محسوب' : 'غياب معفى',
+      badgeColor: isPres ? 'bg-[#748C70]/15 text-[#60755C]' : isLate ? 'bg-[#D49B4B]/15 text-[#9C6615]' : isCharged ? 'bg-[#C97C5D]/15 text-[#C97C5D]' : 'bg-[#8A9187]/15 text-[#434B3E]',
+      timestamp: new Date(att.recordedAt || ses?.date || 0).getTime(),
+    });
+  });
+
+  // 2. Add payment activities
+  allPayments.slice(0, 8).forEach((p) => {
+    recentActivity.push({
+      id: `act_pay_${p.id}`,
+      type: 'payment',
+      date: p.date,
+      title: `سداد مبلغ ${p.amount} ج.م`,
+      subtitle: `${p.notes || (p.targetMonth ? `عن شهر ${getArabicMonthName(p.targetMonth)}` : 'دفعة حساب')}`,
+      badge: p.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' : p.paymentMethod === 'instapay' ? 'إنستاباي' : p.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' : 'كاش',
+      badgeColor: 'bg-[#748C70]/15 text-[#748C70]',
+      timestamp: new Date(p.createdAt || p.date).getTime(),
+    });
+  });
+
+  // 3. Add credit log activities
+  allCreditLogs.slice(0, 8).forEach((log) => {
+    recentActivity.push({
+      id: `act_crd_${log.id}`,
+      type: 'credit',
+      date: log.date,
+      title: log.reason || 'تعديل رصيد الحصص',
+      subtitle: `الرصيد بعد العملية: ${log.balanceAfter} حصص`,
+      badge: `${log.sessionsDelta > 0 ? '+' : ''}${log.sessionsDelta} حصة`,
+      badgeColor: log.sessionsDelta > 0 ? 'bg-[#748C70]/15 text-[#60755C]' : 'bg-[#D49B4B]/15 text-[#9C6615]',
+      timestamp: new Date(log.date).getTime(),
+    });
+  });
+
+  recentActivity.sort((a, b) => b.timestamp - a.timestamp);
+  const latestActivities = recentActivity.slice(0, 6);
 
   const privateEnrollments = grandFinancials.enrollmentsSummary.filter((e) => e.groupType === 'private');
   const groupEnrollments = grandFinancials.enrollmentsSummary.filter((e) => e.groupType !== 'private');
@@ -314,6 +441,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         {/* Sub Navigation Tabs */}
         <div className="flex border-b border-[#E8E2D6] bg-white px-2 overflow-x-auto no-scrollbar">
           <button
+            onClick={() => setActiveSubTab('overview')}
+            className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+              activeSubTab === 'overview'
+                ? 'border-[#748C70] text-[#748C70]'
+                : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>لوحة الطالب الشاملة</span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('finances')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeSubTab === 'finances'
@@ -326,15 +465,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveSubTab('credit_logs')}
+            onClick={() => setActiveSubTab('attendance')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
-              activeSubTab === 'credit_logs'
+              activeSubTab === 'attendance'
                 ? 'border-[#748C70] text-[#748C70]'
                 : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            <span>حركات الرصيد ({allCreditLogs.length})</span>
+            <CalendarCheck2 className="w-4 h-4" />
+            <span>الحضور ({attendanceList.length})</span>
           </button>
 
           <button
@@ -362,21 +501,418 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveSubTab('attendance')}
+            onClick={() => setActiveSubTab('credit_logs')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
-              activeSubTab === 'attendance'
+              activeSubTab === 'credit_logs'
                 ? 'border-[#748C70] text-[#748C70]'
                 : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
             }`}
           >
-            <CalendarCheck2 className="w-4 h-4" />
-            <span>الحضور ({attendanceList.length})</span>
+            <Sparkles className="w-4 h-4" />
+            <span>حركات الرصيد ({allCreditLogs.length})</span>
           </button>
         </div>
 
         {/* Tab Contents */}
         <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#434B3E]">
           
+          {/* ========================================== */}
+          {/* 0. OVERVIEW / DASHBOARD TAB (لوحة الطالب الشاملة) */}
+          {/* ========================================== */}
+          {activeSubTab === 'overview' && (
+            <div className="space-y-4">
+
+              {/* Quick Actions Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onOpenAddPayment(student)}
+                  className="p-2.5 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>تسجيل دفعة</span>
+                </button>
+
+                {hasPrivate && (
+                  <button
+                    type="button"
+                    onClick={() => setIsRecordPrivateModalOpen(true)}
+                    className="p-2.5 rounded-2xl bg-[#D49B4B] hover:bg-[#B88237] text-white font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>حصة خاصة</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('attendance')}
+                  className="p-2.5 rounded-2xl bg-white hover:bg-[#F2ECE1] text-[#2D332A] border border-[#E8E2D6] font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
+                >
+                  <CalendarCheck2 className="w-3.5 h-3.5 text-[#748C70]" />
+                  <span>سجل الحضور</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onOpenEnrollModal(student)}
+                  className="p-2.5 rounded-2xl bg-white hover:bg-[#F2ECE1] text-[#2D332A] border border-[#E8E2D6] font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 text-[#748C70]" />
+                  <span>اشتراك جديد</span>
+                </button>
+              </div>
+
+              {/* B. Today's & Upcoming Classes Section */}
+              <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-xs text-[#2D332A] flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-[#748C70]" />
+                    <span>المواعيد والحصص القادمة</span>
+                  </h3>
+                  {nextClass && (
+                    <span className="text-[10px] bg-[#748C70]/15 text-[#60755C] px-2 py-0.5 rounded-full font-bold">
+                      الحصة القادمة: {nextClass.dayRelative}
+                    </span>
+                  )}
+                </div>
+
+                {upcomingClasses.length === 0 ? (
+                  <div className="p-3 bg-[#F9F7F2] rounded-xl border border-[#E8E2D6] text-center text-[#8A9187]">
+                    <p>لا توجد مواعيد حصص أسبوعية محددة حالياً لهذا الطالب</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {upcomingClasses.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                          idx === 0
+                            ? 'bg-[#748C70]/10 border-[#748C70]/30 shadow-xs'
+                            : 'bg-[#F9F7F2] border-[#E8E2D6]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: item.accentColor }}
+                          />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-[#2D332A]">{item.groupName}</span>
+                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                                item.isPrivate ? 'bg-[#D49B4B]/20 text-[#9C6615]' : 'bg-[#F2ECE1] text-[#6B7567]'
+                              }`}>
+                                {item.isPrivate ? 'Private' : item.subject}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-[#8A9187] flex items-center gap-2 mt-0.5">
+                              <span>{item.dayName} ({item.dayRelative})</span>
+                              {item.location && <span>• {item.location}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-left shrink-0">
+                          <span className="font-bold text-xs text-[#2D332A] bg-white px-2 py-1 rounded-lg border border-[#E8E2D6] inline-block">
+                            {item.time}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* C. Attendance Summary Card */}
+              <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-xs text-[#2D332A] flex items-center gap-1.5">
+                    <CalendarCheck2 className="w-4 h-4 text-[#748C70]" />
+                    <span>ملخص الحضور والغياب</span>
+                  </h3>
+                  <span className="font-black text-xs text-[#748C70] bg-[#748C70]/10 px-2.5 py-0.5 rounded-full border border-[#748C70]/20">
+                    نسبة الالتزام {attendanceRate}%
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-[#E8E2D6] h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-[#748C70] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, attendanceRate))}%` }}
+                  />
+                </div>
+
+                {/* 5-box Stat Grid */}
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-center">
+                  <div className="p-2 rounded-xl bg-[#748C70]/10 border border-[#748C70]/20 text-[#60755C]">
+                    <span className="text-[10px] font-bold block">حاضر</span>
+                    <span className="text-sm font-black mt-0.5 block">{presentCount}</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-[#C97C5D]/15 border border-[#C97C5D]/30 text-[#C97C5D]">
+                    <span className="text-[10px] font-bold block">غياب محسوب</span>
+                    <span className="text-sm font-black mt-0.5 block">{absentChargedCount}</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-[#8A9187]">
+                    <span className="text-[10px] font-bold block">غياب معذور</span>
+                    <span className="text-sm font-black mt-0.5 block">{absentExcusedCount}</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-[#D49B4B]/15 border border-[#D49B4B]/30 text-[#9C6615]">
+                    <span className="text-[10px] font-bold block">متأخر</span>
+                    <span className="text-sm font-black mt-0.5 block">{lateCount}</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-[#8A9187]">
+                    <span className="text-[10px] font-bold block">ملغاة</span>
+                    <span className="text-sm font-black mt-0.5 block">{cancelledCount}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* D. Financial Summary Card */}
+              <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-xs text-[#2D332A] flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-[#748C70]" />
+                    <span>الموقف المالي الشامل</span>
+                  </h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    grandFinancials.grandRemaining > 0
+                      ? 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30'
+                      : 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30'
+                  }`}>
+                    {grandFinancials.grandRemaining > 0
+                      ? `مستحق سداد: ${grandFinancials.grandRemaining} ج`
+                      : 'خالص ومسدد بالكامل'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
+                    <span className="text-[10px] text-[#8A9187] font-bold block">إجمالي المستحق</span>
+                    <span className="text-sm font-black text-[#2D332A] mt-0.5 block">
+                      {grandFinancials.grandTotalDue} ج
+                    </span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
+                    <span className="text-[10px] text-[#8A9187] font-bold block">إجمالي المدفوع</span>
+                    <span className="text-sm font-black text-[#748C70] mt-0.5 block">
+                      {grandFinancials.grandTotalPaid} ج
+                    </span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
+                    <span className="text-[10px] text-[#8A9187] font-bold block">المتبقي</span>
+                    <span className={`text-sm font-black mt-0.5 block ${
+                      grandFinancials.grandRemaining > 0 ? 'text-[#C97C5D]' : 'text-[#748C70]'
+                    }`}>
+                      {grandFinancials.grandRemaining} ج
+                    </span>
+                  </div>
+                </div>
+
+                {/* Payment methods used */}
+                {Object.keys(paymentMethodsSummary).length > 0 && (
+                  <div className="pt-2 border-t border-[#E8E2D6]/60 flex items-center gap-1.5 flex-wrap text-[10px] text-[#8A9187]">
+                    <span className="font-bold text-[#2D332A]">طرق السداد:</span>
+                    {Object.entries(paymentMethodsSummary).map(([method, amount]) => (
+                      <span key={method} className="bg-[#F2ECE1] px-2 py-0.5 rounded-md font-bold text-[#6B7567]">
+                        {method === 'vodafone_cash' ? 'فودافون كاش' : method === 'instapay' ? 'إنستاباي' : method === 'bank_transfer' ? 'تحويل بنكي' : 'كاش'}: {amount} ج
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* E. Session / Package Status Breakdown */}
+              <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-2.5">
+                <h3 className="font-bold text-xs text-[#2D332A] flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#748C70]" />
+                  <span>حالة الاشتراكات والباقات</span>
+                </h3>
+
+                {grandFinancials.enrollmentsSummary.length === 0 ? (
+                  <div className="p-3 bg-[#F9F7F2] rounded-xl border border-[#E8E2D6] text-center text-[#8A9187]">
+                    <p>الطالب غير مسجل في أي اشتراكات حالياً</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {grandFinancials.enrollmentsSummary.map((enr) => {
+                      const isPkg = enr.billingMode === 'package' || enr.billingType === 'package';
+                      const isPrepaid = enr.billingMode === 'prepaid' || enr.billingType === 'prepaid';
+                      const isMonthly = enr.billingMode === 'monthly' || enr.billingType === 'monthly';
+                      const isPostpaid = enr.billingMode === 'postpaid' || enr.billingType === 'postpaid';
+                      const isHourly = enr.billingMode === 'hourly' || enr.billingType === 'hourly';
+
+                      return (
+                        <div
+                          key={enr.enrollmentId}
+                          className="p-3 bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full"
+                                style={{ backgroundColor: enr.accentColor }}
+                              />
+                              <span className="font-bold text-xs text-[#2D332A]">{enr.groupName}</span>
+                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                                enr.groupType === 'private' ? 'bg-[#D49B4B]/20 text-[#9C6615]' : 'bg-[#E8E2D6] text-[#6B7567]'
+                              }`}>
+                                {getBillingModeLabel(enr.billingType, enr.billingMode)}
+                              </span>
+                            </div>
+
+                            <span className="text-xs font-bold text-[#748C70]">
+                              {enr.customPrice} ج.م
+                            </span>
+                          </div>
+
+                          {/* Detail row based on billing mode */}
+                          {(isPkg || isPrepaid) && (
+                            <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] bg-white p-2 rounded-lg border border-[#E8E2D6]">
+                              <div>
+                                <span className="text-[#8A9187] block">رصيد الحصص</span>
+                                <strong className={`text-xs block ${enr.sessionCredit <= 2 ? 'text-[#C97C5D]' : 'text-[#748C70]'}`}>
+                                  {enr.sessionCredit} حصص
+                                </strong>
+                              </div>
+                              <div>
+                                <span className="text-[#8A9187] block">المستهلك</span>
+                                <strong className="text-xs text-[#2D332A] block">{enr.usedSessionsCount || 0}</strong>
+                              </div>
+                              <div>
+                                <span className="text-[#8A9187] block">سعر الحصة</span>
+                                <strong className="text-xs text-[#6B7567] block">
+                                  {isPkg && enr.packageSessionsCount
+                                    ? `${Math.round((enr.packagePrice || enr.customPrice) / enr.packageSessionsCount)} ج`
+                                    : `${enr.customPrice} ج`}
+                                </strong>
+                              </div>
+                            </div>
+                          )}
+
+                          {isMonthly && (
+                            <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] bg-white p-2 rounded-lg border border-[#E8E2D6]">
+                              <div>
+                                <span className="text-[#8A9187] block">مستحق الشهر</span>
+                                <strong className="text-xs text-[#2D332A] block">{enr.totalDue || enr.customPrice} ج</strong>
+                              </div>
+                              <div>
+                                <span className="text-[#8A9187] block">المسدد</span>
+                                <strong className="text-xs text-[#748C70] block">{enr.totalPaid || 0} ج</strong>
+                              </div>
+                              <div>
+                                <span className="text-[#8A9187] block">المتبقي</span>
+                                <strong className={`text-xs block ${(enr.remaining || 0) > 0 ? 'text-[#C97C5D]' : 'text-[#748C70]'}`}>
+                                  {enr.remaining || 0} ج
+                                </strong>
+                              </div>
+                            </div>
+                          )}
+
+                          {(isPostpaid || isHourly) && (
+                            <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] bg-white p-2 rounded-lg border border-[#E8E2D6]">
+                              <div>
+                                <span className="text-[#8A9187] block">حصص مستحقة</span>
+                                <strong className="text-xs text-[#C97C5D] block">{enr.unpaidSessionsCount || 0}</strong>
+                              </div>
+                              <div>
+                                <span className="text-[#8A9187] block">المستحق</span>
+                                <strong className="text-xs text-[#C97C5D] block">{enr.remaining || 0} ج</strong>
+                              </div>
+                              <div>
+                                <span className="text-[#8A9187] block">المسدد</span>
+                                <strong className="text-xs text-[#748C70] block">{enr.totalPaid || 0} ج</strong>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* G. Teacher Notes Section */}
+              <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-xs text-[#2D332A] flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-[#748C70]" />
+                    <span>ملاحظات المعلم الخاصة بالطالب</span>
+                  </h3>
+                  {isNotesSaved && (
+                    <span className="text-[10px] text-[#748C70] font-bold flex items-center gap-1 animate-in fade-in">
+                      <Check className="w-3 h-3" />
+                      <span>تم الحفظ</span>
+                    </span>
+                  )}
+                </div>
+
+                <textarea
+                  value={notesText}
+                  onChange={(e) => setNotesText(e.target.value)}
+                  placeholder="سجل ملاحظاتك الأكاديمية أو السلوكية أو المالية عن الطالب هنا... (تُحفظ تلقائياً وتتزامن مع السحابة)"
+                  className="w-full p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70] resize-none h-20"
+                />
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveNotes}
+                    className="px-3 py-1.5 rounded-xl bg-[#2D332A] hover:bg-[#434B3E] text-white text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+                  >
+                    <Save className="w-3.5 h-3.5 text-[#748C70]" />
+                    <span>حفظ الملاحظات</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* F. Recent Activity Stream */}
+              <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-xs text-[#2D332A] flex items-center gap-1.5">
+                    <Activity className="w-4 h-4 text-[#748C70]" />
+                    <span>آخر الأنشطة والعمليات</span>
+                  </h3>
+                </div>
+
+                {latestActivities.length === 0 ? (
+                  <div className="p-3 bg-[#F9F7F2] rounded-xl border border-[#E8E2D6] text-center text-[#8A9187]">
+                    <p>لا توجد أنشطة مسجلة حديثاً</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {latestActivities.map((act) => (
+                      <div
+                        key={act.id}
+                        className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] flex items-center justify-between"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-xs text-[#2D332A]">{act.title}</span>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${act.badgeColor}`}>
+                              {act.badge}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-[#8A9187]">
+                            {act.subtitle} {act.date && `• ${act.date}`}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
           {/* ========================================== */}
           {/* 1. FINANCES TAB (الحسابات والاشتراكات المستقلة) */}
           {/* ========================================== */}

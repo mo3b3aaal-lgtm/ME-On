@@ -279,3 +279,95 @@ export function getScheduledClassesForDate(
 
   return scheduledItems;
 }
+
+export interface UpcomingStudentClass {
+  id: string;
+  dateStr: string; // YYYY-MM-DD
+  dayName: string;
+  dayRelative: string; // "اليوم", "غداً", etc.
+  time: string;
+  rawTime: string;
+  groupId: string;
+  groupName: string;
+  isPrivate: boolean;
+  subject: string;
+  location?: string;
+  accentColor: string;
+}
+
+/**
+ * Get upcoming scheduled classes for a specific student for the next 7 days
+ */
+export function getUpcomingClassesForStudent(
+  studentId: string,
+  groups: Group[],
+  enrollments: Enrollment[],
+  limit: number = 5,
+  isRTL: boolean = true
+): UpcomingStudentClass[] {
+  if (!studentId) return [];
+
+  const studentEnrollments = enrollments.filter(
+    (e) => e.studentId === studentId && e.status !== 'stopped'
+  );
+  if (studentEnrollments.length === 0) return [];
+
+  const groupsMap = new Map<string, Group>();
+  groups.forEach((g) => groupsMap.set(g.id, g));
+
+  const upcoming: UpcomingStudentClass[] = [];
+  const today = new Date();
+
+  // Scan next 14 days
+  for (let offset = 0; offset < 14; offset++) {
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + offset);
+    const dayIdx = targetDate.getDay();
+    const arabicDayName = DAY_MAP_ARABIC[dayIdx];
+    const dateStr = targetDate.toISOString().split('T')[0];
+
+    const dayRelative =
+      offset === 0
+        ? (isRTL ? 'اليوم' : 'Today')
+        : offset === 1
+        ? (isRTL ? 'غداً' : 'Tomorrow')
+        : arabicDayName;
+
+    for (const enr of studentEnrollments) {
+      const group = groupsMap.get(enr.groupId);
+      if (!group || !group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
+
+      const meetsOnDay = group.scheduleDays.some((dayStr) => {
+        return getWeekdayIndex(dayStr) === dayIdx;
+      });
+
+      if (!meetsOnDay) continue;
+
+      const rawTime =
+        enr.scheduleTimes?.[arabicDayName] ||
+        enr.scheduleTime ||
+        getTimeForDayInGroup(group, arabicDayName);
+      const formattedTime = formatTimeDisplay(rawTime, isRTL);
+      const isPrivate = group.type === 'private';
+
+      upcoming.push({
+        id: `up_${enr.id}_${dateStr}`,
+        dateStr,
+        dayName: arabicDayName,
+        dayRelative,
+        time: formattedTime,
+        rawTime,
+        groupId: group.id,
+        groupName: group.name,
+        isPrivate,
+        subject: group.subject || (isPrivate ? 'درس خاص' : 'مجموعة'),
+        location: group.roomOrLocation,
+        accentColor: group.accentColor || (isPrivate ? '#D49B4B' : '#748C70'),
+      });
+    }
+
+    if (upcoming.length >= limit * 2) break;
+  }
+
+  return upcoming.slice(0, limit);
+}

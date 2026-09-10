@@ -198,6 +198,7 @@ export default function App() {
                   onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
                   onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
                   onNavigateToTab={(tab) => setActiveTab(tab)}
+                  onDataChanged={refreshData}
                 />
               )}
 
@@ -237,6 +238,8 @@ export default function App() {
                   groups={groups}
                   sessions={sessions}
                   payments={payments}
+                  onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+                  onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
                 />
               )}
 

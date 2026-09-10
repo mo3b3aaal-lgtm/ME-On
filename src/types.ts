@@ -93,6 +93,7 @@ export interface Group {
   packageSessionsCount?: number; // عدد حصص الباقة (افتراضي 8)
   scheduleDays: string[]; // ['السبت', 'الثلاثاء']
   scheduleTime?: string; // e.g. "04:30 م"
+  scheduleTimes?: Record<string, string>; // Map of day to time, e.g. { 'الأحد': '17:00', 'الثلاثاء': '19:30' }
   roomOrLocation?: string; // e.g. "قاعة 1", "سنتر النور", "أونلاين"
   accentColor: string; // اللون المميز للمجموعة
   notes?: string;
@@ -117,6 +118,9 @@ export interface Enrollment {
   extraSessionPrice?: number; // سعر الحصة الإضافية
   packageSessionsCount?: number; // عدد حصص الباقة
   packagePrice?: number; // إجمالي سعر الباقة
+  scheduleDays?: string[]; // أيام الحصص الخاصة بهذا الاشتراك إن وجدت
+  scheduleTime?: string; // وقت الحصة
+  scheduleTimes?: Record<string, string>; // مواعيد الأيام المحددة
   sessionCredit: number; // رصيد الحصص المتبقي لهذا الاشتراك
   financialCredit: number; // الرصيد المالي المتبقي (Financial Credit) e.g. 50 ج
   discount: number; // قيمة الخصم إن وجد

@@ -1486,6 +1486,7 @@ export const db = {
       packagePrice?: number;
       scheduleDays?: string[];
       scheduleTime?: string;
+      scheduleTimes?: Record<string, string>;
       roomOrLocation?: string;
       notes?: string;
     }
@@ -1497,7 +1498,7 @@ export const db = {
     const resolvedMode: BillingMode = options.billingMode || (options.billingType as any) || 'prepaid';
 
     const isPackage = resolvedMode === 'package' || resolvedBilling === 'package';
-    const packageSessions = isPackage ? (options.packageSessionsCount || 10) : undefined;
+    const packageSessions = isPackage ? (options.packageSessionsCount && options.packageSessionsCount > 0 ? options.packageSessionsCount : 10) : undefined;
     const packagePrice = isPackage ? (options.packagePrice || options.sessionPrice) : undefined;
     const effectivePrice = isPackage && packageSessions && packagePrice
       ? Math.round(packagePrice / packageSessions)
@@ -1516,6 +1517,7 @@ export const db = {
       packageSessionsCount: packageSessions,
       scheduleDays: options.scheduleDays || ['السبت'],
       scheduleTime: options.scheduleTime || '04:00 م',
+      scheduleTimes: options.scheduleTimes,
       roomOrLocation: options.roomOrLocation || 'منزل الطالب / أونلاين',
       accentColor: '#D49B4B', // Gold accent for private lessons
       notes: options.notes || '',
@@ -1533,6 +1535,9 @@ export const db = {
       customPrice: effectivePrice,
       packageSessionsCount: packageSessions,
       packagePrice: packagePrice,
+      scheduleDays: options.scheduleDays,
+      scheduleTime: options.scheduleTime,
+      scheduleTimes: options.scheduleTimes,
       sessionCredit: 0,
       financialCredit: 0,
       discount: 0,

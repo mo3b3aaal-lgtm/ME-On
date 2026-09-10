@@ -13,10 +13,12 @@ import {
   Calendar,
   AlertCircle,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { Student, Group, Session, Payment, TeacherProfile } from '../types';
 import { db } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
+import { getScheduledClassesForDate, formatTimeDisplay } from '../utils/schedule';
 
 interface DashboardViewProps {
   students: Student[];
@@ -55,6 +57,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Filter today's sessions (supports multiple sessions per day)
   const todaySessions = sessions.filter((s) => s.date === todayStr);
+
+  // Scheduled classes based on recurring days and specific times
+  const enrollments = db.getEnrollments();
+  const scheduledToday = getScheduledClassesForDate(new Date(), groups, students, enrollments, true);
 
   // Month revenues
   const monthPayments = payments.filter((p) => p.month === currentMonth && p.year === currentYear);
@@ -198,7 +204,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-[#2D332A] flex items-center gap-1.5">
             <CalendarCheck2 className="w-4 h-4 text-[#748C70]" />
-            <span>جدول حصص اليوم ({todaySessions.length})</span>
+            <span>
+              جدول مواعيد وحصص اليوم (
+              {scheduledToday.length > 0 ? scheduledToday.length : todaySessions.length}
+              )
+            </span>
           </h2>
           <button
             onClick={onOpenAddSession}
@@ -209,7 +219,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
-        {todaySessions.length === 0 ? (
+        {scheduledToday.length === 0 && todaySessions.length === 0 ? (
           <div className="p-6 bg-white border border-[#E8E2D6] rounded-2xl text-center space-y-1.5 shadow-sm">
             <CalendarCheck2 className="w-8 h-8 mx-auto text-[#8A9187] opacity-50" />
             <p className="font-bold text-[#2D332A] text-xs">لا توجد حصص مجدولة لليوم</p>
@@ -223,6 +233,90 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Plus className="w-3.5 h-3.5" />
               <span>جدولة حصة جديدة</span>
             </button>
+          </div>
+        ) : scheduledToday.length > 0 ? (
+          <div className="space-y-2">
+            {scheduledToday.map((item) => {
+              const matchingSession = todaySessions.find(
+                (s) => s.groupId === item.groupId || (item.enrollmentId && s.enrollmentId === item.enrollmentId)
+              );
+              const attendance = matchingSession ? db.getSessionAttendance(matchingSession.id) : [];
+              const isRecorded = attendance.length > 0 || matchingSession?.status === 'completed';
+
+              return (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-2xl bg-white border border-[#E8E2D6] flex items-center justify-between shadow-sm hover:border-[#748C70]/50 transition-all gap-2"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: item.accentColor }}
+                      />
+                      <h3 className="font-bold text-xs text-[#2D332A] truncate">
+                        {item.isPrivate ? item.studentName : item.groupName}
+                      </h3>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        item.isPrivate
+                          ? 'bg-[#D49B4B]/15 text-[#9C6615]'
+                          : 'bg-[#F2ECE1] text-[#6B7567]'
+                      }`}>
+                        {item.isPrivate ? 'درس خاص' : (item.subject || 'مجموعة')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[11px] text-[#8A9187] flex-wrap">
+                      <span className="flex items-center gap-1 font-bold text-[#2D332A]">
+                        <Clock className="w-3.5 h-3.5 text-[#748C70]" />
+                        <span>الساعة {item.time}</span>
+                      </span>
+                      {item.isPrivate && item.student?.phone && (
+                        <span className="text-[10px] text-[#8A9187]">
+                          {item.student.phone}
+                        </span>
+                      )}
+                      {!item.isPrivate && item.group && (
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3 text-[#748C70]" />
+                          <span>{db.getGroupStudents(item.groupId).length} طلاب</span>
+                        </span>
+                      )}
+                      {item.location && (
+                        <span className="flex items-center gap-1 text-[10px]">
+                          <MapPin className="w-3 h-3 text-[#8A9187]" />
+                          <span>{item.location}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0">
+                    {matchingSession ? (
+                      <button
+                        onClick={() => onOpenAttendanceModal(matchingSession)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-sm ${
+                          isRecorded
+                            ? 'bg-[#748C70]/15 text-[#748C70] hover:bg-[#748C70]/25'
+                            : 'bg-[#748C70] text-white hover:bg-[#5E755A]'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{isRecorded ? 'تعديل الحضور' : 'رصد الحضور'}</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={onOpenAddSession}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#F9F7F2] hover:bg-[#EAE5D8] border border-[#E8E2D6] text-[#2D332A] flex items-center gap-1 transition-all shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-[#748C70]" />
+                        <span>بدء الحصة</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="space-y-2">

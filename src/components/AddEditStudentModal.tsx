@@ -86,7 +86,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const [privatePackageSessions, setPrivatePackageSessions] = useState<number>(10);
   const [privatePackagePrice, setPrivatePackagePrice] = useState<number>(900);
   const [privateDays, setPrivateDays] = useState<string[]>(['السبت']);
-  const [privateTime, setPrivateTime] = useState('04:00 م');
+  const [privateTime, setPrivateTime] = useState('16:00');
+  const [privateTimes, setPrivateTimes] = useState<Record<string, string>>({ 'السبت': '16:00' });
   const [privateLocation, setPrivateLocation] = useState('منزل الطالب / أونلاين');
 
   useEffect(() => {
@@ -240,7 +241,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           packageSessionsCount: isPkg ? (Number(privatePackageSessions) || 10) : undefined,
           packagePrice: isPkg ? (Number(privatePackagePrice) || 900) : undefined,
           scheduleDays: privateDays,
-          scheduleTime: privateTime,
+          scheduleTime: privateTime || (privateDays.length > 0 ? privateTimes[privateDays[0]] || '' : ''),
+          scheduleTimes: privateTimes,
           roomOrLocation: privateLocation,
         });
       }
@@ -272,6 +274,16 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       }
     } else {
       setPrivateDays([...privateDays, day]);
+      if (!privateTimes[day]) {
+        setPrivateTimes((prev) => ({ ...prev, [day]: privateTime || '16:00' }));
+      }
+    }
+  };
+
+  const handlePrivateDayTimeChange = (day: string, timeVal: string) => {
+    setPrivateTimes((prev) => ({ ...prev, [day]: timeVal }));
+    if (privateDays[0] === day || !privateTime) {
+      setPrivateTime(timeVal);
     }
   };
 
@@ -703,7 +715,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-[10px] text-[#6B7567] mb-0.5">{t('packageTotalFeeLabel')} *</label>
+                      <label className="block text-[10px] text-[#6B7567] mb-0.5 font-bold">
+                        {isRTL ? 'إجمالي سعر الباقة (ج.م) *' : 'Package Total Price *'}
+                      </label>
                       <input
                         type="number"
                         min="0"
@@ -716,8 +730,34 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                   )}
                 </div>
 
-                {/* Days */}
-                <div className="space-y-1">
+                {/* Package Sessions Count & Calculated Session Price */}
+                {privateBillingMode === 'package' && (
+                  <div className="p-2.5 bg-[#F9F7F2] rounded-xl border border-[#D49B4B]/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-[#2D332A]">{t('packageSessionsNumberLabel')}:</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="1"
+                          value={privatePackageSessions}
+                          onChange={(e) => setPrivatePackageSessions(Math.max(1, Number(e.target.value)))}
+                          className="w-16 bg-white border border-[#E8E2D6] rounded-lg p-1 text-xs font-bold text-[#2D332A] text-center focus:outline-none focus:border-[#D49B4B]"
+                        />
+                        <span className="text-xs font-bold text-[#6B7567]">{isRTL ? 'حصة' : 'sessions'}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-[#D49B4B]/10 rounded-lg flex items-center justify-between text-xs text-[#9C6615] font-bold">
+                      <span>{isRTL ? 'سعر الحصة الفعلي المحسوب:' : 'Calculated Price Per Session:'}</span>
+                      <span className="text-xs font-black text-[#2D332A]">
+                        {privatePackageSessions > 0 ? (Math.round((privatePackagePrice / privatePackageSessions) * 100) / 100) : 0} {t('currency')} / {isRTL ? 'حصة' : 'session'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Days & Per-Day Time */}
+                <div className="space-y-2 pt-1 border-t border-[#E8E2D6]/70">
                   <label className="block text-[10px] font-bold text-[#6B7567]">{t('scheduleDays')}:</label>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {[
@@ -746,6 +786,35 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                       );
                     })}
                   </div>
+
+                  {/* Individual Time Inputs per Day */}
+                  {privateDays.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                      {privateDays.map((day) => {
+                        const dayTime = privateTimes[day] || privateTime || '16:00';
+                        return (
+                          <div
+                            key={day}
+                            className="flex items-center justify-between p-1.5 rounded-lg bg-[#F9F7F2] border border-[#E8E2D6]"
+                          >
+                            <span className="text-[11px] font-bold text-[#2D332A] flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#D49B4B]"></span>
+                              {day}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-[#8A9187]" />
+                              <input
+                                type="time"
+                                value={dayTime}
+                                onChange={(e) => handlePrivateDayTimeChange(day, e.target.value)}
+                                className="bg-white border border-[#E8E2D6] rounded px-1.5 py-0.5 text-xs font-bold text-[#2D332A] focus:outline-none focus:border-[#D49B4B]"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

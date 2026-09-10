@@ -39,7 +39,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   const [hourlyRate, setHourlyRate] = useState<number>(150);
   const [packageSessionsCount, setPackageSessionsCount] = useState<number>(10);
   const [scheduleDays, setScheduleDays] = useState<string[]>(['السبت', 'الثلاثاء']);
-  const [scheduleTime, setScheduleTime] = useState('04:00 PM');
+  const [scheduleTime, setScheduleTime] = useState('16:00');
+  const [scheduleTimes, setScheduleTimes] = useState<Record<string, string>>({ 'السبت': '16:00', 'الثلاثاء': '16:00' });
   const [roomOrLocation, setRoomOrLocation] = useState('Room 1');
   const [accentColor, setAccentColor] = useState(GROUP_COLORS[0]);
   const [notes, setNotes] = useState('');
@@ -55,7 +56,17 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setHourlyRate(editingGroup.hourlyRate || 150);
       setPackageSessionsCount(editingGroup.packageSessionsCount || 10);
       setScheduleDays(editingGroup.scheduleDays || []);
-      setScheduleTime(editingGroup.scheduleTime || '');
+      setScheduleTime(editingGroup.scheduleTime || '16:00');
+      
+      const initialTimes: Record<string, string> = { ...(editingGroup.scheduleTimes || {}) };
+      if (editingGroup.scheduleDays && editingGroup.scheduleDays.length > 0) {
+        editingGroup.scheduleDays.forEach((day) => {
+          if (!initialTimes[day]) {
+            initialTimes[day] = editingGroup.scheduleTime || '16:00';
+          }
+        });
+      }
+      setScheduleTimes(initialTimes);
       setRoomOrLocation(editingGroup.roomOrLocation || '');
       setAccentColor(editingGroup.accentColor || GROUP_COLORS[0]);
       setNotes(editingGroup.notes || '');
@@ -69,7 +80,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setHourlyRate(150);
       setPackageSessionsCount(10);
       setScheduleDays(['السبت', 'الثلاثاء']);
-      setScheduleTime('04:00 PM');
+      setScheduleTime('16:00');
+      setScheduleTimes({ 'السبت': '16:00', 'الثلاثاء': '16:00' });
       setRoomOrLocation('Room 1');
       setAccentColor(GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)]);
       setNotes('');
@@ -81,12 +93,36 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setScheduleDays(scheduleDays.filter((d) => d !== day));
     } else {
       setScheduleDays([...scheduleDays, day]);
+      if (!scheduleTimes[day]) {
+        setScheduleTimes((prev) => ({ ...prev, [day]: scheduleTime || '16:00' }));
+      }
     }
+  };
+
+  const handleDayTimeChange = (day: string, timeVal: string) => {
+    setScheduleTimes((prev) => ({ ...prev, [day]: timeVal }));
+    if (scheduleDays[0] === day || !scheduleTime) {
+      setScheduleTime(timeVal);
+    }
+  };
+
+  const applyTimeToAllDays = (timeVal: string) => {
+    const updated: Record<string, string> = {};
+    scheduleDays.forEach((d) => {
+      updated[d] = timeVal;
+    });
+    setScheduleTimes(updated);
+    setScheduleTime(timeVal);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !subject.trim()) return;
+
+    if (billingType === 'package' && (!packageSessionsCount || packageSessionsCount <= 0)) {
+      alert(isRTL ? 'يرجى إدخال عدد حصص صحيح للباقة (أكبر من 0)' : 'Please enter a valid number of sessions for the package (>0)');
+      return;
+    }
 
     const groupId = editingGroup
       ? editingGroup.id
@@ -103,7 +139,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       hourlyRate: billingType === 'hourly' ? (Number(hourlyRate) || 150) : undefined,
       packageSessionsCount: billingType === 'package' ? (Number(packageSessionsCount) || 10) : undefined,
       scheduleDays,
-      scheduleTime: scheduleTime.trim(),
+      scheduleTime: scheduleTime.trim() || (scheduleDays.length > 0 ? scheduleTimes[scheduleDays[0]] || '' : ''),
+      scheduleTimes,
       roomOrLocation: roomOrLocation.trim(),
       accentColor,
       notes: notes.trim(),
@@ -258,7 +295,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
 
               {billingType === 'hourly' ? (
                 <div>
-                  <label className="block text-[11px] text-[#8A9187] mb-1">
+                  <label className="block text-[11px] text-[#8A9187] mb-1 font-bold">
                     {t('hourlyRateInputLabel')} ({t('currency')}/hr)
                   </label>
                   <input
@@ -271,8 +308,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                 </div>
               ) : (
                 <div>
-                  <label className="block text-[11px] text-[#8A9187] mb-1">
-                    {t('defaultPrice')} ({t('currency')})
+                  <label className="block text-[11px] text-[#8A9187] mb-1 font-bold">
+                    {billingType === 'package' ? (isRTL ? 'إجمالي سعر الباقة (ج.م)' : 'Package Total Price') : `${t('defaultPrice')} (${t('currency')})`}
                   </label>
                   <input
                     type="number"
@@ -285,31 +322,56 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
               )}
             </div>
 
-            {/* Package count selection */}
+            {/* Package count selection & effective price calculation */}
             {billingType === 'package' && (
-              <div className="p-2.5 bg-[#F9F7F2] rounded-xl border border-[#D49B4B]/40 space-y-2">
+              <div className="p-3 bg-[#F9F7F2] rounded-xl border border-[#D49B4B]/40 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-[#2D332A]">{t('packageSessionsNumberLabel')}:</label>
+                  <div>
+                    <label className="text-xs font-bold text-[#2D332A] block">{t('packageSessionsNumberLabel')}:</label>
+                    <span className="text-[10px] text-[#8A9187]">{isRTL ? 'حدد عدد الحصص في الباقة' : 'Define sessions in package'}</span>
+                  </div>
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
                       min="1"
                       value={packageSessionsCount}
                       onChange={(e) => setPackageSessionsCount(Math.max(1, Number(e.target.value)))}
-                      className="w-16 bg-white border border-[#E8E2D6] rounded-lg p-1 text-xs font-bold text-[#2D332A] text-center focus:outline-none focus:border-[#D49B4B]"
+                      className="w-20 bg-white border border-[#E8E2D6] rounded-lg p-1.5 text-xs font-bold text-[#2D332A] text-center focus:outline-none focus:border-[#D49B4B]"
                     />
+                    <span className="text-xs font-bold text-[#6B7567]">{isRTL ? 'حصة' : 'sessions'}</span>
                   </div>
+                </div>
+
+                <div className="p-2 bg-[#D49B4B]/10 rounded-lg flex items-center justify-between text-xs text-[#9C6615] font-bold">
+                  <span>{isRTL ? 'سعر الحصة الفعلي المحسوب:' : 'Calculated Price Per Session:'}</span>
+                  <span className="text-sm font-black text-[#2D332A]">
+                    {packageSessionsCount > 0 ? (Math.round((defaultPrice / packageSessionsCount) * 100) / 100) : 0} {t('currency')} / {isRTL ? 'حصة' : 'session'}
+                  </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Schedule Days & Time */}
-          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
-            <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[#748C70]" />
-              <span>{t('scheduleDays')}</span>
-            </h3>
+          {/* Schedule Days & Time Per Day */}
+          <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#748C70]" />
+                <span>{t('scheduleDays')} {isRTL ? 'ومواعيد الحصص' : 'and Times'}</span>
+              </h3>
+              {scheduleDays.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstTime = scheduleTimes[scheduleDays[0]] || scheduleTime || '16:00';
+                    applyTimeToAllDays(firstTime);
+                  }}
+                  className="text-[10px] font-bold text-[#748C70] hover:underline"
+                >
+                  {isRTL ? 'توحيد الوقت لجميع الأيام' : 'Apply time to all days'}
+                </button>
+              )}
+            </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
               {[
@@ -339,16 +401,39 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
               })}
             </div>
 
-            <div className="pt-2">
-              <label className="block text-[11px] text-[#8A9187] mb-1">{t('scheduleTime')}</label>
-              <input
-                type="text"
-                placeholder="04:00 PM"
-                value={scheduleTime}
-                onChange={(e) => setScheduleTime(e.target.value)}
-                className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
-              />
-            </div>
+            {/* Individual time input per selected day */}
+            {scheduleDays.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-[#E8E2D6]/70">
+                <label className="block text-[11px] font-bold text-[#6B7567]">
+                  {isRTL ? 'تحديد موعد كل يوم بشكل مستقل:' : 'Set time for each selected day:'}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {scheduleDays.map((day) => {
+                    const currentTime = scheduleTimes[day] || scheduleTime || '16:00';
+                    return (
+                      <div
+                        key={day}
+                        className="flex items-center justify-between p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]"
+                      >
+                        <span className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-[#748C70]"></span>
+                          {day}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-[#8A9187]" />
+                          <input
+                            type="time"
+                            value={currentTime}
+                            onChange={(e) => handleDayTimeChange(day, e.target.value)}
+                            className="bg-white border border-[#E8E2D6] rounded-lg px-2 py-1 text-xs font-bold text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Accent Color */}

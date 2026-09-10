@@ -12,6 +12,7 @@ import {
   Sparkles,
   Calculator,
   BookOpen,
+  Clock,
 } from 'lucide-react';
 import { Student, Group, Enrollment, BillingType, BillingMode, PricingModifierType } from '../types';
 import { db, calculateCustomEnrollmentPrice, getBillingModeLabel } from '../utils/storage';
@@ -61,7 +62,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   const [privPackageSessions, setPrivPackageSessions] = useState<number>(10);
   const [privPackagePrice, setPrivPackagePrice] = useState<number>(900);
   const [privDays, setPrivDays] = useState<string[]>(['السبت']);
-  const [privTime, setPrivTime] = useState('04:00 م');
+  const [privTime, setPrivTime] = useState('16:00');
+  const [privTimes, setPrivTimes] = useState<Record<string, string>>({ 'السبت': '16:00' });
   const [privLocation, setPrivLocation] = useState('منزل الطالب / أونلاين');
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
@@ -115,6 +117,16 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
       if (privDays.length > 1) setPrivDays(privDays.filter((d) => d !== day));
     } else {
       setPrivDays([...privDays, day]);
+      if (!privTimes[day]) {
+        setPrivTimes((prev) => ({ ...prev, [day]: privTime || '16:00' }));
+      }
+    }
+  };
+
+  const handlePrivDayTimeChange = (day: string, timeVal: string) => {
+    setPrivTimes((prev) => ({ ...prev, [day]: timeVal }));
+    if (privDays[0] === day || !privTime) {
+      setPrivTime(timeVal);
     }
   };
 
@@ -135,7 +147,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
           packageSessionsCount: isPkg ? (Number(privPackageSessions) || 10) : undefined,
           packagePrice: isPkg ? (Number(privPackagePrice) || 900) : undefined,
           scheduleDays: privDays,
-          scheduleTime: privTime,
+          scheduleTime: privTime || (privDays.length > 0 ? privTimes[privDays[0]] || '' : ''),
+          scheduleTimes: privTimes,
           roomOrLocation: privLocation,
         });
       }
@@ -425,8 +438,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 </div>
               )}
 
-              {/* Schedule days */}
-              <div className="space-y-1.5 pt-1 border-t border-[#E8E2D6]/60">
+              {/* Schedule days & Per-Day Times */}
+              <div className="space-y-2 pt-1 border-t border-[#E8E2D6]/60">
                 <label className="block text-[11px] font-bold text-[#2D332A]">{t('scheduleDays')}:</label>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[
@@ -455,6 +468,34 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     );
                   })}
                 </div>
+
+                {privDays.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                    {privDays.map((day) => {
+                      const dayTime = privTimes[day] || privTime || '16:00';
+                      return (
+                        <div
+                          key={day}
+                          className="flex items-center justify-between p-1.5 rounded-lg bg-[#F9F7F2] border border-[#E8E2D6]"
+                        >
+                          <span className="text-[11px] font-bold text-[#2D332A] flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#D49B4B]"></span>
+                            {day}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-[#8A9187]" />
+                            <input
+                              type="time"
+                              value={dayTime}
+                              onChange={(e) => handlePrivDayTimeChange(day, e.target.value)}
+                              className="bg-white border border-[#E8E2D6] rounded px-1.5 py-0.5 text-xs font-bold text-[#2D332A] focus:outline-none focus:border-[#D49B4B]"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           ) : (

@@ -14,14 +14,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
-  HelpCircle,
   ShieldCheck,
-  Terminal,
-  Activity,
-  Server,
-  XCircle,
 } from 'lucide-react';
-import { UserAccount, AuthDiagnostics } from '../types';
+import { UserAccount } from '../types';
 import { db } from '../utils/storage';
 
 interface AuthViewProps {
@@ -33,12 +28,9 @@ type AuthMode = 'login' | 'register' | 'forgot_password';
 export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [diagData, setDiagData] = useState<AuthDiagnostics | null>(db.getLastAuthDiagnostics());
-  const [showDiagPanel, setShowDiagPanel] = useState(true);
 
   // Login Form States
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -84,7 +76,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
     try {
       const res = await db.login(loginIdentifier, loginPassword);
       setLoading(false);
-      setDiagData(res.diagnostics || db.getLastAuthDiagnostics());
       if (res.success && res.user) {
         onLoginSuccess(res.user);
       } else {
@@ -92,7 +83,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
       }
     } catch (err: any) {
       setLoading(false);
-      setDiagData(db.getLastAuthDiagnostics());
       setErrorMessage(err.message || 'حدث خطأ أثناء الاتصال بالخادم.');
     }
   };
@@ -605,82 +595,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
 
       </div>
 
-      {/* 4. TEMPORARY VISIBLE DIAGNOSTIC LOG PANEL */}
-      <div className="mt-4 bg-[#1E241D] text-[#E8E2D6] border border-[#3E473B] rounded-2xl p-3.5 shadow-md text-xs space-y-2">
-        <div className="flex items-center justify-between border-b border-[#3E473B] pb-2">
-          <div className="flex items-center gap-2 text-[#A8C7A0] font-bold">
-            <Terminal className="w-4 h-4 text-[#A8C7A0]" />
-            <span>لوحة فحص وتشخيص الاتصال المباشر بالسيرفر السحابي</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowDiagPanel(!showDiagPanel)}
-            className="text-[10px] text-[#A8C7A0] hover:underline font-semibold"
-          >
-            {showDiagPanel ? 'إخفاء' : 'إظهار'}
-          </button>
-        </div>
-
-        {showDiagPanel && (
-          <div className="space-y-1.5 font-mono text-[11px] leading-relaxed pt-1 select-text">
-            <div className="flex items-start gap-1">
-              <span className="text-[#8A9187] shrink-0 font-sans">• رابط الطلب (Login URL):</span>
-              <span className="text-amber-300 break-all">{diagData?.loginRequestUrl || 'https://teacher-manager-623166426191.europe-west2.run.app/api/auth/login'}</span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <span className="text-[#8A9187] font-sans">• حالة الاستجابة (HTTP Status):</span>
-              <span className={`font-bold ${diagData?.httpStatus === 200 ? 'text-emerald-400' : diagData?.httpStatus ? 'text-rose-400' : 'text-gray-400'}`}>
-                {diagData?.httpStatus ? `${diagData.httpStatus}` : 'في انتظار المحاولة'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <span className="text-[#8A9187] font-sans">• نتيجة التحقق (Login Success):</span>
-              <span className={`font-bold ${diagData?.loginSuccess ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {diagData?.loginSuccess ? 'ناجح (True)' : diagData ? 'فشل (False)' : 'لم يتم البدء'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <span className="text-[#8A9187] font-sans">• كود المستخدم (Authenticated User ID):</span>
-              <span className="text-sky-300">{diagData?.authenticatedUserId || 'غير محدد بعد'}</span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <span className="text-[#8A9187] font-sans">• حفظ التوكن محلياً (Token Saved):</span>
-              <span className={`font-bold ${diagData?.tokenSaved ? 'text-emerald-400' : 'text-gray-400'}`}>
-                {diagData?.tokenSaved ? 'نعم (Saved to Local Storage)' : 'لا'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <span className="text-[#8A9187] font-sans">• حالة سحب البيانات (Sync Pull Status):</span>
-              <span className={`font-bold ${diagData?.syncPullStatus === 200 ? 'text-emerald-400' : 'text-amber-300'}`}>
-                {diagData?.syncPullStatus ? `${diagData.syncPullStatus}` : 'لم يطلب بعد'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-1 bg-[#262E25] p-2 rounded-xl text-[10px] text-gray-300 border border-[#3E473B]/60">
-              <div>👨‍🎓 الطلاب المستلمون: <strong className="text-white">{diagData?.studentsReceived || 0}</strong></div>
-              <div>👥 المجموعات المستلمة: <strong className="text-white">{diagData?.groupsReceived || 0}</strong></div>
-              <div>📅 الحصص المستلمة: <strong className="text-white">{diagData?.sessionsReceived || 0}</strong></div>
-              <div>💵 المدفوعات المستلمة: <strong className="text-white">{diagData?.paymentsReceived || 0}</strong></div>
-            </div>
-
-            <div className="flex items-center gap-1 pt-1 border-t border-[#3E473B]">
-              <span className="text-[#8A9187] font-sans">• نتيجة الاستعادة (Restore Status):</span>
-              <span className={`font-bold ${diagData?.restoreSuccess ? 'text-emerald-400' : diagData ? 'text-amber-400' : 'text-gray-400'}`}>
-                {diagData?.restoreSuccess ? 'تمت الاستعادة بنجاح (Restored OK)' : diagData?.restoreMessage || 'جاهز للاختبار'}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Footer Info */}
-      <div className="text-center text-[11px] text-[#8A9187] mt-4 space-y-0.5">
-        <p className="font-semibold">تطبيق Teacher Manager • مزامنة حية مع Firebase Firestore السحابية</p>
+      <div className="text-center text-[11px] text-[#878E82] mt-4 space-y-0.5">
+        <p className="font-semibold">تطبيق Teacher Manager • نظام إدارة المعلم والمجموعات</p>
       </div>
 
     </div>

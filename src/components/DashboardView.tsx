@@ -232,22 +232,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#2D332A] pb-24" dir="rtl">
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#272D24] pb-24" dir="rtl">
       
       {/* Teacher Welcome Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-1">
         <div>
-          <h1 className="text-xl font-bold font-serif text-[#2D332A] tracking-tight">
+          <h1 className="text-xl font-bold font-serif text-[#272D24] tracking-tight">
             مرحباً، {teacherProfile.name || 'أستاذنا الفاضل'}
           </h1>
-          <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
+          <p className="text-xs text-[#878E82] font-medium mt-0.5">
             {teacherProfile.subject} • {teacherProfile.centerOrSchool || 'مركز التعليم'}
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-white border border-[#E8E2D6] px-3 py-1.5 rounded-2xl shadow-sm">
-          <Calendar className="w-4 h-4 text-[#748C70]" />
-          <span className="text-xs font-bold text-[#434B3E]">
+        <div className="flex items-center gap-1.5 bg-white border border-[#EAE6DE] px-3 py-1.5 rounded-xl shadow-xs text-xs font-semibold text-[#5F675A]">
+          <Calendar className="w-3.5 h-3.5 text-[#607B5E]" />
+          <span>
             {new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'short' })}
           </span>
         </div>
@@ -255,7 +255,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Quick Success Toast */}
       {quickSuccessMsg && (
-        <div className="p-3 rounded-2xl bg-[#748C70] text-white text-xs font-bold flex items-center justify-between shadow-md animate-in fade-in">
+        <div className="p-3 rounded-xl bg-[#607B5E] text-white text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             <span>{quickSuccessMsg}</span>
@@ -266,193 +266,170 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* 6 Core Dashboard Summary KPI Cards (Feature 2) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        
-        {/* Card 1: Today's Classes & Students */}
-        <div
-          onClick={() => onNavigateToTab('sessions')}
-          className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#748C70]/50 transition-all cursor-pointer space-y-1"
-        >
-          <div className="flex items-center justify-between text-[#5C788A]">
-            <CalendarCheck2 className="w-5 h-5" />
-            <span className="text-[10px] bg-[#5C788A]/15 text-[#5C788A] px-2 py-0.5 rounded-md font-bold">
-              اليوم
-            </span>
-          </div>
-          <p className="text-2xl font-black text-[#2D332A] mt-1">{totalTodayClassesCount}</p>
-          <p className="text-[11px] font-bold text-[#8A9187]">
-            حصص اليوم ({scheduledToday.length} طالب/مجموعة)
-          </p>
-        </div>
-
-        {/* Card 2: Completed vs Remaining Sessions Today */}
-        <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-1">
-          <div className="flex items-center justify-between text-[#748C70]">
-            <Clock className="w-5 h-5" />
-            <span className="text-[10px] bg-[#748C70]/15 text-[#748C70] px-2 py-0.5 rounded-md font-bold">
-              {completedTodaySessionsCount} تم رصدها
-            </span>
-          </div>
-          <p className="text-2xl font-black text-[#2D332A] mt-1">
-            {remainingTodaySessionsCount} <span className="text-xs text-[#8A9187] font-bold">متبقية</span>
-          </p>
-          <p className="text-[11px] font-bold text-[#8A9187]">حالة حصص اليوم</p>
-        </div>
-
-        {/* Card 3: Payments Collected (Month & Today) */}
-        <div
-          onClick={() => onNavigateToTab('reports')}
-          className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#748C70]/50 transition-all cursor-pointer space-y-1"
-        >
-          <div className="flex items-center justify-between text-[#748C70]">
-            <DollarSign className="w-5 h-5" />
-            <TrendingUp className="w-3.5 h-3.5 text-[#748C70]" />
-          </div>
-          <p className="text-2xl font-black text-[#2D332A] mt-1">
-            {totalMonthRevenue} <span className="text-xs font-bold text-[#8A9187]">ج</span>
-          </p>
-          <p className="text-[11px] font-bold text-[#8A9187]">
-            تحصيل الشهر (اليوم: {totalTodayRevenue} ج)
-          </p>
-        </div>
-
-        {/* Card 4: Outstanding & Due Amounts */}
-        <div
-          onClick={() => onNavigateToTab('reports')}
-          className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#C97C5D]/50 transition-all cursor-pointer space-y-1"
-        >
-          <div className="flex items-center justify-between text-[#C97C5D]">
-            <Receipt className="w-5 h-5" />
-            <span className="text-[10px] bg-[#C97C5D]/15 text-[#C97C5D] px-2 py-0.5 rounded-md font-bold">
-              {overdueStudentsCount} طلاب
-            </span>
-          </div>
-          <p className="text-2xl font-black text-[#C97C5D] mt-1">
-            {totalOutstandingDues} <span className="text-xs font-bold text-[#8A9187]">ج</span>
-          </p>
-          <p className="text-[11px] font-bold text-[#8A9187]">مستحقات غير مسددة</p>
-        </div>
-
-        {/* Card 5: Low Session Credits */}
-        <div
-          onClick={() => onNavigateToTab('students')}
-          className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#D49B4B]/50 transition-all cursor-pointer space-y-1"
-        >
-          <div className="flex items-center justify-between text-[#D49B4B]">
-            <Sparkles className="w-5 h-5" />
-            <span className="text-[10px] bg-[#D49B4B]/15 text-[#9C6615] px-2 py-0.5 rounded-md font-bold">
-              تنبيه باقات
-            </span>
-          </div>
-          <p className="text-2xl font-black text-[#2D332A] mt-1">{lowCreditStudentsCount}</p>
-          <p className="text-[11px] font-bold text-[#8A9187]">رصيد باقات منخفض (≤2)</p>
-        </div>
-
-        {/* Card 6: Total Students */}
-        <div
-          onClick={() => onNavigateToTab('students')}
-          className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#748C70]/50 transition-all cursor-pointer space-y-1"
-        >
-          <div className="flex items-center justify-between text-[#748C70]">
-            <Users className="w-5 h-5" />
-            <ArrowUpRight className="w-3.5 h-3.5 text-[#8A9187]" />
-          </div>
-          <p className="text-2xl font-black text-[#2D332A] mt-1">{students.length}</p>
-          <p className="text-[11px] font-bold text-[#8A9187]">إجمالي الطلاب المقيدين</p>
-        </div>
-
-      </div>
-
-      {/* Quick Actions Row */}
-      <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-2.5">
-        <h2 className="text-xs font-bold text-[#6B7567]">إجراءات سريعة</h2>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* 1. Today's Overview Bar (Information First, Low Noise) */}
+      <div className="bg-white border border-[#EAE6DE] rounded-2xl p-3.5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-[#5F675A] flex items-center gap-1.5">
+            <CalendarCheck2 className="w-4 h-4 text-[#607B5E]" />
+            <span>ملخص نشاط اليوم</span>
+          </span>
           <button
-            onClick={onOpenAddStudent}
-            className="p-2.5 rounded-xl bg-[#F9F7F2] hover:bg-[#F2ECE1] border border-[#E8E2D6] flex items-center gap-2 text-xs font-bold text-[#2D332A] transition-all active:scale-95"
+            onClick={() => onNavigateToTab('sessions')}
+            className="text-[11px] font-bold text-[#607B5E] hover:underline"
           >
-            <div className="p-1.5 rounded-lg bg-[#748C70] text-white">
-              <UserPlus className="w-4 h-4" />
-            </div>
-            <span>إضافة طالب</span>
+            عرض الحصص
           </button>
+        </div>
 
-          <button
-            onClick={onOpenAddGroup}
-            className="p-2.5 rounded-xl bg-[#F9F7F2] hover:bg-[#F2ECE1] border border-[#E8E2D6] flex items-center gap-2 text-xs font-bold text-[#2D332A] transition-all active:scale-95"
-          >
-            <div className="p-1.5 rounded-lg bg-[#D49B4B] text-white">
-              <Layers className="w-4 h-4" />
-            </div>
-            <span>إنشاء مجموعة</span>
-          </button>
-
-          <button
-            onClick={onOpenAddPayment}
-            className="p-2.5 rounded-xl bg-[#F9F7F2] hover:bg-[#F2ECE1] border border-[#E8E2D6] flex items-center gap-2 text-xs font-bold text-[#2D332A] transition-all active:scale-95"
-          >
-            <div className="p-1.5 rounded-lg bg-[#748C70] text-white">
-              <DollarSign className="w-4 h-4" />
-            </div>
-            <span>تسجيل دفعة</span>
-          </button>
-
-          <button
-            onClick={onOpenAddSession}
-            className="p-2.5 rounded-xl bg-[#F9F7F2] hover:bg-[#F2ECE1] border border-[#E8E2D6] flex items-center gap-2 text-xs font-bold text-[#2D332A] transition-all active:scale-95"
-          >
-            <div className="p-1.5 rounded-lg bg-[#5C788A] text-white">
-              <CalendarCheck2 className="w-4 h-4" />
-            </div>
-            <span>جدولة حصة</span>
-          </button>
+        <div className="grid grid-cols-4 gap-2 text-center divide-x divide-x-reverse divide-[#EAE6DE]/80">
+          <div className="px-1">
+            <p className="text-xl font-black text-[#272D24]">{totalTodayClassesCount}</p>
+            <p className="text-[10px] font-medium text-[#878E82] mt-0.5">حصص اليوم</p>
+          </div>
+          <div className="px-1">
+            <p className="text-xl font-black text-[#607B5E]">{completedTodaySessionsCount}</p>
+            <p className="text-[10px] font-medium text-[#878E82] mt-0.5">تم رصدها</p>
+          </div>
+          <div className="px-1">
+            <p className="text-xl font-black text-[#B88438]">{remainingTodaySessionsCount}</p>
+            <p className="text-[10px] font-medium text-[#878E82] mt-0.5">متبقية</p>
+          </div>
+          <div className="px-1">
+            <p className="text-xl font-black text-[#272D24]">{totalTodayRevenue} <span className="text-[10px] font-normal text-[#878E82]">ج</span></p>
+            <p className="text-[10px] font-medium text-[#878E82] mt-0.5">تحصيل اليوم</p>
+          </div>
         </div>
       </div>
 
-      {/* Attention Needed / Smart Reminders Section (Feature 4) */}
-      {smartReminders.length > 0 && (
-        <div className="p-3.5 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3">
+      {/* 2. Financial & Student Health Summary */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <div
+          onClick={() => onNavigateToTab('reports')}
+          className="p-3 bg-white border border-[#EAE6DE] rounded-2xl shadow-xs hover:border-[#607B5E]/40 transition-all cursor-pointer space-y-1"
+        >
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
-              <Bell className="w-4 h-4 text-[#D49B4B]" />
-              <span>تنبيهات وملاحظات تتطلب اهتمامك ({smartReminders.length})</span>
-            </h2>
-            <span className="text-[10px] bg-[#D49B4B]/15 text-[#9C6615] px-2 py-0.5 rounded-full font-bold">
-              تنبيهات ذكية
+            <span className="text-[11px] font-medium text-[#878E82]">تحصيل الشهر</span>
+            <DollarSign className="w-4 h-4 text-[#607B5E]" />
+          </div>
+          <p className="text-xl font-black text-[#272D24] mt-0.5">
+            {totalMonthRevenue} <span className="text-xs font-semibold text-[#878E82]">ج</span>
+          </p>
+          <p className="text-[10px] text-[#607B5E] font-medium flex items-center gap-0.5">
+            <TrendingUp className="w-3 h-3" />
+            <span>شهر {currentMonth} / {currentYear}</span>
+          </p>
+        </div>
+
+        <div
+          onClick={() => onNavigateToTab('reports')}
+          className="p-3 bg-white border border-[#EAE6DE] rounded-2xl shadow-xs hover:border-[#B86B52]/40 transition-all cursor-pointer space-y-1"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-[#878E82]">مستحقات غير مسددة</span>
+            <Receipt className="w-4 h-4 text-[#B86B52]" />
+          </div>
+          <p className="text-xl font-black text-[#B86B52] mt-0.5">
+            {totalOutstandingDues} <span className="text-xs font-semibold text-[#878E82]">ج</span>
+          </p>
+          <p className="text-[10px] text-[#878E82] font-medium">
+            {overdueStudentsCount > 0 ? `على ${overdueStudentsCount} طلاب` : 'لا توجد متأخرات'}
+          </p>
+        </div>
+      </div>
+
+      {/* Low session credit warning chip if any */}
+      {lowCreditStudentsCount > 0 && (
+        <div
+          onClick={() => onNavigateToTab('students')}
+          className="p-2.5 bg-[#B88438]/10 border border-[#B88438]/25 rounded-xl flex items-center justify-between cursor-pointer hover:bg-[#B88438]/15 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#946522]" />
+            <span className="text-xs font-medium text-[#946522]">
+              تنبيه باقات: {lowCreditStudentsCount} طلاب قارب رصيد حصصهم على الانتهاء (≤ 2)
+            </span>
+          </div>
+          <ArrowUpRight className="w-3.5 h-3.5 text-[#946522]" />
+        </div>
+      )}
+
+      {/* 3. Quick Action Buttons */}
+      <div className="grid grid-cols-4 gap-2">
+        <button
+          onClick={onOpenAddStudent}
+          className="min-h-[44px] p-2.5 rounded-xl bg-white hover:bg-[#F5F2EC] border border-[#EAE6DE] flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[#272D24] transition-all shadow-xs active:scale-95"
+        >
+          <UserPlus className="w-4 h-4 text-[#607B5E]" />
+          <span>طالب جديد</span>
+        </button>
+
+        <button
+          onClick={onOpenAddGroup}
+          className="min-h-[44px] p-2.5 rounded-xl bg-white hover:bg-[#F5F2EC] border border-[#EAE6DE] flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[#272D24] transition-all shadow-xs active:scale-95"
+        >
+          <Layers className="w-4 h-4 text-[#B88438]" />
+          <span>مجموعة</span>
+        </button>
+
+        <button
+          onClick={onOpenAddPayment}
+          className="min-h-[44px] p-2.5 rounded-xl bg-white hover:bg-[#F5F2EC] border border-[#EAE6DE] flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[#272D24] transition-all shadow-xs active:scale-95"
+        >
+          <DollarSign className="w-4 h-4 text-[#607B5E]" />
+          <span>تسجيل دفعة</span>
+        </button>
+
+        <button
+          onClick={onOpenAddSession}
+          className="min-h-[44px] p-2.5 rounded-xl bg-white hover:bg-[#F5F2EC] border border-[#EAE6DE] flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[#272D24] transition-all shadow-xs active:scale-95"
+        >
+          <CalendarCheck2 className="w-4 h-4 text-[#586E7E]" />
+          <span>جدولة حصة</span>
+        </button>
+      </div>
+
+      {/* 4. Smart Reminders (Compact, Collapsible / Limited by default) */}
+      {smartReminders.length > 0 && (
+        <div className="bg-white border border-[#EAE6DE] rounded-2xl p-3 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#272D24] flex items-center gap-1.5">
+              <Bell className="w-3.5 h-3.5 text-[#B88438]" />
+              <span>تنبيهات للمتابعة ({smartReminders.length})</span>
+            </span>
+            <span className="text-[10px] text-[#878E82] font-medium">
+              أهم الملاحظات
             </span>
           </div>
 
-          <div className="space-y-2 max-h-64 overflow-y-auto android-scrollbar">
-            {smartReminders.slice(0, 5).map((rem) => {
+          <div className="space-y-1.5">
+            {smartReminders.slice(0, 3).map((rem) => {
               const targetStudent = rem.studentId ? students.find((s) => s.id === rem.studentId) : null;
               const isHigh = rem.priority === 'high';
 
               return (
                 <div
                   key={rem.id}
-                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
-                    isHigh ? 'bg-[#C97C5D]/10 border-[#C97C5D]/30' : 'bg-[#F9F7F2] border-[#E8E2D6]'
+                  className={`p-2 rounded-xl flex items-center justify-between gap-2 transition-all ${
+                    isHigh ? 'bg-[#B86B52]/10 border border-[#B86B52]/20' : 'bg-[#FAF8F5] border border-[#EAE6DE]'
                   }`}
                 >
                   <div className="space-y-0.5 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                        isHigh ? 'bg-[#C97C5D]/20 text-[#C97C5D]' : 'bg-[#D49B4B]/20 text-[#9C6615]'
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                        isHigh ? 'bg-[#B86B52]/15 text-[#9A543E]' : 'bg-[#B88438]/15 text-[#946522]'
                       }`}>
                         {rem.badge}
                       </span>
-                      <h4 className="font-bold text-xs text-[#2D332A] truncate">{rem.title}</h4>
+                      <h4 className="font-bold text-xs text-[#272D24] truncate">{rem.title}</h4>
                     </div>
-                    <p className="text-[10px] text-[#8A9187] truncate">{rem.description}</p>
+                    <p className="text-[10px] text-[#878E82] truncate">{rem.description}</p>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
                     {rem.actionType === 'add_payment' && targetStudent && (
                       <button
                         onClick={onOpenAddPayment}
-                        className="px-2.5 py-1 rounded-lg bg-[#748C70] text-white text-[11px] font-bold hover:bg-[#60755C] transition-all shadow-xs"
+                        className="px-2 py-1 rounded-lg bg-[#607B5E] text-white text-[10px] font-bold hover:bg-[#50684E] transition-all"
                       >
                         سداد
                       </button>
@@ -463,7 +440,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         href={`https://wa.me/${rem.parentPhone.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 rounded-lg bg-[#748C70]/15 text-[#60755C] hover:bg-[#748C70]/25 transition-all"
+                        className="p-1.5 rounded-lg bg-[#607B5E]/12 text-[#4E664C] hover:bg-[#607B5E]/20 transition-all"
                         title="واتساب ولي الأمر"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
@@ -473,7 +450,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {targetStudent && (
                       <button
                         onClick={() => onOpenStudentProfile(targetStudent)}
-                        className="px-2 py-1 rounded-lg bg-white border border-[#E8E2D6] text-[10px] font-bold text-[#434B3E] hover:bg-[#F2ECE1]"
+                        className="px-2 py-1 rounded-lg bg-white border border-[#EAE6DE] text-[10px] font-bold text-[#5F675A] hover:bg-[#F5F2EC]"
                       >
                         الملف
                       </button>
@@ -486,41 +463,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Today's Scheduled Sessions with Quick Attendance (Feature 3) */}
-      <div className="space-y-2.5">
+      {/* 5. Today's Classes List (The Main Operational Focus) */}
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-[#2D332A] flex items-center gap-1.5">
-            <CalendarCheck2 className="w-4 h-4 text-[#748C70]" />
-            <span>
-              جدول وحضور حصص اليوم ({scheduledToday.length > 0 ? scheduledToday.length : todaySessions.length})
-            </span>
+          <h2 className="text-xs font-bold text-[#5F675A] flex items-center gap-1.5">
+            <CalendarCheck2 className="w-3.5 h-3.5 text-[#607B5E]" />
+            <span>حصص اليوم ({scheduledToday.length > 0 ? scheduledToday.length : todaySessions.length})</span>
           </h2>
           <button
             onClick={onOpenAddSession}
-            className="text-[11px] font-bold text-[#748C70] hover:underline flex items-center gap-1"
+            className="text-[11px] font-bold text-[#607B5E] hover:underline flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>إضافة حصة اليوم</span>
+            <span>إضافة حصة</span>
           </button>
         </div>
 
         {scheduledToday.length === 0 && todaySessions.length === 0 ? (
-          <div className="p-6 bg-white border border-[#E8E2D6] rounded-2xl text-center space-y-1.5 shadow-sm">
-            <CalendarCheck2 className="w-8 h-8 mx-auto text-[#8A9187] opacity-50" />
-            <p className="font-bold text-[#2D332A] text-xs">لا توجد حصص مجدولة لليوم</p>
-            <p className="text-[11px] text-[#8A9187]">
+          <div className="p-6 bg-white border border-[#EAE6DE] rounded-2xl text-center space-y-1.5 shadow-xs">
+            <CalendarCheck2 className="w-7 h-7 mx-auto text-[#878E82] opacity-40" />
+            <p className="font-bold text-[#272D24] text-xs">لا توجد حصص مجدولة لليوم</p>
+            <p className="text-[11px] text-[#878E82]">
               يمكنك جدولة حصة الآن لأي مجموعة أو طالب خاص
             </p>
             <button
               onClick={onOpenAddSession}
-              className="mt-2 px-3 py-1.5 rounded-xl bg-[#748C70] text-white font-bold text-xs inline-flex items-center gap-1"
+              className="mt-2 px-3 py-1.5 rounded-xl bg-[#607B5E] text-white font-bold text-xs inline-flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>جدولة حصة جديدة</span>
             </button>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="bg-white border border-[#EAE6DE] rounded-2xl shadow-xs divide-y divide-[#EAE6DE]/70 overflow-hidden">
             {scheduledToday.map((item) => {
               const matchingSession = todaySessions.find(
                 (s) => s.groupId === item.groupId || (item.enrollmentId && s.enrollmentId === item.enrollmentId)
@@ -538,87 +513,88 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#748C70]/50 transition-all overflow-hidden"
+                  className="transition-colors hover:bg-[#FAF8F5]/80"
                 >
-                  {/* Class Header */}
-                  <div className="p-3.5 flex items-center justify-between gap-2">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: item.accentColor }}
-                        />
-                        <h3 className="font-bold text-xs text-[#2D332A] truncate">
-                          {item.isPrivate ? item.studentName : item.groupName}
-                        </h3>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                          item.isPrivate
-                            ? 'bg-[#D49B4B]/15 text-[#9C6615]'
-                            : 'bg-[#F2ECE1] text-[#6B7567]'
-                        }`}>
-                          {item.isPrivate ? 'درس خاص' : (item.subject || 'مجموعة')}
+                  {/* Clean List Row */}
+                  <div className="p-3 flex items-center justify-between gap-2.5">
+                    
+                    {/* Time & Class Title */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="text-center shrink-0 min-w-[52px] bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl px-2 py-1.5">
+                        <span className="text-[11px] font-bold text-[#272D24] block leading-tight">{item.time}</span>
+                        <span className="text-[9px] font-medium text-[#878E82] block mt-0.5">
+                          {item.isPrivate ? 'خاص' : 'مجموعة'}
                         </span>
-
-                        {isRecorded && (
-                          <span className="text-[10px] bg-[#748C70]/15 text-[#60755C] px-2 py-0.5 rounded-full font-bold">
-                            تم الرصد ({presentCount}/{groupStudents.length} حاضر)
-                          </span>
-                        )}
                       </div>
 
-                      <div className="flex items-center gap-3 text-[11px] text-[#8A9187] flex-wrap">
-                        <span className="flex items-center gap-1 font-bold text-[#2D332A]">
-                          <Clock className="w-3.5 h-3.5 text-[#748C70]" />
-                          <span>الساعة {item.time}</span>
-                        </span>
-                        {!item.isPrivate && (
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3 text-[#748C70]" />
-                            <span>{groupStudents.length} طلاب</span>
-                          </span>
-                        )}
-                        {item.location && (
-                          <span className="flex items-center gap-1 text-[10px]">
-                            <MapPin className="w-3 h-3 text-[#8A9187]" />
-                            <span>{item.location}</span>
-                          </span>
-                        )}
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: item.accentColor || '#607B5E' }}
+                          />
+                          <h3 className="font-bold text-xs text-[#272D24] truncate">
+                            {item.isPrivate ? item.studentName : item.groupName}
+                          </h3>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[10px] text-[#878E82] flex-wrap">
+                          <span>{item.isPrivate ? 'درس خاص' : (item.subject || 'عام')}</span>
+                          {!item.isPrivate && (
+                            <>
+                              <span>•</span>
+                              <span>{groupStudents.length} طلاب</span>
+                            </>
+                          )}
+                          {item.location && (
+                            <>
+                              <span>•</span>
+                              <span className="truncate max-w-[120px]">{item.location}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
+                    {/* Status & Primary Actions */}
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Mark All Present Quick Button */}
-                      <button
-                        type="button"
-                        onClick={() => handleMarkAllPresent(item)}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95"
-                        title="تسجيل حضور جميع الطلاب دفعة واحدة"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">حضور الكل</span>
-                      </button>
+                      {isRecorded ? (
+                        <span className="text-[10px] font-bold bg-[#607B5E]/12 text-[#4E664C] px-2.5 py-1 rounded-lg">
+                          حاضر {presentCount}/{groupStudents.length}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAllPresent(item)}
+                          className="min-h-[36px] px-3 py-1 rounded-xl bg-[#607B5E] hover:bg-[#50684E] text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95"
+                          title="تسجيل حضور جميع الطلاب دفعة واحدة"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>حضور الكل</span>
+                        </button>
+                      )}
 
-                      {/* Expand / Collapse Quick Attendance list */}
+                      {/* Expand for detail marking */}
                       <button
                         type="button"
                         onClick={() => setExpandedAttendanceCardId(isExpanded ? null : item.id)}
-                        className="p-1.5 rounded-xl bg-[#F9F7F2] hover:bg-[#EAE5D8] border border-[#E8E2D6] text-[#2D332A] transition-colors"
-                        title="تفاصيل ورصد الطلاب فردياً"
+                        className="p-1.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F2ECE1] border border-[#EAE6DE] text-[#272D24] transition-colors"
+                        title="تفاصيل ورصد فردي"
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
 
-                  {/* Expanded Inline Quick Attendance List */}
+                  {/* Expanded Student List */}
                   {isExpanded && (
-                    <div className="p-3 bg-[#F9F7F2] border-t border-[#E8E2D6] space-y-2 animate-in slide-in-from-top-2 duration-150">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-[#6B7567]">
+                    <div className="p-3 bg-[#FAF8F5] border-t border-[#EAE6DE] space-y-1.5 animate-in slide-in-from-top-1 duration-150">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-[#5F675A] mb-1">
                         <span>قائمة الطلاب ({groupStudents.length})</span>
-                        <span>اختر حالة الحضور لكل طالب</span>
+                        <span>رصد فردي</span>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         {groupStudents.map((st) => {
                           const currentRecord = sessionAttendance.find((a) => a.studentId === st.id);
                           const stStatus = currentRecord?.status;
@@ -626,69 +602,59 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           return (
                             <div
                               key={st.id}
-                              className="p-2 bg-white rounded-xl border border-[#E8E2D6] flex items-center justify-between gap-2"
+                              className="p-1.5 bg-white rounded-xl border border-[#EAE6DE] flex items-center justify-between gap-2"
                             >
-                              <div className="min-w-0">
-                                <span className="font-bold text-xs text-[#2D332A] block truncate">{st.name}</span>
-                                {st.phone && <span className="text-[10px] text-[#8A9187]">{st.phone}</span>}
-                              </div>
+                              <span className="font-bold text-xs text-[#272D24] truncate min-w-0">
+                                {st.name}
+                              </span>
 
-                              {/* 4 Quick Action Chips */}
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'present', true)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
+                                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
                                     stStatus === 'present'
-                                      ? 'bg-[#748C70] text-white shadow-xs'
-                                      : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#748C70]/20'
+                                      ? 'bg-[#607B5E] text-white'
+                                      : 'bg-[#F5F2EC] text-[#5F675A] hover:bg-[#607B5E]/15'
                                   }`}
-                                  title="حاضر ومحسوب"
                                 >
-                                  <Check className="w-3 h-3" />
-                                  <span>حاضر</span>
+                                  حاضر
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_charged', true)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
+                                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
                                     stStatus === 'absent_charged' || (stStatus === 'absent' && currentRecord?.isCharged !== false)
-                                      ? 'bg-[#C97C5D] text-white shadow-xs'
-                                      : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#C97C5D]/20'
+                                      ? 'bg-[#B86B52] text-white'
+                                      : 'bg-[#F5F2EC] text-[#5F675A] hover:bg-[#B86B52]/15'
                                   }`}
-                                  title="غياب محسوب ماليًا"
                                 >
-                                  <X className="w-3 h-3" />
-                                  <span>غياب محسوب</span>
+                                  غياب محسوب
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_free', false)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
+                                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
                                     stStatus === 'absent_free' || stStatus === 'excused' || (stStatus === 'absent' && currentRecord?.isCharged === false)
-                                      ? 'bg-[#8A9187] text-white shadow-xs'
-                                      : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#8A9187]/20'
+                                      ? 'bg-[#878E82] text-white'
+                                      : 'bg-[#F5F2EC] text-[#5F675A] hover:bg-[#878E82]/15'
                                   }`}
-                                  title="غياب معذور / غير محسوب"
                                 >
-                                  <Mail className="w-3 h-3" />
-                                  <span>معتذر</span>
+                                  معتذر
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'late', true)}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-90 ${
+                                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
                                     stStatus === 'late'
-                                      ? 'bg-[#D49B4B] text-white shadow-xs'
-                                      : 'bg-[#F2ECE1] text-[#6B7567] hover:bg-[#D49B4B]/20'
+                                      ? 'bg-[#B88438] text-white'
+                                      : 'bg-[#F5F2EC] text-[#5F675A] hover:bg-[#B88438]/15'
                                   }`}
-                                  title="حاضر متأخر"
                                 >
-                                  <Clock className="w-3 h-3" />
-                                  <span>متأخر</span>
+                                  متأخر
                                 </button>
                               </div>
                             </div>
@@ -697,13 +663,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
 
                       {matchingSession && (
-                        <div className="pt-2 flex justify-end">
+                        <div className="pt-1.5 flex justify-end">
                           <button
                             type="button"
                             onClick={() => onOpenAttendanceModal(matchingSession)}
-                            className="text-[11px] font-bold text-[#748C70] hover:underline flex items-center gap-1"
+                            className="text-[10px] font-bold text-[#607B5E] hover:underline flex items-center gap-1"
                           >
-                            <span>فتح نافذة الحضور التفصيلية</span>
+                            <span>فتح نافذة الحضور الشاملة</span>
                             <ArrowUpRight className="w-3 h-3" />
                           </button>
                         </div>
@@ -717,35 +683,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
-      {/* Active Groups Overview */}
-      <div className="space-y-2.5">
+      {/* 6. Active Groups (Compact Scannable List) */}
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-[#2D332A] flex items-center gap-1.5">
-            <Layers className="w-4 h-4 text-[#D49B4B]" />
-            <span>المجموعات الدراسية النشطة</span>
+          <h2 className="text-xs font-bold text-[#5F675A] flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-[#B88438]" />
+            <span>المجموعات النشطة ({groups.length})</span>
           </h2>
           <button
             onClick={() => onNavigateToTab('groups')}
-            className="text-[11px] font-bold text-[#748C70] hover:underline"
+            className="text-[11px] font-bold text-[#607B5E] hover:underline"
           >
-            عرض الكل ({groups.length})
+            عرض الكل
           </button>
         </div>
 
         {groups.length === 0 ? (
-          <div className="p-6 bg-white border border-[#E8E2D6] rounded-2xl text-center space-y-1.5 shadow-sm">
-            <Layers className="w-8 h-8 mx-auto text-[#8A9187] opacity-50" />
-            <p className="font-bold text-[#2D332A] text-xs">لا توجد مجموعات بعد</p>
-            <p className="text-[11px] text-[#8A9187]">
-              ابدأ بإنشاء مجموعتك الأولى لتنظيم الطلاب والحصص
-            </p>
-            <button
-              onClick={onOpenAddGroup}
-              className="mt-2 px-3 py-1.5 rounded-xl bg-[#D49B4B] text-white font-bold text-xs inline-flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>إنشاء مجموعة جديدة</span>
-            </button>
+          <div className="p-4 bg-white border border-[#EAE6DE] rounded-2xl text-center space-y-1 shadow-xs">
+            <p className="font-bold text-[#272D24] text-xs">لا توجد مجموعات بعد</p>
+            <p className="text-[10px] text-[#878E82]">ابدأ بإنشاء مجموعتك الأولى لتنظيم الطلاب</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -755,28 +711,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div
                   key={group.id}
                   onClick={() => onOpenGroupProfile(group)}
-                  className="p-3 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm hover:border-[#748C70]/50 transition-all cursor-pointer flex items-center justify-between"
+                  className="p-2.5 bg-white border border-[#EAE6DE] rounded-xl shadow-xs hover:border-[#607B5E]/40 transition-all cursor-pointer flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-xs shrink-0"
-                      style={{ backgroundColor: group.accentColor || '#748C70' }}
-                    >
-                      <Layers className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-[#2D332A]">{group.name}</h4>
-                      <p className="text-[10px] text-[#8A9187]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: group.accentColor || '#607B5E' }}
+                    />
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-xs text-[#272D24] truncate">{group.name}</h4>
+                      <p className="text-[10px] text-[#878E82] truncate">
                         {group.subject} • {getLocalizedStageName(group.gradeLevel)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-left">
-                    <span className="text-xs font-black text-[#748C70]">{count} طالب</span>
-                    <p className="text-[10px] text-[#8A9187]">
-                      {group.billingType === 'per_session' ? 'بالحصة' : 'شهري'}
-                    </p>
+                  <div className="text-left shrink-0 pl-1">
+                    <span className="text-xs font-bold text-[#607B5E]">{count} طالب</span>
                   </div>
                 </div>
               );

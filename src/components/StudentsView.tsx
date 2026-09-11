@@ -127,14 +127,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     filteredStudents.every((s) => selectedStudentIds.has(s.id));
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#2D332A] pb-32" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-3.5 text-[#272D24] pb-32" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold font-serif text-[#2D332A] tracking-tight">
+          <h1 className="text-xl font-bold font-serif text-[#272D24] tracking-tight">
             {t('studentsTitle')} ({students.length})
           </h1>
-          <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
+          <p className="text-xs text-[#878E82] font-medium mt-0.5">
             {t('studentsSubtitle')}
           </p>
         </div>
@@ -150,20 +150,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   setIsSelectionMode(true);
                 }
               }}
-              className={`px-3 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 border ${
+              className={`px-3 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 border ${
                 isSelectionMode
-                  ? 'bg-[#E8E2D6] text-[#2D332A] border-[#D4CEBF]'
-                  : 'bg-white hover:bg-[#F2ECE1] text-[#6B7567] border-[#E8E2D6]'
+                  ? 'bg-[#EAE6DE] text-[#272D24] border-[#DFD9CE]'
+                  : 'bg-white hover:bg-[#F5F2EC] text-[#5F675A] border-[#EAE6DE]'
               }`}
             >
-              <CheckSquare className="w-4 h-4 text-[#748C70]" />
+              <CheckSquare className="w-4 h-4 text-[#607B5E]" />
               <span>{isSelectionMode ? t('exitSelectionMode') : t('selectStudents')}</span>
             </button>
           )}
 
           <button
             onClick={onOpenAddStudent}
-            className="px-3 py-2 rounded-2xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+            className="px-3 py-2 rounded-2xl bg-[#607B5E] hover:bg-[#50684E] text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
           >
             <UserPlus className="w-4 h-4" />
             <span>{t('addStudent')}</span>
@@ -173,9 +173,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* Selection Mode Toolbar Banner */}
       {isSelectionMode && (
-        <div className="p-3 bg-[#748C70]/10 border border-[#748C70]/30 rounded-2xl flex items-center justify-between gap-2 animate-in fade-in duration-150">
+        <div className="p-3 bg-[#607B5E]/10 border border-[#607B5E]/25 rounded-2xl flex items-center justify-between gap-2 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#2D332A] text-xs">
+            <span className="font-bold text-[#272D24] text-xs">
               {t('selectedCount', { count: selectedCount.toString() })}
             </span>
           </div>
@@ -184,14 +184,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={isAllFilteredSelected ? handleDeselectAll : handleSelectAllFiltered}
-              className="px-2.5 py-1 rounded-xl bg-white border border-[#E8E2D6] text-[#2D332A] font-bold text-[11px] hover:bg-[#F9F7F2] transition-colors"
+              className="px-2.5 py-1 rounded-xl bg-white border border-[#EAE6DE] text-[#272D24] font-bold text-[11px] hover:bg-[#FAF8F5] transition-colors"
             >
               {isAllFilteredSelected ? t('deselectAll') : t('selectAll')}
             </button>
             <button
               type="button"
               onClick={handleExitSelectionMode}
-              className="p-1 rounded-xl text-[#8A9187] hover:text-[#2D332A] transition-colors"
+              className="p-1 rounded-xl text-[#878E82] hover:text-[#272D24] transition-colors"
               title={t('exitSelectionMode')}
             >
               <X className="w-4 h-4" />
@@ -201,15 +201,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       )}
 
       {/* Search & Filter Bar */}
-      <div className="p-3 bg-white border border-[#E8E2D6] rounded-2xl space-y-2.5 shadow-sm">
+      <div className="p-3 bg-white border border-[#EAE6DE] rounded-2xl space-y-2 shadow-xs">
         <div className="relative">
-          <Search className={`w-4 h-4 text-[#8A9187] absolute top-3 ${language === 'ar' ? 'right-3' : 'left-3'}`} />
+          <Search className={`w-4 h-4 text-[#878E82] absolute top-3 ${language === 'ar' ? 'right-3' : 'left-3'}`} />
           <input
             type="text"
             placeholder={t('search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl py-2 text-xs text-[#2D332A] placeholder-[#8A9187] focus:outline-none focus:border-[#748C70] font-bold ${
+            className={`w-full bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl py-2 text-xs text-[#272D24] placeholder-[#878E82] focus:outline-none focus:border-[#607B5E] font-medium ${
               language === 'ar' ? 'pr-9 pl-8' : 'pl-9 pr-8'
             }`}
           />
@@ -217,7 +217,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className={`absolute top-2.5 text-[#8A9187] hover:text-[#2D332A] p-0.5 rounded-full ${
+              className={`absolute top-2.5 text-[#878E82] hover:text-[#272D24] p-0.5 rounded-full ${
                 language === 'ar' ? 'left-2.5' : 'right-2.5'
               }`}
             >
@@ -231,7 +231,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <select
             value={selectedGradeFilter}
             onChange={(e) => setSelectedGradeFilter(e.target.value)}
-            className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl px-2.5 py-1 text-[11px] text-[#2D332A] font-bold focus:outline-none"
+            className="bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl px-2.5 py-1 text-[11px] text-[#272D24] font-medium focus:outline-none"
           >
             <option value="all">{t('all')}</option>
             {gradeLevels.map((lvl) => (
@@ -244,7 +244,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <select
             value={selectedGroupFilter}
             onChange={(e) => setSelectedGroupFilter(e.target.value)}
-            className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl px-2.5 py-1 text-[11px] text-[#2D332A] font-bold focus:outline-none"
+            className="bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl px-2.5 py-1 text-[11px] text-[#272D24] font-medium focus:outline-none"
           >
             <option value="all">{t('all')}</option>
             {groups.map((g) => (
@@ -257,10 +257,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <button
             type="button"
             onClick={() => setOnlyDebtors(!onlyDebtors)}
-            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all border ${
+            className={`px-2.5 py-1 rounded-xl text-[11px] font-medium transition-all border ${
               onlyDebtors
-                ? 'bg-[#C97C5D] text-white border-[#C97C5D]'
-                : 'bg-[#F9F7F2] text-[#6B7567] border-[#E8E2D6]'
+                ? 'bg-[#B86B52] text-white border-[#B86B52]'
+                : 'bg-[#FAF8F5] text-[#5F675A] border-[#EAE6DE]'
             }`}
           >
             {t('onlyDebtors')}
@@ -270,27 +270,27 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* Student List */}
       {students.length === 0 ? (
-        <div className="p-8 bg-white border border-[#E8E2D6] rounded-2xl text-center space-y-2 shadow-sm">
-          <Users className="w-10 h-10 mx-auto text-[#8A9187] opacity-50 mb-1" />
-          <h3 className="font-bold text-sm text-[#2D332A]">{t('noStudentsFound')}</h3>
-          <p className="text-xs text-[#8A9187] max-w-sm mx-auto">
+        <div className="p-8 bg-white border border-[#EAE6DE] rounded-2xl text-center space-y-2 shadow-xs">
+          <Users className="w-8 h-8 mx-auto text-[#878E82] opacity-40 mb-1" />
+          <h3 className="font-bold text-sm text-[#272D24]">{t('noStudentsFound')}</h3>
+          <p className="text-xs text-[#878E82] max-w-sm mx-auto">
             {t('studentsSubtitle')}
           </p>
           <button
             onClick={onOpenAddStudent}
-            className="mt-3 px-4 py-2 rounded-xl bg-[#748C70] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm"
+            className="mt-3 px-4 py-2 rounded-xl bg-[#607B5E] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-xs"
           >
             <UserPlus className="w-4 h-4" />
             <span>{t('addStudent')}</span>
           </button>
         </div>
       ) : filteredStudents.length === 0 ? (
-        <div className="p-8 bg-white border border-[#E8E2D6] rounded-2xl text-center text-[#8A9187] space-y-1">
-          <AlertCircle className="w-8 h-8 mx-auto opacity-50" />
-          <p className="font-bold text-[#2D332A] text-xs">{t('noStudentsFound')}</p>
+        <div className="p-8 bg-white border border-[#EAE6DE] rounded-2xl text-center text-[#878E82] space-y-1">
+          <AlertCircle className="w-7 h-7 mx-auto opacity-40" />
+          <p className="font-bold text-[#272D24] text-xs">{t('noStudentsFound')}</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="bg-white border border-[#EAE6DE] rounded-2xl shadow-xs divide-y divide-[#EAE6DE]/60 overflow-hidden">
           {filteredStudents.map((student) => {
             const studentGroups = db.getStudentGroups(student.id);
             const fin = db.calculateStudentFinancials(student.id);
@@ -306,23 +306,23 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     onOpenStudentProfile(student);
                   }
                 }}
-                className={`p-3.5 rounded-2xl border shadow-sm transition-all cursor-pointer space-y-2.5 active:scale-[0.99] ${
+                className={`p-3 transition-colors cursor-pointer space-y-2 ${
                   isSelected
-                    ? 'bg-[#748C70]/10 border-[#748C70]'
-                    : 'bg-white border-[#E8E2D6] hover:border-[#748C70]/60'
+                    ? 'bg-[#607B5E]/10'
+                    : 'hover:bg-[#FAF8F5]/80 active:bg-[#F5F2EC]/50'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   {/* Left: Checkbox (if in selection mode) + Avatar + Name + Grade */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     {isSelectionMode && (
                       <button
                         type="button"
                         onClick={(e) => toggleSelectStudent(student.id, e)}
-                        className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                        className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all shrink-0 ${
                           isSelected
-                            ? 'bg-[#748C70] border-[#748C70] text-white shadow-xs'
-                            : 'bg-white border-[#D4CEBF] text-transparent hover:border-[#748C70]'
+                            ? 'bg-[#607B5E] border-[#607B5E] text-white shadow-xs'
+                            : 'bg-white border-[#DFD9CE] text-transparent hover:border-[#607B5E]'
                         }`}
                       >
                         <CheckCheck className="w-3.5 h-3.5" />
@@ -331,11 +331,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                     <StudentAvatar student={student} size="md" />
 
-                    <div>
-                      <h3 className="font-bold text-xs text-[#2D332A] tracking-tight hover:text-[#748C70] transition-colors">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-xs text-[#272D24] truncate">
                         {student.name}
                       </h3>
-                      <p className="text-[11px] text-[#8A9187] font-semibold">
+                      <p className="text-[10px] text-[#878E82] font-medium truncate">
                         {getLocalizedStageName(student.gradeLevel) || '-'}
                         {student.phone ? ` • ${student.phone}` : ''}
                       </p>
@@ -343,14 +343,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </div>
 
                   {/* Right: Financial Status Chip */}
-                  <div>
+                  <div className="shrink-0">
                     <span
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                         fin.balance < 0
-                          ? 'bg-[#C97C5D]/15 text-[#C97C5D]'
+                          ? 'bg-[#B86B52]/12 text-[#9A543E]'
                           : fin.balance > 0
-                          ? 'bg-[#748C70]/15 text-[#748C70]'
-                          : 'bg-[#F2ECE1] text-[#6B7567]'
+                          ? 'bg-[#607B5E]/12 text-[#4E664C]'
+                          : 'bg-[#F5F2EC] text-[#5F675A]'
                       }`}
                     >
                       {fin.balance < 0
@@ -362,27 +362,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Enrolled Groups Badges (Chips for every group without duplication) */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[#E8E2D6]/60">
-                  <span className="text-[10px] font-bold text-[#8A9187]">{t('navGroups')}:</span>
-                  {studentGroups.length === 0 ? (
-                    <span className="text-[10px] text-[#8A9187] italic">-</span>
-                  ) : (
-                    studentGroups.map(({ group, enrollment }) => (
+                {/* Enrolled Groups Badges */}
+                {studentGroups.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[#EAE6DE]/50">
+                    {studentGroups.map(({ group, enrollment }) => (
                       <span
                         key={enrollment.id}
-                        className="text-[10px] font-bold bg-[#F9F7F2] border border-[#E8E2D6] text-[#434B3E] px-2 py-0.5 rounded-lg flex items-center gap-1"
+                        className="text-[10px] font-medium bg-[#FAF8F5] border border-[#EAE6DE]/80 text-[#5F675A] px-2 py-0.5 rounded-md flex items-center gap-1"
                       >
                         <span
                           className="w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ backgroundColor: group.accentColor || '#748C70' }}
+                          style={{ backgroundColor: group.accentColor || '#607B5E' }}
                         />
                         <span>{group.name}</span>
-                        <span className="text-[#8A9187]">({enrollment.customPrice} {t('currency')})</span>
+                        <span className="text-[#878E82]">({enrollment.customPrice} {t('currency')})</span>
                       </span>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -392,9 +389,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {/* Floating Bottom Action Bar when students are selected */}
       {isSelectionMode && selectedCount > 0 && (
         <div className="fixed bottom-16 inset-x-0 z-40 max-w-lg mx-auto px-4 pb-2 animate-in slide-in-from-bottom-3 duration-200">
-          <div className="bg-[#2D332A] text-white p-3 rounded-2xl shadow-xl flex items-center justify-between border border-[#434B3E]">
+          <div className="bg-[#272D24] text-white p-3 rounded-2xl shadow-xl flex items-center justify-between border border-[#3E453A]">
             <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-xl bg-[#748C70] flex items-center justify-center font-black text-xs">
+              <span className="w-7 h-7 rounded-xl bg-[#607B5E] flex items-center justify-center font-black text-xs">
                 {selectedCount}
               </span>
               <span className="font-bold text-xs">
@@ -405,7 +402,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={handleBulkAddSession}
-              className="px-4 py-2 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+              className="px-4 py-2 rounded-xl bg-[#607B5E] hover:bg-[#50684E] text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
             >
               <CalendarCheck2 className="w-4 h-4" />
               <span>{t('addBulkSession')} ({selectedCount})</span>

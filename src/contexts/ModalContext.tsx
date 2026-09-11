@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
   useEffect,
+  useLayoutEffect,
   ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -28,8 +29,8 @@ interface ModalContextValue {
   modalStack: ModalItem[];
 }
 
-const BASE_MODAL_Z_INDEX = 100;
-const Z_INDEX_STEP = 20;
+const BASE_MODAL_Z_INDEX = 1000;
+const Z_INDEX_STEP = 50;
 
 const ModalContext = createContext<ModalContextValue | null>(null);
 
@@ -37,21 +38,22 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [modalStack, setModalStack] = useState<ModalItem[]>([]);
   const stackRef = useRef<ModalItem[]>([]);
 
-  // Keep ref in sync with state for immediate synchronous access in event handlers
+  // Keep stackRef in sync immediately with state for event handlers & synchronous queries
   useEffect(() => {
     stackRef.current = modalStack;
   }, [modalStack]);
 
   const registerModal = useCallback((id: string, onClose: () => void) => {
     setModalStack((prev) => {
-      // Check if modal is already in stack
       const existingIdx = prev.findIndex((m) => m.id === id);
       if (existingIdx !== -1) {
-        // Update onClose callback while preserving or moving to top if re-opened
+        // Modal is already present in the stack at existingIdx.
+        // Update its onClose callback while strictly preserving its original stack index.
         const updated = [...prev];
         updated[existingIdx] = { id, onClose };
         return updated;
       }
+      // Newly opened modal: append to the top of the stack
       return [...prev, { id, onClose }];
     });
   }, []);
@@ -64,7 +66,8 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     (id: string): ModalLayerInfo => {
       const idx = modalStack.findIndex((m) => m.id === id);
       if (idx === -1) {
-        // Fallback for initial render before registration effect runs
+        // Fallback for initial render before registration effect executes:
+        // Modal is opening on top of the current stack
         const stackLen = modalStack.length;
         return {
           zIndex: BASE_MODAL_Z_INDEX + stackLen * Z_INDEX_STEP,
@@ -117,37 +120,43 @@ export const useModalContext = (): ModalContextValue => {
 };
 
 /**
- * Hook to automatically register and manage layering for a modal
+ * Hook to automatically register and manage layering for a modal.
+ * Uses a ref for onClose to ensure re-renders of the parent component
+ * do NOT trigger effect cleanup or re-shuffle the modal's stack position.
  */
 export function useModalLayer(id: string, isOpen: boolean, onClose: () => void): ModalLayerInfo {
   const { registerModal, unregisterModal, getModalLayer } = useModalContext();
 
+  const onCloseRef = useRef(onClose);
+  // Keep the ref updated with latest onClose callback on every render
+  useLayoutEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // Only run registration/unregistration when id or isOpen changes
   useEffect(() => {
     if (isOpen) {
-      registerModal(id, onClose);
+      registerModal(id, () => {
+        if (onCloseRef.current) {
+          onCloseRef.current();
+        }
+      });
       return () => {
         unregisterModal(id);
       };
     }
-  }, [id, isOpen, onClose, registerModal, unregisterModal]);
+  }, [id, isOpen, registerModal, unregisterModal]);
 
   return getModalLayer(id);
 }
 
 /**
- * Safe Portal Wrapper to guarantee modals render in document.body
+ * Safe Portal Wrapper to guarantee modals render directly in document.body
  * avoiding CSS stacking-context traps (transforms, filters, overflow)
  */
 export const ModalPortal: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || typeof document === 'undefined') {
+  if (typeof document === 'undefined') {
     return null;
   }
-
   return createPortal(children, document.body);
 };

@@ -7,13 +7,14 @@
 
   body {
     font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #F9F7F2;
-    color: #2D332A;
+    background-color: #FAF8F5;
+    color: #272D24;
   }
 
   h1, h2, h3, .font-heading {
     font-family: 'Cairo', 'Tajawal', sans-serif;
     font-weight: 700;
+    color: #272D24;
   }
 }
 
@@ -34,11 +35,11 @@
   background: transparent;
 }
 .android-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(116, 140, 112, 0.25);
+  background: rgba(96, 123, 94, 0.20);
   border-radius: 9999px;
 }
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(116, 140, 112, 0.45);
+  background: rgba(96, 123, 94, 0.40);
 }
 
 @keyframes natural-pulse {

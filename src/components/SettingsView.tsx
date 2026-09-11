@@ -43,7 +43,6 @@ import {
   DetailedNetworkStatus,
 } from '../utils/network';
 import { useTranslation, Language } from '../utils/i18n';
-import { NetworkDiagnosticsModal } from './NetworkDiagnosticsModal';
 
 interface SettingsViewProps {
   teacherProfile: TeacherProfile;
@@ -72,7 +71,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [networkStatus, setNetworkStatus] = useState<DetailedNetworkStatus>(() => getCachedNetworkStatus());
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
-  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
 
   // Password change in settings
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -344,14 +342,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { language, setLanguage, isRTL, t } = useTranslation();
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#2D332A] pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#272D24] pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
       <div>
-        <h1 className="text-xl font-bold font-serif text-[#2D332A] tracking-tight">
+        <h1 className="text-xl font-bold font-serif text-[#272D24] tracking-tight">
           {t('settingsTitle')}
         </h1>
-        <p className="text-xs text-[#8A9187] font-semibold mt-0.5">
+        <p className="text-xs text-[#878E82] font-medium mt-0.5">
           {t('settingsSubtitle')}
         </p>
       </div>
@@ -361,10 +359,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div
           className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2.5 transition-all shadow-xs ${
             syncFeedback.type === 'success'
-              ? 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30'
+              ? 'bg-[#607B5E]/15 text-[#4E664C] border border-[#607B5E]/30'
               : syncFeedback.type === 'error'
-              ? 'bg-[#FCF6F4] text-[#C97C5D] border border-[#C97C5D]/30'
-              : 'bg-[#5C788A]/15 text-[#5C788A] border border-[#5C788A]/30'
+              ? 'bg-[#B86B52]/10 text-[#B86B52] border border-[#B86B52]/30'
+              : 'bg-[#586E7E]/15 text-[#586E7E] border border-[#586E7E]/30'
           }`}
         >
           {syncFeedback.type === 'success' ? (
@@ -379,20 +377,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       )}
 
       {/* LANGUAGE SELECTOR CARD (اللغة وخيارات العرض) */}
-      <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E8E2D6]">
+      <div className="p-4 bg-white border border-[#EAE6DE] rounded-2xl shadow-xs space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-[#EAE6DE]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#5C788A]/15 text-[#5C788A] flex items-center justify-center border border-[#5C788A]/30 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-[#586E7E]/15 text-[#586E7E] flex items-center justify-center border border-[#586E7E]/30 shadow-xs">
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs sm:text-sm font-bold text-[#2D332A]">{t('languageSection')}</h2>
-              <p className="text-[10px] sm:text-[11px] text-[#8A9187] font-semibold">
+              <h2 className="text-xs sm:text-sm font-bold text-[#272D24]">{t('languageSection')}</h2>
+              <p className="text-[10px] sm:text-[11px] text-[#878E82] font-medium">
                 {t('languageDesc')}
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#5C788A]/15 text-[#5C788A]">
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#586E7E]/15 text-[#586E7E]">
             {language === 'ar' ? 'العربية (RTL)' : language === 'en-GB' ? 'UK English (LTR)' : 'US English (LTR)'}
           </span>
         </div>
@@ -412,13 +410,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={() => setLanguage(langOpt.id)}
                 className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#5C788A] border-[#5C788A] text-white shadow-xs font-bold'
-                    : 'bg-[#F9F7F2] hover:bg-[#F2ECE1] border-[#E8E2D6] text-[#2D332A]'
+                    ? 'bg-[#586E7E] border-[#586E7E] text-white shadow-xs font-bold'
+                    : 'bg-[#FAF8F5] hover:bg-[#F5F2EC] border-[#EAE6DE] text-[#272D24]'
                 }`}
               >
                 <span className="text-base">{langOpt.flag}</span>
                 <span className="text-xs font-bold leading-tight">{langOpt.title}</span>
-                <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-[#8A9187]'}`}>
+                <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-[#878E82]'}`}>
                   {langOpt.sub}
                 </span>
               </button>
@@ -428,32 +426,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* 1. AUTO-SYNC & SCHEDULING (المزامنة التلقائية والنسخ الاحتياطي) */}
-      <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-4">
+      <div className="p-4 bg-white border border-[#EAE6DE] rounded-2xl shadow-xs space-y-4">
         {/* Section Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#E8E2D6] flex-wrap gap-2">
+        <div className="flex items-center justify-between pb-3 border-b border-[#EAE6DE] flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#748C70]/15 text-[#748C70] flex items-center justify-center border border-[#748C70]/30 shadow-xs">
-              <RefreshCw className={`w-4 h-4 ${autoSyncConfig.status === 'syncing' ? 'animate-spin text-[#5C788A]' : 'text-[#748C70]'}`} />
+            <div className="w-9 h-9 rounded-xl bg-[#607B5E]/15 text-[#607B5E] flex items-center justify-center border border-[#607B5E]/30 shadow-xs">
+              <RefreshCw className={`w-4 h-4 ${autoSyncConfig.status === 'syncing' ? 'animate-spin text-[#586E7E]' : 'text-[#607B5E]'}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xs sm:text-sm font-bold text-[#2D332A]">المزامنة التلقائية والنسخ الاحتياطي</h2>
+                <h2 className="text-xs sm:text-sm font-bold text-[#272D24]">المزامنة التلقائية والنسخ الاحتياطي</h2>
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                     autoSyncConfig.frequency === 'off'
-                      ? 'bg-[#8A9187]/15 text-[#6B7567] border border-[#8A9187]/30'
+                      ? 'bg-[#878E82]/15 text-[#5F675A] border border-[#878E82]/30'
                       : !networkStatus.isOnline
-                      ? 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30'
-                      : 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30'
+                      ? 'bg-[#B86B52]/15 text-[#B86B52] border border-[#B86B52]/30'
+                      : 'bg-[#607B5E]/15 text-[#4E664C] border border-[#607B5E]/30'
                   }`}
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
                       autoSyncConfig.frequency === 'off'
-                        ? 'bg-[#8A9187]'
+                        ? 'bg-[#878E82]'
                         : !networkStatus.isOnline
-                        ? 'bg-[#C97C5D]'
-                        : 'bg-[#748C70] animate-pulse'
+                        ? 'bg-[#B86B52]'
+                        : 'bg-[#607B5E] animate-pulse'
                     }`}
                   ></span>
                   {autoSyncConfig.frequency === 'off'
@@ -461,25 +459,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     : !networkStatus.deviceConnected
                     ? 'مؤجلة (دون اتصال)'
                     : !networkStatus.apiReachable
-                    ? 'مؤجلة (السيرفر غير متاح)'
+                    ? 'مؤجلة (في انتظار الاتصال)'
                     : 'نشطة ومجدولة'}
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-[#8A9187] font-semibold mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-[#878E82] font-medium mt-0.5">
                 مزامنة بيانات المستخدم تلقائياً مع السحابة حسب الفترة المحددة مع استقلالية تامة لكل حساب
               </p>
             </div>
           </div>
 
-          {/* Connectivity Status Pill & Diagnostics Button */}
+          {/* Connectivity Status Pill */}
           <div className="flex items-center gap-2 flex-wrap">
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border shadow-xs ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium border shadow-xs ${
                 networkStatus.isOnline
-                  ? 'bg-[#748C70]/10 text-[#5E755A] border-[#748C70]/25'
+                  ? 'bg-[#607B5E]/10 text-[#4E664C] border-[#607B5E]/25'
                   : networkStatus.deviceConnected && !networkStatus.apiReachable
-                  ? 'bg-[#5C788A]/10 text-[#5C788A] border-[#5C788A]/25'
-                  : 'bg-[#C97C5D]/10 text-[#C97C5D] border-[#C97C5D]/25'
+                  ? 'bg-[#586E7E]/10 text-[#586E7E] border-[#586E7E]/25'
+                  : 'bg-[#B86B52]/10 text-[#B86B52] border-[#B86B52]/25'
               }`}
             >
               {networkStatus.isOnline ? (
@@ -495,38 +493,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </>
               ) : networkStatus.deviceConnected && !networkStatus.apiReachable ? (
                 <>
-                  <Activity className="w-3.5 h-3.5 text-[#5C788A]" />
-                  <span>متصل بالشبكة (السيرفر غير متاح)</span>
+                  <Activity className="w-3.5 h-3.5 text-[#586E7E]" />
+                  <span>متصل بالشبكة (في انتظار المزامنة)</span>
                 </>
               ) : (
                 <>
-                  <WifiOff className="w-3.5 h-3.5 text-[#C97C5D]" />
+                  <WifiOff className="w-3.5 h-3.5 text-[#B86B52]" />
                   <span>وضع عدم الاتصال (أوفلاين)</span>
                 </>
               )}
             </div>
-
-            <button
-              id="open_network_diagnostics_button"
-              type="button"
-              onClick={() => setIsDiagnosticsOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-[11px] font-mono font-medium transition active:scale-95 shadow-xs"
-              title="تشخيص اتصال السيرفر المباشر"
-            >
-              <Activity className="w-3.5 h-3.5 text-sky-400" />
-              <span>تشخيص السيرفر (Android Runtime)</span>
-            </button>
           </div>
         </div>
 
         {/* Frequency Options Selection */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-[#5C788A]" />
+            <label className="text-xs font-bold text-[#272D24] flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#586E7E]" />
               <span>فترة المزامنة التلقائية (Sync Schedule):</span>
             </label>
-            <span className="text-[10px] text-[#8A9187] font-semibold">يُحفظ الإعداد تلقائياً بشكل دائم</span>
+            <span className="text-[10px] text-[#878E82] font-medium">يُحفظ الإعداد تلقائياً بشكل دائم</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -545,12 +532,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   onClick={() => handleFrequencyChange(opt.value as AutoSyncFrequency)}
                   className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                     isSelected
-                      ? 'bg-[#748C70] border-[#748C70] text-white shadow-xs font-bold'
-                      : 'bg-[#F9F7F2] hover:bg-[#F2ECE1] border-[#E8E2D6] text-[#2D332A]'
+                      ? 'bg-[#607B5E] border-[#607B5E] text-white shadow-xs font-bold'
+                      : 'bg-[#FAF8F5] hover:bg-[#F5F2EC] border-[#EAE6DE] text-[#272D24]'
                   }`}
                 >
                   <span className="text-xs font-bold">{opt.label}</span>
-                  <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-[#8A9187]'}`}>
+                  <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-[#878E82]'}`}>
                     {opt.desc}
                   </span>
                 </button>
@@ -560,15 +547,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Sync Status, Last Sync & Next Sync Times */}
-        <div className="p-3.5 bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl space-y-2.5 text-xs">
+        <div className="p-3.5 bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl space-y-2.5 text-xs">
           {/* Current Sync Status */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#E8E2D6]">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#EAE6DE]">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-[#5C788A]" />
-              <span className="font-bold text-[#434B3E]">حالة المزامنة الحالية:</span>
+              <Activity className="w-4 h-4 text-[#586E7E]" />
+              <span className="font-bold text-[#272D24]">حالة المزامنة الحالية:</span>
             </div>
             <div
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium ${
                 formatSyncStatusArabic(autoSyncConfig.status, networkStatus.isOnline, networkStatus.statusReason).badgeClass
               }`}
             >
@@ -579,20 +566,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {/* Last Sync & Next Sync Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
             {/* Last Sync */}
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-[#E8E2D6]/80 shadow-2xs">
-              <Clock className="w-4 h-4 text-[#748C70] shrink-0" />
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-[#EAE6DE]/80 shadow-2xs">
+              <Clock className="w-4 h-4 text-[#607B5E] shrink-0" />
               <div>
-                <span className="text-[#8A9187] block font-semibold">آخر مزامنة (Last Sync):</span>
-                <span className="font-bold text-[#2D332A] text-xs">{formatSyncTimeArabic(lastSyncTime)}</span>
+                <span className="text-[#878E82] block font-medium">آخر مزامنة (Last Sync):</span>
+                <span className="font-bold text-[#272D24] text-xs">{formatSyncTimeArabic(lastSyncTime)}</span>
               </div>
             </div>
 
             {/* Next Sync */}
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-[#E8E2D6]/80 shadow-2xs">
-              <Calendar className="w-4 h-4 text-[#5C788A] shrink-0" />
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-[#EAE6DE]/80 shadow-2xs">
+              <Calendar className="w-4 h-4 text-[#586E7E] shrink-0" />
               <div>
-                <span className="text-[#8A9187] block font-semibold">موعد المزامنة القادمة (Next Sync):</span>
-                <span className="font-bold text-[#2D332A] text-xs">
+                <span className="text-[#878E82] block font-medium">موعد المزامنة القادمة (Next Sync):</span>
+                <span className="font-bold text-[#272D24] text-xs">
                   {formatNextSyncTimeArabic(autoSyncConfig.nextSyncTime, autoSyncConfig.frequency)}
                 </span>
               </div>
@@ -606,7 +593,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={handleSyncNow}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            className="py-2.5 px-3 rounded-xl bg-[#607B5E] hover:bg-[#50684E] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             <span>مزامنة الآن (Sync Now)</span>
@@ -616,7 +603,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={handleBackupNow}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-[#5C788A] hover:bg-[#475E6C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            className="py-2.5 px-3 rounded-xl bg-[#586E7E] hover:bg-[#475B69] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>تصدير نسخة احتياطية (.json)</span>
@@ -626,16 +613,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={handleRestoreFromAccount}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-white hover:bg-[#F2ECE1] border border-[#E8E2D6] text-[#2D332A] font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            className="py-2.5 px-3 rounded-xl bg-white hover:bg-[#F5F2EC] border border-[#EAE6DE] text-[#272D24] font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            <HardDriveDownload className="w-3.5 h-3.5 text-[#5C788A]" />
+            <HardDriveDownload className="w-3.5 h-3.5 text-[#586E7E]" />
             <span>استعادة البيانات السحابية</span>
           </button>
         </div>
 
         {/* Synced Entities Pill Badges */}
-        <div className="pt-2 border-t border-[#E8E2D6]">
-          <span className="text-[10px] font-bold text-[#8A9187] block mb-1.5">
+        <div className="pt-2 border-t border-[#EAE6DE]">
+          <span className="text-[10px] font-medium text-[#878E82] block mb-1.5">
             البيانات المشمولة في المزامنة التلقائية:
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -654,9 +641,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             ].map((entity, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F2ECE1] text-[#434B3E] text-[10px] font-semibold"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F5F2EC] text-[#272D24] text-[10px] font-medium"
               >
-                <Check className="w-2.5 h-2.5 text-[#748C70]" />
+                <Check className="w-2.5 h-2.5 text-[#607B5E]" />
                 {entity}
               </span>
             ))}
@@ -665,8 +652,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Secondary Import File Option */}
         <div className="pt-2 border-t border-[#E8E2D6]">
-          <label className="w-full py-2 px-3 rounded-xl bg-[#F9F7F2] hover:bg-[#F2ECE1] border border-dashed border-[#8A9187]/40 text-[#434B3E] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
-            <Upload className="w-3.5 h-3.5 text-[#5C788A]" />
+          <label className="w-full py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-[#F5F2EC] border border-dashed border-[#878E82]/40 text-[#272D24] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
+            <Upload className="w-3.5 h-3.5 text-[#586E7E]" />
             <span>استيراد واستعادة من ملف نسخة احتياطية (.json)</span>
             <input
               type="file"
@@ -679,23 +666,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* 2. ACCOUNT INFO & LOGOUT CARD */}
-      <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3">
+      <div className="p-4 bg-white border border-[#EAE6DE] rounded-2xl shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-[#748C70]/15 text-[#748C70] flex items-center justify-center font-bold font-serif text-base border border-[#748C70]/30">
+            <div className="w-10 h-10 rounded-xl bg-[#607B5E]/15 text-[#4E664C] flex items-center justify-center font-bold font-serif text-base border border-[#607B5E]/30">
               {currentUser?.name?.[0] || teacherProfile.name?.[0] || 'م'}
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-[#2D332A]">
+                <p className="text-xs font-bold text-[#272D24]">
                   {currentUser?.name || teacherProfile.name || 'حساب المعلم'}
                 </p>
-                <span className="px-1.5 py-0.5 rounded-md bg-[#748C70]/15 text-[#748C70] text-[9px] font-bold">
+                <span className="px-1.5 py-0.5 rounded-md bg-[#607B5E]/15 text-[#4E664C] text-[9px] font-medium">
                   حساب معتمد
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A9187] flex items-center gap-1">
-                <Mail className="w-3 h-3 text-[#8A9187]" />
+              <p className="text-[11px] text-[#878E82] flex items-center gap-1">
+                <Mail className="w-3 h-3 text-[#878E82]" />
                 <span>{currentUser?.email || 'teacher@example.com'}</span>
               </p>
             </div>
@@ -708,7 +695,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onLogout();
               }
             }}
-            className="py-2 px-3 rounded-xl bg-[#FCF6F4] hover:bg-[#F8ECE8] text-[#C97C5D] border border-[#C97C5D]/30 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-xs"
+            className="py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-[#F5F2EC] text-[#B86B52] border border-[#B86B52]/30 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-xs"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>تسجيل الخروج</span>
@@ -716,12 +703,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Change Password Collapsible */}
-        <div className="pt-2 border-t border-[#E8E2D6]">
+        <div className="pt-2 border-t border-[#EAE6DE]">
           {!isChangingPassword ? (
             <button
               type="button"
               onClick={() => setIsChangingPassword(true)}
-              className="text-xs font-bold text-[#5C788A] hover:text-[#415562] flex items-center gap-1.5"
+              className="text-xs font-medium text-[#586E7E] hover:text-[#475B69] flex items-center gap-1.5"
             >
               <KeyRound className="w-3.5 h-3.5" />
               <span>تغيير كلمة المرور الخاصة بالحساب</span>
@@ -729,8 +716,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           ) : (
             <form onSubmit={handleUpdatePassword} className="space-y-2.5 pt-1 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-[#2D332A] flex items-center gap-1">
-                  <KeyRound className="w-3.5 h-3.5 text-[#D49B4B]" />
+                <span className="font-bold text-xs text-[#272D24] flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5 text-[#B88438]" />
                   تغيير كلمة المرور
                 </span>
                 <button
@@ -739,7 +726,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     setIsChangingPassword(false);
                     setPassMessage(null);
                   }}
-                  className="text-[11px] text-[#8A9187] font-bold hover:text-[#2D332A]"
+                  className="text-[11px] text-[#878E82] font-medium hover:text-[#272D24]"
                 >
                   إلغاء
                 </button>
@@ -747,10 +734,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               {passMessage && (
                 <div
-                  className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
+                  className={`p-2 rounded-xl text-xs font-medium flex items-center gap-1.5 ${
                     passMessage.type === 'success'
-                      ? 'bg-[#748C70]/15 text-[#748C70]'
-                      : 'bg-[#FCF6F4] text-[#C97C5D]'
+                      ? 'bg-[#607B5E]/15 text-[#4E664C]'
+                      : 'bg-[#B86B52]/10 text-[#B86B52]'
                   }`}
                 >
                   {passMessage.type === 'success' ? (
@@ -764,32 +751,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7567] mb-0.5">الحالية</label>
+                  <label className="block text-[11px] font-medium text-[#5F675A] mb-0.5">الحالية</label>
                   <input
                     type="password"
                     required
                     value={currentPass}
                     onChange={(e) => setCurrentPass(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                    className="w-full bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl p-2 text-xs text-[#272D24] focus:outline-none focus:border-[#607B5E]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[#6B7567] mb-0.5">الجديدة</label>
+                  <label className="block text-[11px] font-medium text-[#5F675A] mb-0.5">الجديدة</label>
                   <input
                     type="password"
                     required
                     value={newPass}
                     onChange={(e) => setNewPass(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                    className="w-full bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl p-2 text-xs text-[#272D24] focus:outline-none focus:border-[#607B5E]"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2 rounded-xl bg-[#5C788A] hover:bg-[#475E6C] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                className="w-full py-2 rounded-xl bg-[#586E7E] hover:bg-[#475B69] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>حفظ كلمة المرور الجديدة</span>
@@ -800,68 +787,68 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* 3. TEACHER PROFILE CARD */}
-      <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3.5">
-        <h2 className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
-          <User className="w-4 h-4 text-[#748C70]" />
+      <div className="p-4 bg-white border border-[#EAE6DE] rounded-2xl shadow-xs space-y-3.5">
+        <h2 className="text-xs font-bold text-[#272D24] flex items-center gap-1.5">
+          <User className="w-4 h-4 text-[#607B5E]" />
           <span>تعديل بيانات المعلم والسنتر</span>
         </h2>
 
         {savedSuccess && (
-          <div className="p-2.5 bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30 rounded-xl text-xs font-bold flex items-center gap-2">
+          <div className="p-2.5 bg-[#607B5E]/15 text-[#4E664C] border border-[#607B5E]/30 rounded-xl text-xs font-medium flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             <span>تم حفظ وتحديث بيانات الملف الشخصي بنجاح!</span>
           </div>
         )}
 
-        <form onSubmit={handleSaveProfile} className="space-y-3 text-xs text-[#434B3E]">
+        <form onSubmit={handleSaveProfile} className="space-y-3 text-xs text-[#272D24]">
           <div>
-            <label className="block font-bold text-[#6B7567] mb-1">اسم المعلم / اللقب *</label>
+            <label className="block font-medium text-[#5F675A] mb-1">اسم المعلم / اللقب *</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+              className="w-full bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl p-2.5 text-xs text-[#272D24] focus:outline-none focus:border-[#607B5E]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">المادة الدراسية الأساسية *</label>
+              <label className="block font-medium text-[#5F675A] mb-1">المادة الدراسية الأساسية *</label>
               <input
                 type="text"
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                className="w-full bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl p-2.5 text-xs text-[#272D24] focus:outline-none focus:border-[#607B5E]"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">رقم الهاتف / واتساب</label>
+              <label className="block font-medium text-[#5F675A] mb-1">رقم الهاتف / واتساب</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                className="w-full bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl p-2.5 text-xs text-[#272D24] focus:outline-none focus:border-[#607B5E]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-bold text-[#6B7567] mb-1">اسم السنتر / المدرسة / القاعة</label>
+            <label className="block font-medium text-[#5F675A] mb-1">اسم السنتر / المدرسة / القاعة</label>
             <input
               type="text"
               value={centerOrSchool}
               onChange={(e) => setCenterOrSchool(e.target.value)}
               placeholder="مثال: سنتر الأوائل التعليمي - مدينة نصر"
-              className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+              className="w-full bg-[#FAF8F5] border border-[#EAE6DE] rounded-xl p-2.5 text-xs text-[#272D24] focus:outline-none focus:border-[#607B5E]"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-2.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.99]"
+            className="w-full py-2.5 rounded-xl bg-[#607B5E] hover:bg-[#50684E] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-[0.99]"
           >
             <Save className="w-4 h-4" />
             <span>حفظ البيانات وتحديث الحساب</span>
@@ -870,18 +857,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* 4. DANGER ZONE: CLEAR LOCAL DATA */}
-      <div className="p-4 bg-white border border-[#C97C5D]/30 rounded-2xl shadow-sm space-y-2.5">
-        <h2 className="text-xs font-bold text-[#C97C5D] flex items-center gap-1.5">
+      <div className="p-4 bg-white border border-[#B86B52]/30 rounded-2xl shadow-xs space-y-2.5">
+        <h2 className="text-xs font-bold text-[#B86B52] flex items-center gap-1.5">
           <AlertTriangle className="w-4 h-4" />
           <span>إعادة ضبط البيانات المحلية</span>
         </h2>
-        <p className="text-[11px] text-[#8A9187]">
+        <p className="text-[11px] text-[#878E82]">
           مسح السجلات المحلية والبدء من جديد. لن تفقد النسخ الاحتياطية المتزامنة مع حسابك.
         </p>
 
         <button
           onClick={handleClearAll}
-          className="py-2 px-3 rounded-xl bg-[#FCF6F4] hover:bg-[#F8ECE8] text-[#C97C5D] border border-[#C97C5D]/40 font-bold text-xs flex items-center gap-1.5 transition-all"
+          className="py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-[#F5F2EC] text-[#B86B52] border border-[#B86B52]/40 font-bold text-xs flex items-center gap-1.5 transition-all"
         >
           <Trash2 className="w-4 h-4" />
           <span>مسح البيانات المحلية الحالية</span>
@@ -889,16 +876,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* App Info Footer */}
-      <div className="text-center text-[11px] text-[#8A9187] space-y-0.5 pt-2">
-        <p className="font-bold text-[#2D332A]">Teacher Manager v2.0</p>
+      <div className="text-center text-[11px] text-[#878E82] space-y-0.5 pt-2">
+        <p className="font-bold text-[#272D24]">Teacher Manager v2.0</p>
         <p>مزامنة آمنة للحسابات • يدعم العمل بدون إنترنت والنسخ السحابي</p>
       </div>
-
-      {/* Network Diagnostics Modal */}
-      <NetworkDiagnosticsModal
-        isOpen={isDiagnosticsOpen}
-        onClose={() => setIsDiagnosticsOpen(false)}
-      />
     </div>
   );
 };

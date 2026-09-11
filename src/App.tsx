@@ -234,16 +234,16 @@ export default function App() {
   const { isRTL, language } = useTranslation();
 
   return (
-    <div className="min-h-screen bg-[#F0EBE1] flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#434B3E]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-[#EFECE6] flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#272D24]" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* Android Mobile Frame */}
-      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#F9F7F2] md:rounded-[44px] md:border-[8px] md:border-[#E8E2D6] md:ring-1 md:ring-[#D6CDC2] flex flex-col overflow-hidden shadow-2xl text-[#434B3E]">
+      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#FAF8F5] md:rounded-[44px] md:border-[8px] md:border-[#EAE6DE] md:ring-1 md:ring-[#DFD9CE] flex flex-col overflow-hidden shadow-xl text-[#272D24]">
         
         {/* Android Punch-hole Camera */}
-        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#2D332A] border border-[#E8E2D6] z-50 pointer-events-none shadow-inner" />
+        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#272D24] border border-[#EAE6DE] z-50 pointer-events-none shadow-inner" />
 
         {/* Main Screen Body - Extends to the absolute top edge of display */}
-        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F9F7F2]">
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#FAF8F5]">
           
           {!currentUser ? (
             <AuthView onLoginSuccess={handleLoginSuccess} />

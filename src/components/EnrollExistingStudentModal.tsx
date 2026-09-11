@@ -18,6 +18,7 @@ import { Student, Group, Enrollment, BillingType, BillingMode, PricingModifierTy
 import { db, calculateCustomEnrollmentPrice, getBillingModeLabel } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { getLocalizedStageName } from '../utils/stages';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface EnrollExistingStudentModalProps {
   isOpen: boolean;
@@ -183,11 +184,18 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     onClose();
   };
 
+  const modalLayer = useModalLayer('enroll-existing-student', isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white">
@@ -806,5 +814,6 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
 
       </div>
     </div>
+    </ModalPortal>
   );
 };

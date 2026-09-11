@@ -19,6 +19,7 @@ import {
 import { Session, Group, Student, Attendance, AttendanceStatus } from '../types';
 import { db } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -303,11 +304,20 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   const chargedAbsentCount = recordValues.filter((r) => r.status === 'absent_charged' || (r.status === 'absent' && r.isCharged !== false)).length;
   const freeAbsentCount = recordValues.filter((r) => r.status === 'absent_free' || r.status === 'excused' || (r.status === 'absent' && r.isCharged === false)).length;
 
+  const modalLayer = useModalLayer('record-attendance', isOpen && !!session, onClose);
+  useModalLayer('attendance-confirm-student', !!confirmingStudent, () => setConfirmingStudent(null));
+  useModalLayer('attendance-batch-confirm', isBatchAbsentConfirmOpen, () => setIsBatchAbsentConfirmOpen(false));
+
   if (!isOpen || !session) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir="rtl"
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
         
         {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white">
@@ -917,5 +927,6 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
       </div>
     </div>
+    </ModalPortal>
   );
 };

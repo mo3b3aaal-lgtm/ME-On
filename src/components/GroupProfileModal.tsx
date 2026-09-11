@@ -20,6 +20,7 @@ import { db, getBillingModeLabel } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { StudentAvatar } from './StudentAvatar';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface GroupProfileModalProps {
   isOpen: boolean;
@@ -84,11 +85,18 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
     }
   };
 
+  const modalLayer = useModalLayer('group-profile', isOpen && !!group, onClose);
+
   if (!isOpen || !group) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header */}
         <div className="p-4 bg-white border-b border-[#E8E2D6] relative">
@@ -417,5 +425,6 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
 
       </div>
     </div>
+    </ModalPortal>
   );
 };

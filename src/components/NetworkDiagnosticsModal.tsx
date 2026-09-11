@@ -20,6 +20,7 @@ import {
   getLatestHealthCheckDiagnostics,
 } from '../utils/diagnostics';
 import { checkOverallConnectivity } from '../utils/network';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface NetworkDiagnosticsModalProps {
   isOpen: boolean;
@@ -95,6 +96,8 @@ Stack: ${diagnostics.exceptionStack || 'None'}
     });
   };
 
+  const modalLayer = useModalLayer('network-diagnostics', isOpen, onClose);
+
   if (!isOpen) return null;
 
   const isSuccess = diagnostics?.conclusion === 'SUCCESS_HEALTHY';
@@ -102,15 +105,17 @@ Stack: ${diagnostics.exceptionStack || 'None'}
   const isException = diagnostics?.conclusion === 'NETWORK_EXCEPTION';
 
   return (
-    <div
-      id="diagnostics_modal_backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
-      dir="rtl"
-    >
+    <ModalPortal>
       <div
-        id="diagnostics_modal_content"
-        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col text-slate-100 overflow-hidden"
+        id="diagnostics_modal_backdrop"
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+        dir="rtl"
       >
+        <div
+          id="diagnostics_modal_content"
+          className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col text-slate-100 overflow-hidden"
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/90 sticky top-0 z-10">
           <div className="flex items-center gap-3">
@@ -354,5 +359,6 @@ Stack: ${diagnostics.exceptionStack || 'None'}
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Calendar, Clock, BookOpen, Layers, CheckCircle2, Sparkles, Hash, AlignRight, Timer } from 'lucide-react';
 import { Student, Enrollment, Group } from '../types';
 import { db } from '../utils/storage';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface RecordPrivateSessionModalProps {
   isOpen: boolean;
@@ -161,11 +162,18 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     }
   };
 
+  const modalLayer = useModalLayer('record-private-session', isOpen && !!student, onClose);
+
   if (!isOpen || !student) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#2D332A]/70 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/70 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200"
+        dir="rtl"
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
         
         {/* Header */}
         <div className="p-4 bg-white border-b border-[#E8E2D6] relative">
@@ -667,5 +675,6 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
         </form>
       </div>
     </div>
+    </ModalPortal>
   );
 };

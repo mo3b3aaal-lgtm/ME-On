@@ -42,6 +42,7 @@ import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
 import { getLocalizedStageName } from '../utils/stages';
 import { getUpcomingClassesForStudent, UpcomingStudentClass } from '../utils/schedule';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -336,11 +337,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     }
   };
 
+  const modalLayer = useModalLayer('student-profile', isOpen && !!student, onClose);
+
   if (!isOpen || !student) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir="rtl"
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header with Avatar & Basic Info */}
         <div className="p-4 bg-white border-b border-[#E8E2D6] relative">
@@ -2025,5 +2033,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         }}
       />
     </div>
+    </ModalPortal>
   );
 };

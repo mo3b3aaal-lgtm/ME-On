@@ -3,6 +3,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { ActiveTab, Student, Group, Session, Payment, TeacherProfile, UserAccount } from './types';
 import { db } from './utils/storage';
 import { useTranslation } from './utils/i18n';
+import { useModalContext } from './contexts/ModalContext';
 
 // Mobile UI components
 import { BottomNavBar } from './components/BottomNavBar';
@@ -28,6 +29,8 @@ import { RecordAttendanceModal } from './components/RecordAttendanceModal';
 import { AddPaymentModal } from './components/AddPaymentModal';
 
 export default function App() {
+  const { popTopModal } = useModalContext();
+
   // Navigation
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
@@ -114,49 +117,18 @@ export default function App() {
     let backListener: any = null;
 
     const handleBackAction = () => {
-      if (selectedSessionForAttendance) {
-        setSelectedSessionForAttendance(null);
-        return true;
-      }
-      if (selectedStudentForProfile) {
-        setSelectedStudentForProfile(null);
-        return true;
-      }
-      if (selectedGroupForProfile) {
-        setSelectedGroupForProfile(null);
-        return true;
-      }
-      if (isAddPaymentOpen) {
-        setIsAddPaymentOpen(false);
-        return true;
-      }
-      if (isAddStudentOpen) {
-        setIsAddStudentOpen(false);
-        return true;
-      }
-      if (isAddGroupOpen) {
-        setIsAddGroupOpen(false);
-        return true;
-      }
-      if (isAddSessionOpen) {
-        setIsAddSessionOpen(false);
-        return true;
-      }
-      if (isBulkAddSessionOpen) {
-        setIsBulkAddSessionOpen(false);
-        return true;
-      }
-      if (isEnrollModalOpen) {
-        setIsEnrollModalOpen(false);
+      // 1. Close topmost active modal/dialog in stack (LIFO order)
+      if (popTopModal()) {
         return true;
       }
 
+      // 2. Return to dashboard tab if currently on another tab
       if (activeTab !== 'dashboard') {
         setActiveTab('dashboard');
         return true;
       }
 
-      return false; // At root dashboard
+      return false; // At root dashboard -> trigger app exit prompt
     };
 
     const setupCapacitorBack = async () => {

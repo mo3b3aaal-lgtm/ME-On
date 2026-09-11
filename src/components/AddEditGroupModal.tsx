@@ -4,6 +4,7 @@ import { Group, GroupType, BillingType } from '../types';
 import { db } from '../utils/storage';
 import { ALL_GRADE_LEVELS, STAGES_HIERARCHY, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface AddEditGroupModalProps {
   isOpen: boolean;
@@ -152,11 +153,18 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
     onClose();
   };
 
+  const modalLayer = useModalLayer('add-edit-group', isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white">
@@ -475,5 +483,6 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
 
       </div>
     </div>
+    </ModalPortal>
   );
 };

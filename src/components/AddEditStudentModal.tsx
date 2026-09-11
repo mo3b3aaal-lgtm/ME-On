@@ -23,6 +23,7 @@ import { StudentAvatar } from './StudentAvatar';
 import { AchievementFrameSelector } from './AchievementFrameSelector';
 import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface AddEditStudentModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ interface AddEditStudentModalProps {
   defaultGroupId?: string;
   allGroups: Group[];
   onSaveComplete: (savedStudent: Student) => void;
+  zIndex?: number;
 }
 
 const AVATAR_COLORS = [
@@ -51,6 +53,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   defaultGroupId,
   allGroups,
   onSaveComplete,
+  zIndex = 50,
 }) => {
   const { t, isRTL, language } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -290,11 +293,18 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
   const currentStage = GRADE_STAGES.find((s) => s.id === selectedStageId) || GRADE_STAGES[2];
 
+  const modalLayer = useModalLayer('add-edit-student', isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Modal Header */}
         <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white">
@@ -854,5 +864,6 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
       </div>
     </div>
+    </ModalPortal>
   );
 };

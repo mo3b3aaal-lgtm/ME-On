@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, CalendarCheck2, Clock, Calendar, BookOpen, DollarSign } from 'lucide-react';
 import { Session, Group } from '../types';
 import { db, getEffectiveSessionPrice } from '../utils/storage';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface AddEditSessionModalProps {
   isOpen: boolean;
@@ -156,11 +157,18 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     onClose();
   };
 
+  const modalLayer = useModalLayer('add-edit-session', isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#2D332A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir="rtl"
+      >
+        <div className="bg-[#F9F7F2] border border-[#E8E2D6] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header - Fixed Top */}
         <div className="p-4 flex items-center justify-between border-b border-[#E8E2D6] bg-white shrink-0">
@@ -394,5 +402,6 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
 
       </div>
     </div>
+    </ModalPortal>
   );
 };

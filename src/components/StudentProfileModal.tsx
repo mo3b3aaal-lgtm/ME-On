@@ -294,7 +294,36 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       status,
       isCharged,
       absenceReason: reason,
+      paymentStatus: existingAtt?.paymentStatus,
+      isPaid: existingAtt?.isPaid,
+      paymentOverride: existingAtt?.paymentOverride,
       recordedAt: new Date().toISOString(),
+    };
+    db.saveAttendanceBatch(sessionId, [rec]);
+    onDataChanged();
+  };
+
+  const handleToggleSessionPaymentOverride = (sessionId: string) => {
+    const existingAtt = attendanceList.find((a) => a.sessionId === sessionId);
+    const session = allSessions.find((s) => s.id === sessionId);
+    const enr = grandFinancials.enrollmentsSummary.find((e) => e.groupId === session?.groupId || e.enrollmentId === session?.enrollmentId);
+    if (!student) return;
+
+    const currentUnpaid = existingAtt?.paymentStatus === 'unpaid' || existingAtt?.paymentOverride === 'unpaid' || existingAtt?.isPaid === false;
+    const nextPaymentStatus = currentUnpaid ? 'paid' : 'unpaid';
+
+    const rec: Attendance = {
+      id: existingAtt?.id || `att_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      sessionId,
+      studentId: student.id,
+      enrollmentId: session?.enrollmentId || enr?.enrollmentId,
+      status: existingAtt?.status || 'present',
+      isCharged: existingAtt?.isCharged !== undefined ? existingAtt.isCharged : true,
+      paymentStatus: nextPaymentStatus,
+      isPaid: nextPaymentStatus === 'paid',
+      paymentOverride: nextPaymentStatus,
+      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     db.saveAttendanceBatch(sessionId, [rec]);
     onDataChanged();
@@ -1213,6 +1242,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   filteredEnrollments.map((summary) => {
                     const isPrepaid = summary.billingMode === 'prepaid' || summary.billingType === 'prepaid' || (summary.billingType === 'per_session' && summary.billingMode !== 'postpaid');
                     const isPostpaid = summary.billingMode === 'postpaid' || summary.billingType === 'postpaid';
+                    const isHourly = summary.billingMode === 'hourly' || summary.billingType === 'hourly';
                     const isPrivate = summary.groupType === 'private';
                     
                     // Sessions specific to this group/service
@@ -1398,10 +1428,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         <div className="grid grid-cols-2 gap-2 text-[11px] bg-[#F9F7F2] p-2.5 rounded-xl border border-[#E8E2D6]">
                           <div>
                             <span className="text-[#8A9187] block text-[10px]">
-                              {summary.billingMode === 'package' || summary.billingType === 'package' ? '١. سعر الحصة الفعلي:' : '١. سعر الحصة:'}
+                              {isHourly ? '١. سعر الساعة:' : (summary.billingMode === 'package' || summary.billingType === 'package') ? '١. سعر الحصة الفعلي:' : '١. سعر الحصة:'}
                             </span>
                             <strong className="text-sm text-[#2D332A]">
-                              {summary.effectiveSessionPrice || summary.customPrice} ج.م
+                              {summary.effectiveSessionPrice || summary.customPrice} ج.م {isHourly ? '/ ساعة' : ''}
                             </strong>
                             {(summary.billingMode === 'package' || summary.billingType === 'package') && summary.packagePrice && (
                               <span className="text-[9px] text-[#8A9187] block mt-0.5">
@@ -1415,38 +1445,46 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           </div>
                         </div>
 
-                        {/* 3 to 7: Numbers Breakdown (عدد الحصص، المستخدمة، المستحقة، المدفوع، المتبقي) */}
+                        {/* 3 to 7: Numbers Breakdown (عدد الساعات/الحصص، المستخدمة، المستحقة، المدفوع، المتبقي) */}
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-[10px]">
-                          {/* 3. Purchased / Settled Sessions */}
+                          {/* 3. Purchased / Total Hours / Settled Sessions */}
                           <div className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
                             <span className="text-[#8A9187] font-bold block text-[9px]">
-                              {isPostpaid ? '٣. الحصص المسددة' : '٣. الحصص المشتراة'}
+                              {isHourly ? '٣. إجمالي الساعات' : isPostpaid ? '٣. الحصص المسددة' : '٣. الحصص المشتراة'}
                             </span>
                             <p className="font-black text-xs text-[#2D332A] mt-0.5">
-                              {summary.purchasedSessionsCount || 0}
+                              {isHourly ? `${summary.totalHours ?? 0} ساعة` : (summary.purchasedSessionsCount || 0)}
                             </p>
                             <span className="text-[8px] text-[#8A9187]">
-                              {isPostpaid ? 'تمت تسويتها' : 'إجمالي الباقة/الرصيد'}
+                              {isHourly ? `(${summary.attendedSessionsCount || 0} حصص)` : isPostpaid ? 'تمت تسويتها' : 'إجمالي الباقة/الرصيد'}
                             </span>
                           </div>
 
-                          {/* 4. Used Sessions */}
+                          {/* 4. Used Sessions / Completed Hours */}
                           <div className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
-                            <span className="text-[#8A9187] font-bold block text-[9px]">٤. الحصص المستخدمة</span>
-                            <p className="font-black text-xs text-[#2D332A] mt-0.5">{summary.usedSessionsCount || 0}</p>
+                            <span className="text-[#8A9187] font-bold block text-[9px]">
+                              {isHourly ? '٤. الساعات المنفذة' : '٤. الحصص المستخدمة'}
+                            </span>
+                            <p className="font-black text-xs text-[#2D332A] mt-0.5">
+                              {isHourly ? `${summary.totalHours ?? 0} ساعة` : (summary.usedSessionsCount || 0)}
+                            </p>
                             <span className="text-[8px] text-[#8A9187]">حضور فعلي</span>
                           </div>
 
-                          {/* 5. Unpaid Sessions */}
+                          {/* 5. Unpaid / Due Sessions / Hours */}
                           <div className={`p-2 rounded-xl border ${
-                            summary.unpaidSessionsCount > 0
+                            summary.remaining > 0
                               ? 'bg-[#C97C5D]/15 border-[#C97C5D]/30 text-[#C97C5D]'
                               : 'bg-[#F9F7F2] border-[#E8E2D6] text-[#748C70]'
                           }`}>
-                            <span className="font-bold block text-[9px] text-[#8A9187]">٥. الحصص المستحقة</span>
-                            <p className="font-black text-xs mt-0.5">{summary.unpaidSessionsCount || 0}</p>
+                            <span className="font-bold block text-[9px] text-[#8A9187]">
+                              {isHourly ? '٥. الساعات المستحقة' : '٥. الحصص المستحقة'}
+                            </span>
+                            <p className="font-black text-xs mt-0.5">
+                              {isHourly ? (summary.unpaidHours ? `${summary.unpaidHours} ساعة` : (summary.remaining > 0 ? `${(summary.remaining / (summary.effectiveSessionPrice || summary.customPrice || 1)).toFixed(1)} س` : '0')) : (summary.unpaidSessionsCount || 0)}
+                            </p>
                             <span className="text-[8px] text-[#8A9187]">
-                              {summary.unpaidSessionsCount > 0 ? `${summary.unpaidSessionsCount * (summary.effectiveSessionPrice || summary.customPrice)} ج` : 'مسددة بالكامل'}
+                              {summary.remaining > 0 ? `${summary.remaining} ج` : 'مسددة بالكامل'}
                             </span>
                           </div>
 
@@ -1470,37 +1508,60 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         </div>
 
                         {/* Additional Session Credit & Financial Credit Badges with Combined Count & Value */}
-                        <div className="flex items-center justify-between text-[11px] bg-[#748C70]/10 p-2.5 rounded-xl border border-[#748C70]/20 flex-wrap gap-2">
-                          <div className="flex items-center gap-1.5 font-bold text-[#60755C]">
-                            <Sparkles className="w-3.5 h-3.5 text-[#748C70]" />
-                            <span>
-                              {summary.sessionCredit > 0 ? (
-                                <>
-                                  رصيد الحصص المتبقي (Session Credit):{' '}
-                                  <strong className="text-[#2D332A]">
-                                    {summary.sessionCredit} حصص ({summary.sessionCreditValue || summary.sessionCredit * (summary.effectiveSessionPrice || summary.customPrice)} ج.م)
-                                  </strong>
-                                </>
-                              ) : isPostpaid ? (
-                                <>نظام آجل (Postpaid): <strong>المحاسبة بعد حضور الحصص</strong></>
-                              ) : (
-                                <>
-                                  رصيد الحصص المتبقي (Session Credit):{' '}
-                                  <strong className="text-[#2D332A]">0 حصص (0 ج.م)</strong>
-                                </>
-                              )}
-                            </span>
+                        {isHourly ? (
+                          <div className="flex items-center justify-between text-[11px] bg-[#9C6615]/10 p-2.5 rounded-xl border border-[#9C6615]/20 flex-wrap gap-2">
+                            <div className="flex items-center gap-1.5 font-bold text-[#9C6615]">
+                              <Clock className="w-3.5 h-3.5 text-[#9C6615]" />
+                              <span>
+                                نظام محاسبة بالساعات (Hourly Billing):{' '}
+                                <strong className="text-[#2D332A]">
+                                  المحاسبة بالمدة الفعلية ({summary.totalHours ?? 0} ساعة منفذة • إجمالي الرسوم {summary.totalDue} ج.م)
+                                </strong>
+                              </span>
+                            </div>
+                            {summary.remaining > 0 ? (
+                              <span className="font-bold text-[#C97C5D]">
+                                المستحق المتبقي: <strong>{summary.remaining} ج.م ({summary.unpaidHours ?? 0} ساعة)</strong>
+                              </span>
+                            ) : (
+                              <span className="font-bold text-[#60755C]">
+                                ✓ تم سداد جميع الساعات المنفذة بالكامل
+                              </span>
+                            )}
                           </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-[11px] bg-[#748C70]/10 p-2.5 rounded-xl border border-[#748C70]/20 flex-wrap gap-2">
+                            <div className="flex items-center gap-1.5 font-bold text-[#60755C]">
+                              <Sparkles className="w-3.5 h-3.5 text-[#748C70]" />
+                              <span>
+                                {summary.sessionCredit > 0 ? (
+                                  <>
+                                    رصيد الحصص المتبقي (Session Credit):{' '}
+                                    <strong className="text-[#2D332A]">
+                                      {summary.sessionCredit} حصص ({summary.sessionCreditValue || summary.sessionCredit * (summary.effectiveSessionPrice || summary.customPrice)} ج.م)
+                                    </strong>
+                                  </>
+                                ) : isPostpaid ? (
+                                  <>نظام آجل (Postpaid): <strong>المحاسبة بعد حضور الحصص</strong></>
+                                ) : (
+                                  <>
+                                    رصيد الحصص المتبقي (Session Credit):{' '}
+                                    <strong className="text-[#2D332A]">0 حصص (0 ج.م)</strong>
+                                  </>
+                                )}
+                              </span>
+                            </div>
 
-                          {summary.financialCredit > 0 && (
-                            <span className="font-bold text-[#60755C]">
-                              رصيد مالي متبقي: <strong>{summary.financialCredit} ج.م</strong>
-                            </span>
-                          )}
-                        </div>
+                            {summary.financialCredit > 0 && (
+                              <span className="font-bold text-[#60755C]">
+                                رصيد مالي متبقي: <strong>{summary.financialCredit} ج.م</strong>
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Unpaid Sessions Alert if exists */}
-                        {summary.unpaidSessionsCount > 0 && (
+                        {!isHourly && summary.unpaidSessionsCount > 0 && (
                           <div className="p-2.5 bg-[#C97C5D]/15 text-[#C97C5D] rounded-xl border border-[#C97C5D]/30 text-[11px] font-medium flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1519,7 +1580,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           <div className="flex items-center justify-between">
                             <span className="text-[11px] font-bold text-[#2D332A] flex items-center gap-1">
                               <CalendarCheck2 className="w-3.5 h-3.5 text-[#748C70]" />
-                              <span>٨. سجل الحصص لهذا الحساب ({serviceSessions.length} حصة):</span>
+                              <span>
+                                ٨. سجل الحصص لهذا الحساب ({isHourly ? `${summary.totalHours ?? 0} ساعة منفذة • ${serviceSessions.length} حصص` : `${serviceSessions.length} حصة`}):
+                              </span>
                             </span>
                           </div>
 
@@ -1535,6 +1598,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 const isPresent = !isCancelled && att?.status === 'present';
                                 const isAbsentCharged = !isCancelled && (att?.status === 'absent_charged' || (att?.status === 'absent' && att.isCharged !== false));
                                 const isAbsentFree = !isCancelled && (att?.status === 'absent_free' || att?.status === 'excused' || att?.isCharged === false);
+                                const durationHours = att?.hours !== undefined && att?.hours !== null ? Number(att.hours) : (s.hours !== undefined && s.hours !== null ? Number(s.hours) : 1);
+                                const currentRate = att?.hourlyRate || s.hourlyRate || summary.customPrice || 100;
+                                const sessionCost = isHourly ? Math.round(durationHours * currentRate) : (s.pricePerStudent || summary.customPrice || 100);
 
                                 return (
                                   <div key={s.id} className="p-2.5 bg-white space-y-1.5">
@@ -1543,7 +1609,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                         <strong className={`block ${isCancelled ? 'line-through text-[#8A9187]' : 'text-[#2D332A]'}`}>
                                           {s.title}
                                         </strong>
-                                        <span className="text-[10px] text-[#8A9187]">{s.date} • {s.startTime}</span>
+                                        <span className="text-[10px] text-[#8A9187]">
+                                          {s.date} • {s.startTime}
+                                          {isHourly && (
+                                            <span className="text-[#9C6615] font-bold mr-1">
+                                              • {durationHours} {durationHours === 1 ? 'ساعة' : durationHours === 2 ? 'ساعتان' : 'ساعة'}{Math.round((durationHours % 1) * 60) > 0 ? ` (${Math.floor(durationHours)}س و ${Math.round((durationHours % 1) * 60)}د)` : ''} ({sessionCost} ج)
+                                            </span>
+                                          )}
+                                        </span>
                                       </div>
                                       <span
                                         className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
@@ -1601,6 +1674,22 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                       >
                                         غائب معفى
                                       </button>
+                                      {!isCancelled && (isPresent || isAbsentCharged) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleSessionPaymentOverride(s.id)}
+                                          title="تعديل حالة السداد اليدوي للحصة"
+                                          className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-all ${
+                                            (att?.paymentStatus === 'unpaid' || att?.paymentOverride === 'unpaid' || att?.isPaid === false)
+                                              ? 'bg-[#C97C5D]/15 text-[#C97C5D] border-[#C97C5D]/40 hover:bg-[#C97C5D]/25'
+                                              : 'bg-[#748C70]/15 text-[#60755C] border-[#748C70]/40 hover:bg-[#748C70]/25'
+                                          }`}
+                                        >
+                                          {(att?.paymentStatus === 'unpaid' || att?.paymentOverride === 'unpaid' || att?.isPaid === false)
+                                            ? '💳 مستحقة (غير مسددة)'
+                                            : '✓ مسددة'}
+                                        </button>
+                                      )}
                                       {!isCancelled && (
                                         <button
                                           type="button"

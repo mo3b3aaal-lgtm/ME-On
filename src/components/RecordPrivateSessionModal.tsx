@@ -258,26 +258,29 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
           {/* Duration in Hours (If Hourly) OR Session Count */}
           {isHourly ? (
-            <div className="space-y-2 p-3 bg-white rounded-2xl border border-[#D49B4B]/40">
+            <div className="space-y-2.5 p-3.5 bg-white rounded-2xl border border-[#D49B4B]/40 shadow-xs">
               <label className="font-bold text-[#2D332A] text-xs flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-[#9C6615]">
                   <Timer className="w-4 h-4" />
                   <span>مدة الحصة بالساعات:</span>
                 </span>
-                <span className="text-xs font-black text-[#D49B4B]">{hours} ساعة ({Math.round(hours * 60)} دقيقة)</span>
+                <span className="text-xs font-black text-[#D49B4B]">
+                  {hours} {hours === 1 ? 'ساعة' : hours === 2 ? 'ساعتان' : 'ساعة'}
+                  {Math.round((hours % 1) * 60) > 0 ? ` (${Math.floor(hours)} س و ${Math.round((hours % 1) * 60)} د)` : ''}
+                </span>
               </label>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setHours((prev) => Math.max(0.5, Number((prev - 0.5).toFixed(1))))}
+                  onClick={() => setHours((prev) => Math.max(0.25, Number((prev - 0.25).toFixed(2))))}
                   className="w-10 h-10 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
                 >
                   -
                 </button>
                 <input
                   type="number"
-                  min="0.5"
+                  min="0.25"
                   step="0.25"
                   required
                   value={hours}
@@ -286,7 +289,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                 />
                 <button
                   type="button"
-                  onClick={() => setHours((prev) => Number((prev + 0.5).toFixed(1)))}
+                  onClick={() => setHours((prev) => Number((prev + 0.25).toFixed(2)))}
                   className="w-10 h-10 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] font-black text-base text-[#2D332A] hover:bg-[#F2ECE1] active:scale-95 transition-all flex items-center justify-center shadow-xs"
                 >
                   +
@@ -296,18 +299,25 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               {/* Quick presets for hours */}
               <div className="flex items-center gap-1.5 pt-1 flex-wrap">
                 <span className="text-[10px] text-[#8A9187] font-bold">خيارات سريعة:</span>
-                {[1, 1.5, 2, 2.5, 3].map((hVal) => (
+                {[
+                  { val: 1, label: '1 ساعة' },
+                  { val: 1.5, label: '1.5 ساعة (1:30)' },
+                  { val: 2, label: '2 ساعة' },
+                  { val: 2.25, label: '2.25 س (2:15)' },
+                  { val: 2.5, label: '2.5 ساعة (2:30)' },
+                  { val: 3, label: '3 ساعات' },
+                ].map((preset) => (
                   <button
-                    key={hVal}
+                    key={preset.val}
                     type="button"
-                    onClick={() => setHours(hVal)}
+                    onClick={() => setHours(preset.val)}
                     className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                      hours === hVal
+                      hours === preset.val
                         ? 'bg-[#D49B4B] text-white border-[#D49B4B]'
                         : 'bg-white text-[#6B7567] border-[#E8E2D6] hover:bg-[#F9F7F2]'
                     }`}
                   >
-                    {hVal} {hVal === 1 ? 'ساعة' : 'ساعات'}
+                    {preset.label}
                   </button>
                 ))}
               </div>

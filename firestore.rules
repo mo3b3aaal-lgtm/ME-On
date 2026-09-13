@@ -1,58 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions for schema validation
-    function isValidUser(data) {
-      return data.keys().hasAll(['id', 'email', 'name', 'auth_token']) &&
-        data.id is string && data.id.size() > 0 &&
-        data.email is string && data.email.size() > 0 &&
-        data.name is string && data.name.size() > 0 &&
-        data.auth_token is string && data.auth_token.size() > 0;
-    }
-
-    function isValidSyncStore(data, userId) {
-      return data.keys().hasAll(['user_id', 'version', 'last_sync_time', 'data_package']) &&
-        data.user_id == userId &&
-        data.version is string &&
-        data.last_sync_time is string &&
-        data.data_package is map;
-    }
-
-    function isValidAuditLog(data) {
-      return data.keys().hasAll(['id', 'user_id', 'action', 'timestamp']) &&
-        data.id is string &&
-        data.user_id is string &&
-        data.action is string &&
-        data.timestamp is string;
-    }
-
-    // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;
-    }
-
-    // Secure user accounts collection
-    match /users/{userId} {
-      allow read: if true;
-      allow create: if isValidUser(request.resource.data);
-      allow update: if isValidUser(request.resource.data);
-      allow delete: if false;
-    }
-
-    // Secure user synchronization store packages
-    match /user_sync_stores/{userId} {
-      allow read: if true;
-      allow create: if isValidSyncStore(request.resource.data, userId);
-      allow update: if isValidSyncStore(request.resource.data, userId);
-      allow delete: if false;
-    }
-
-    // Secure sync audit logs (Append-only / Immutable)
-    match /sync_audit_logs/{logId} {
-      allow read: if true;
-      allow create: if isValidAuditLog(request.resource.data);
-      allow update, delete: if false;
     }
   }
 }

@@ -190,6 +190,9 @@ export interface Attendance {
   enrollmentId?: string;
   status: AttendanceStatus; // حاضر | غائب - محسوبة | غائب - غير محسوبة | متأخر | معتذر
   isCharged?: boolean; // هل الحصة محسوبة ماليًا على الطالب؟
+  paymentStatus?: 'paid' | 'unpaid' | 'default'; // حالة سداد الحصة (مدفوعة أو مستحقة/غير مسددة)
+  isPaid?: boolean; // هل الحصة مدفوعة أم لا
+  paymentOverride?: 'paid' | 'unpaid'; // تجاوز يدوي من المعلم لحالة السداد
   hours?: number; // عدد الساعات المسجلة للطالب
   hourlyRate?: number; // سعر الساعة للطالب
   absenceReason?: string; // سبب عدم احتساب الغياب (الطالب ألغى | المدرس ألغى | مرض | ظرف طارئ | سبب آخر | مخصص)
@@ -291,6 +294,8 @@ export interface EnrollmentFinancialSummary {
   sessionCreditValue: number;
   financialCredit: number;
   attendedSessionsCount: number;
+  totalHours?: number;
+  unpaidHours?: number;
   extraSessionsCount: number;
   purchasedSessionsCount: number;
   usedSessionsCount: number;

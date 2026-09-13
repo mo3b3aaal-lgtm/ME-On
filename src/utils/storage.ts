@@ -2629,6 +2629,7 @@ export const db = {
     const monthlyLedger: MonthlyBillingLedgerItem[] = [];
     let totalDue = 0;
     let extraSessionsTotal = 0;
+    let totalAccumulatedHours = 0;
 
     const isHourly =
       enrollment.billingType === 'hourly' ||
@@ -2743,12 +2744,13 @@ export const db = {
         totalDue += totalRequired;
       }
     } else if (isHourly) {
-      // Hourly billing calculation
+      // Hourly billing calculation: sum the exact duration of each charged lesson
       let hourlyGrossCharged = 0;
       consumedAttendance.forEach((a) => {
         const sess = sessions.find((s) => s.id === a.sessionId);
-        const hours = a.hours || sess?.hours || 1;
+        const hours = a.hours !== undefined && a.hours !== null ? Number(a.hours) : (sess?.hours !== undefined && sess?.hours !== null ? Number(sess.hours) : 1);
         const rate = a.hourlyRate || sess?.hourlyRate || enrollment.hourlyRate || enrollment.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
+        totalAccumulatedHours += hours;
         hourlyGrossCharged += hours * rate;
       });
       totalDue = hourlyGrossCharged;
@@ -2758,6 +2760,14 @@ export const db = {
       const packagePrice = enrollment.packagePrice || group?.defaultPrice || enrollment.customPrice;
       const unitRate = packageSessions > 0 ? Math.round(packagePrice / packageSessions) : 100;
       totalDue = attendedCount * unitRate;
+    } else if (isPrepaid) {
+      // Prepaid: Normal attended sessions are automatically paid (0 due by default).
+      // Only sessions manually overridden to unpaid contribute to totalDue.
+      const sessionRate = getEffectiveSessionPrice(enrollment, group);
+      const prepaidUnpaidAttendance = consumedAttendance.filter(
+        (a) => a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false
+      );
+      totalDue = prepaidUnpaidAttendance.length * sessionRate;
     } else {
       // Per session billing (Prepaid / Postpaid)
       const sessionRate = getEffectiveSessionPrice(enrollment, group);
@@ -2780,35 +2790,45 @@ export const db = {
     let sessionCreditValue = 0;
     let unpaidSessionsCount = 0;
     let settledSessionsCount = 0;
+    let unpaidHours = 0;
     let remaining = Math.max(0, totalDue - totalPaid);
 
     if (isHourly) {
-      // Hourly mode stats
+      // Hourly mode stats: calculated purely on hours/duration, not session counts
+      const effectiveHourlyRate = enrollment.hourlyRate || enrollment.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
       usedSessionsCount = attendedCount;
       if (totalPaid >= totalDue) {
         remaining = 0;
-        settledSessionsCount = attendedCount;
+        unpaidHours = 0;
         unpaidSessionsCount = 0;
+        settledSessionsCount = attendedCount;
       } else {
         remaining = totalDue - totalPaid;
-        settledSessionsCount = sessionRate > 0 ? Math.floor(totalPaid / sessionRate) : 0;
-        unpaidSessionsCount = Math.max(0, attendedCount - settledSessionsCount);
+        unpaidHours = effectiveHourlyRate > 0 ? Number((remaining / effectiveHourlyRate).toFixed(2)) : 0;
+        settledSessionsCount = 0;
+        unpaidSessionsCount = 0;
       }
     } else if (isPrepaid) {
       // PREPAID Rules:
-      const explicitPurchased = payments.reduce((sum, p) => {
-        if (p.sessionsPurchased && p.sessionsPurchased > 0) return sum + p.sessionsPurchased;
-        if (p.paymentType === 'single_session') return sum + 1;
-        if (p.paymentType === 'session_count') return sum + (p.sessionsPurchased || 1);
-        if (sessionRate > 0 && p.amount) return sum + Math.floor(Number(p.amount) / sessionRate);
-        return sum;
-      }, 0) + payments.reduce((sum, p) => sum + (p.autoSessionsConverted || 0), 0);
+      // - Normal attendance is automatically marked Paid (Due = 0).
+      // - No session-credit system, no remaining prepaid credits.
+      // - Session still counts as a normal completed session.
+      // - Teacher can manually override an individual session to Unpaid/Due.
+      // - Overridden sessions contribute to outstanding balance and unpaidSessionsCount.
+      const prepaidUnpaidAttendance = consumedAttendance.filter(
+        (a) => a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false
+      );
+      const prepaidUnpaidCount = prepaidUnpaidAttendance.length;
+      const prepaidPaidCount = attendedCount - prepaidUnpaidCount;
 
-      purchasedSessionsCount = explicitPurchased > 0 ? explicitPurchased : (sessionRate > 0 ? Math.floor(totalPaid / sessionRate) : 0);
-      usedSessionsCount = Math.min(attendedCount, purchasedSessionsCount);
-      effectiveSessionCredit = Math.max(0, purchasedSessionsCount - attendedCount);
-      sessionCreditValue = effectiveSessionCredit * sessionRate;
-      unpaidSessionsCount = Math.max(0, attendedCount - purchasedSessionsCount);
+      usedSessionsCount = attendedCount;
+      settledSessionsCount = prepaidPaidCount;
+      effectiveSessionCredit = 0;
+      sessionCreditValue = 0;
+
+      const paymentsCoveredSessions = sessionRate > 0 ? Math.floor(totalPaid / sessionRate) : 0;
+      purchasedSessionsCount = prepaidPaidCount + paymentsCoveredSessions;
+      unpaidSessionsCount = Math.max(0, prepaidUnpaidCount - paymentsCoveredSessions);
       remaining = Math.max(0, totalDue - totalPaid);
     } else if (isPostpaid) {
       // POSTPAID Rules:
@@ -2882,6 +2902,8 @@ export const db = {
       sessionCreditValue,
       financialCredit: enrollment.financialCredit || 0,
       attendedSessionsCount: attendedCount,
+      totalHours: isHourly ? totalAccumulatedHours : undefined,
+      unpaidHours: isHourly ? unpaidHours : undefined,
       extraSessionsCount: extraSessionsTotal,
       purchasedSessionsCount,
       usedSessionsCount,

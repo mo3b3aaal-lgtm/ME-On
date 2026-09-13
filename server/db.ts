@@ -1,35 +1,28 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { Firestore } from "@google-cloud/firestore";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
-// Load config from firebase-applet-config.json
-let firebaseConfig: any = {};
+// Load configuration for project and named database
+let projectId = "corded-elevator-cf6jr";
+let databaseId = "ai-studio-teacherskdb-2ab7b23f-628d-4bc7-9c38-f649ca7153f9";
+
 try {
   const configPath = path.join(process.cwd(), "firebase-applet-config.json");
   if (fs.existsSync(configPath)) {
-    firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    if (config.projectId) projectId = config.projectId;
+    if (config.firestoreDatabaseId) databaseId = config.firestoreDatabaseId;
   }
 } catch (e) {
-  console.error("Error loading firebase-applet-config.json:", e);
+  console.error("Error loading firebase-applet-config.json for Firestore config:", e);
 }
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-
-// Use the designated database ID if provided, otherwise default
-export const db = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize official @google-cloud/firestore Server SDK with Application Default Credentials (ADC)
+export const db = new Firestore({
+  projectId,
+  databaseId,
+});
 
 export interface ServerUser {
   id: string;
@@ -48,7 +41,6 @@ export function generateRandomSessionToken(): string {
 }
 
 export function generateDeterministicToken(userId: string, salt = "teachermanager_secret_seed"): string {
-  // Provided for backward compatibility if ever queried, but session tokens are random
   return crypto.randomBytes(32).toString("hex");
 }
 
@@ -77,14 +69,14 @@ export async function authenticateUser(
     hasPasswordProvided: Boolean(password),
   });
 
-  const usersColl = collection(db, "users");
+  const usersColl = db.collection("users");
   let matchedDoc: any = null;
   const queryErrors: string[] = [];
 
   // 1. Direct document lookup (if identifier is a user ID like acc_...)
   try {
-    const directDoc = await getDoc(doc(db, "users", clean));
-    if (directDoc.exists()) {
+    const directDoc = await usersColl.doc(clean).get();
+    if (directDoc.exists) {
       matchedDoc = directDoc;
     }
   } catch (e: any) {
@@ -95,8 +87,7 @@ export async function authenticateUser(
   // 2. Query by email (lowercase)
   if (!matchedDoc) {
     try {
-      const qEmail = query(usersColl, where("email", "==", clean.toLowerCase()));
-      const snap = await getDocs(qEmail);
+      const snap = await usersColl.where("email", "==", clean.toLowerCase()).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -109,8 +100,7 @@ export async function authenticateUser(
   // 3. Query by exact email (in case stored without lowercase)
   if (!matchedDoc) {
     try {
-      const qEmailRaw = query(usersColl, where("email", "==", clean));
-      const snap = await getDocs(qEmailRaw);
+      const snap = await usersColl.where("email", "==", clean).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -123,8 +113,7 @@ export async function authenticateUser(
   // 4. Query by phone
   if (!matchedDoc) {
     try {
-      const qPhone = query(usersColl, where("phone", "==", clean));
-      const snap = await getDocs(qPhone);
+      const snap = await usersColl.where("phone", "==", clean).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -137,8 +126,7 @@ export async function authenticateUser(
   // 5. Query by name
   if (!matchedDoc) {
     try {
-      const qName = query(usersColl, where("name", "==", clean));
-      const snap = await getDocs(qName);
+      const snap = await usersColl.where("name", "==", clean).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -200,8 +188,7 @@ export async function authenticateUser(
   const token = generateRandomSessionToken();
   const now = new Date().toISOString();
 
-  await setDoc(
-    matchedDoc.ref,
+  await matchedDoc.ref.set(
     {
       auth_token: token,
       last_login_at: now,
@@ -230,12 +217,11 @@ export async function registerUser(account: {
 }): Promise<{ user: ServerUser; token: string }> {
   const cleanEmail = (account.email || "").trim().toLowerCase();
   const cleanPhone = (account.phone || "").trim();
-  const usersColl = collection(db, "users");
+  const usersColl = db.collection("users");
 
   // Check if email already exists
   if (cleanEmail) {
-    const qEmail = query(usersColl, where("email", "==", cleanEmail));
-    const snap = await getDocs(qEmail);
+    const snap = await usersColl.where("email", "==", cleanEmail).get();
     if (!snap.empty) {
       const existing = snap.docs[0].data() as ServerUser;
       const pwdHash = account.password
@@ -246,8 +232,7 @@ export async function registerUser(account: {
       }
       const token = generateRandomSessionToken();
       const now = new Date().toISOString();
-      await setDoc(
-        snap.docs[0].ref,
+      await snap.docs[0].ref.set(
         {
           auth_token: token,
           last_login_at: now,
@@ -278,9 +263,9 @@ export async function registerUser(account: {
     updated_at: now,
   };
 
-  const userRef = doc(db, "users", userId);
+  const userRef = usersColl.doc(userId);
   try {
-    await setDoc(userRef, {
+    await userRef.set({
       ...newUser,
       subject: account.subject || "عام",
       centerOrSchool: account.centerOrSchool || "",
@@ -313,16 +298,14 @@ export async function resetUserPasswordInFirestore(
   recoveryPin?: string
 ): Promise<{ success: boolean; message: string }> {
   const clean = (identifier || "").trim();
-  const usersColl = collection(db, "users");
+  const usersColl = db.collection("users");
   let matchedDoc: any = null;
 
-  const qEmail = query(usersColl, where("email", "==", clean.toLowerCase()));
-  const snap = await getDocs(qEmail);
-  if (!snap.empty) {
-    matchedDoc = snap.docs[0];
+  const snapEmail = await usersColl.where("email", "==", clean.toLowerCase()).get();
+  if (!snapEmail.empty) {
+    matchedDoc = snapEmail.docs[0];
   } else {
-    const qPhone = query(usersColl, where("phone", "==", clean));
-    const snapPhone = await getDocs(qPhone);
+    const snapPhone = await usersColl.where("phone", "==", clean).get();
     if (!snapPhone.empty) {
       matchedDoc = snapPhone.docs[0];
     }
@@ -340,8 +323,7 @@ export async function resetUserPasswordInFirestore(
   const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
   const newToken = generateRandomSessionToken(); // Invalidate old session tokens
   const now = new Date().toISOString();
-  await setDoc(
-    matchedDoc.ref,
+  await matchedDoc.ref.set(
     {
       password_hash: newHash,
       auth_token: newToken,
@@ -356,9 +338,9 @@ export async function resetUserPasswordInFirestore(
 export async function invalidateUserToken(userId: string): Promise<boolean> {
   if (!userId) return false;
   try {
-    const userRef = doc(db, "users", userId);
+    const userRef = db.collection("users").doc(userId);
     const newToken = generateRandomSessionToken();
-    await setDoc(userRef, { auth_token: newToken, updated_at: new Date().toISOString() }, { merge: true });
+    await userRef.set({ auth_token: newToken, updated_at: new Date().toISOString() }, { merge: true });
     return true;
   } catch (err) {
     console.error("Error invalidating user token in Firestore:", err);
@@ -380,9 +362,8 @@ export async function registerOrAuthenticateUser(account: {
 export async function getUserByToken(token: string): Promise<ServerUser | null> {
   if (!token || typeof token !== "string") return null;
   try {
-    const usersColl = collection(db, "users");
-    const q = query(usersColl, where("auth_token", "==", token.trim()));
-    const snap = await getDocs(q);
+    const usersColl = db.collection("users");
+    const snap = await usersColl.where("auth_token", "==", token.trim()).get();
     if (snap.empty) return null;
     return snap.docs[0].data() as ServerUser;
   } catch (err) {
@@ -394,9 +375,9 @@ export async function getUserByToken(token: string): Promise<ServerUser | null> 
 export async function getUserById(userId: string): Promise<ServerUser | null> {
   if (!userId) return null;
   try {
-    const userRef = doc(db, "users", userId);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) return null;
+    const userRef = db.collection("users").doc(userId);
+    const snap = await userRef.get();
+    if (!snap.exists) return null;
     return snap.data() as ServerUser;
   } catch (err) {
     console.error("Error getting user by id from Firestore:", err);
@@ -407,13 +388,14 @@ export async function getUserById(userId: string): Promise<ServerUser | null> {
 export async function getCloudDataPackage(userId: string): Promise<any | null> {
   if (!userId) return null;
   try {
-    const syncDocRef = doc(db, "user_sync_stores", userId);
-    const snap = await getDoc(syncDocRef);
-    if (!snap.exists()) {
+    const syncDocRef = db.collection("user_sync_stores").doc(userId);
+    const snap = await syncDocRef.get();
+    if (!snap.exists) {
       console.log(`[Server Cloud Storage] No sync package document found in Firestore for user ${userId}`);
       return null;
     }
     const data = snap.data();
+    if (!data) return null;
     const rawPkg = data.package || data.data_package || null;
     if (!rawPkg) {
       console.log(`[Server Cloud Storage] Sync store document for user ${userId} contains empty package`);
@@ -516,9 +498,8 @@ export async function saveCloudDataPackage(userId: string, dataPackage: any): Pr
     lastSyncTime: now,
   });
 
-  const syncDocRef = doc(db, "user_sync_stores", userId);
-  await setDoc(
-    syncDocRef,
+  const syncDocRef = db.collection("user_sync_stores").doc(userId);
+  await syncDocRef.set(
     {
       user_id: userId,
       version: dataPackage.version || "2.0",
@@ -532,13 +513,13 @@ export async function saveCloudDataPackage(userId: string, dataPackage: any): Pr
 
   // Async audit log
   try {
-    const auditRef = doc(collection(db, "sync_audit_logs"));
+    const auditRef = db.collection("sync_audit_logs").doc();
     const totalRecords =
       (dataPackage.students?.length || 0) +
       (dataPackage.groups?.length || 0) +
       (dataPackage.sessions?.length || 0) +
       (dataPackage.payments?.length || 0);
-    setDoc(auditRef, {
+    auditRef.set({
       id: auditRef.id,
       user_id: userId,
       action: "sync_push",
@@ -778,12 +759,14 @@ export async function resetUserCloudData(
   console.log(`[Server Cloud Reset] Processing reset for user ${userId} with timestamp ${resetTimestamp}...`);
 
   // 1. Fetch current cloud document if any
-  const syncDocRef = doc(db, "user_sync_stores", userId);
-  const snap = await getDoc(syncDocRef);
+  const syncDocRef = db.collection("user_sync_stores").doc(userId);
+  const snap = await syncDocRef.get();
   let existingPkg: any = {};
-  if (snap.exists()) {
+  if (snap.exists) {
     const d = snap.data();
-    existingPkg = d.package || d.data_package || {};
+    if (d) {
+      existingPkg = d.package || d.data_package || {};
+    }
   }
 
   // Determine effective resetAllBefore (keep greatest timestamp if an existing reset was newer)
@@ -840,8 +823,7 @@ export async function resetUserCloudData(
   });
 
   // Write to Firestore and await completion
-  await setDoc(
-    syncDocRef,
+  await syncDocRef.set(
     {
       user_id: userId,
       version: "2.0",
@@ -854,13 +836,13 @@ export async function resetUserCloudData(
   );
 
   // 2. Perform Read-After-Write Verification directly on Firestore
-  const verifySnap = await getDoc(syncDocRef);
-  if (!verifySnap.exists()) {
+  const verifySnap = await syncDocRef.get();
+  if (!verifySnap.exists) {
     throw new Error("Firestore read-after-write verification failed: sync store document not found");
   }
 
   const verifyData = verifySnap.data();
-  const verifyPkg = verifyData.package || verifyData.data_package;
+  const verifyPkg = verifyData?.package || verifyData?.data_package;
   if (!verifyPkg || verifyPkg.resetAllBefore !== effectiveReset) {
     throw new Error("Firestore read-after-write verification failed: resetAllBefore mismatch");
   }
@@ -885,4 +867,3 @@ export async function resetUserCloudData(
     verifiedActiveSessions,
   };
 }
-

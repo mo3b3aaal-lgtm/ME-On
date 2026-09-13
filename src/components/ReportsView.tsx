@@ -970,19 +970,27 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                           </span>
                         </div>
                         <span className="text-[10px] text-[#878E82]">
-                          سعر الحصة: <strong className="text-[#272D24]">{summary.customPrice} ج.م</strong>
+                          {summary.billingMode === 'hourly' || summary.billingType === 'hourly' ? 'سعر الساعة:' : 'سعر الحصة:'} <strong className="text-[#272D24]">{summary.customPrice} ج.م</strong>
                         </span>
                       </div>
 
                       <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
                         <div className="p-1.5 bg-white rounded-lg border border-[#EAE6DE]">
-                          <span className="text-[#878E82] block text-[9px]">المستهلك</span>
-                          <strong className="text-xs text-[#272D24]">{summary.usedSessionsCount || 0}</strong>
+                          <span className="text-[#878E82] block text-[9px]">
+                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly' ? 'الساعات المنفذة' : 'المستهلك'}
+                          </span>
+                          <strong className="text-xs text-[#272D24]">
+                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly' ? `${summary.totalHours ?? 0} ساعة` : (summary.usedSessionsCount || 0)}
+                          </strong>
                         </div>
-                        <div className="p-1.5 bg-white rounded-lg border border-[#EAE6DE]">
-                          <span className="text-[#878E82] block text-[9px]">رصيد الحصص</span>
+                        <div className="p-1.5 bg-white rounded-lg border border-[#E8E2D6]">
+                          <span className="text-[#878E82] block text-[9px]">
+                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly' ? 'إجمالي الرسوم' : 'رصيد الحصص'}
+                          </span>
                           <strong className="text-xs text-[#607B5E]">
-                            {summary.sessionCredit} {summary.sessionCredit > 0 ? `(${summary.sessionCreditValue || summary.sessionCredit * summary.customPrice}ج)` : ''}
+                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly'
+                              ? `${summary.totalDue} ج`
+                              : `${summary.sessionCredit} ${summary.sessionCredit > 0 ? `(${summary.sessionCreditValue || summary.sessionCredit * summary.customPrice}ج)` : ''}`}
                           </strong>
                         </div>
                         <div className="p-1.5 bg-white rounded-lg border border-[#EAE6DE]">
@@ -992,7 +1000,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                         <div className={`p-1.5 rounded-lg border ${summary.remaining > 0 ? 'bg-[#B86B52]/10 border-[#B86B52]/25 text-[#B86B52]' : 'bg-white border-[#EAE6DE] text-[#607B5E]'}`}>
                           <span className="block text-[9px]">المتبقي (Current Due)</span>
                           <strong className="text-xs">
-                            {summary.remaining} ج {summary.unpaidSessionsCount > 0 ? `(${summary.unpaidSessionsCount}ح)` : ''}
+                            {summary.remaining} ج {(summary.billingMode === 'hourly' || summary.billingType === 'hourly') ? (summary.unpaidHours ? `(${summary.unpaidHours}س)` : '') : (summary.unpaidSessionsCount > 0 ? `(${summary.unpaidSessionsCount}ح)` : '')}
                           </strong>
                         </div>
                       </div>

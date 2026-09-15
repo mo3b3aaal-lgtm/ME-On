@@ -37,7 +37,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode, StudentGrandFinancialSummary } from '../types';
-import { db, getArabicMonthName, getBillingModeLabel } from '../utils/storage';
+import { db, getArabicMonthName, getBillingModeLabel, divideMoney, multiplyMoney, roundMoney } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
 import { getLocalizedStageName } from '../utils/stages';
@@ -873,7 +873,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 <span className="text-[#8A9187] block">سعر الحصة</span>
                                 <strong className="text-xs text-[#6B7567] block">
                                   {isPkg && enr.packageSessionsCount
-                                    ? `${Math.round((enr.packagePrice || enr.customPrice) / enr.packageSessionsCount)} ج`
+                                    ? `${divideMoney(enr.packagePrice || enr.customPrice, enr.packageSessionsCount)} ج`
                                     : `${enr.customPrice} ج`}
                                 </strong>
                               </div>
@@ -1183,6 +1183,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <label className="text-[11px] font-bold text-[#2D332A] block mb-1">سعر الساعة (ج.م):</label>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               required
                               value={newPrivateHourlyRate}
@@ -1195,6 +1196,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <label className="text-[11px] font-bold text-[#2D332A] block mb-1">سعر الحصة (ج.م):</label>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               required
                               value={newPrivatePrice}
@@ -1234,13 +1236,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <label className="text-[10px] font-bold text-[#2D332A] block mb-1">إجمالي سعر الباقة (ج):</label>
                             <input
                               type="number"
+                              step="any"
                               min="0"
                               value={newPrivatePackagePrice}
                               onChange={(e) => {
                                 const val = Number(e.target.value) || 0;
                                 setNewPrivatePackagePrice(val);
                                 if (newPrivatePackageSessions > 0) {
-                                  setNewPrivatePrice(Math.round(val / newPrivatePackageSessions));
+                                  setNewPrivatePrice(divideMoney(val, newPrivatePackageSessions));
                                 }
                               }}
                               className="w-full p-1.5 text-xs rounded-lg border border-[#E8E2D6] bg-white font-bold"
@@ -1398,6 +1401,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                   <label className="text-[10px] font-bold text-[#2D332A] block mb-1">سعر الساعة (ج.م):</label>
                                   <input
                                     type="number"
+                                    step="any"
                                     min="0"
                                     value={editHourlyRate}
                                     onChange={(e) => setEditHourlyRate(Number(e.target.value) || 0)}
@@ -1411,6 +1415,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                   </label>
                                   <input
                                     type="number"
+                                    step="any"
                                     min="0"
                                     value={editCustomPrice}
                                     onChange={(e) => setEditCustomPrice(Number(e.target.value) || 0)}
@@ -1436,6 +1441,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                   <label className="text-[10px] font-bold text-[#2D332A] block mb-1">سعر الباقة الإجمالي (ج):</label>
                                   <input
                                     type="number"
+                                    step="any"
                                     min="0"
                                     value={editPackagePrice}
                                     onChange={(e) => setEditPackagePrice(Number(e.target.value) || 0)}

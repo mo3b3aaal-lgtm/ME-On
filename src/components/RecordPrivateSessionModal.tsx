@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock, BookOpen, Layers, CheckCircle2, Sparkles, Hash, AlignRight, Timer } from 'lucide-react';
 import { Student, Enrollment, Group } from '../types';
-import { db } from '../utils/storage';
+import { db, roundMoney, multiplyMoney, divideMoney } from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface RecordPrivateSessionModalProps {
@@ -94,9 +94,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
   // Effective Session Price
   const effectiveSessionPrice = isHourly
-    ? Math.round(hours * hourlyRate)
+    ? multiplyMoney(hours, hourlyRate)
     : isPackage && packageSessionsCount > 0
-    ? Math.round(packageTotalPrice / packageSessionsCount)
+    ? divideMoney(packageTotalPrice, packageSessionsCount)
     : (activeEnrollment?.customPrice || activeGroup?.defaultPrice || 100);
 
   const isCharged = attendanceType === 'present' || attendanceType === 'absent_charged';
@@ -104,8 +104,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   // Total Session Value
   const totalSessionValue = isCharged
     ? isHourly
-      ? Math.round(hours * hourlyRate)
-      : (Number(sessionCount) || 1) * effectiveSessionPrice
+      ? multiplyMoney(hours, hourlyRate)
+      : multiplyMoney(Number(sessionCount) || 1, effectiveSessionPrice)
     : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -566,15 +566,15 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   <div className="p-2 bg-[#748C70]/10 rounded-xl text-[10px] text-[#60755C] space-y-1">
                     <div className="flex justify-between">
                       <span>رصيد الباقة المتاح حالياً:</span>
-                      <strong>{finSummary.sessionCredit} حصص ({finSummary.sessionCredit * effectiveSessionPrice} جنيه)</strong>
+                      <strong>{finSummary.sessionCredit} حصص ({multiplyMoney(finSummary.sessionCredit, effectiveSessionPrice)} جنيه)</strong>
                     </div>
                     {finSummary.sessionCredit >= sessionCount ? (
                       <div className="text-[#60755C] font-bold">
-                        ✓ سيتم خصم ({sessionCount}) حصص من رصيد الباقة. الرصيد المتبقي سيصبح: <strong>{finSummary.sessionCredit - sessionCount} حصص ({(finSummary.sessionCredit - sessionCount) * effectiveSessionPrice} جنيه)</strong>
+                        ✓ سيتم خصم ({sessionCount}) حصص من رصيد الباقة. الرصيد المتبقي سيصبح: <strong>{finSummary.sessionCredit - sessionCount} حصص ({multiplyMoney(finSummary.sessionCredit - sessionCount, effectiveSessionPrice)} جنيه)</strong>
                       </div>
                     ) : (
                       <div className="text-[#C97C5D] font-bold">
-                        ⚠️ الرصيد المتاح ({finSummary.sessionCredit}) حصص. سيتم استهلاك الرصيد، وتسجيل ({sessionCount - finSummary.sessionCredit}) حصص مستحقة بقيمة <strong>{(sessionCount - finSummary.sessionCredit) * effectiveSessionPrice} جنيه</strong> تضاف إلى المستحق.
+                        ⚠️ الرصيد المتاح ({finSummary.sessionCredit}) حصص. سيتم استهلاك الرصيد، وتسجيل ({sessionCount - finSummary.sessionCredit}) حصص مستحقة بقيمة <strong>{multiplyMoney(sessionCount - finSummary.sessionCredit, effectiveSessionPrice)} جنيه</strong> تضاف إلى المستحق.
                       </div>
                     )}
                   </div>
@@ -611,15 +611,15 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   <div className="p-2 bg-[#748C70]/10 rounded-xl text-[10px] text-[#60755C] space-y-1">
                     <div className="flex justify-between">
                       <span>الرصيد المتاح حالياً:</span>
-                      <strong>{finSummary.sessionCredit} حصص ({finSummary.sessionCreditValue || finSummary.sessionCredit * effectiveSessionPrice} جنيه)</strong>
+                      <strong>{finSummary.sessionCredit} حصص ({finSummary.sessionCreditValue || multiplyMoney(finSummary.sessionCredit, effectiveSessionPrice)} جنيه)</strong>
                     </div>
                     {finSummary.sessionCredit >= sessionCount ? (
                       <div className="text-[#60755C] font-bold">
-                        ✓ سيتم استهلاك ({sessionCount}) حصص من الرصيد. الرصيد المتبقي سيصبح: <strong>{finSummary.sessionCredit - sessionCount} حصص ({(finSummary.sessionCredit - sessionCount) * effectiveSessionPrice} جنيه)</strong>
+                        ✓ سيتم استهلاك ({sessionCount}) حصص من الرصيد. الرصيد المتبقي سيصبح: <strong>{finSummary.sessionCredit - sessionCount} حصص ({multiplyMoney(finSummary.sessionCredit - sessionCount, effectiveSessionPrice)} جنيه)</strong>
                       </div>
                     ) : (
                       <div className="text-[#C97C5D] font-bold">
-                        ⚠️ الرصيد المتاح ({finSummary.sessionCredit}) حصص. سيتم استهلاك الرصيد بالكامل (0)، وتسجيل ({sessionCount - finSummary.sessionCredit}) حصص مستحقة بقيمة <strong>{(sessionCount - finSummary.sessionCredit) * effectiveSessionPrice} جنيه</strong> تضاف إلى المستحق (Current Due).
+                        ⚠️ الرصيد المتاح ({finSummary.sessionCredit}) حصص. سيتم استهلاك الرصيد بالكامل (0)، وتسجيل ({sessionCount - finSummary.sessionCredit}) حصص مستحقة بقيمة <strong>{multiplyMoney(sessionCount - finSummary.sessionCredit, effectiveSessionPrice)} جنيه</strong> تضاف إلى المستحق (Current Due).
                       </div>
                     )}
                   </div>

@@ -44,8 +44,30 @@ import {
   BulkStudentResultItem,
 } from '../types';
 import { getAppLanguage } from './i18n';
+import {
+  roundMoney,
+  multiplyMoney,
+  divideMoney,
+  addMoney,
+  subtractMoney,
+  calculateCoveredSessions,
+  calculateMoneyRemainder,
+  formatMoney,
+} from './money';
 
-export { getServerApiBaseUrl, getFullApiUrl, DEPLOYED_SERVER_API_URL };
+export {
+  getServerApiBaseUrl,
+  getFullApiUrl,
+  DEPLOYED_SERVER_API_URL,
+  roundMoney,
+  multiplyMoney,
+  divideMoney,
+  addMoney,
+  subtractMoney,
+  calculateCoveredSessions,
+  calculateMoneyRemainder,
+  formatMoney,
+};
 
 let lastAuthDiagnosticsRecord: AuthDiagnostics | null = null;
 const executedBulkBatches = new Map<string, BulkCreateSessionsResult>();
@@ -166,7 +188,8 @@ export function getEffectiveSessionPrice(
     group?.billingType === 'hourly';
 
   if (isHourly) {
-    return enrollment?.hourlyRate || enrollment?.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
+    const rawRate = enrollment?.hourlyRate || enrollment?.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
+    return roundMoney(rawRate, 2);
   }
 
   const isPackage =
@@ -183,11 +206,12 @@ export function getEffectiveSessionPrice(
       enrollment?.customPrice ||
       1000;
     if (pkgSessions > 0) {
-      return Math.round(pkgPrice / pkgSessions);
+      return divideMoney(pkgPrice, pkgSessions);
     }
   }
 
-  return enrollment?.customPrice || group?.defaultPrice || 100;
+  const rawPrice = enrollment?.customPrice || group?.defaultPrice || 100;
+  return roundMoney(rawPrice, 2);
 }
 
 const DEFAULT_TEACHER_PROFILE: TeacherProfile = {
@@ -1263,19 +1287,19 @@ export function calculateCustomEnrollmentPrice(
 ): number {
   switch (modifierType) {
     case 'same_as_group':
-      return defaultGroupPrice;
+      return roundMoney(defaultGroupPrice, 2);
     case 'fixed_discount':
-      return Math.max(0, defaultGroupPrice - (modifierValue || 0));
+      return Math.max(0, roundMoney(defaultGroupPrice - (modifierValue || 0), 2));
     case 'percentage_discount':
-      return Math.max(0, Math.round(defaultGroupPrice * (1 - (modifierValue || 0) / 100)));
+      return Math.max(0, roundMoney(defaultGroupPrice * (1 - (modifierValue || 0) / 100), 2));
     case 'fixed_increase':
-      return defaultGroupPrice + (modifierValue || 0);
+      return roundMoney(defaultGroupPrice + (modifierValue || 0), 2);
     case 'percentage_increase':
-      return Math.round(defaultGroupPrice * (1 + (modifierValue || 0) / 100));
+      return roundMoney(defaultGroupPrice * (1 + (modifierValue || 0) / 100), 2);
     case 'custom_price':
-      return Math.max(0, modifierValue || 0);
+      return Math.max(0, roundMoney(modifierValue || 0, 2));
     default:
-      return defaultGroupPrice;
+      return roundMoney(defaultGroupPrice, 2);
   }
 }
 
@@ -1501,8 +1525,8 @@ export const db = {
     const packageSessions = isPackage ? (options.packageSessionsCount && options.packageSessionsCount > 0 ? options.packageSessionsCount : 10) : undefined;
     const packagePrice = isPackage ? (options.packagePrice || options.sessionPrice) : undefined;
     const effectivePrice = isPackage && packageSessions && packagePrice
-      ? Math.round(packagePrice / packageSessions)
-      : options.sessionPrice;
+      ? divideMoney(packagePrice, packageSessions)
+      : roundMoney(options.sessionPrice, 2);
 
     const newGroup: Group = {
       id: `grp_priv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -1512,8 +1536,8 @@ export const db = {
       type: 'private',
       billingType: resolvedBilling,
       billingMode: resolvedMode,
-      defaultPrice: isPackage && packagePrice ? packagePrice : options.sessionPrice,
-      hourlyRate: options.hourlyRate,
+      defaultPrice: isPackage && packagePrice ? roundMoney(packagePrice, 2) : roundMoney(options.sessionPrice, 2),
+      hourlyRate: options.hourlyRate ? roundMoney(options.hourlyRate, 2) : undefined,
       packageSessionsCount: packageSessions,
       scheduleDays: options.scheduleDays || ['السبت'],
       scheduleTime: options.scheduleTime || '04:00 م',
@@ -1767,14 +1791,14 @@ export const db = {
       : undefined;
 
     // Effective Session Price
-    let effectiveSessionPrice = enrollment?.customPrice || group?.defaultPrice || 100;
+    let effectiveSessionPrice = roundMoney(enrollment?.customPrice || group?.defaultPrice || 100, 2);
     if (isHourly) {
-      effectiveSessionPrice = hours * hourlyRate;
+      effectiveSessionPrice = multiplyMoney(hours, hourlyRate);
     } else if (isPackage && packageSessionsCount && packageTotalPrice) {
-      effectiveSessionPrice = Math.round(packageTotalPrice / packageSessionsCount);
+      effectiveSessionPrice = divideMoney(packageTotalPrice, packageSessionsCount);
     }
 
-    const totalSessionValue = count * effectiveSessionPrice;
+    const totalSessionValue = multiplyMoney(count, effectiveSessionPrice);
     const packageId = isPackage ? (enrollment?.groupId || group?.id || `pkg_${enrollment?.id}`) : undefined;
 
     const dateObj = new Date(params.date);
@@ -1958,14 +1982,14 @@ export const db = {
         : undefined;
 
       // Effective Session Price
-      let effectiveSessionPrice = enrollment.customPrice || group.defaultPrice || 100;
+      let effectiveSessionPrice = roundMoney(enrollment.customPrice || group.defaultPrice || 100, 2);
       if (isHourly) {
-        effectiveSessionPrice = hours * hourlyRate;
+        effectiveSessionPrice = multiplyMoney(hours, hourlyRate);
       } else if (isPackage && packageSessionsCount && packageTotalPrice) {
-        effectiveSessionPrice = Math.round(packageTotalPrice / packageSessionsCount);
+        effectiveSessionPrice = divideMoney(packageTotalPrice, packageSessionsCount);
       }
 
-      const totalStudentValue = count * effectiveSessionPrice;
+      const totalStudentValue = multiplyMoney(count, effectiveSessionPrice);
       const packageId = isPackage ? (enrollment.groupId || group.id || `pkg_${enrollment.id}`) : undefined;
       const baseTitle = params.title?.trim() || `حصة دراسية: ${student.name}`;
 
@@ -2323,7 +2347,7 @@ export const db = {
     let autoSessionsConverted = 0;
     let financialCreditConverted = 0;
 
-    const paymentAmount = Number(paymentData.amount) || 0;
+    const paymentAmount = roundMoney(Number(paymentData.amount) || 0, 2);
     const paymentId = `pmt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
     if (targetEnrollment) {
@@ -2347,28 +2371,28 @@ export const db = {
       let newSessions = 0;
       if (isPrepaid || isPackage) {
         if (sessionRate > 0) {
-          const covered = Math.floor(paymentAmount / sessionRate);
-          const remainder = paymentAmount % sessionRate;
+          const covered = calculateCoveredSessions(paymentAmount, sessionRate);
+          const remainder = calculateMoneyRemainder(paymentAmount, sessionRate);
           newSessions = covered;
           sessionsPurchased = covered;
           sessionsCovered = covered;
           financialCreditAdded = remainder;
-          targetEnrollment.financialCredit = (targetEnrollment.financialCredit || 0) + remainder;
+          targetEnrollment.financialCredit = roundMoney((targetEnrollment.financialCredit || 0) + remainder, 2);
         }
       } else if (isPostpaid) {
         // Postpaid: Settle unpaid sessions first, then convert excess to Session Credit
-        const totalUnpaidValue = prevUnpaid * sessionRate;
-        const covered = sessionRate > 0 ? Math.floor(paymentAmount / sessionRate) : 0;
-        const remainder = sessionRate > 0 ? paymentAmount % sessionRate : 0;
+        const totalUnpaidValue = multiplyMoney(prevUnpaid, sessionRate);
+        const covered = calculateCoveredSessions(paymentAmount, sessionRate);
+        const remainder = calculateMoneyRemainder(paymentAmount, sessionRate);
         sessionsPurchased = covered;
         sessionsCovered = covered;
         financialCreditAdded = remainder;
-        targetEnrollment.financialCredit = (targetEnrollment.financialCredit || 0) + remainder;
+        targetEnrollment.financialCredit = roundMoney((targetEnrollment.financialCredit || 0) + remainder, 2);
 
         if (paymentAmount > totalUnpaidValue && totalUnpaidValue > 0) {
           // Settles all unpaid sessions + converts excess to session credit
-          const excessValue = paymentAmount - totalUnpaidValue;
-          const excessSessions = sessionRate > 0 ? Math.floor(excessValue / sessionRate) : 0;
+          const excessValue = subtractMoney(paymentAmount, totalUnpaidValue);
+          const excessSessions = calculateCoveredSessions(excessValue, sessionRate);
           targetEnrollment.sessionCredit = balanceBefore + excessSessions;
 
           db.addCreditLog({
@@ -2427,13 +2451,13 @@ export const db = {
           newSessions = sessionsPurchased;
         } else if (paymentData.paymentType === 'custom_amount') {
           if (sessionRate > 0) {
-            const covered = Math.floor(paymentAmount / sessionRate);
-            const remainder = paymentAmount % sessionRate;
+            const covered = calculateCoveredSessions(paymentAmount, sessionRate);
+            const remainder = calculateMoneyRemainder(paymentAmount, sessionRate);
             sessionsCovered = covered;
             sessionsPurchased = covered;
             financialCreditAdded = remainder;
             newSessions = covered;
-            targetEnrollment.financialCredit = (targetEnrollment.financialCredit || 0) + remainder;
+            targetEnrollment.financialCredit = roundMoney((targetEnrollment.financialCredit || 0) + remainder, 2);
           }
         }
       }
@@ -2473,13 +2497,13 @@ export const db = {
 
       // Check for Automatic Financial Credit Conversion to Session Credit
       if (sessionRate > 0 && (targetEnrollment.financialCredit || 0) >= sessionRate) {
-        const canConvertSessions = Math.floor(targetEnrollment.financialCredit / sessionRate);
+        const canConvertSessions = calculateCoveredSessions(targetEnrollment.financialCredit || 0, sessionRate);
         if (canConvertSessions > 0) {
           const creditBalBefore = targetEnrollment.sessionCredit || 0;
           autoSessionsConverted = canConvertSessions;
-          financialCreditConverted = canConvertSessions * sessionRate;
+          financialCreditConverted = multiplyMoney(canConvertSessions, sessionRate);
           targetEnrollment.sessionCredit = creditBalBefore + canConvertSessions;
-          targetEnrollment.financialCredit = targetEnrollment.financialCredit - financialCreditConverted;
+          targetEnrollment.financialCredit = subtractMoney(targetEnrollment.financialCredit || 0, financialCreditConverted);
 
           db.addCreditLog({
             enrollmentId: targetEnrollment.id,
@@ -2624,7 +2648,7 @@ export const db = {
     const baseSessionsLimit = enrollment.baseSessionsPerMonth || 8;
     const extraSessionRate =
       enrollment.extraSessionPrice ||
-      (enrollment.customPrice > 0 ? Math.round(enrollment.customPrice / baseSessionsLimit) : 100);
+      (enrollment.customPrice > 0 ? divideMoney(enrollment.customPrice, baseSessionsLimit) : 100);
 
     const monthlyLedger: MonthlyBillingLedgerItem[] = [];
     let totalDue = 0;
@@ -2702,9 +2726,9 @@ export const db = {
         const attendedThisMonth = consumedAttendance.filter((a) => monthSessionIds.has(a.sessionId)).length;
 
         const extraInMonth = Math.max(0, attendedThisMonth - baseSessionsLimit);
-        const extraCharge = extraInMonth * extraSessionRate;
-        const basePrice = enrollment.customPrice;
-        const totalRequired = basePrice + extraCharge;
+        const extraCharge = multiplyMoney(extraInMonth, extraSessionRate);
+        const basePrice = roundMoney(enrollment.customPrice, 2);
+        const totalRequired = addMoney(basePrice, extraCharge);
 
         extraSessionsTotal += extraInMonth;
 
@@ -2718,11 +2742,12 @@ export const db = {
           })
           .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-        const remainingThisMonth = Math.max(0, totalRequired - paidThisMonth);
+        const paidThisMonthRounded = roundMoney(paidThisMonth, 2);
+        const remainingThisMonth = Math.max(0, subtractMoney(totalRequired, paidThisMonthRounded));
         let status: MonthBillStatus = 'unpaid';
-        if (paidThisMonth >= totalRequired && totalRequired > 0) {
+        if (paidThisMonthRounded >= totalRequired && totalRequired > 0) {
           status = 'fully_paid';
-        } else if (paidThisMonth > 0) {
+        } else if (paidThisMonthRounded > 0) {
           status = 'partially_paid';
         }
 
@@ -2736,12 +2761,12 @@ export const db = {
           extraSessions: extraInMonth,
           extraCharge,
           totalRequired,
-          totalPaid: paidThisMonth,
+          totalPaid: paidThisMonthRounded,
           remaining: remainingThisMonth,
           status,
         });
 
-        totalDue += totalRequired;
+        totalDue = addMoney(totalDue, totalRequired);
       }
     } else if (isHourly) {
       // Hourly billing calculation: sum the exact duration of each charged lesson
@@ -2750,16 +2775,16 @@ export const db = {
         const sess = sessions.find((s) => s.id === a.sessionId);
         const hours = a.hours !== undefined && a.hours !== null ? Number(a.hours) : (sess?.hours !== undefined && sess?.hours !== null ? Number(sess.hours) : 1);
         const rate = a.hourlyRate || sess?.hourlyRate || enrollment.hourlyRate || enrollment.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
-        totalAccumulatedHours += hours;
-        hourlyGrossCharged += hours * rate;
+        totalAccumulatedHours = roundMoney(totalAccumulatedHours + hours, 2);
+        hourlyGrossCharged = addMoney(hourlyGrossCharged, multiplyMoney(hours, rate));
       });
       totalDue = hourlyGrossCharged;
     } else if (isPackage) {
       // Package billing
       const packageSessions = enrollment.packageSessionsCount || group?.packageSessionsCount || 8;
       const packagePrice = enrollment.packagePrice || group?.defaultPrice || enrollment.customPrice;
-      const unitRate = packageSessions > 0 ? Math.round(packagePrice / packageSessions) : 100;
-      totalDue = attendedCount * unitRate;
+      const unitRate = packageSessions > 0 ? divideMoney(packagePrice, packageSessions) : 100;
+      totalDue = multiplyMoney(attendedCount, unitRate);
     } else if (isPrepaid) {
       // Prepaid: Normal attended sessions are automatically paid (0 due by default).
       // Only sessions manually overridden to unpaid contribute to totalDue.
@@ -2767,11 +2792,11 @@ export const db = {
       const prepaidUnpaidAttendance = consumedAttendance.filter(
         (a) => a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false
       );
-      totalDue = prepaidUnpaidAttendance.length * sessionRate;
+      totalDue = multiplyMoney(prepaidUnpaidAttendance.length, sessionRate);
     } else {
       // Per session billing (Prepaid / Postpaid)
       const sessionRate = getEffectiveSessionPrice(enrollment, group);
-      totalDue = attendedCount * sessionRate;
+      totalDue = multiplyMoney(attendedCount, sessionRate);
     }
 
     const freeAttendance = attendanceRecords.filter((a) => {
@@ -2782,7 +2807,7 @@ export const db = {
     const freeSessionsCount = freeAttendance.length;
 
     const sessionRate = getEffectiveSessionPrice(enrollment, group);
-    const totalPaid = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const totalPaid = roundMoney(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0), 2);
 
     let purchasedSessionsCount = 0;
     let usedSessionsCount = 0;
@@ -2791,7 +2816,7 @@ export const db = {
     let unpaidSessionsCount = 0;
     let settledSessionsCount = 0;
     let unpaidHours = 0;
-    let remaining = Math.max(0, totalDue - totalPaid);
+    let remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
 
     if (isHourly) {
       // Hourly mode stats: calculated purely on hours/duration, not session counts
@@ -2803,7 +2828,7 @@ export const db = {
         unpaidSessionsCount = 0;
         settledSessionsCount = attendedCount;
       } else {
-        remaining = totalDue - totalPaid;
+        remaining = subtractMoney(totalDue, totalPaid);
         unpaidHours = effectiveHourlyRate > 0 ? Number((remaining / effectiveHourlyRate).toFixed(2)) : 0;
         settledSessionsCount = 0;
         unpaidSessionsCount = 0;
@@ -2826,25 +2851,25 @@ export const db = {
       effectiveSessionCredit = 0;
       sessionCreditValue = 0;
 
-      const paymentsCoveredSessions = sessionRate > 0 ? Math.floor(totalPaid / sessionRate) : 0;
+      const paymentsCoveredSessions = sessionRate > 0 ? calculateCoveredSessions(totalPaid, sessionRate) : 0;
       purchasedSessionsCount = prepaidPaidCount + paymentsCoveredSessions;
       unpaidSessionsCount = Math.max(0, prepaidUnpaidCount - paymentsCoveredSessions);
-      remaining = Math.max(0, totalDue - totalPaid);
+      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
     } else if (isPostpaid) {
       // POSTPAID Rules:
       if (totalPaid >= totalDue) {
         settledSessionsCount = attendedCount;
         unpaidSessionsCount = 0;
         remaining = 0;
-        const excess = totalPaid - totalDue;
-        effectiveSessionCredit = sessionRate > 0 ? Math.floor(excess / sessionRate) : 0;
-        sessionCreditValue = effectiveSessionCredit * sessionRate;
+        const excess = subtractMoney(totalPaid, totalDue);
+        effectiveSessionCredit = sessionRate > 0 ? calculateCoveredSessions(excess, sessionRate) : 0;
+        sessionCreditValue = multiplyMoney(effectiveSessionCredit, sessionRate);
         purchasedSessionsCount = attendedCount + effectiveSessionCredit;
         usedSessionsCount = attendedCount;
       } else {
-        settledSessionsCount = sessionRate > 0 ? Math.floor(totalPaid / sessionRate) : 0;
+        settledSessionsCount = sessionRate > 0 ? calculateCoveredSessions(totalPaid, sessionRate) : 0;
         unpaidSessionsCount = Math.max(0, attendedCount - settledSessionsCount);
-        remaining = Math.max(0, totalDue - totalPaid);
+        remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
         effectiveSessionCredit = 0;
         sessionCreditValue = 0;
         purchasedSessionsCount = settledSessionsCount;
@@ -2857,27 +2882,27 @@ export const db = {
       effectiveSessionCredit = 0;
       sessionCreditValue = 0;
       unpaidSessionsCount = 0;
-      remaining = Math.max(0, totalDue - totalPaid);
+      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
     } else {
       // Package or other
       const packageSessions = enrollment.packageSessionsCount || group?.packageSessionsCount || 10;
       const packagePrice = enrollment.packagePrice || group?.defaultPrice || enrollment.customPrice;
-      const unitRate = packageSessions > 0 ? Math.round(packagePrice / packageSessions) : sessionRate;
+      const unitRate = packageSessions > 0 ? divideMoney(packagePrice, packageSessions) : sessionRate;
 
       const explicitPurchased = payments.reduce((sum, p) => {
         if (p.sessionsPurchased && p.sessionsPurchased > 0) return sum + p.sessionsPurchased;
         if (p.paymentType === 'single_session') return sum + 1;
         if (p.paymentType === 'session_count') return sum + (p.sessionsPurchased || 1);
-        if (unitRate > 0 && p.amount) return sum + Math.floor(Number(p.amount) / unitRate);
+        if (unitRate > 0 && p.amount) return sum + calculateCoveredSessions(Number(p.amount), unitRate);
         return sum;
       }, 0) + payments.reduce((sum, p) => sum + (p.autoSessionsConverted || 0), 0);
 
-      purchasedSessionsCount = explicitPurchased > 0 ? explicitPurchased : (unitRate > 0 ? Math.floor(totalPaid / unitRate) : 0);
+      purchasedSessionsCount = explicitPurchased > 0 ? explicitPurchased : (unitRate > 0 ? calculateCoveredSessions(totalPaid, unitRate) : 0);
       usedSessionsCount = Math.min(attendedCount, purchasedSessionsCount);
       effectiveSessionCredit = Math.max(0, purchasedSessionsCount - attendedCount);
-      sessionCreditValue = effectiveSessionCredit * unitRate;
+      sessionCreditValue = multiplyMoney(effectiveSessionCredit, unitRate);
       unpaidSessionsCount = Math.max(0, attendedCount - purchasedSessionsCount);
-      remaining = Math.max(0, totalDue - totalPaid);
+      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
     }
 
     const creditLogs = db.getEnrollmentCreditLogs(enrollment.id);
@@ -2937,12 +2962,12 @@ export const db = {
       const summary = db.calculateEnrollmentFinancials(enr.id);
       if (summary) {
         enrollmentsSummary.push(summary);
-        grandTotalDue += summary.totalDue;
-        grandTotalPaid += summary.totalPaid;
-        grandRemaining += summary.remaining;
+        grandTotalDue = addMoney(grandTotalDue, summary.totalDue);
+        grandTotalPaid = addMoney(grandTotalPaid, summary.totalPaid);
+        grandRemaining = addMoney(grandRemaining, summary.remaining);
         totalSessionCredit += summary.sessionCredit;
         totalUnpaidSessions += summary.unpaidSessionsCount;
-        totalFinancialCredit += summary.financialCredit;
+        totalFinancialCredit = addMoney(totalFinancialCredit, summary.financialCredit);
       }
     }
 
@@ -2950,22 +2975,22 @@ export const db = {
     const privateSummaries = enrollmentsSummary.filter((e) => e.groupType === 'private');
 
     const groupsFinancials = {
-      totalDue: groupSummaries.reduce((sum, s) => sum + s.totalDue, 0),
-      totalPaid: groupSummaries.reduce((sum, s) => sum + s.totalPaid, 0),
-      remaining: groupSummaries.reduce((sum, s) => sum + s.remaining, 0),
+      totalDue: roundMoney(groupSummaries.reduce((sum, s) => sum + s.totalDue, 0), 2),
+      totalPaid: roundMoney(groupSummaries.reduce((sum, s) => sum + s.totalPaid, 0), 2),
+      remaining: roundMoney(groupSummaries.reduce((sum, s) => sum + s.remaining, 0), 2),
       totalSessionCredit: groupSummaries.reduce((sum, s) => sum + s.sessionCredit, 0),
       totalUnpaidSessions: groupSummaries.reduce((sum, s) => sum + s.unpaidSessionsCount, 0),
-      totalFinancialCredit: groupSummaries.reduce((sum, s) => sum + s.financialCredit, 0),
+      totalFinancialCredit: roundMoney(groupSummaries.reduce((sum, s) => sum + s.financialCredit, 0), 2),
       enrollments: groupSummaries,
     };
 
     const privateFinancials = {
-      totalDue: privateSummaries.reduce((sum, s) => sum + s.totalDue, 0),
-      totalPaid: privateSummaries.reduce((sum, s) => sum + s.totalPaid, 0),
-      remaining: privateSummaries.reduce((sum, s) => sum + s.remaining, 0),
+      totalDue: roundMoney(privateSummaries.reduce((sum, s) => sum + s.totalDue, 0), 2),
+      totalPaid: roundMoney(privateSummaries.reduce((sum, s) => sum + s.totalPaid, 0), 2),
+      remaining: roundMoney(privateSummaries.reduce((sum, s) => sum + s.remaining, 0), 2),
       totalSessionCredit: privateSummaries.reduce((sum, s) => sum + s.sessionCredit, 0),
       totalUnpaidSessions: privateSummaries.reduce((sum, s) => sum + s.unpaidSessionsCount, 0),
-      totalFinancialCredit: privateSummaries.reduce((sum, s) => sum + s.financialCredit, 0),
+      totalFinancialCredit: roundMoney(privateSummaries.reduce((sum, s) => sum + s.financialCredit, 0), 2),
       enrollments: privateSummaries,
     };
 
@@ -3012,8 +3037,8 @@ export const db = {
 
       const enrSummary = db.calculateEnrollmentFinancials(enr.id);
       if (enrSummary) {
-        totalDue += enrSummary.totalDue;
-        totalPaid += enrSummary.totalPaid;
+        totalDue = addMoney(totalDue, enrSummary.totalDue);
+        totalPaid = addMoney(totalPaid, enrSummary.totalPaid);
         totalPrepaidCredits += enrSummary.sessionCredit;
         totalAttendedSessions += enrSummary.attendedSessionsCount;
 
@@ -3040,7 +3065,7 @@ export const db = {
       totalStudents: enrollments.length,
       totalDue,
       totalPaid,
-      remaining: Math.max(0, totalDue - totalPaid),
+      remaining: Math.max(0, subtractMoney(totalDue, totalPaid)),
       totalCompletedSessions: completedSessions.length,
       totalAttendedSessions,
       totalPrepaidCredits,
@@ -3063,14 +3088,14 @@ export const db = {
 
     students.forEach((st) => {
       const fin = db.calculateStudentGrandFinancials(st.id);
-      totalDues += fin.grandTotalDue;
-      totalRemaining += fin.grandRemaining;
+      totalDues = addMoney(totalDues, fin.grandTotalDue);
+      totalRemaining = addMoney(totalRemaining, fin.grandRemaining);
       fin.enrollmentsSummary.forEach((e) => {
         totalExtraSessions += e.extraSessionsCount;
       });
     });
 
-    totalRevenue = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    totalRevenue = roundMoney(payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0), 2);
 
     // Monthly revenues breakdown
     const monthlyMap: Record<string, { revenue: number; dues: number }> = {};

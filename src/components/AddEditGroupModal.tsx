@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Layers, Clock, MapPin, DollarSign, Calendar, GraduationCap, Plus, Trash2 } from 'lucide-react';
 import { Group, GroupType, BillingType } from '../types';
-import { db } from '../utils/storage';
+import { db, divideMoney } from '../utils/storage';
 import { ALL_GRADE_LEVELS, STAGES_HIERARCHY, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
@@ -344,6 +344,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min={0}
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(Number(e.target.value))}
@@ -357,6 +358,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                   </label>
                   <input
                     type="number"
+                    step="any"
                     min={0}
                     value={defaultPrice}
                     onChange={(e) => setDefaultPrice(Number(e.target.value))}
@@ -389,7 +391,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
                 <div className="p-2 bg-[#D49B4B]/10 rounded-lg flex items-center justify-between text-xs text-[#9C6615] font-bold">
                   <span>{isRTL ? 'سعر الحصة الفعلي المحسوب:' : 'Calculated Price Per Session:'}</span>
                   <span className="text-sm font-black text-[#2D332A]">
-                    {packageSessionsCount > 0 ? (Math.round((defaultPrice / packageSessionsCount) * 100) / 100) : 0} {t('currency')} / {isRTL ? 'حصة' : 'session'}
+                    {packageSessionsCount > 0 ? divideMoney(defaultPrice, packageSessionsCount) : 0} {t('currency')} / {isRTL ? 'حصة' : 'session'}
                   </span>
                 </div>
               </div>

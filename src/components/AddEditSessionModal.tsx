@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CalendarCheck2, Clock, Calendar, BookOpen, DollarSign } from 'lucide-react';
 import { Session, Group } from '../types';
-import { db, getEffectiveSessionPrice } from '../utils/storage';
+import { db, getEffectiveSessionPrice, roundMoney, multiplyMoney } from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface AddEditSessionModalProps {
@@ -101,7 +101,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     if (isHourly) {
       const calculated = calculateHoursFromTimes(newStart, newEnd);
       setHours(calculated);
-      setPricePerStudent(Math.round(calculated * hourlyRate));
+      setPricePerStudent(multiplyMoney(calculated, hourlyRate));
     }
   };
 
@@ -299,7 +299,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#2D332A]">حساب الحصة بالساعة (مجموعة بالساعة)</span>
                 <span className="text-[11px] font-bold text-[#748C70]">
-                  الإجمالي: {Math.round(hours * hourlyRate)} ج.م
+                  الإجمالي: {multiplyMoney(hours, hourlyRate)} ج.م
                 </span>
               </div>
 
@@ -314,7 +314,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                     onChange={(e) => {
                       const h = Number(e.target.value) || 1;
                       setHours(h);
-                      setPricePerStudent(Math.round(h * hourlyRate));
+                      setPricePerStudent(multiplyMoney(h, hourlyRate));
                     }}
                     className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
                   />
@@ -324,12 +324,13 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                   <label className="block text-[11px] font-bold text-[#6B7567] mb-1">سعر الساعة للطالب (ج.م)</label>
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     value={hourlyRate}
                     onChange={(e) => {
                       const rate = Number(e.target.value) || 0;
                       setHourlyRate(rate);
-                      setPricePerStudent(Math.round(hours * rate));
+                      setPricePerStudent(multiplyMoney(hours, rate));
                     }}
                     className="w-full bg-white border border-[#E8E2D6] rounded-xl p-2 text-xs text-[#2D332A] focus:outline-none"
                   />
@@ -344,7 +345,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                     type="button"
                     onClick={() => {
                       setHours(val);
-                      setPricePerStudent(Math.round(val * hourlyRate));
+                      setPricePerStudent(multiplyMoney(val, hourlyRate));
                     }}
                     className={`flex-1 py-1 text-[10px] font-bold rounded-lg border transition-all ${
                       hours === val
@@ -362,6 +363,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
               <label className="block font-bold text-[#6B7567] mb-1">سعر الحصة للطالب (ج.م)</label>
               <input
                 type="number"
+                step="any"
                 min={0}
                 value={pricePerStudent}
                 onChange={(e) => setPricePerStudent(Number(e.target.value))}

@@ -16,7 +16,17 @@ import {
   Users,
 } from 'lucide-react';
 import { Student, Payment, PaymentMethod, PaymentTargetType, Enrollment } from '../types';
-import { db, getArabicMonthName, getBillingModeLabel, getEffectiveSessionPrice } from '../utils/storage';
+import {
+  db,
+  getArabicMonthName,
+  getBillingModeLabel,
+  getEffectiveSessionPrice,
+  roundMoney,
+  multiplyMoney,
+  divideMoney,
+  calculateCoveredSessions,
+  calculateMoneyRemainder,
+} from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface AddPaymentModalProps {
@@ -117,16 +127,16 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     } else if (paymentType === 'single_session') {
       setCustomAmountInput(sessionUnitPrice);
     } else if (paymentType === 'session_count') {
-      setCustomAmountInput(sessionCount * sessionUnitPrice);
+      setCustomAmountInput(multiplyMoney(sessionCount, sessionUnitPrice));
     }
   }, [paymentType, targetMonth, targetYear, monthRemaining, monthTotalRequired, sessionCount, sessionUnitPrice]);
 
   // Calculations for custom amount mode
-  const coveredSessionsFromCustom = sessionUnitPrice > 0 ? Math.floor(customAmountInput / sessionUnitPrice) : 0;
-  const remainderFromCustom = sessionUnitPrice > 0 ? customAmountInput % sessionUnitPrice : 0;
-  const potentialNewFinancialCredit = (activeEnrollment?.financialCredit || 0) + remainderFromCustom;
+  const coveredSessionsFromCustom = sessionUnitPrice > 0 ? calculateCoveredSessions(customAmountInput, sessionUnitPrice) : 0;
+  const remainderFromCustom = sessionUnitPrice > 0 ? calculateMoneyRemainder(customAmountInput, sessionUnitPrice) : 0;
+  const potentialNewFinancialCredit = roundMoney((activeEnrollment?.financialCredit || 0) + remainderFromCustom, 2);
   const potentialAutoConvertedSessions =
-    sessionUnitPrice > 0 ? Math.floor(potentialNewFinancialCredit / sessionUnitPrice) : 0;
+    sessionUnitPrice > 0 ? calculateCoveredSessions(potentialNewFinancialCredit, sessionUnitPrice) : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -447,7 +457,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   {sessionCount} حصص × {sessionUnitPrice} ج.م =
                 </span>
                 <span className="font-bold text-base text-[#2D332A]">
-                  {sessionCount * sessionUnitPrice} ج.م
+                  {multiplyMoney(sessionCount, sessionUnitPrice)} ج.م
                 </span>
               </div>
 
@@ -470,7 +480,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
               <div className="relative">
                 <input
                   type="number"
-                  min="1"
+                  step="any"
+                  min="0.5"
                   value={customAmountInput || ''}
                   onChange={(e) => setCustomAmountInput(Math.max(0, Number(e.target.value)))}
                   placeholder="مثال: 500 أو 250"
@@ -518,8 +529,9 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
             <div className="relative">
               <input
                 type="number"
+                step="any"
                 required
-                min="1"
+                min="0.5"
                 value={customAmountInput || ''}
                 onChange={(e) => setCustomAmountInput(Math.max(0, Number(e.target.value)))}
                 className="w-full p-2.5 rounded-2xl bg-white border border-[#E8E2D6] font-bold text-sm text-[#2D332A] focus:outline-none focus:border-[#748C70]"

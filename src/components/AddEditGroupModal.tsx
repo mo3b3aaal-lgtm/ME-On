@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Layers, Clock, MapPin, DollarSign, Calendar, GraduationCap } from 'lucide-react';
+import { X, Layers, Clock, MapPin, DollarSign, Calendar, GraduationCap, Plus, Trash2 } from 'lucide-react';
 import { Group, GroupType, BillingType } from '../types';
 import { db } from '../utils/storage';
 import { ALL_GRADE_LEVELS, STAGES_HIERARCHY, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { normalizeScheduleTimesList } from '../utils/schedule';
 
 interface AddEditGroupModalProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   const [packageSessionsCount, setPackageSessionsCount] = useState<number>(10);
   const [scheduleDays, setScheduleDays] = useState<string[]>(['السبت', 'الثلاثاء']);
   const [scheduleTime, setScheduleTime] = useState('16:00');
-  const [scheduleTimes, setScheduleTimes] = useState<Record<string, string>>({ 'السبت': '16:00', 'الثلاثاء': '16:00' });
+  const [scheduleTimes, setScheduleTimes] = useState<Record<string, string[]>>({ 'السبت': ['16:00'], 'الثلاثاء': ['16:00'] });
   const [roomOrLocation, setRoomOrLocation] = useState('Room 1');
   const [accentColor, setAccentColor] = useState(GROUP_COLORS[0]);
   const [notes, setNotes] = useState('');
@@ -59,11 +60,13 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setScheduleDays(editingGroup.scheduleDays || []);
       setScheduleTime(editingGroup.scheduleTime || '16:00');
       
-      const initialTimes: Record<string, string> = { ...(editingGroup.scheduleTimes || {}) };
+      const initialTimes: Record<string, string[]> = {};
       if (editingGroup.scheduleDays && editingGroup.scheduleDays.length > 0) {
         editingGroup.scheduleDays.forEach((day) => {
-          if (!initialTimes[day]) {
-            initialTimes[day] = editingGroup.scheduleTime || '16:00';
+          if (editingGroup.scheduleTimes && editingGroup.scheduleTimes[day]) {
+            initialTimes[day] = normalizeScheduleTimesList(editingGroup.scheduleTimes[day]);
+          } else {
+            initialTimes[day] = [editingGroup.scheduleTime || '16:00'];
           }
         });
       }
@@ -82,7 +85,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setPackageSessionsCount(10);
       setScheduleDays(['السبت', 'الثلاثاء']);
       setScheduleTime('16:00');
-      setScheduleTimes({ 'السبت': '16:00', 'الثلاثاء': '16:00' });
+      setScheduleTimes({ 'السبت': ['16:00'], 'الثلاثاء': ['16:00'] });
       setRoomOrLocation('Room 1');
       setAccentColor(GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)]);
       setNotes('');
@@ -94,23 +97,45 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setScheduleDays(scheduleDays.filter((d) => d !== day));
     } else {
       setScheduleDays([...scheduleDays, day]);
-      if (!scheduleTimes[day]) {
-        setScheduleTimes((prev) => ({ ...prev, [day]: scheduleTime || '16:00' }));
+      if (!scheduleTimes[day] || scheduleTimes[day].length === 0) {
+        setScheduleTimes((prev) => ({ ...prev, [day]: [scheduleTime || '16:00'] }));
       }
     }
   };
 
-  const handleDayTimeChange = (day: string, timeVal: string) => {
-    setScheduleTimes((prev) => ({ ...prev, [day]: timeVal }));
-    if (scheduleDays[0] === day || !scheduleTime) {
-      setScheduleTime(timeVal);
-    }
+  const handleDayTimeChange = (day: string, timeIdx: number, timeVal: string) => {
+    setScheduleTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      currentList[timeIdx] = timeVal;
+      return { ...prev, [day]: currentList };
+    });
+  };
+
+  const handleAddDayTime = (day: string) => {
+    setScheduleTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      // Suggest next time slot (e.g. 19:00 if 16:00)
+      const lastTime = currentList[currentList.length - 1] || '16:00';
+      const [h, m] = lastTime.split(':').map(Number);
+      const nextH = !isNaN(h) ? Math.min(23, (h + 3) % 24) : 19;
+      const nextTimeStr = `${String(nextH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+      return { ...prev, [day]: [...currentList, nextTimeStr] };
+    });
+  };
+
+  const handleRemoveDayTime = (day: string, timeIdx: number) => {
+    setScheduleTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      if (currentList.length <= 1) return prev;
+      const updated = currentList.filter((_, idx) => idx !== timeIdx);
+      return { ...prev, [day]: updated };
+    });
   };
 
   const applyTimeToAllDays = (timeVal: string) => {
-    const updated: Record<string, string> = {};
+    const updated: Record<string, string[]> = {};
     scheduleDays.forEach((d) => {
-      updated[d] = timeVal;
+      updated[d] = [timeVal];
     });
     setScheduleTimes(updated);
     setScheduleTime(timeVal);
@@ -129,6 +154,17 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       ? editingGroup.id
       : `grp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
+    // Clean and normalize schedule times
+    const cleanScheduleTimes: Record<string, string[]> = {};
+    scheduleDays.forEach((d) => {
+      const list = normalizeScheduleTimesList(scheduleTimes[d] || [scheduleTime || '16:00']);
+      cleanScheduleTimes[d] = list.length > 0 ? list : ['16:00'];
+    });
+
+    const primaryTime = scheduleDays.length > 0 && cleanScheduleTimes[scheduleDays[0]]?.[0]
+      ? cleanScheduleTimes[scheduleDays[0]][0]
+      : (scheduleTime.trim() || '16:00');
+
     const savedGroup: Group = {
       id: groupId,
       name: name.trim(),
@@ -140,8 +176,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       hourlyRate: billingType === 'hourly' ? (Number(hourlyRate) || 150) : undefined,
       packageSessionsCount: billingType === 'package' ? (Number(packageSessionsCount) || 10) : undefined,
       scheduleDays,
-      scheduleTime: scheduleTime.trim() || (scheduleDays.length > 0 ? scheduleTimes[scheduleDays[0]] || '' : ''),
-      scheduleTimes,
+      scheduleTime: primaryTime,
+      scheduleTimes: cleanScheduleTimes,
       roomOrLocation: roomOrLocation.trim(),
       accentColor,
       notes: notes.trim(),
@@ -413,28 +449,56 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
             {scheduleDays.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-[#E8E2D6]/70">
                 <label className="block text-[11px] font-bold text-[#6B7567]">
-                  {isRTL ? 'تحديد موعد كل يوم بشكل مستقل:' : 'Set time for each selected day:'}
+                  {isRTL ? 'تحديد مواعيد الحصص لكل يوم (يمكن إضافة أكثر من موعد في نفس اليوم):' : 'Set schedule times per day (multiple times supported):'}
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-2">
                   {scheduleDays.map((day) => {
-                    const currentTime = scheduleTimes[day] || scheduleTime || '16:00';
+                    const dayTimes = scheduleTimes[day] && scheduleTimes[day].length > 0 ? scheduleTimes[day] : ['16:00'];
                     return (
                       <div
                         key={day}
-                        className="flex items-center justify-between p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]"
+                        className="p-2.5 rounded-2xl bg-[#F9F7F2] border border-[#E8E2D6] space-y-2"
                       >
-                        <span className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-[#748C70]"></span>
-                          {day}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-[#8A9187]" />
-                          <input
-                            type="time"
-                            value={currentTime}
-                            onChange={(e) => handleDayTimeChange(day, e.target.value)}
-                            className="bg-white border border-[#E8E2D6] rounded-lg px-2 py-1 text-xs font-bold text-[#2D332A] focus:outline-none focus:border-[#748C70]"
-                          />
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#2D332A] flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-[#748C70]"></span>
+                            {day}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleAddDayTime(day)}
+                            className="text-[11px] font-bold text-[#748C70] hover:text-[#5E755A] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#748C70]/10 hover:bg-[#748C70]/20 transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>{isRTL ? 'إضافة موعد آخر' : 'Add another time'}</span>
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {dayTimes.map((tVal, tIdx) => (
+                            <div
+                              key={`${day}_${tIdx}`}
+                              className="flex items-center gap-1.5 bg-white border border-[#E8E2D6] rounded-xl px-2 py-1 shadow-2xs"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-[#8A9187]" />
+                              <input
+                                type="time"
+                                value={tVal}
+                                onChange={(e) => handleDayTimeChange(day, tIdx, e.target.value)}
+                                className="bg-transparent text-xs font-bold text-[#2D332A] focus:outline-none focus:text-[#748C70]"
+                              />
+                              {dayTimes.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDayTime(day, tIdx)}
+                                  className="p-1 rounded-md text-[#8A9187] hover:text-[#C97C5D] hover:bg-[#C97C5D]/10 transition-colors ml-0.5"
+                                  title={isRTL ? 'حذف هذا الموعد' : 'Remove time'}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     );

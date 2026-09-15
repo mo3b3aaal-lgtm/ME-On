@@ -80,6 +80,7 @@ export default function App() {
   const [isAddSessionOpen, setIsAddSessionOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [sessionDefaultGroupId, setSessionDefaultGroupId] = useState<string | undefined>(undefined);
+  const [sessionDefaultDate, setSessionDefaultDate] = useState<string | undefined>(undefined);
 
   const [isBulkAddSessionOpen, setIsBulkAddSessionOpen] = useState(false);
   const [bulkAddStudents, setBulkAddStudents] = useState<Student[]>([]);
@@ -195,9 +196,10 @@ export default function App() {
     setIsAddGroupOpen(true);
   };
 
-  const handleOpenAddSession = (defaultGroupId?: string) => {
+  const handleOpenAddSession = (defaultGroupId?: string, defaultDate?: string) => {
     setEditingSession(null);
     setSessionDefaultGroupId(defaultGroupId || groups[0]?.id);
+    setSessionDefaultDate(defaultDate);
     setIsAddSessionOpen(true);
   };
 
@@ -210,6 +212,7 @@ export default function App() {
   const handleOpenEditSession = (session: Session) => {
     setEditingSession(session);
     setSessionDefaultGroupId(session.groupId);
+    setSessionDefaultDate(session.date);
     setIsAddSessionOpen(true);
   };
 
@@ -234,16 +237,16 @@ export default function App() {
   const { isRTL, language } = useTranslation();
 
   return (
-    <div className="min-h-screen bg-[#EFECE6] flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#272D24]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-slate-900 md:bg-slate-950 flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-slate-900" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* Android Mobile Frame */}
-      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#FAF8F5] md:rounded-[44px] md:border-[8px] md:border-[#EAE6DE] md:ring-1 md:ring-[#DFD9CE] flex flex-col overflow-hidden shadow-xl text-[#272D24]">
+      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-slate-50 md:rounded-[44px] md:border-[8px] md:border-slate-800 md:ring-1 md:ring-slate-700/50 flex flex-col overflow-hidden shadow-2xl text-slate-900">
         
         {/* Android Punch-hole Camera */}
-        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#272D24] border border-[#EAE6DE] z-50 pointer-events-none shadow-inner" />
+        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-slate-900 border border-slate-700 z-50 pointer-events-none shadow-inner" />
 
         {/* Main Screen Body - Extends to the absolute top edge of display */}
-        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#FAF8F5]">
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-slate-50">
           
           {!currentUser ? (
             <AuthView onLoginSuccess={handleLoginSuccess} />
@@ -291,10 +294,12 @@ export default function App() {
                 <SessionsView
                   sessions={sessions}
                   groups={groups}
+                  students={students}
                   onOpenAddSession={handleOpenAddSession}
                   onEditSession={handleOpenEditSession}
                   onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
                   onSessionDeleted={refreshData}
+                  onDataChanged={refreshData}
                 />
               )}
 
@@ -363,6 +368,7 @@ export default function App() {
           onClose={() => setIsAddSessionOpen(false)}
           editingSession={editingSession}
           defaultGroupId={sessionDefaultGroupId}
+          defaultDate={sessionDefaultDate}
           allGroups={groups}
           onSaveComplete={() => {
             refreshData();

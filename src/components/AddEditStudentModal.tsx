@@ -15,6 +15,7 @@ import {
   Upload,
   Trash2,
   Award,
+  Plus,
 } from 'lucide-react';
 import { Student, Group, BillingMode, BillingType, AchievementFrame } from '../types';
 import { db } from '../utils/storage';
@@ -24,6 +25,7 @@ import { AchievementFrameSelector } from './AchievementFrameSelector';
 import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { normalizeScheduleTimesList } from '../utils/schedule';
 
 interface AddEditStudentModalProps {
   isOpen: boolean;
@@ -90,7 +92,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const [privatePackagePrice, setPrivatePackagePrice] = useState<number>(900);
   const [privateDays, setPrivateDays] = useState<string[]>(['السبت']);
   const [privateTime, setPrivateTime] = useState('16:00');
-  const [privateTimes, setPrivateTimes] = useState<Record<string, string>>({ 'السبت': '16:00' });
+  const [privateTimes, setPrivateTimes] = useState<Record<string, string[]>>({ 'السبت': ['16:00'] });
   const [privateLocation, setPrivateLocation] = useState('منزل الطالب / أونلاين');
 
   useEffect(() => {
@@ -230,6 +232,18 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       if (subscriptionMode === 'private' || subscriptionMode === 'both') {
         const isPkg = privateBillingMode === 'package';
         const isHourly = privateBillingMode === 'hourly';
+
+        // Clean and normalize schedule times
+        const cleanPrivateTimes: Record<string, string[]> = {};
+        privateDays.forEach((d) => {
+          const list = normalizeScheduleTimesList(privateTimes[d] || [privateTime || '16:00']);
+          cleanPrivateTimes[d] = list.length > 0 ? list : ['16:00'];
+        });
+
+        const primaryTime = privateDays.length > 0 && cleanPrivateTimes[privateDays[0]]?.[0]
+          ? cleanPrivateTimes[privateDays[0]][0]
+          : (privateTime.trim() || '16:00');
+
         db.createPrivateLessonService(studentId, {
           subject: privateSubject.trim() || t('groupTypePrivate'),
           gradeLevel,
@@ -244,8 +258,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           packageSessionsCount: isPkg ? (Number(privatePackageSessions) || 10) : undefined,
           packagePrice: isPkg ? (Number(privatePackagePrice) || 900) : undefined,
           scheduleDays: privateDays,
-          scheduleTime: privateTime || (privateDays.length > 0 ? privateTimes[privateDays[0]] || '' : ''),
-          scheduleTimes: privateTimes,
+          scheduleTime: primaryTime,
+          scheduleTimes: cleanPrivateTimes,
           roomOrLocation: privateLocation,
         });
       }
@@ -277,17 +291,38 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       }
     } else {
       setPrivateDays([...privateDays, day]);
-      if (!privateTimes[day]) {
-        setPrivateTimes((prev) => ({ ...prev, [day]: privateTime || '16:00' }));
+      if (!privateTimes[day] || privateTimes[day].length === 0) {
+        setPrivateTimes((prev) => ({ ...prev, [day]: [privateTime || '16:00'] }));
       }
     }
   };
 
-  const handlePrivateDayTimeChange = (day: string, timeVal: string) => {
-    setPrivateTimes((prev) => ({ ...prev, [day]: timeVal }));
-    if (privateDays[0] === day || !privateTime) {
-      setPrivateTime(timeVal);
-    }
+  const handlePrivateDayTimeChange = (day: string, timeIdx: number, timeVal: string) => {
+    setPrivateTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      currentList[timeIdx] = timeVal;
+      return { ...prev, [day]: currentList };
+    });
+  };
+
+  const handleAddPrivateDayTime = (day: string) => {
+    setPrivateTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      const lastTime = currentList[currentList.length - 1] || '16:00';
+      const [h, m] = lastTime.split(':').map(Number);
+      const nextH = !isNaN(h) ? Math.min(23, (h + 3) % 24) : 19;
+      const nextTimeStr = `${String(nextH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+      return { ...prev, [day]: [...currentList, nextTimeStr] };
+    });
+  };
+
+  const handleRemovePrivateDayTime = (day: string, timeIdx: number) => {
+    setPrivateTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      if (currentList.length <= 1) return prev;
+      const updated = currentList.filter((_, idx) => idx !== timeIdx);
+      return { ...prev, [day]: updated };
+    });
   };
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
@@ -799,26 +834,54 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
                   {/* Individual Time Inputs per Day */}
                   {privateDays.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                    <div className="space-y-2 pt-1">
                       {privateDays.map((day) => {
-                        const dayTime = privateTimes[day] || privateTime || '16:00';
+                        const dayTimes = privateTimes[day] && privateTimes[day].length > 0 ? privateTimes[day] : ['16:00'];
                         return (
                           <div
                             key={day}
-                            className="flex items-center justify-between p-1.5 rounded-lg bg-[#F9F7F2] border border-[#E8E2D6]"
+                            className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] space-y-2"
                           >
-                            <span className="text-[11px] font-bold text-[#2D332A] flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#D49B4B]"></span>
-                              {day}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-[#8A9187]" />
-                              <input
-                                type="time"
-                                value={dayTime}
-                                onChange={(e) => handlePrivateDayTimeChange(day, e.target.value)}
-                                className="bg-white border border-[#E8E2D6] rounded px-1.5 py-0.5 text-xs font-bold text-[#2D332A] focus:outline-none focus:border-[#D49B4B]"
-                              />
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-[#2D332A] flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#D49B4B]"></span>
+                                {day}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleAddPrivateDayTime(day)}
+                                className="text-[10px] font-bold text-[#9C6615] hover:text-[#7A4F0E] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#D49B4B]/15 hover:bg-[#D49B4B]/25 transition-colors"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>{isRTL ? 'إضافة موعد آخر' : 'Add another time'}</span>
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {dayTimes.map((tVal, tIdx) => (
+                                <div
+                                  key={`${day}_${tIdx}`}
+                                  className="flex items-center gap-1 bg-white border border-[#E8E2D6] rounded-lg px-2 py-0.5 shadow-2xs"
+                                >
+                                  <Clock className="w-3 h-3 text-[#8A9187]" />
+                                  <input
+                                    type="time"
+                                    value={tVal}
+                                    onChange={(e) => handlePrivateDayTimeChange(day, tIdx, e.target.value)}
+                                    className="bg-transparent text-xs font-bold text-[#2D332A] focus:outline-none focus:text-[#D49B4B]"
+                                  />
+                                  {dayTimes.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemovePrivateDayTime(day, tIdx)}
+                                      className="p-0.5 rounded text-[#8A9187] hover:text-[#C97C5D] hover:bg-[#C97C5D]/10 transition-colors ml-0.5"
+                                      title={isRTL ? 'حذف هذا الموعد' : 'Remove time'}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           </div>
                         );

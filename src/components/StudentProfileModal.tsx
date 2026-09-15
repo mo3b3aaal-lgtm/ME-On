@@ -36,7 +36,7 @@ import {
   MapPin,
   CalendarDays,
 } from 'lucide-react';
-import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode } from '../types';
+import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode, StudentGrandFinancialSummary } from '../types';
 import { db, getArabicMonthName, getBillingModeLabel } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
@@ -65,7 +65,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onOpenAddPayment,
   onDataChanged,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'finances' | 'attendance' | 'history' | 'groups' | 'credit_logs'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'groups' | 'private' | 'finances' | 'attendance' | 'history' | 'credit_logs'>('overview');
   const [serviceFilter, setServiceFilter] = useState<'all' | 'group' | 'private'>('all');
   const [isRecordPrivateModalOpen, setIsRecordPrivateModalOpen] = useState<boolean>(false);
   const [isAddingPrivateService, setIsAddingPrivateService] = useState<boolean>(false);
@@ -75,6 +75,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [newPrivateBillingMode, setNewPrivateBillingMode] = useState<BillingMode>('postpaid');
   const [newPrivatePackageSessions, setNewPrivatePackageSessions] = useState<number>(10);
   const [newPrivatePackagePrice, setNewPrivatePackagePrice] = useState<number>(1000);
+  const [newPrivateDays, setNewPrivateDays] = useState<string[]>(['السبت']);
+  const [newPrivateTime, setNewPrivateTime] = useState<string>('16:00');
+  const [newPrivateLocation, setNewPrivateLocation] = useState<string>('منزل الطالب');
 
   // Student persistent teacher notes
   const [notesText, setNotesText] = useState<string>('');
@@ -110,18 +113,40 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   // Load relations and calculated financials
   const studentGroups = student ? db.getStudentGroups(student.id) : [];
   const enrollments = db.getEnrollments();
-  const grandFinancials = student ? db.calculateStudentGrandFinancials(student.id) : {
-    studentId: '',
-    studentName: '',
-    grandTotalDue: 0,
-    grandTotalPaid: 0,
-    grandRemaining: 0,
-    totalSessionCredit: 0,
-    totalUnpaidSessions: 0,
-    totalFinancialCredit: 0,
-    enrollmentsSummary: [],
-    allPayments: [],
-  };
+  const grandFinancials: StudentGrandFinancialSummary = student
+    ? db.calculateStudentGrandFinancials(student.id)
+    : {
+        studentId: '',
+        studentName: '',
+        grandTotalDue: 0,
+        grandTotalPaid: 0,
+        grandRemaining: 0,
+        totalSessionCredit: 0,
+        totalUnpaidSessions: 0,
+        totalFinancialCredit: 0,
+        groupsFinancials: {
+          totalDue: 0,
+          totalPaid: 0,
+          remaining: 0,
+          totalUnpaidSessions: 0,
+          totalSessionCredit: 0,
+          totalFinancialCredit: 0,
+          enrollments: [],
+        },
+        privateFinancials: {
+          totalDue: 0,
+          totalPaid: 0,
+          remaining: 0,
+          totalUnpaidSessions: 0,
+          totalSessionCredit: 0,
+          totalFinancialCredit: 0,
+          enrollments: [],
+        },
+        hasGroupService: false,
+        hasPrivateService: false,
+        enrollmentsSummary: [],
+        allPayments: [],
+      };
   const allPayments = grandFinancials.allPayments;
   const attendanceList = student ? db.getStudentAttendance(student.id) : [];
   const allSessions = db.getSessions();
@@ -151,11 +176,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const attendanceRate = totalCounted > 0 ? Math.round(((presentCount + lateCount) / totalCounted) * 100) : 100;
 
   // Payment methods breakdown
-  const paymentMethodsSummary = allPayments.reduce((acc, p) => {
+  const paymentMethodsSummary = allPayments.reduce<Record<string, number>>((acc, p) => {
     const method = p.paymentMethod || 'cash';
     acc[method] = (acc[method] || 0) + (Number(p.amount) || 0);
     return acc;
-  }, {} as Record<string, number>);
+  }, {});
 
   // Recent activity stream (Attendance, Payments, Added sessions, Credit logs)
   interface ActivityItem {
@@ -246,6 +271,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         hourlyRate: isHourly ? newPrivateHourlyRate : undefined,
         packageSessionsCount: isPkg ? newPrivatePackageSessions : undefined,
         packagePrice: isPkg ? newPrivatePackagePrice : undefined,
+        scheduleDays: newPrivateDays,
+        scheduleTime: newPrivateTime,
+        roomOrLocation: newPrivateLocation,
       });
       setIsAddingPrivateService(false);
       onDataChanged();
@@ -482,37 +510,61 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         </div>
 
         {/* Sub Navigation Tabs (Sticky) */}
-        <div className="flex border-b border-[#E8E2D6] bg-white px-2 overflow-x-auto no-scrollbar shrink-0 shadow-xs z-10 sticky top-0">
+        <div className="flex border-b border-slate-200 bg-white px-2 overflow-x-auto no-scrollbar shrink-0 shadow-xs z-10 sticky top-0">
           <button
             onClick={() => setActiveSubTab('overview')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeSubTab === 'overview'
-                ? 'border-[#748C70] text-[#748C70]'
-                : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Activity className="w-4 h-4" />
-            <span>لوحة الطالب الشاملة</span>
+            <span>لوحة الطالب</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('groups')}
+            className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+              activeSubTab === 'groups'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>المجموعات ({groupEnrollments.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('private')}
+            className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+              activeSubTab === 'private'
+                ? 'border-amber-600 text-amber-700 bg-amber-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>الدرس الخاص {privateEnrollments.length > 0 ? `(${privateEnrollments.length})` : ''}</span>
           </button>
 
           <button
             onClick={() => setActiveSubTab('finances')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeSubTab === 'finances'
-                ? 'border-[#748C70] text-[#748C70]'
-                : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <DollarSign className="w-4 h-4" />
-            <span>الحسابات والاشتراكات</span>
+            <span>الحسابات والماليات</span>
           </button>
 
           <button
             onClick={() => setActiveSubTab('attendance')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeSubTab === 'attendance'
-                ? 'border-[#748C70] text-[#748C70]'
-                : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <CalendarCheck2 className="w-4 h-4" />
@@ -523,8 +575,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             onClick={() => setActiveSubTab('history')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeSubTab === 'history'
-                ? 'border-[#748C70] text-[#748C70]'
-                : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <History className="w-4 h-4" />
@@ -532,23 +584,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveSubTab('groups')}
-            className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
-              activeSubTab === 'groups'
-                ? 'border-[#748C70] text-[#748C70]'
-                : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>الاشتراكات ({studentGroups.length})</span>
-          </button>
-
-          <button
             onClick={() => setActiveSubTab('credit_logs')}
             className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 ${
               activeSubTab === 'credit_logs'
-                ? 'border-[#748C70] text-[#748C70]'
-                : 'border-transparent text-[#8A9187] hover:text-[#434B3E]'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Sparkles className="w-4 h-4" />
@@ -963,15 +1003,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             <div className="space-y-4">
               
               {/* Grand Total Summary Card */}
-              <div className="p-4 bg-white border border-[#E8E2D6] rounded-2xl shadow-sm space-y-3">
+              <div className="p-4 bg-white border border-[#EAE6DE] rounded-2xl shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-[#2D332A] flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-[#748C70]" />
+                  <span className="font-bold text-sm text-[#272D24] flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-[#607B5E]" />
                     <span>الموقف المالي الشامل للطالب</span>
                   </span>
                   <button
                     onClick={() => onOpenAddPayment(student)}
-                    className="px-3 py-1.5 rounded-xl bg-[#748C70] text-white font-bold text-xs hover:bg-[#60755C] transition-all flex items-center gap-1 shadow-xs"
+                    className="px-3 py-1.5 rounded-xl bg-[#607B5E] text-white font-bold text-xs hover:bg-[#4E664C] transition-all flex items-center gap-1 shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>تسجيل دفعة</span>
@@ -979,59 +1019,59 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center pt-1">
-                  <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
-                    <span className="text-[10px] text-[#8A9187] font-bold block">المستحق حالياً</span>
+                  <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE6DE]">
+                    <span className="text-[10px] text-[#878E82] font-bold block">المستحق حالياً</span>
                     <span
                       className={`text-base font-black mt-0.5 block ${
-                        grandFinancials.grandRemaining > 0 ? 'text-[#C97C5D]' : 'text-[#748C70]'
+                        grandFinancials.grandRemaining > 0 ? 'text-[#B86B52]' : 'text-[#607B5E]'
                       }`}
                     >
                       {grandFinancials.grandRemaining} ج
                     </span>
-                    <span className="text-[9px] text-[#8A9187] block">Current Due</span>
+                    <span className="text-[9px] text-[#878E82] block">Current Due</span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6]">
-                    <span className="text-[10px] text-[#8A9187] font-bold block">إجمالي المدفوع</span>
-                    <span className="text-base font-black text-[#748C70] mt-0.5 block">
+                  <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#EAE6DE]">
+                    <span className="text-[10px] text-[#878E82] font-bold block">إجمالي المدفوع</span>
+                    <span className="text-base font-black text-[#607B5E] mt-0.5 block">
                       {grandFinancials.grandTotalPaid} ج
                     </span>
-                    <span className="text-[9px] text-[#8A9187] block">Total Paid</span>
+                    <span className="text-[9px] text-[#878E82] block">Total Paid</span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-[#748C70]/10 border border-[#748C70]/20 text-[#60755C]">
-                    <span className="text-[10px] text-[#60755C] font-bold block">رصيد الحصص</span>
+                  <div className="p-2.5 rounded-xl bg-[#607B5E]/10 border border-[#607B5E]/20 text-[#4E664C]">
+                    <span className="text-[10px] text-[#4E664C] font-bold block">رصيد الحصص</span>
                     <span className="text-base font-black mt-0.5 block">
                       {grandFinancials.totalSessionCredit}
                     </span>
-                    <span className="text-[9px] text-[#60755C]/80 block">Session Credit</span>
+                    <span className="text-[9px] text-[#4E664C]/80 block">Session Credit</span>
                   </div>
 
                   <div
                     className={`p-2.5 rounded-xl border ${
                       grandFinancials.totalUnpaidSessions > 0
-                        ? 'bg-[#C97C5D]/15 border-[#C97C5D]/30 text-[#C97C5D]'
-                        : 'bg-[#F9F7F2] border-[#E8E2D6] text-[#6B7567]'
+                        ? 'bg-[#B86B52]/12 border-[#B86B52]/30 text-[#B86B52]'
+                        : 'bg-[#FAF8F5] border-[#EAE6DE] text-[#5F675A]'
                     }`}
                   >
-                    <span className="text-[10px] font-bold block text-[#8A9187]">حصص مستحقة</span>
+                    <span className="text-[10px] font-bold block text-[#878E82]">حصص مستحقة</span>
                     <span className="text-base font-black mt-0.5 block">
                       {grandFinancials.totalUnpaidSessions}
                     </span>
-                    <span className="text-[9px] text-[#8A9187] block">Unpaid Sessions</span>
+                    <span className="text-[9px] text-[#878E82] block">Unpaid Sessions</span>
                   </div>
                 </div>
 
                 {/* Credits summary pills */}
-                <div className="flex items-center justify-between text-[11px] bg-[#748C70]/10 p-2.5 rounded-xl border border-[#748C70]/20 flex-wrap gap-2">
-                  <div className="flex items-center gap-1.5 text-[#60755C] font-bold">
-                    <Sparkles className="w-4 h-4 text-[#748C70]" />
+                <div className="flex items-center justify-between text-[11px] bg-[#607B5E]/10 p-2.5 rounded-xl border border-[#607B5E]/20 flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5 text-[#4E664C] font-bold">
+                    <Sparkles className="w-4 h-4 text-[#607B5E]" />
                     <span>
                       إجمالي رصيد الحصص المتبقي: <strong>{grandFinancials.totalSessionCredit} حصص</strong>
                     </span>
                   </div>
                   {grandFinancials.totalUnpaidSessions > 0 && (
-                    <div className="text-[#C97C5D] font-bold flex items-center gap-1">
+                    <div className="text-[#B86B52] font-bold flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5" />
                       <span>
                         إجمالي الحصص المستحقة غير المدفوعة: <strong>{grandFinancials.totalUnpaidSessions} حصص</strong>
@@ -1039,7 +1079,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     </div>
                   )}
                   {grandFinancials.totalFinancialCredit > 0 && (
-                    <div className="text-[#60755C] font-bold">
+                    <div className="text-[#4E664C] font-bold">
                       <span>
                         الرصيد المالي (Credit): <strong>{grandFinancials.totalFinancialCredit} ج.م</strong>
                       </span>
@@ -1050,14 +1090,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
               {/* Service Tabs if student is in multiple accounts */}
               {(privateEnrollments.length > 0 && groupEnrollments.length > 0) && (
-                <div className="flex items-center gap-1.5 p-1 bg-white border border-[#E8E2D6] rounded-xl text-xs font-bold">
+                <div className="flex items-center gap-1.5 p-1 bg-white border border-[#EAE6DE] rounded-xl text-xs font-bold">
                   <button
                     type="button"
                     onClick={() => setServiceFilter('all')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-center transition-all ${
                       serviceFilter === 'all'
-                        ? 'bg-[#748C70] text-white shadow-xs'
-                        : 'text-[#6B7567] hover:bg-[#F9F7F2]'
+                        ? 'bg-[#607B5E] text-white shadow-xs'
+                        : 'text-[#5F675A] hover:bg-[#FAF8F5]'
                     }`}
                   >
                     كل الحسابات ({grandFinancials.enrollmentsSummary.length})
@@ -1067,8 +1107,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     onClick={() => setServiceFilter('group')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-center transition-all ${
                       serviceFilter === 'group'
-                        ? 'bg-[#748C70] text-white shadow-xs'
-                        : 'text-[#6B7567] hover:bg-[#F9F7F2]'
+                        ? 'bg-[#607B5E] text-white shadow-xs'
+                        : 'text-[#5F675A] hover:bg-[#FAF8F5]'
                     }`}
                   >
                     المجموعات ({groupEnrollments.length})
@@ -1078,8 +1118,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     onClick={() => setServiceFilter('private')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-center transition-all ${
                       serviceFilter === 'private'
-                        ? 'bg-[#D49B4B] text-white shadow-xs'
-                        : 'text-[#6B7567] hover:bg-[#F9F7F2]'
+                        ? 'bg-[#B88438] text-white shadow-xs'
+                        : 'text-[#5F675A] hover:bg-[#FAF8F5]'
                     }`}
                   >
                     دروس خاصة / Private ({privateEnrollments.length})
@@ -1090,14 +1130,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               {/* Individual Enrollments Breakdown */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-[#2D332A] text-xs flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-[#748C70]" />
+                  <h3 className="font-bold text-[#272D24] text-xs flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-[#607B5E]" />
                     <span>الحسابات المالية المستقلة للاشتراكات:</span>
                   </h3>
                   <button
                     type="button"
                     onClick={() => setIsAddingPrivateService((prev) => !prev)}
-                    className="px-2.5 py-1 rounded-xl bg-[#D49B4B]/15 hover:bg-[#D49B4B]/25 text-[#9C6615] border border-[#D49B4B]/30 font-bold text-[11px] flex items-center gap-1 transition-all"
+                    className="px-2.5 py-1 rounded-xl bg-[#B88438]/15 hover:bg-[#B88438]/25 text-[#8C5E1B] border border-[#B88438]/30 font-bold text-[11px] flex items-center gap-1 transition-all"
                   >
                     <PlusCircle className="w-3.5 h-3.5" />
                     <span>إضافة خدمة Private</span>
@@ -1906,69 +1946,441 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           )}
 
           {/* ========================================== */}
-          {/* 3. GROUPS & SERVICES TAB (المجموعات والدروس المسجل بها) */}
+          {/* 3. GROUPS TAB (المجموعات الدراسية) */}
           {/* ========================================== */}
           {activeSubTab === 'groups' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-[#2D332A] text-xs">الاشتراكات والخدمات المسجل بها:</h3>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-xs">المجموعات الدراسية المسجل بها:</h3>
+                  <p className="text-[10px] text-slate-500">قائمة المجموعات التعليمية العادية المشترك بها الطالب</p>
+                </div>
                 <button
                   onClick={() => onOpenEnrollModal(student)}
-                  className="px-2.5 py-1.5 rounded-xl bg-[#748C70] text-white font-bold text-xs flex items-center gap-1 hover:bg-[#60755C] transition-all shadow-xs"
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center gap-1 hover:bg-blue-700 transition-all shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>إضافة اشتراك أو درس خاص</span>
+                  <span>إضافة قيد بمجموعة</span>
                 </button>
               </div>
 
-              {studentGroups.length === 0 ? (
-                <div className="p-8 text-center bg-white rounded-2xl border border-[#E8E2D6] text-[#8A9187] space-y-2">
-                  <Layers className="w-8 h-8 mx-auto opacity-40" />
-                  <p>الطالب غير مسجل في أي مجموعة أو درس خاص حالياً.</p>
+              {groupEnrollments.length === 0 ? (
+                <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 space-y-2">
+                  <Layers className="w-8 h-8 mx-auto opacity-40 text-slate-400" />
+                  <p className="font-medium text-xs">الطالب غير مسجل في أي مجموعة دراسية حالياً.</p>
+                  <button
+                    onClick={() => onOpenEnrollModal(student)}
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs inline-flex items-center gap-1 hover:bg-blue-700 transition-all shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>تسجيل الطالب في مجموعة</span>
+                  </button>
                 </div>
               ) : (
-                studentGroups.map(({ group, enrollment }) => (
-                  <div
-                    key={enrollment.id}
-                    className={`p-3.5 bg-white rounded-2xl shadow-xs space-y-2 border ${
-                      group.type === 'private' ? 'border-[#D49B4B]/40' : 'border-[#E8E2D6]'
-                    }`}
+                studentGroups
+                  .filter(({ group }) => group.type !== 'private')
+                  .map(({ group, enrollment }) => {
+                    const enrSummary = grandFinancials.enrollmentsSummary.find((e) => e.enrollmentId === enrollment.id);
+                    return (
+                      <div
+                        key={enrollment.id}
+                        className="p-3.5 bg-white rounded-2xl shadow-xs space-y-2.5 border border-slate-200 hover:border-blue-200 transition-all"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-3.5 h-3.5 rounded-full"
+                              style={{ backgroundColor: group.accentColor || '#3B82F6' }}
+                            />
+                            <div>
+                              <h4 className="font-bold text-slate-900 text-xs">{group.name}</h4>
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                {group.subject} • {getLocalizedStageName(group.gradeLevel, 'ar')}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                              مجموعة
+                            </span>
+                            <button
+                              onClick={() => handleRemoveEnrollment(enrollment.id, group.name)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="إلغاء قيد الطالب من المجموعة"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <div>المواعيد: <strong className="text-slate-900">{group.scheduleDays.join('، ') || 'مرنة'} {group.scheduleTime ? `(${group.scheduleTime})` : ''}</strong></div>
+                          <div>المكان: <strong className="text-slate-900">{group.roomOrLocation || 'قاعة الدرس'}</strong></div>
+                          <div>نظام المحاسبة: <strong className="text-slate-900">{getBillingModeLabel(enrollment.billingType, enrollment.billingMode)}</strong></div>
+                          <div>السعر: <strong className="text-emerald-700">{enrollment.customPrice} ج.م</strong></div>
+                        </div>
+
+                        {enrSummary && (
+                          <div className="grid grid-cols-3 gap-2 text-center text-[10px] bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <div>
+                              <span className="text-slate-400 block">المستحق</span>
+                              <strong className="text-slate-900 font-bold">{enrSummary.totalDue} ج</strong>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block">المدفوع</span>
+                              <strong className="text-emerald-700 font-bold">{enrSummary.totalPaid} ج</strong>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block">المتبقي</span>
+                              <strong className={`font-bold ${enrSummary.remaining > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                                {enrSummary.remaining} ج
+                              </strong>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          )}
+
+          {/* ========================================== */}
+          {/* 3.5 PRIVATE LESSON TAB (الدرس الخاص - Private) */}
+          {/* ========================================== */}
+          {activeSubTab === 'private' && (
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>خدمة الدرس الخاص (Private Lesson):</span>
+                  </h3>
+                  <p className="text-[10px] text-slate-500">حصة فردية خاصة مستقلة تماماً عن المجموعات</p>
+                </div>
+
+                {privateEnrollments.length > 0 && (
+                  <button
+                    onClick={() => setIsRecordPrivateModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center gap-1 hover:bg-amber-700 transition-all shadow-xs"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-3.5 h-3.5 rounded-full"
-                          style={{ backgroundColor: group.accentColor }}
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>تسجيل حصة خاصة الآن</span>
+                  </button>
+                )}
+              </div>
+
+              {privateEnrollments.length === 0 ? (
+                <div className="p-6 bg-white rounded-2xl border-2 border-dashed border-amber-200 text-center space-y-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xs">لا يوجد درس خاص مسجل لهذا الطالب</h4>
+                    <p className="text-[11px] text-slate-500 max-w-sm mx-auto mt-0.5">
+                      يمكنك إنشاء خدمة درس خاص مستقلة لهذا الطالب بأسعار ومواعيد خاصة ونظام محاسبة منفصل.
+                    </p>
+                  </div>
+
+                  {!isAddingPrivateService ? (
+                    <button
+                      onClick={() => setIsAddingPrivateService(true)}
+                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>إضافة خدمة درس خاص الآن</span>
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                studentGroups
+                  .filter(({ group }) => group.type === 'private')
+                  .map(({ group, enrollment }) => {
+                    const enrSummary = grandFinancials.enrollmentsSummary.find((e) => e.enrollmentId === enrollment.id);
+                    return (
+                      <div
+                        key={enrollment.id}
+                        className="p-4 bg-white rounded-2xl shadow-xs space-y-3 border-2 border-amber-300"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3.5 h-3.5 rounded-full bg-amber-500 shrink-0" />
+                            <div>
+                              <h4 className="font-bold text-slate-900 text-sm">
+                                خاص — {student.name}
+                              </h4>
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                {group.subject} • {getLocalizedStageName(group.gradeLevel, 'ar')}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] px-2.5 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              درس خاص
+                            </span>
+                            <button
+                              onClick={() => handleRemoveEnrollment(enrollment.id, 'الدرس الخاص')}
+                              className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="إلغاء خدمة الدرس الخاص"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Details grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-amber-50/50 p-2.5 rounded-xl border border-amber-100">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">نظام المحاسبة</span>
+                            <strong className="text-slate-900 font-bold">{getBillingModeLabel(enrollment.billingType, enrollment.billingMode)}</strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">السعر / المعدل</span>
+                            <strong className="text-emerald-700 font-bold">
+                              {enrollment.billingMode === 'hourly'
+                                ? `${enrollment.hourlyRate || 150} ج / ساعة`
+                                : enrollment.billingMode === 'package'
+                                ? `${enrollment.packagePrice || 1000} ج (${enrollment.packageSessionsCount || 10} حصص)`
+                                : `${enrollment.customPrice} ج / حصة`}
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">المواعيد</span>
+                            <strong className="text-slate-900 font-bold">{group.scheduleDays.join('، ') || 'مرنة'} {group.scheduleTime ? `(${group.scheduleTime})` : ''}</strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">المكان</span>
+                            <strong className="text-slate-900 font-bold">{group.roomOrLocation || 'منزل الطالب'}</strong>
+                          </div>
+                        </div>
+
+                        {/* Financial summary for private */}
+                        {enrSummary && (
+                          <div className="grid grid-cols-4 gap-2 text-center text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <div>
+                              <span className="text-[10px] text-slate-400 block">إجمالي المستحق</span>
+                              <strong className="text-slate-900 font-bold">{enrSummary.totalDue} ج</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-400 block">إجمالي المدفوع</span>
+                              <strong className="text-emerald-700 font-bold">{enrSummary.totalPaid} ج</strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-400 block">المتبقي</span>
+                              <strong className={`font-bold ${enrSummary.remaining > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                                {enrSummary.remaining} ج
+                              </strong>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-slate-400 block">
+                                {enrollment.billingMode === 'prepaid' || enrollment.billingMode === 'package' ? 'رصيد الحصص' : 'الحصص غير المسددة'}
+                              </span>
+                              <strong className={`font-bold ${enrSummary.sessionCredit > 0 ? 'text-emerald-600' : enrSummary.unpaidSessionsCount > 0 ? 'text-red-600' : 'text-slate-700'}`}>
+                                {enrollment.billingMode === 'prepaid' || enrollment.billingMode === 'package'
+                                  ? `${enrSummary.sessionCredit} حصص`
+                                  : `${enrSummary.unpaidSessionsCount} حصص`}
+                              </strong>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={() => setIsRecordPrivateModalOpen(true)}
+                            className="flex-1 py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                          >
+                            <CalendarCheck2 className="w-4 h-4" />
+                            <span>تسجيل حصة خاصة الآن</span>
+                          </button>
+                          <button
+                            onClick={() => onOpenAddPayment(student, enrollment.id)}
+                            className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                            <span>تسجيل سداد</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+
+              {/* Inline Form to Add Private Service */}
+              {isAddingPrivateService && (
+                <form
+                  onSubmit={handleCreatePrivateService}
+                  className="p-4 bg-white rounded-2xl border-2 border-amber-400 shadow-md space-y-3 animate-in fade-in duration-150"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>إعداد خدمة درس خاص جديدة</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingPrivateService(false)}
+                      className="text-slate-400 hover:text-slate-700 text-xs font-bold"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">المادة الدراسية:</label>
+                      <input
+                        type="text"
+                        required
+                        value={newPrivateSubject}
+                        onChange={(e) => setNewPrivateSubject(e.target.value)}
+                        placeholder="مثال: رياضيات خاصة / فيزياء لغات"
+                        className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-medium focus:ring-2 focus:ring-amber-500 outline-hidden"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">مكان الدرس:</label>
+                        <input
+                          type="text"
+                          value={newPrivateLocation}
+                          onChange={(e) => setNewPrivateLocation(e.target.value)}
+                          placeholder="مثال: منزل الطالب / أونلاين"
+                          className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-medium focus:ring-2 focus:ring-amber-500 outline-hidden"
                         />
-                        <h4 className="font-bold text-[#2D332A] text-xs">{group.name}</h4>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                            group.type === 'private'
-                              ? 'bg-[#D49B4B]/15 text-[#9C6615]'
-                              : 'bg-[#F2ECE1] text-[#6B7567]'
-                          }`}
-                        >
-                          {group.type === 'private' ? '⭐ درس خاص (Private)' : 'مجموعة'}
-                        </span>
                       </div>
 
-                      <button
-                        onClick={() => handleRemoveEnrollment(enrollment.id, group.name)}
-                        className="p-1 rounded-lg text-[#8A9187] hover:text-[#C97C5D] hover:bg-[#C97C5D]/10 transition-colors"
-                        title="إلغاء قيد الطالب من هذا الاشتراك"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">وقت الحصة:</label>
+                        <input
+                          type="time"
+                          value={newPrivateTime}
+                          onChange={(e) => setNewPrivateTime(e.target.value)}
+                          className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-medium focus:ring-2 focus:ring-amber-500 outline-hidden"
+                        />
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-[#6B7567] bg-[#F9F7F2] p-2 rounded-xl">
-                      <div>المادة: <strong className="text-[#2D332A]">{group.subject}</strong></div>
-                      <div>المواعيد: <strong className="text-[#2D332A]">{group.scheduleDays.join('، ') || 'مرنة'}</strong></div>
-                      <div>نظام المحاسبة: <strong className="text-[#2D332A]">{getBillingModeLabel(enrollment.billingType, enrollment.billingMode)}</strong></div>
-                      <div>السعر الفعلي: <strong className="text-[#748C70]">{enrollment.customPrice} ج.م</strong></div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">أيام الحصة الخاصة:</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'].map((day) => {
+                          const isSelected = newPrivateDays.includes(day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => {
+                                setNewPrivateDays((prev) =>
+                                  isSelected ? prev.filter((d) => d !== day) : [...prev, day]
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                                isSelected
+                                  ? 'bg-amber-600 text-white'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">نظام المحاسبة:</label>
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-center">
+                        {[
+                          { id: 'postpaid', label: 'سداد لاحق' },
+                          { id: 'prepaid', label: 'سداد مسبق' },
+                          { id: 'package', label: 'باقة حصص' },
+                          { id: 'hourly', label: 'بالساعة' },
+                          { id: 'monthly', label: 'شهري' },
+                        ].map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setNewPrivateBillingMode(m.id as any)}
+                            className={`p-1.5 rounded-xl border text-[11px] font-bold transition-all ${
+                              newPrivateBillingMode === m.id
+                                ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {newPrivateBillingMode === 'hourly' ? (
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">سعر الساعة (ج.م):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={newPrivateHourlyRate}
+                            onChange={(e) => setNewPrivateHourlyRate(Number(e.target.value) || 0)}
+                            className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white font-bold focus:ring-2 focus:ring-amber-500 outline-hidden"
+                          />
+                        </div>
+                      ) : newPrivateBillingMode === 'package' ? (
+                        <>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">عدد حصص الباقة:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={newPrivatePackageSessions}
+                              onChange={(e) => setNewPrivatePackageSessions(Number(e.target.value) || 1)}
+                              className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white font-bold focus:ring-2 focus:ring-amber-500 outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">سعر الباقة الإجمالي (ج.م):</label>
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              value={newPrivatePackagePrice}
+                              onChange={(e) => setNewPrivatePackagePrice(Number(e.target.value) || 0)}
+                              className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white font-bold focus:ring-2 focus:ring-amber-500 outline-hidden"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                            {newPrivateBillingMode === 'monthly' ? 'الاشتراك الشهري (ج.م):' : 'سعر الحصة (ج.م):'}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={newPrivatePrice}
+                            onChange={(e) => setNewPrivatePrice(Number(e.target.value) || 0)}
+                            className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white font-bold focus:ring-2 focus:ring-amber-500 outline-hidden"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-all mt-2"
+                    >
+                      حفظ وتفعيل خدمة الدرس الخاص
+                    </button>
                   </div>
-                ))
+                </form>
               )}
             </div>
           )}

@@ -197,37 +197,37 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 flex flex-col justify-center max-w-md mx-auto w-full text-[#2D332A] select-none" dir="rtl">
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 flex flex-col justify-center max-w-md mx-auto w-full text-slate-900 select-none" dir="rtl">
       
       {/* Brand Header */}
       <div className="text-center space-y-2 mb-4 pt-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-[#748C70] to-[#556952] text-white shadow-md">
-          <GraduationCap className="w-8 h-8" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-slate-900 text-white shadow-md">
+          <GraduationCap className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-2xl font-black font-serif text-[#2D332A] tracking-tight">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
           Teacher Manager
         </h1>
-        <p className="text-xs text-[#8A9187] font-semibold">
+        <p className="text-xs text-slate-500 font-medium">
           نظام إدارة المعلم والطلاب والمجموعات والحصص والمحاسبة
         </p>
       </div>
 
       {/* Auth Card Container */}
-      <div className="bg-white border border-[#E8E2D6] rounded-3xl shadow-sm p-5 space-y-4">
+      <div className="bg-white border border-slate-200/90 rounded-3xl shadow-xs p-5 space-y-4">
         
         {/* Mode Selector (Login vs Register vs Forgot) */}
         {mode !== 'forgot_password' ? (
-          <div className="flex items-center p-1 bg-[#F0EBE1] rounded-2xl">
+          <div className="flex items-center p-1 bg-slate-100 rounded-2xl">
             <button
               type="button"
               onClick={() => {
                 setMode('login');
                 clearMessages();
               }}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 mode === 'login'
-                  ? 'bg-white text-[#2D332A] shadow-xs'
-                  : 'text-[#8A9187] hover:text-[#2D332A]'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               تسجيل الدخول
@@ -238,19 +238,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                 setMode('register');
                 clearMessages();
               }}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 mode === 'register'
-                  ? 'bg-white text-[#2D332A] shadow-xs'
-                  : 'text-[#8A9187] hover:text-[#2D332A]'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               إنشاء حساب جديد
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between border-b border-[#E8E2D6] pb-2">
-            <h2 className="text-sm font-bold text-[#2D332A] flex items-center gap-1.5">
-              <KeyRound className="w-4 h-4 text-[#D49B4B]" />
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <KeyRound className="w-4 h-4 text-amber-500" />
               <span>استعادة كلمة المرور</span>
             </h2>
             <button
@@ -259,7 +259,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                 setMode('login');
                 clearMessages();
               }}
-              className="text-xs text-[#748C70] hover:text-[#5E755A] font-bold flex items-center gap-1"
+              className="text-xs text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 cursor-pointer"
             >
               <span>العودة للدخول</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -269,15 +269,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
 
         {/* Feedback Messages */}
         {errorMessage && (
-          <div className="p-3 bg-[#FCF6F4] text-[#C97C5D] border border-[#C97C5D]/30 rounded-xl text-xs font-bold flex items-start gap-2 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="p-3 bg-rose-50 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-start gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3 bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30 rounded-xl text-xs font-bold flex items-start gap-2 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-start gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
             <span>{successMessage}</span>
           </div>
         )}
@@ -286,7 +286,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
         {mode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">البريد الإلكتروني / الهاتف / الاسم</label>
+              <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني / الهاتف / الاسم</label>
               <div className="relative">
                 <input
                   type="text"
@@ -294,22 +294,22 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
                   placeholder="مثال: teacher@example.com أو 01000000000"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] focus:ring-1 focus:ring-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-                <Mail className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-[#6B7567]">كلمة المرور</label>
+                <label className="font-bold text-slate-700">كلمة المرور</label>
                 <button
                   type="button"
                   onClick={() => {
                     setMode('forgot_password');
                     clearMessages();
                   }}
-                  className="text-[11px] text-[#D49B4B] hover:text-[#B88237] font-bold"
+                  className="text-[11px] text-amber-600 hover:text-amber-700 font-bold cursor-pointer"
                 >
                   نسيت كلمة المرور؟
                 </button>
@@ -321,13 +321,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 pl-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70] focus:ring-1 focus:ring-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 pl-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-                <Lock className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-3 text-[#8A9187] hover:text-[#2D332A]"
+                  className="absolute left-3 top-3 text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -335,12 +335,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
             </div>
 
             <div className="flex items-center justify-between text-[11px] pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#6B7567]">
+              <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-600">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#E8E2D6] text-[#748C70] focus:ring-0"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-0"
                 />
                 <span>تذكر تسجيل الدخول دائماً</span>
               </label>
@@ -349,7 +349,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.99] disabled:opacity-60"
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
                 <span>جاري التحقق والدخول...</span>
@@ -362,13 +362,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
             </button>
 
             {/* Quick Demo Helper Button */}
-            <div className="pt-2 border-t border-[#E8E2D6]/50">
+            <div className="pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={handleQuickDemo}
-                className="w-full py-2 px-3 rounded-xl bg-[#F0EBE1]/60 hover:bg-[#F0EBE1] text-[#6B7567] hover:text-[#2D332A] font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all"
+                className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/80 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#D49B4B]" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span>دخول سريع بحساب المعلم التجريبي (Default Account)</span>
               </button>
             </div>
@@ -379,7 +379,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
         {mode === 'register' && (
           <form onSubmit={handleRegister} className="space-y-3 text-xs">
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">اسم المعلم بالكامل *</label>
+              <label className="block font-bold text-slate-700 mb-1">اسم المعلم بالكامل *</label>
               <div className="relative">
                 <input
                   type="text"
@@ -387,15 +387,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
                   placeholder="مثال: أ/ محمد أحمد"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
-                <User className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <User className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block font-bold text-[#6B7567] mb-1">المادة الأساسية *</label>
+                <label className="block font-bold text-slate-700 mb-1">المادة الأساسية *</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -403,29 +403,29 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                     value={regSubject}
                     onChange={(e) => setRegSubject(e.target.value)}
                     placeholder="رياضيات، لغة عربية..."
-                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-8 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-8 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                   />
-                  <BookOpen className="w-3.5 h-3.5 text-[#8A9187] absolute right-2.5 top-3" />
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3" />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-[#6B7567] mb-1">رقم الهاتف</label>
+                <label className="block font-bold text-slate-700 mb-1">رقم الهاتف</label>
                 <div className="relative">
                   <input
                     type="tel"
                     value={regPhone}
                     onChange={(e) => setRegPhone(e.target.value)}
                     placeholder="01000000000"
-                    className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-8 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-8 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                   />
-                  <Phone className="w-3.5 h-3.5 text-[#8A9187] absolute right-2.5 top-3" />
+                  <Phone className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3" />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">البريد الإلكتروني / اسم المستخدم *</label>
+              <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني / اسم المستخدم *</label>
               <div className="relative">
                 <input
                   type="email"
@@ -433,56 +433,56 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
                   placeholder="teacher@example.com"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
-                <Mail className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
               </div>
             </div>
 
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">اسم السنتر / المدرسة</label>
+              <label className="block font-bold text-slate-700 mb-1">اسم السنتر / المدرسة</label>
               <div className="relative">
                 <input
                   type="text"
                   value={regCenter}
                   onChange={(e) => setRegCenter(e.target.value)}
                   placeholder="مثال: سنتر الأوائل"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
-                <Building className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <Building className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block font-bold text-[#6B7567] mb-1">كلمة المرور *</label>
+                <label className="block font-bold text-slate-700 mb-1">كلمة المرور *</label>
                 <input
                   type="password"
                   required
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block font-bold text-[#6B7567] mb-1">تأكيد المرور *</label>
+                <label className="block font-bold text-slate-700 mb-1">تأكيد المرور *</label>
                 <input
                   type="password"
                   required
                   value={regConfirmPassword}
                   onChange={(e) => setRegConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
 
             {/* Recovery PIN code for secure password reset */}
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1 flex items-center justify-between">
+              <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
                 <span>كود استعادة سري (PIN) *</span>
-                <span className="text-[10px] text-[#8A9187]">لاسترجاع كلمة المرور عند نسيانها</span>
+                <span className="text-[10px] text-slate-400">لاسترجاع كلمة المرور عند نسيانها</span>
               </label>
               <div className="relative">
                 <input
@@ -491,16 +491,16 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                   value={regRecoveryPin}
                   onChange={(e) => setRegRecoveryPin(e.target.value)}
                   placeholder="مثال: 123456"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
-                <KeyRound className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <KeyRound className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
               </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-[#748C70] hover:bg-[#5E755A] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.99] disabled:opacity-60"
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
                 <span>جاري إنشاء الحساب...</span>
@@ -517,12 +517,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
         {/* 3. FORGOT PASSWORD FORM */}
         {mode === 'forgot_password' && (
           <form onSubmit={handleResetPassword} className="space-y-3 text-xs">
-            <p className="text-[11px] text-[#8A9187] leading-relaxed">
+            <p className="text-[11px] text-slate-500 leading-relaxed">
               أدخل بريدك الإلكتروني أو رقم هاتفك المسجل مسبقاً، مع كود الاستعادة السري (PIN) لتعيين كلمة مرور جديدة.
             </p>
 
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">البريد الإلكتروني أو الهاتف</label>
+              <label className="block font-bold text-slate-700 mb-1">البريد الإلكتروني أو الهاتف</label>
               <div className="relative">
                 <input
                   type="text"
@@ -530,14 +530,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                   value={resetIdentifier}
                   onChange={(e) => setResetIdentifier(e.target.value)}
                   placeholder="مثال: teacher@example.com"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
-                <Mail className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
               </div>
             </div>
 
             <div>
-              <label className="block font-bold text-[#6B7567] mb-1">كود الاستعادة السري (PIN)</label>
+              <label className="block font-bold text-slate-700 mb-1">كود الاستعادة السري (PIN)</label>
               <div className="relative">
                 <input
                   type="text"
@@ -545,33 +545,33 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
                   value={resetRecoveryPin}
                   onChange={(e) => setResetRecoveryPin(e.target.value)}
                   placeholder="الكود المحدد عند التسجيل (الافتراضي: 123456)"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 pr-9 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
-                <KeyRound className="w-4 h-4 text-[#8A9187] absolute right-3 top-3" />
+                <KeyRound className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block font-bold text-[#6B7567] mb-1">كلمة المرور الجديدة</label>
+                <label className="block font-bold text-slate-700 mb-1">كلمة المرور الجديدة</label>
                 <input
                   type="password"
                   required
                   value={resetNewPassword}
                   onChange={(e) => setResetNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block font-bold text-[#6B7567] mb-1">تأكيد الجديدة</label>
+                <label className="block font-bold text-slate-700 mb-1">تأكيد الجديدة</label>
                 <input
                   type="password"
                   required
                   value={resetConfirmPassword}
                   onChange={(e) => setResetConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#F9F7F2] border border-[#E8E2D6] rounded-xl p-2.5 text-xs text-[#2D332A] focus:outline-none focus:border-[#748C70]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
@@ -579,7 +579,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-[#D49B4B] hover:bg-[#B88237] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.99] disabled:opacity-60"
+              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
                 <span>جاري تحديث كلمة المرور...</span>
@@ -596,8 +596,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Footer Info */}
-      <div className="text-center text-[11px] text-[#878E82] mt-4 space-y-0.5">
-        <p className="font-semibold">تطبيق Teacher Manager • نظام إدارة المعلم والمجموعات</p>
+      <div className="text-center text-[11px] text-slate-400 mt-4 space-y-0.5">
+        <p className="font-medium">تطبيق Teacher Manager • نظام إدارة المعلم والمجموعات</p>
       </div>
 
     </div>

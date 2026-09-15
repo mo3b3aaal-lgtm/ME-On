@@ -93,7 +93,7 @@ export interface Group {
   packageSessionsCount?: number; // عدد حصص الباقة (افتراضي 8)
   scheduleDays: string[]; // ['السبت', 'الثلاثاء']
   scheduleTime?: string; // e.g. "04:30 م"
-  scheduleTimes?: Record<string, string>; // Map of day to time, e.g. { 'الأحد': '17:00', 'الثلاثاء': '19:30' }
+  scheduleTimes?: Record<string, string | string[]>; // Map of day to time or array of times, e.g. { 'السبت': ['16:00', '19:00'] }
   roomOrLocation?: string; // e.g. "قاعة 1", "سنتر النور", "أونلاين"
   accentColor: string; // اللون المميز للمجموعة
   notes?: string;
@@ -120,7 +120,7 @@ export interface Enrollment {
   packagePrice?: number; // إجمالي سعر الباقة
   scheduleDays?: string[]; // أيام الحصص الخاصة بهذا الاشتراك إن وجدت
   scheduleTime?: string; // وقت الحصة
-  scheduleTimes?: Record<string, string>; // مواعيد الأيام المحددة
+  scheduleTimes?: Record<string, string | string[]>; // مواعيد الأيام المحددة
   sessionCredit: number; // رصيد الحصص المتبقي لهذا الاشتراك
   financialCredit: number; // الرصيد المالي المتبقي (Financial Credit) e.g. 50 ج
   discount: number; // قيمة الخصم إن وجد
@@ -131,7 +131,28 @@ export interface Enrollment {
   updatedAt?: string;
 }
 
-// 4. Private Lesson Service (خدمة الدروس الخصوصية)
+// 4. Private Lesson Entity / Service (خدمة الدروس الخصوصية المستقلة)
+export interface PrivateLesson {
+  id: string;
+  userId?: string; // معرف حساب المعلم المالك
+  studentId: string;
+  subject: string;
+  gradeLevel?: string;
+  billingMode: BillingMode;
+  billingType: BillingType;
+  pricePerSession: number;
+  hourlyRate?: number;
+  packageSessionsCount?: number;
+  packagePrice?: number;
+  scheduleDays: string[];
+  scheduleTime?: string;
+  scheduleTimes?: Record<string, string | string[]>;
+  roomOrLocation?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface PrivateLessonService {
   id: string;
   userId?: string; // معرف حساب المعلم المالك
@@ -307,7 +328,17 @@ export interface EnrollmentFinancialSummary {
   payments: Payment[];
 }
 
-// 10. Student Grand Financial Summary
+// 10. Student Grand Financial Summary (مع الفصل التام بين ماليات المجموعات والدروس الخاصة)
+export interface CategoryFinancialBreakdown {
+  totalDue: number;
+  totalPaid: number;
+  remaining: number;
+  totalSessionCredit: number;
+  totalUnpaidSessions: number;
+  totalFinancialCredit: number;
+  enrollments: EnrollmentFinancialSummary[];
+}
+
 export interface StudentGrandFinancialSummary {
   studentId: string;
   studentName: string;
@@ -319,6 +350,10 @@ export interface StudentGrandFinancialSummary {
   totalUnpaidSessions: number;
   totalFinancialCredit: number;
   allPayments: Payment[];
+  groupsFinancials: CategoryFinancialBreakdown;
+  privateFinancials: CategoryFinancialBreakdown;
+  hasGroupService: boolean;
+  hasPrivateService: boolean;
 }
 
 // 11. Group Financial Summary

@@ -7,18 +7,18 @@
 
   body {
     font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #FAF8F5;
-    color: #272D24;
+    background-color: #F8FAFC;
+    color: #0F172A;
   }
 
   h1, h2, h3, .font-heading {
     font-family: 'Cairo', 'Tajawal', sans-serif;
     font-weight: 700;
-    color: #272D24;
+    color: #0F172A;
   }
 }
 
-/* Custom scrollbars that feel like natural, smooth UI */
+/* Custom modern scrollbars */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -28,26 +28,27 @@
 }
 
 .android-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 .android-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .android-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(96, 123, 94, 0.20);
+  background: rgba(37, 99, 235, 0.18);
   border-radius: 9999px;
 }
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(96, 123, 94, 0.40);
+  background: rgba(37, 99, 235, 0.35);
 }
 
-@keyframes natural-pulse {
+@keyframes modern-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(0.98); }
+  50% { opacity: 0.9; transform: scale(0.985); }
 }
 
-.animate-natural-pulse {
-  animation: natural-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.animate-modern-pulse {
+  animation: modern-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
 

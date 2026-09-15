@@ -9,6 +9,7 @@ interface AddEditSessionModalProps {
   onClose: () => void;
   editingSession?: Session | null;
   defaultGroupId?: string;
+  defaultDate?: string;
   allGroups: Group[];
   onSaveComplete: (savedSession: Session) => void;
 }
@@ -20,6 +21,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   onClose,
   editingSession,
   defaultGroupId,
+  defaultDate,
   allGroups,
   onSaveComplete,
 }) => {
@@ -27,7 +29,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
 
   const [groupId, setGroupId] = useState(defaultGroupId || allGroups[0]?.id || '');
   const [title, setTitle] = useState('حصة مراجعة وشرح درس جديد');
-  const [date, setDate] = useState(todayStr);
+  const [date, setDate] = useState(defaultDate || todayStr);
   const [startTime, setStartTime] = useState('16:00');
   const [endTime, setEndTime] = useState('17:30');
   const [sessionNumber, setSessionNumber] = useState<number>(1);
@@ -75,7 +77,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       setGroupId(gId);
       const grp = allGroups.find((g) => g.id === gId);
       setTitle('حصة شرح وتطبيق');
-      setDate(todayStr);
+      setDate(defaultDate || todayStr);
       setStartTime('16:00');
       setEndTime('17:30');
       setSessionNumber(1);
@@ -90,7 +92,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       setStatus('scheduled');
       setNotes('');
     }
-  }, [editingSession, defaultGroupId, isOpen]);
+  }, [editingSession, defaultGroupId, defaultDate, isOpen]);
 
   // Update hours and price when times or group change
   const handleTimeChange = (newStart: string, newEnd: string) => {

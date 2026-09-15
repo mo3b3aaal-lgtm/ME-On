@@ -1486,7 +1486,7 @@ export const db = {
       packagePrice?: number;
       scheduleDays?: string[];
       scheduleTime?: string;
-      scheduleTimes?: Record<string, string>;
+      scheduleTimes?: Record<string, string | string[]>;
       roomOrLocation?: string;
       notes?: string;
     }
@@ -1506,7 +1506,7 @@ export const db = {
 
     const newGroup: Group = {
       id: `grp_priv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      name: `درس خاص: ${studentName} - ${options.subject}`,
+      name: options.subject ? `درس خاص - ${options.subject}` : 'درس خاص',
       subject: options.subject,
       gradeLevel: grade,
       type: 'private',
@@ -2946,6 +2946,29 @@ export const db = {
       }
     }
 
+    const groupSummaries = enrollmentsSummary.filter((e) => e.groupType !== 'private');
+    const privateSummaries = enrollmentsSummary.filter((e) => e.groupType === 'private');
+
+    const groupsFinancials = {
+      totalDue: groupSummaries.reduce((sum, s) => sum + s.totalDue, 0),
+      totalPaid: groupSummaries.reduce((sum, s) => sum + s.totalPaid, 0),
+      remaining: groupSummaries.reduce((sum, s) => sum + s.remaining, 0),
+      totalSessionCredit: groupSummaries.reduce((sum, s) => sum + s.sessionCredit, 0),
+      totalUnpaidSessions: groupSummaries.reduce((sum, s) => sum + s.unpaidSessionsCount, 0),
+      totalFinancialCredit: groupSummaries.reduce((sum, s) => sum + s.financialCredit, 0),
+      enrollments: groupSummaries,
+    };
+
+    const privateFinancials = {
+      totalDue: privateSummaries.reduce((sum, s) => sum + s.totalDue, 0),
+      totalPaid: privateSummaries.reduce((sum, s) => sum + s.totalPaid, 0),
+      remaining: privateSummaries.reduce((sum, s) => sum + s.remaining, 0),
+      totalSessionCredit: privateSummaries.reduce((sum, s) => sum + s.sessionCredit, 0),
+      totalUnpaidSessions: privateSummaries.reduce((sum, s) => sum + s.unpaidSessionsCount, 0),
+      totalFinancialCredit: privateSummaries.reduce((sum, s) => sum + s.financialCredit, 0),
+      enrollments: privateSummaries,
+    };
+
     return {
       studentId,
       studentName,
@@ -2957,6 +2980,10 @@ export const db = {
       totalUnpaidSessions,
       totalFinancialCredit,
       allPayments,
+      groupsFinancials,
+      privateFinancials,
+      hasGroupService: groupSummaries.length > 0,
+      hasPrivateService: privateSummaries.length > 0,
     };
   },
 

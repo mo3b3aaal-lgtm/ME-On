@@ -13,12 +13,14 @@ import {
   Calculator,
   BookOpen,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import { Student, Group, Enrollment, BillingType, BillingMode, PricingModifierType } from '../types';
 import { db, calculateCustomEnrollmentPrice, getBillingModeLabel } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { getLocalizedStageName } from '../utils/stages';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { normalizeScheduleTimesList } from '../utils/schedule';
 
 interface EnrollExistingStudentModalProps {
   isOpen: boolean;
@@ -64,7 +66,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   const [privPackagePrice, setPrivPackagePrice] = useState<number>(900);
   const [privDays, setPrivDays] = useState<string[]>(['السبت']);
   const [privTime, setPrivTime] = useState('16:00');
-  const [privTimes, setPrivTimes] = useState<Record<string, string>>({ 'السبت': '16:00' });
+  const [privTimes, setPrivTimes] = useState<Record<string, string[]>>({ 'السبت': ['16:00'] });
   const [privLocation, setPrivLocation] = useState('منزل الطالب / أونلاين');
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
@@ -118,17 +120,38 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
       if (privDays.length > 1) setPrivDays(privDays.filter((d) => d !== day));
     } else {
       setPrivDays([...privDays, day]);
-      if (!privTimes[day]) {
-        setPrivTimes((prev) => ({ ...prev, [day]: privTime || '16:00' }));
+      if (!privTimes[day] || privTimes[day].length === 0) {
+        setPrivTimes((prev) => ({ ...prev, [day]: [privTime || '16:00'] }));
       }
     }
   };
 
-  const handlePrivDayTimeChange = (day: string, timeVal: string) => {
-    setPrivTimes((prev) => ({ ...prev, [day]: timeVal }));
-    if (privDays[0] === day || !privTime) {
-      setPrivTime(timeVal);
-    }
+  const handlePrivDayTimeChange = (day: string, timeIdx: number, timeVal: string) => {
+    setPrivTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      currentList[timeIdx] = timeVal;
+      return { ...prev, [day]: currentList };
+    });
+  };
+
+  const handleAddPrivDayTime = (day: string) => {
+    setPrivTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      const lastTime = currentList[currentList.length - 1] || '16:00';
+      const [h, m] = lastTime.split(':').map(Number);
+      const nextH = !isNaN(h) ? Math.min(23, (h + 3) % 24) : 19;
+      const nextTimeStr = `${String(nextH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+      return { ...prev, [day]: [...currentList, nextTimeStr] };
+    });
+  };
+
+  const handleRemovePrivDayTime = (day: string, timeIdx: number) => {
+    setPrivTimes((prev) => {
+      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
+      if (currentList.length <= 1) return prev;
+      const updated = currentList.filter((_, idx) => idx !== timeIdx);
+      return { ...prev, [day]: updated };
+    });
   };
 
   const handleSave = () => {
@@ -137,6 +160,18 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     if (enrollmentKind === 'private_service') {
       const isPkg = privBillingMode === 'package';
       const isHr = privBillingMode === 'hourly';
+
+      // Clean and normalize schedule times
+      const cleanPrivTimes: Record<string, string[]> = {};
+      privDays.forEach((d) => {
+        const list = normalizeScheduleTimesList(privTimes[d] || [privTime || '16:00']);
+        cleanPrivTimes[d] = list.length > 0 ? list : ['16:00'];
+      });
+
+      const primaryTime = privDays.length > 0 && cleanPrivTimes[privDays[0]]?.[0]
+        ? cleanPrivTimes[privDays[0]][0]
+        : (privTime.trim() || '16:00');
+
       // Create independent private lesson for each selected student
       for (const studentId of selectedStudentIds) {
         db.createPrivateLessonService(studentId, {
@@ -148,8 +183,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
           packageSessionsCount: isPkg ? (Number(privPackageSessions) || 10) : undefined,
           packagePrice: isPkg ? (Number(privPackagePrice) || 900) : undefined,
           scheduleDays: privDays,
-          scheduleTime: privTime || (privDays.length > 0 ? privTimes[privDays[0]] || '' : ''),
-          scheduleTimes: privTimes,
+          scheduleTime: primaryTime,
+          scheduleTimes: cleanPrivTimes,
           roomOrLocation: privLocation,
         });
       }
@@ -478,26 +513,54 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 </div>
 
                 {privDays.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                  <div className="space-y-2 pt-1">
                     {privDays.map((day) => {
-                      const dayTime = privTimes[day] || privTime || '16:00';
+                      const dayTimes = privTimes[day] && privTimes[day].length > 0 ? privTimes[day] : ['16:00'];
                       return (
                         <div
                           key={day}
-                          className="flex items-center justify-between p-1.5 rounded-lg bg-[#F9F7F2] border border-[#E8E2D6]"
+                          className="p-2 rounded-xl bg-[#F9F7F2] border border-[#E8E2D6] space-y-2"
                         >
-                          <span className="text-[11px] font-bold text-[#2D332A] flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#D49B4B]"></span>
-                            {day}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-[#8A9187]" />
-                            <input
-                              type="time"
-                              value={dayTime}
-                              onChange={(e) => handlePrivDayTimeChange(day, e.target.value)}
-                              className="bg-white border border-[#E8E2D6] rounded px-1.5 py-0.5 text-xs font-bold text-[#2D332A] focus:outline-none focus:border-[#D49B4B]"
-                            />
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-[#2D332A] flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#D49B4B]"></span>
+                              {day}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddPrivDayTime(day)}
+                              className="text-[10px] font-bold text-[#9C6615] hover:text-[#7A4F0E] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#D49B4B]/15 hover:bg-[#D49B4B]/25 transition-colors"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>{isRTL ? 'إضافة موعد آخر' : 'Add another time'}</span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {dayTimes.map((tVal, tIdx) => (
+                              <div
+                                key={`${day}_${tIdx}`}
+                                className="flex items-center gap-1 bg-white border border-[#E8E2D6] rounded-lg px-2 py-0.5 shadow-2xs"
+                              >
+                                <Clock className="w-3 h-3 text-[#8A9187]" />
+                                <input
+                                  type="time"
+                                  value={tVal}
+                                  onChange={(e) => handlePrivDayTimeChange(day, tIdx, e.target.value)}
+                                  className="bg-transparent text-xs font-bold text-[#2D332A] focus:outline-none focus:text-[#D49B4B]"
+                                />
+                                {dayTimes.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePrivDayTime(day, tIdx)}
+                                    className="p-0.5 rounded text-[#8A9187] hover:text-[#C97C5D] hover:bg-[#C97C5D]/10 transition-colors ml-0.5"
+                                    title={isRTL ? 'حذف هذا الموعد' : 'Remove time'}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         </div>
                       );

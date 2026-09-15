@@ -25,7 +25,7 @@ import {
   BulkCreateSessionsResult,
   BillingMode,
 } from '../types';
-import { db, getBillingModeLabel, getEffectiveSessionPrice } from '../utils/storage';
+import { db, getBillingModeLabel, getEffectiveSessionPrice, multiplyMoney, roundMoney } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { useTranslation } from '../utils/i18n';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
@@ -49,6 +49,9 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 }) => {
   const { t, isRTL, language } = useTranslation();
   const todayStr = new Date().toISOString().split('T')[0];
+
+  // Modal layer hook - MUST be called unconditionally at the top level
+  const modalLayer = useModalLayer('bulk-add-session', isOpen, onClose);
 
   // Steps: form -> confirm -> result
   const [step, setStep] = useState<'form' | 'confirm' | 'result'>('form');
@@ -156,6 +159,13 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
     try {
       const targetsList: BulkStudentSessionTarget[] = selectedStudents.map((st) => {
         const tgt = studentTargets[st.id];
+        if (!tgt) {
+          return {
+            studentId: st.id,
+            enrollmentId: '',
+            groupId: '',
+          };
+        }
         const enr = db.getEnrollmentById(tgt.enrollmentId);
         const grp = db.getGroupById(tgt.groupId);
         const isHourly =
@@ -196,10 +206,6 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
       setIsSubmitting(false);
     }
   };
-
-  const modalLayer = useModalLayer('bulk-add-session', isOpen, onClose);
-
-  if (!isOpen) return null;
 
   return (
     <ModalPortal>
@@ -404,7 +410,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   ? (target?.customHourlyRate || currentEnr?.hourlyRate || currentEnr?.customPrice || currentGroup?.hourlyRate || currentGroup?.defaultPrice || 100)
                   : (currentEnr?.customPrice || currentGroup?.defaultPrice || 100);
 
-                const sessionPrice = isHourly ? hourlyDuration * rate : rate;
+                const sessionPrice = isHourly ? multiplyMoney(hourlyDuration, rate) : rate;
 
                 return (
                   <div
@@ -433,7 +439,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                         </span>
                         {sessionCount > 1 && (
                           <p className="text-[10px] font-bold text-[#8A9187]">
-                            إجمالي: {sessionPrice * sessionCount} {t('currency')}
+                            إجمالي: {multiplyMoney(sessionPrice, sessionCount)} {t('currency')}
                           </p>
                         )}
                       </div>
@@ -540,7 +546,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   ? (tgt?.customHourlyRate || enr?.hourlyRate || enr?.customPrice || grp?.hourlyRate || grp?.defaultPrice || 100)
                   : (enr?.customPrice || grp?.defaultPrice || 100);
 
-                const effectivePrice = isHourly ? hourlyDuration * rate : rate;
+                const effectivePrice = isHourly ? multiplyMoney(hourlyDuration, rate) : rate;
 
                 return (
                   <div
@@ -562,7 +568,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                         +{sessionCount} حصص
                       </span>
                       <p className="text-[10px] text-[#748C70] font-bold">
-                        {effectivePrice * sessionCount} {t('currency')}
+                        {multiplyMoney(effectivePrice, sessionCount)} {t('currency')}
                       </p>
                     </div>
                   </div>

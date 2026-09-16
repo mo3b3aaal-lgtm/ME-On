@@ -58,7 +58,7 @@ export const NetworkDiagnosticsModal: React.FC<NetworkDiagnosticsModalProps> = (
 
   const handleCopyReport = () => {
     if (!diagnostics) return;
-    const report = `=== TEACHER MANAGER ANDROID / WEB RUNTIME DIAGNOSTICS ===
+    const report = `=== CLASSY ANDROID / WEB RUNTIME DIAGNOSTICS ===
 Timestamp: ${diagnostics.timestamp}
 Origin (window.location.origin): ${diagnostics.windowLocationOrigin}
 navigator.onLine: ${diagnostics.navigatorOnLine}

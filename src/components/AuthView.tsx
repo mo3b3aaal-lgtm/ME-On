@@ -205,7 +205,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
           <GraduationCap className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-          Teacher Manager
+          Classy
         </h1>
         <p className="text-xs text-slate-500 font-medium">
           نظام إدارة المعلم والطلاب والمجموعات والحصص والمحاسبة
@@ -597,7 +597,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
 
       {/* Footer Info */}
       <div className="text-center text-[11px] text-slate-400 mt-4 space-y-0.5">
-        <p className="font-medium">تطبيق Teacher Manager • نظام إدارة المعلم والمجموعات</p>
+        <p className="font-medium">تطبيق Classy • نظام إدارة المعلم والمجموعات</p>
       </div>
 
     </div>

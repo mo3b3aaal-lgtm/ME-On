@@ -607,7 +607,7 @@ app.post("/api/ai/copilot", async (req, res) => {
       });
     }
 
-    const systemInstruction = "You are 'Teacher Manager Copilot', an expert K-12 educator, classroom management coach, and instructional designer. Provide clear, direct, actionable, practical, and empathetic advice to help teachers save time, engage students, and resolve classroom challenges.";
+    const systemInstruction = "You are 'Classy Copilot', an expert K-12 educator, classroom management coach, and instructional designer. Provide clear, direct, actionable, practical, and empathetic advice to help teachers save time, engage students, and resolve classroom challenges.";
 
     const response = await ai.models.generateContent({
       model: "gemini-3.7-flash",
@@ -641,7 +641,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Teacher Manager server running on http://0.0.0.0:${PORT}`);
+    console.log(`Classy server running on http://0.0.0.0:${PORT}`);
   });
 }
 

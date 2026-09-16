@@ -30,22 +30,26 @@ var import_genai = require("@google/genai");
 var import_dotenv = __toESM(require("dotenv"), 1);
 
 // server/db.ts
-var import_app = require("firebase/app");
-var import_firestore = require("firebase/firestore");
+var import_firestore = require("@google-cloud/firestore");
 var import_node_fs = __toESM(require("node:fs"), 1);
 var import_node_path = __toESM(require("node:path"), 1);
 var import_node_crypto = __toESM(require("node:crypto"), 1);
-var firebaseConfig = {};
+var projectId = "corded-elevator-cf6jr";
+var databaseId = "ai-studio-teacherskdb-2ab7b23f-628d-4bc7-9c38-f649ca7153f9";
 try {
   const configPath = import_node_path.default.join(process.cwd(), "firebase-applet-config.json");
   if (import_node_fs.default.existsSync(configPath)) {
-    firebaseConfig = JSON.parse(import_node_fs.default.readFileSync(configPath, "utf-8"));
+    const config = JSON.parse(import_node_fs.default.readFileSync(configPath, "utf-8"));
+    if (config.projectId) projectId = config.projectId;
+    if (config.firestoreDatabaseId) databaseId = config.firestoreDatabaseId;
   }
 } catch (e) {
-  console.error("Error loading firebase-applet-config.json:", e);
+  console.error("Error loading firebase-applet-config.json for Firestore config:", e);
 }
-var app = (0, import_app.getApps)().length === 0 ? (0, import_app.initializeApp)(firebaseConfig) : (0, import_app.getApp)();
-var db = firebaseConfig.firestoreDatabaseId ? (0, import_firestore.getFirestore)(app, firebaseConfig.firestoreDatabaseId) : (0, import_firestore.getFirestore)(app);
+var db = new import_firestore.Firestore({
+  projectId,
+  databaseId
+});
 function generateRandomSessionToken() {
   return import_node_crypto.default.randomBytes(32).toString("hex");
 }
@@ -67,12 +71,12 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
     identifierReceived: clean,
     hasPasswordProvided: Boolean(password)
   });
-  const usersColl = (0, import_firestore.collection)(db, "users");
+  const usersColl = db.collection("users");
   let matchedDoc = null;
   const queryErrors = [];
   try {
-    const directDoc = await (0, import_firestore.getDoc)((0, import_firestore.doc)(db, "users", clean));
-    if (directDoc.exists()) {
+    const directDoc = await usersColl.doc(clean).get();
+    if (directDoc.exists) {
       matchedDoc = directDoc;
     }
   } catch (e) {
@@ -81,8 +85,7 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
   }
   if (!matchedDoc) {
     try {
-      const qEmail = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", clean.toLowerCase()));
-      const snap = await (0, import_firestore.getDocs)(qEmail);
+      const snap = await usersColl.where("email", "==", clean.toLowerCase()).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -93,8 +96,7 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
   }
   if (!matchedDoc) {
     try {
-      const qEmailRaw = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", clean));
-      const snap = await (0, import_firestore.getDocs)(qEmailRaw);
+      const snap = await usersColl.where("email", "==", clean).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -105,8 +107,7 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
   }
   if (!matchedDoc) {
     try {
-      const qPhone = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("phone", "==", clean));
-      const snap = await (0, import_firestore.getDocs)(qPhone);
+      const snap = await usersColl.where("phone", "==", clean).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -117,8 +118,7 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
   }
   if (!matchedDoc) {
     try {
-      const qName = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("name", "==", clean));
-      const snap = await (0, import_firestore.getDocs)(qName);
+      const snap = await usersColl.where("name", "==", clean).get();
       if (!snap.empty) {
         matchedDoc = snap.docs[0];
       }
@@ -166,8 +166,7 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
   }
   const token = generateRandomSessionToken();
   const now = (/* @__PURE__ */ new Date()).toISOString();
-  await (0, import_firestore.setDoc)(
-    matchedDoc.ref,
+  await matchedDoc.ref.set(
     {
       auth_token: token,
       last_login_at: now,
@@ -184,10 +183,9 @@ async function authenticateUser(identifierOrParams, explicitPassword) {
 async function registerUser(account) {
   const cleanEmail = (account.email || "").trim().toLowerCase();
   const cleanPhone = (account.phone || "").trim();
-  const usersColl = (0, import_firestore.collection)(db, "users");
+  const usersColl = db.collection("users");
   if (cleanEmail) {
-    const qEmail = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", cleanEmail));
-    const snap = await (0, import_firestore.getDocs)(qEmail);
+    const snap = await usersColl.where("email", "==", cleanEmail).get();
     if (!snap.empty) {
       const existing = snap.docs[0].data();
       const pwdHash2 = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
@@ -196,8 +194,7 @@ async function registerUser(account) {
       }
       const token2 = generateRandomSessionToken();
       const now2 = (/* @__PURE__ */ new Date()).toISOString();
-      await (0, import_firestore.setDoc)(
-        snap.docs[0].ref,
+      await snap.docs[0].ref.set(
         {
           auth_token: token2,
           last_login_at: now2,
@@ -223,9 +220,9 @@ async function registerUser(account) {
     created_at: now,
     updated_at: now
   };
-  const userRef = (0, import_firestore.doc)(db, "users", userId);
+  const userRef = usersColl.doc(userId);
   try {
-    await (0, import_firestore.setDoc)(userRef, {
+    await userRef.set({
       ...newUser,
       subject: account.subject || "\u0639\u0627\u0645",
       centerOrSchool: account.centerOrSchool || ""
@@ -251,15 +248,13 @@ async function registerUser(account) {
 }
 async function resetUserPasswordInFirestore(identifier, newPassword, recoveryPin) {
   const clean = (identifier || "").trim();
-  const usersColl = (0, import_firestore.collection)(db, "users");
+  const usersColl = db.collection("users");
   let matchedDoc = null;
-  const qEmail = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("email", "==", clean.toLowerCase()));
-  const snap = await (0, import_firestore.getDocs)(qEmail);
-  if (!snap.empty) {
-    matchedDoc = snap.docs[0];
+  const snapEmail = await usersColl.where("email", "==", clean.toLowerCase()).get();
+  if (!snapEmail.empty) {
+    matchedDoc = snapEmail.docs[0];
   } else {
-    const qPhone = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("phone", "==", clean));
-    const snapPhone = await (0, import_firestore.getDocs)(qPhone);
+    const snapPhone = await usersColl.where("phone", "==", clean).get();
     if (!snapPhone.empty) {
       matchedDoc = snapPhone.docs[0];
     }
@@ -274,8 +269,7 @@ async function resetUserPasswordInFirestore(identifier, newPassword, recoveryPin
   const newHash = import_node_crypto.default.createHash("sha256").update(newPassword).digest("hex");
   const newToken = generateRandomSessionToken();
   const now = (/* @__PURE__ */ new Date()).toISOString();
-  await (0, import_firestore.setDoc)(
-    matchedDoc.ref,
+  await matchedDoc.ref.set(
     {
       password_hash: newHash,
       auth_token: newToken,
@@ -291,9 +285,8 @@ async function registerOrAuthenticateUser(account) {
 async function getUserByToken(token) {
   if (!token || typeof token !== "string") return null;
   try {
-    const usersColl = (0, import_firestore.collection)(db, "users");
-    const q = (0, import_firestore.query)(usersColl, (0, import_firestore.where)("auth_token", "==", token.trim()));
-    const snap = await (0, import_firestore.getDocs)(q);
+    const usersColl = db.collection("users");
+    const snap = await usersColl.where("auth_token", "==", token.trim()).get();
     if (snap.empty) return null;
     return snap.docs[0].data();
   } catch (err) {
@@ -304,13 +297,14 @@ async function getUserByToken(token) {
 async function getCloudDataPackage(userId) {
   if (!userId) return null;
   try {
-    const syncDocRef = (0, import_firestore.doc)(db, "user_sync_stores", userId);
-    const snap = await (0, import_firestore.getDoc)(syncDocRef);
-    if (!snap.exists()) {
+    const syncDocRef = db.collection("user_sync_stores").doc(userId);
+    const snap = await syncDocRef.get();
+    if (!snap.exists) {
       console.log(`[Server Cloud Storage] No sync package document found in Firestore for user ${userId}`);
       return null;
     }
     const data = snap.data();
+    if (!data) return null;
     const rawPkg = data.package || data.data_package || null;
     if (!rawPkg) {
       console.log(`[Server Cloud Storage] Sync store document for user ${userId} contains empty package`);
@@ -404,9 +398,8 @@ async function saveCloudDataPackage(userId, dataPackage) {
     userId,
     lastSyncTime: now
   });
-  const syncDocRef = (0, import_firestore.doc)(db, "user_sync_stores", userId);
-  await (0, import_firestore.setDoc)(
-    syncDocRef,
+  const syncDocRef = db.collection("user_sync_stores").doc(userId);
+  await syncDocRef.set(
     {
       user_id: userId,
       version: dataPackage.version || "2.0",
@@ -418,9 +411,9 @@ async function saveCloudDataPackage(userId, dataPackage) {
     { merge: true }
   );
   try {
-    const auditRef = (0, import_firestore.doc)((0, import_firestore.collection)(db, "sync_audit_logs"));
+    const auditRef = db.collection("sync_audit_logs").doc();
     const totalRecords = (dataPackage.students?.length || 0) + (dataPackage.groups?.length || 0) + (dataPackage.sessions?.length || 0) + (dataPackage.payments?.length || 0);
-    (0, import_firestore.setDoc)(auditRef, {
+    auditRef.set({
       id: auditRef.id,
       user_id: userId,
       action: "sync_push",
@@ -597,12 +590,14 @@ async function resetUserCloudData(userId, resetAllBefore) {
   const resetTimestamp = resetAllBefore || (/* @__PURE__ */ new Date()).toISOString();
   const resetTime = new Date(resetTimestamp).getTime();
   console.log(`[Server Cloud Reset] Processing reset for user ${userId} with timestamp ${resetTimestamp}...`);
-  const syncDocRef = (0, import_firestore.doc)(db, "user_sync_stores", userId);
-  const snap = await (0, import_firestore.getDoc)(syncDocRef);
+  const syncDocRef = db.collection("user_sync_stores").doc(userId);
+  const snap = await syncDocRef.get();
   let existingPkg = {};
-  if (snap.exists()) {
+  if (snap.exists) {
     const d = snap.data();
-    existingPkg = d.package || d.data_package || {};
+    if (d) {
+      existingPkg = d.package || d.data_package || {};
+    }
   }
   let effectiveReset = resetTimestamp;
   if (existingPkg.resetAllBefore) {
@@ -650,8 +645,7 @@ async function resetUserCloudData(userId, resetAllBefore) {
       totalPayments: remainingPayments.length
     }
   });
-  await (0, import_firestore.setDoc)(
-    syncDocRef,
+  await syncDocRef.set(
     {
       user_id: userId,
       version: "2.0",
@@ -662,12 +656,12 @@ async function resetUserCloudData(userId, resetAllBefore) {
     },
     { merge: false }
   );
-  const verifySnap = await (0, import_firestore.getDoc)(syncDocRef);
-  if (!verifySnap.exists()) {
+  const verifySnap = await syncDocRef.get();
+  if (!verifySnap.exists) {
     throw new Error("Firestore read-after-write verification failed: sync store document not found");
   }
   const verifyData = verifySnap.data();
-  const verifyPkg = verifyData.package || verifyData.data_package;
+  const verifyPkg = verifyData?.package || verifyData?.data_package;
   if (!verifyPkg || verifyPkg.resetAllBefore !== effectiveReset) {
     throw new Error("Firestore read-after-write verification failed: resetAllBefore mismatch");
   }
@@ -692,9 +686,9 @@ async function resetUserCloudData(userId, resetAllBefore) {
 
 // server.ts
 import_dotenv.default.config();
-var app2 = (0, import_express.default)();
+var app = (0, import_express.default)();
 var PORT = 3e3;
-app2.use(
+app.use(
   (0, import_cors.default)({
     origin: true,
     credentials: true,
@@ -712,8 +706,8 @@ app2.use(
     ]
   })
 );
-app2.options("*", (0, import_cors.default)());
-app2.use(import_express.default.json({ limit: "50mb" }));
+app.options("*", (0, import_cors.default)());
+app.use(import_express.default.json({ limit: "50mb" }));
 var aiClient = null;
 function getGenAI() {
   if (!aiClient && process.env.GEMINI_API_KEY) {
@@ -728,7 +722,7 @@ function getGenAI() {
   }
   return aiClient;
 }
-app2.get("/api/health", (_req, res) => {
+app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
     database: "Firebase Firestore (Project: corded-elevator-cf6jr)",
@@ -767,7 +761,7 @@ async function requireAuth(req, res, next) {
     return res.status(500).json({ success: false, error: "Internal authentication error" });
   }
 }
-app2.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
     const rawBody = req.body || {};
     const bodyKeys = Object.keys(rawBody);
@@ -834,7 +828,7 @@ app2.post("/api/auth/login", async (req, res) => {
     });
   }
 });
-app2.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   try {
     const rawBody = req.body || {};
     const receivedFields = Object.keys(rawBody);
@@ -908,7 +902,7 @@ app2.post("/api/auth/register", async (req, res) => {
     });
   }
 });
-app2.post("/api/auth/reset-password", async (req, res) => {
+app.post("/api/auth/reset-password", async (req, res) => {
   try {
     const { identifier, newPassword, recoveryPin } = req.body;
     const result = await resetUserPasswordInFirestore(identifier, newPassword, recoveryPin);
@@ -917,7 +911,7 @@ app2.post("/api/auth/reset-password", async (req, res) => {
     res.status(400).json({ success: false, error: error.message || "\u0641\u0634\u0644 \u0627\u0633\u062A\u0639\u0627\u062F\u0629 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631" });
   }
 });
-app2.post("/api/auth/sync-session", async (req, res) => {
+app.post("/api/auth/sync-session", async (req, res) => {
   try {
     const { id, email, name, phone, password, recoveryPin } = req.body;
     const userId = id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -936,7 +930,7 @@ app2.post("/api/auth/sync-session", async (req, res) => {
     res.status(500).json({ success: false, error: error.message || "Failed to authenticate session" });
   }
 });
-app2.post("/api/sync/push", requireAuth, async (req, res) => {
+app.post("/api/sync/push", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = req.user.id;
     const { dataPackage } = req.body;
@@ -950,7 +944,7 @@ app2.post("/api/sync/push", requireAuth, async (req, res) => {
     res.status(500).json({ success: false, error: error.message || "Failed to push sync data" });
   }
 });
-app2.get("/api/sync/pull", requireAuth, async (req, res) => {
+app.get("/api/sync/pull", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = req.user.id;
     const cloudData = await getCloudDataPackage(authenticatedUserId);
@@ -963,7 +957,7 @@ app2.get("/api/sync/pull", requireAuth, async (req, res) => {
     res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
   }
 });
-app2.get("/api/sync/pull/:userId", requireAuth, async (req, res) => {
+app.get("/api/sync/pull/:userId", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = req.user.id;
     const cloudData = await getCloudDataPackage(authenticatedUserId);
@@ -976,7 +970,7 @@ app2.get("/api/sync/pull/:userId", requireAuth, async (req, res) => {
     res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
   }
 });
-app2.post("/api/sync/merge", requireAuth, async (req, res) => {
+app.post("/api/sync/merge", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = req.user.id;
     const { dataPackage } = req.body;
@@ -990,7 +984,7 @@ app2.post("/api/sync/merge", requireAuth, async (req, res) => {
     res.status(500).json({ success: false, error: error.message || "Failed to merge sync data" });
   }
 });
-app2.post("/api/sync/reset", requireAuth, async (req, res) => {
+app.post("/api/sync/reset", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = req.user.id;
     const { resetAllBefore } = req.body;
@@ -1008,7 +1002,7 @@ app2.post("/api/sync/reset", requireAuth, async (req, res) => {
     res.status(500).json({ success: false, error: error.message || "Failed to reset cloud sync data" });
   }
 });
-app2.post("/api/ai/lesson-plan", async (req, res) => {
+app.post("/api/ai/lesson-plan", async (req, res) => {
   const { topic, subject, gradeLevel, duration = "45 mins", objectives } = req.body;
   const ai = getGenAI();
   const fallbackPlan = `# \u062E\u0637\u0629 \u062F\u0631\u0633: ${topic || "\u0627\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629"}
@@ -1047,7 +1041,7 @@ Format your response cleanly in Markdown with bold headers, bullet points, time 
     res.json({ plan: fallbackPlan });
   }
 });
-app2.post("/api/ai/parent-message", async (req, res) => {
+app.post("/api/ai/parent-message", async (req, res) => {
   const { studentName, parentName, reason, tone = "professional & warm", details, teacherName = "\u0627\u0644\u0645\u0639\u0644\u0645" } = req.body;
   const ai = getGenAI();
   let fallbackSubject = `\u062A\u0642\u0631\u064A\u0631 \u0645\u062A\u0627\u0628\u0639\u0629 \u0628\u062E\u0635\u0648\u0635 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName || "\u0627\u0644\u0645\u062D\u062A\u0631\u0645/\u0629"}`;
@@ -1112,7 +1106,7 @@ Generate a JSON object with two fields:
     res.json({ subject: fallbackSubject, message: fallbackBody });
   }
 });
-app2.post("/api/ai/quiz-generator", async (req, res) => {
+app.post("/api/ai/quiz-generator", async (req, res) => {
   const { topic, subject, gradeLevel, questionCount = 4, difficulty = "Medium" } = req.body;
   const ai = getGenAI();
   const fallbackQuestions = [
@@ -1165,7 +1159,7 @@ Return a valid JSON array of objects with the structure:
     res.json({ questions: fallbackQuestions });
   }
 });
-app2.post("/api/ai/student-remark", async (req, res) => {
+app.post("/api/ai/student-remark", async (req, res) => {
   try {
     const { studentName, subject, gradeAverage, attendanceRate, behaviorPoints, strengths, areasForGrowth } = req.body;
     const ai = getGenAI();
@@ -1207,7 +1201,7 @@ Return a JSON object:
     res.status(500).json({ error: error.message || "Failed to generate student remark." });
   }
 });
-app2.post("/api/ai/copilot", async (req, res) => {
+app.post("/api/ai/copilot", async (req, res) => {
   try {
     const { prompt, context } = req.body;
     const ai = getGenAI();
@@ -1244,15 +1238,15 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: "spa"
     });
-    app2.use(vite.middlewares);
+    app.use(vite.middlewares);
   } else {
     const distPath = import_path.default.join(process.cwd(), "dist");
-    app2.use(import_express.default.static(distPath));
-    app2.get("*", (_req, res) => {
+    app.use(import_express.default.static(distPath));
+    app.get("*", (_req, res) => {
       res.sendFile(import_path.default.join(distPath, "index.html"));
     });
   }
-  app2.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Teacher Manager server running on http://0.0.0.0:${PORT}`);
   });
 }

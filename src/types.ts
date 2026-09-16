@@ -1,5 +1,5 @@
 // ==========================================
-// Teacher Manager Domain Entities (TypeScript)
+// Classy Domain Entities (TypeScript)
 // Designed for Scalable Entity-Relationship Architecture
 // ==========================================
 
@@ -383,7 +383,73 @@ export interface GroupFinancialSummary {
   }[];
 }
 
-// 12. Teacher Overall Financial Summary
+// 12. Teacher Overall Financial Summary & Historical Reports
+export interface PeriodFinancialBreakdown {
+  totalSessions: number;
+  completedSessions: number;
+  presentCount: number;
+  lateCount: number;
+  absentChargedCount: number;
+  freeCount: number;
+  totalSessionValue: number;
+  totalCollected: number;
+  totalDue: number;
+  totalRemaining: number;
+}
+
+export interface MonthFinancialRecord {
+  year: number;
+  month: number;
+  monthYear: string; // e.g. "2026-01"
+  monthName: string; // e.g. "يناير 2026"
+  totalCompletedSessions: number;
+  presentSessionsCount: number;
+  lateSessionsCount: number;
+  absentChargedCount: number;
+  freeSessionsCount: number;
+  cancelledSessionsCount: number;
+  totalSessionValue: number;
+  totalCollected: number;
+  totalDue: number;
+  totalRemaining: number;
+  group: PeriodFinancialBreakdown;
+  private: PeriodFinancialBreakdown;
+  methodStats: Record<string, { label: string; amount: number; count: number; color?: string }>;
+}
+
+export interface YearFinancialRecord {
+  year: number;
+  yearName: string;
+  totalCompletedSessions: number;
+  presentSessionsCount: number;
+  lateSessionsCount: number;
+  absentChargedCount: number;
+  freeSessionsCount: number;
+  totalSessionValue: number;
+  totalCollected: number;
+  totalDue: number;
+  totalRemaining: number;
+  group: PeriodFinancialBreakdown;
+  private: PeriodFinancialBreakdown;
+  months: MonthFinancialRecord[];
+}
+
+export interface LifetimeFinancialSummary {
+  totalCompletedSessions: number;
+  presentSessionsCount: number;
+  lateSessionsCount: number;
+  absentChargedCount: number;
+  freeSessionsCount: number;
+  totalSessionValue: number;
+  totalCollected: number;
+  totalDue: number;
+  totalRemaining: number;
+  group: PeriodFinancialBreakdown;
+  private: PeriodFinancialBreakdown;
+  years: YearFinancialRecord[];
+  months: MonthFinancialRecord[];
+}
+
 export interface TeacherOverallFinancialSummary {
   totalRevenue: number;
   totalDues: number;
@@ -391,8 +457,20 @@ export interface TeacherOverallFinancialSummary {
   totalActiveStudents: number;
   totalSessionsConducted: number;
   totalExtraSessions: number;
-  monthlyRevenues: { monthYear: string; revenue: number; dues: number }[];
+  monthlyRevenues: {
+    monthYear: string;
+    month: number;
+    year: number;
+    monthName: string;
+    revenue: number;
+    dues: number;
+    remaining: number;
+    sessionsCount: number;
+    groupRevenue: number;
+    privateRevenue: number;
+  }[];
   paymentsList: Payment[];
+  financialHistory?: LifetimeFinancialSummary;
 }
 
 // 13. Financial Credit (legacy compatibility)

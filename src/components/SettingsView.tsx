@@ -877,7 +877,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* App Info Footer */}
       <div className="text-center text-[11px] text-slate-400 space-y-0.5 pt-2">
-        <p className="font-bold text-slate-700">Teacher Manager v2.0</p>
+        <p className="font-bold text-slate-700">Classy v2.0</p>
         <p>مزامنة آمنة للحسابات • يدعم العمل بدون إنترنت والنسخ السحابي</p>
       </div>
     </div>

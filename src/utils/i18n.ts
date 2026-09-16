@@ -472,7 +472,7 @@ export const translations = {
     navSettings: 'Settings',
 
     // App Branding & General
-    appName: 'Smart Teacher Manager',
+    appName: 'Classy',
     appSubtitle: 'Comprehensive accounting and management suite for tuition centres and private tutors',
     currency: 'EGP',
     currencySymbol: 'EGP',
@@ -914,7 +914,7 @@ export const translations = {
     navSettings: 'Settings',
 
     // App Branding & General
-    appName: 'Smart Teacher Manager',
+    appName: 'Classy',
     appSubtitle: 'Comprehensive accounting and management suite for tutoring centers and private tutors',
     currency: 'EGP',
     currencySymbol: 'EGP',

@@ -1,5 +1,5 @@
 /**
- * Centralized API & Cloud Configuration for Teacher Manager
+ * Centralized API & Cloud Configuration for Classy
  * 
  * Single source of truth for backend endpoints, cloud service configuration,
  * and Android Capacitor production networking.

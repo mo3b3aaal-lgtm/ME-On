@@ -26,6 +26,10 @@ import {
   StudentGrandFinancialSummary,
   GroupFinancialSummary,
   TeacherOverallFinancialSummary,
+  MonthFinancialRecord,
+  YearFinancialRecord,
+  LifetimeFinancialSummary,
+  PeriodFinancialBreakdown,
   MonthlyBillingLedgerItem,
   FinancialCredit,
   TeacherProfile,
@@ -2786,13 +2790,23 @@ export const db = {
       const unitRate = packageSessions > 0 ? divideMoney(packagePrice, packageSessions) : 100;
       totalDue = multiplyMoney(attendedCount, unitRate);
     } else if (isPrepaid) {
-      // Prepaid: Normal attended sessions are automatically paid (0 due by default).
-      // Only sessions manually overridden to unpaid contribute to totalDue.
+      // PREPAID Rules:
+      // - Normal attendance is automatically marked Paid (Due = 0).
+      // - No session-credit system, no remaining prepaid credits.
+      // - Session still counts as a normal completed session.
+      // - Teacher can manually override an individual session to Unpaid/Due.
+      // - Overridden sessions contribute to outstanding balance and unpaidSessionsCount.
       const sessionRate = getEffectiveSessionPrice(enrollment, group);
       const prepaidUnpaidAttendance = consumedAttendance.filter(
         (a) => a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false
       );
-      totalDue = multiplyMoney(prepaidUnpaidAttendance.length, sessionRate);
+      const prepaidPaidAttendance = consumedAttendance.filter(
+        (a) => !(a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false)
+      );
+
+      const prepaidPaidValue = prepaidPaidAttendance.reduce((sum, a) => addMoney(sum, a.sessionPriceSnapshot || sessionRate), 0);
+      const prepaidUnpaidValue = prepaidUnpaidAttendance.reduce((sum, a) => addMoney(sum, a.sessionPriceSnapshot || sessionRate), 0);
+      totalDue = addMoney(prepaidPaidValue, prepaidUnpaidValue);
     } else {
       // Per session billing (Prepaid / Postpaid)
       const sessionRate = getEffectiveSessionPrice(enrollment, group);
@@ -2807,7 +2821,8 @@ export const db = {
     const freeSessionsCount = freeAttendance.length;
 
     const sessionRate = getEffectiveSessionPrice(enrollment, group);
-    const totalPaid = roundMoney(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0), 2);
+    const explicitPaymentsTotal = roundMoney(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0), 2);
+    let totalPaid = explicitPaymentsTotal;
 
     let purchasedSessionsCount = 0;
     let usedSessionsCount = 0;
@@ -2816,22 +2831,42 @@ export const db = {
     let unpaidSessionsCount = 0;
     let settledSessionsCount = 0;
     let unpaidHours = 0;
-    let remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
+    let remaining = 0;
 
     if (isHourly) {
       // Hourly mode stats: calculated purely on hours/duration, not session counts
       const effectiveHourlyRate = enrollment.hourlyRate || enrollment.customPrice || group?.hourlyRate || group?.defaultPrice || 100;
       usedSessionsCount = attendedCount;
-      if (totalPaid >= totalDue) {
-        remaining = 0;
-        unpaidHours = 0;
-        unpaidSessionsCount = 0;
-        settledSessionsCount = attendedCount;
+      const prepaidHourlyPaidAttendance = consumedAttendance.filter(
+        (a) => !(a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false)
+      );
+      const isPrepaidHourly = enrollment.billingMode === 'prepaid' || enrollment.billingType === 'prepaid' || (enrollment.billingType === 'per_session' && enrollment.billingMode !== 'postpaid');
+
+      if (isPrepaidHourly) {
+        let paidHourlyVal = 0;
+        prepaidHourlyPaidAttendance.forEach((a) => {
+          const sess = sessions.find((s) => s.id === a.sessionId);
+          const hours = a.hours !== undefined && a.hours !== null ? Number(a.hours) : (sess?.hours !== undefined && sess?.hours !== null ? Number(sess.hours) : 1);
+          const rate = a.hourlyRate || sess?.hourlyRate || effectiveHourlyRate;
+          paidHourlyVal = addMoney(paidHourlyVal, multiplyMoney(hours, rate));
+        });
+        totalPaid = addMoney(paidHourlyVal, explicitPaymentsTotal);
+        remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
+        unpaidHours = effectiveHourlyRate > 0 && remaining > 0 ? Number((remaining / effectiveHourlyRate).toFixed(2)) : 0;
+        settledSessionsCount = prepaidHourlyPaidAttendance.length;
+        unpaidSessionsCount = Math.max(0, attendedCount - settledSessionsCount);
       } else {
-        remaining = subtractMoney(totalDue, totalPaid);
-        unpaidHours = effectiveHourlyRate > 0 ? Number((remaining / effectiveHourlyRate).toFixed(2)) : 0;
-        settledSessionsCount = 0;
-        unpaidSessionsCount = 0;
+        if (totalPaid >= totalDue) {
+          remaining = 0;
+          unpaidHours = 0;
+          unpaidSessionsCount = 0;
+          settledSessionsCount = attendedCount;
+        } else {
+          remaining = subtractMoney(totalDue, totalPaid);
+          unpaidHours = effectiveHourlyRate > 0 ? Number((remaining / effectiveHourlyRate).toFixed(2)) : 0;
+          settledSessionsCount = 0;
+          unpaidSessionsCount = 0;
+        }
       }
     } else if (isPrepaid) {
       // PREPAID Rules:
@@ -2843,20 +2878,28 @@ export const db = {
       const prepaidUnpaidAttendance = consumedAttendance.filter(
         (a) => a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false
       );
+      const prepaidPaidAttendance = consumedAttendance.filter(
+        (a) => !(a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false)
+      );
+
+      const prepaidPaidCount = prepaidPaidAttendance.length;
       const prepaidUnpaidCount = prepaidUnpaidAttendance.length;
-      const prepaidPaidCount = attendedCount - prepaidUnpaidCount;
+      const prepaidPaidValue = prepaidPaidAttendance.reduce((sum, a) => addMoney(sum, a.sessionPriceSnapshot || sessionRate), 0);
+
+      totalPaid = addMoney(prepaidPaidValue, explicitPaymentsTotal);
+      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
 
       usedSessionsCount = attendedCount;
       settledSessionsCount = prepaidPaidCount;
       effectiveSessionCredit = 0;
       sessionCreditValue = 0;
 
-      const paymentsCoveredSessions = sessionRate > 0 ? calculateCoveredSessions(totalPaid, sessionRate) : 0;
+      const paymentsCoveredSessions = sessionRate > 0 ? calculateCoveredSessions(explicitPaymentsTotal, sessionRate) : 0;
       purchasedSessionsCount = prepaidPaidCount + paymentsCoveredSessions;
       unpaidSessionsCount = Math.max(0, prepaidUnpaidCount - paymentsCoveredSessions);
-      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
     } else if (isPostpaid) {
       // POSTPAID Rules:
+      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
       if (totalPaid >= totalDue) {
         settledSessionsCount = attendedCount;
         unpaidSessionsCount = 0;
@@ -2869,7 +2912,6 @@ export const db = {
       } else {
         settledSessionsCount = sessionRate > 0 ? calculateCoveredSessions(totalPaid, sessionRate) : 0;
         unpaidSessionsCount = Math.max(0, attendedCount - settledSessionsCount);
-        remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
         effectiveSessionCredit = 0;
         sessionCreditValue = 0;
         purchasedSessionsCount = settledSessionsCount;
@@ -2877,12 +2919,12 @@ export const db = {
       }
     } else if (enrollment.billingType === 'monthly') {
       // Monthly Billing
+      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
       purchasedSessionsCount = payments.length;
       usedSessionsCount = attendedCount;
       effectiveSessionCredit = 0;
       sessionCreditValue = 0;
       unpaidSessionsCount = 0;
-      remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
     } else {
       // Package or other
       const packageSessions = enrollment.packageSessionsCount || group?.packageSessionsCount || 10;
@@ -3074,54 +3116,446 @@ export const db = {
   },
 
   /**
+   * حساب السجل المالي التاريخي الكامل (شهري + سنوي + إجمالي)
+   * مع احتساب حصص الدفع المسبق المؤكدة كإيراد محصل فعلياً
+   */
+  calculateFinancialHistory: (userId?: string): LifetimeFinancialSummary => {
+    const groups = db.getGroups(userId);
+    const enrollments = db.getEnrollments(userId);
+    const sessions = db.getSessions(userId);
+    const attendance = db.getAttendance(userId);
+    const payments = db.getPayments(userId);
+
+    // Collect all months with activity (from sessions, payments, and current month)
+    const monthKeysSet = new Set<string>();
+    const now = new Date();
+    monthKeysSet.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+
+    sessions.forEach((s) => {
+      const y = s.year || (s.date ? Number(s.date.split('-')[0]) : now.getFullYear());
+      const m = s.month || (s.date ? Number(s.date.split('-')[1]) : now.getMonth() + 1);
+      if (y && m) {
+        monthKeysSet.add(`${y}-${String(m).padStart(2, '0')}`);
+      }
+    });
+
+    payments.forEach((p) => {
+      const y = p.targetYear || p.year || (p.date ? Number(p.date.split('-')[0]) : now.getFullYear());
+      const m = p.targetMonth || p.month || (p.date ? Number(p.date.split('-')[1]) : now.getMonth() + 1);
+      if (y && m) {
+        monthKeysSet.add(`${y}-${String(m).padStart(2, '0')}`);
+      }
+    });
+
+    const sortedMonthKeys = Array.from(monthKeysSet).sort((a, b) => a.localeCompare(b));
+    const monthRecords: MonthFinancialRecord[] = [];
+
+    for (const mKey of sortedMonthKeys) {
+      const [year, month] = mKey.split('-').map(Number);
+      const monthName = `${getArabicMonthName(month)} ${year}`;
+
+      const monthSessions = sessions.filter((s) => {
+        const sYear = s.year || (s.date ? Number(s.date.split('-')[0]) : 0);
+        const sMonth = s.month || (s.date ? Number(s.date.split('-')[1]) : 0);
+        return sYear === year && sMonth === month;
+      });
+
+      const monthPayments = payments.filter((p) => {
+        const pYear = p.targetYear || p.year || (p.date ? Number(p.date.split('-')[0]) : 0);
+        const pMonth = p.targetMonth || p.month || (p.date ? Number(p.date.split('-')[1]) : 0);
+        return pYear === year && pMonth === month;
+      });
+
+      const initBreakdown = (): PeriodFinancialBreakdown => ({
+        totalSessions: 0,
+        completedSessions: 0,
+        presentCount: 0,
+        lateCount: 0,
+        absentChargedCount: 0,
+        freeCount: 0,
+        totalSessionValue: 0,
+        totalCollected: 0,
+        totalDue: 0,
+        totalRemaining: 0,
+      });
+
+      const groupBreakdown = initBreakdown();
+      const privateBreakdown = initBreakdown();
+      const methodStats: Record<string, { label: string; amount: number; count: number; color?: string }> = {
+        cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#607B5E' },
+        vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#B86B52' },
+        instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#586E7E' },
+        bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#B88438' },
+        prepaid_auto: { label: 'دفع مسبق للحصص', amount: 0, count: 0, color: '#4F46E5' },
+        other: { label: 'أخرى', amount: 0, count: 0, color: '#878E82' },
+      };
+
+      let totalCompleted = 0;
+      let presentCount = 0;
+      let lateCount = 0;
+      let absentChargedCount = 0;
+      let freeCount = 0;
+      let cancelledCount = 0;
+      let totalSessionVal = 0;
+      let totalCollected = 0;
+      let totalDue = 0;
+      let totalRemaining = 0;
+
+      monthSessions.forEach((s) => {
+        const isCompleted = s.status === 'completed';
+        const isCancelled = s.status === 'cancelled';
+        if (isCancelled) cancelledCount++;
+        if (isCompleted) totalCompleted++;
+
+        const grp = groups.find((g) => g.id === s.groupId);
+        const isPrivate = grp?.type === 'private' || s.groupId.startsWith('private_');
+        const targetB = isPrivate ? privateBreakdown : groupBreakdown;
+
+        targetB.totalSessions++;
+        if (isCompleted) targetB.completedSessions++;
+
+        const sAttendance = attendance.filter((a) => a.sessionId === s.id);
+
+        sAttendance.forEach((a) => {
+          if (a.status === 'present') {
+            presentCount++;
+            targetB.presentCount++;
+          } else if (a.status === 'late') {
+            lateCount++;
+            targetB.lateCount++;
+          } else if (a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false)) {
+            absentChargedCount++;
+            targetB.absentChargedCount++;
+          } else if (a.status === 'absent_free' || a.status === 'excused') {
+            freeCount++;
+            targetB.freeCount++;
+          }
+
+          const isCharged =
+            isCompleted &&
+            (a.status === 'present' || a.status === 'late' || a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false));
+
+          if (isCharged) {
+            const enr = enrollments.find(
+              (e) => e.id === a.enrollmentId || (e.studentId === a.studentId && e.groupId === s.groupId)
+            );
+            const isHourly =
+              enr?.billingType === 'hourly' ||
+              enr?.billingMode === 'hourly' ||
+              grp?.billingType === 'hourly' ||
+              grp?.billingMode === 'hourly';
+            const isPackage = !isHourly && (enr?.billingMode === 'package' || enr?.billingType === 'package' || grp?.billingType === 'package');
+            const isPrepaid =
+              !isHourly &&
+              !isPackage &&
+              (enr?.billingMode === 'prepaid' ||
+                enr?.billingType === 'prepaid' ||
+                (enr?.billingType === 'per_session' && enr?.billingMode !== 'postpaid') ||
+                grp?.billingType === 'prepaid' ||
+                (!enr?.billingMode && !enr?.billingType));
+
+            let sessionVal = 0;
+            if (isHourly) {
+              const hours = a.hours !== undefined && a.hours !== null ? Number(a.hours) : (s.hours !== undefined && s.hours !== null ? Number(s.hours) : 1);
+              const rate = a.hourlyRate || s.hourlyRate || enr?.hourlyRate || grp?.hourlyRate || enr?.customPrice || grp?.defaultPrice || 100;
+              sessionVal = roundMoney(multiplyMoney(hours, rate), 2);
+            } else if (isPackage) {
+              const pkgSessions = enr?.packageSessionsCount || grp?.packageSessionsCount || 8;
+              const pkgPrice = enr?.packagePrice || grp?.defaultPrice || enr?.customPrice || 800;
+              const uRate = pkgSessions > 0 ? divideMoney(pkgPrice, pkgSessions) : 100;
+              sessionVal = roundMoney(uRate, 2);
+            } else {
+              const sRate = a.sessionPriceSnapshot || (enr ? getEffectiveSessionPrice(enr, grp) : (grp?.defaultPrice || 100));
+              sessionVal = roundMoney(sRate, 2);
+            }
+
+            totalSessionVal = addMoney(totalSessionVal, sessionVal);
+            targetB.totalSessionValue = addMoney(targetB.totalSessionValue, sessionVal);
+
+            const isUnpaid = a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false;
+            if (isPrepaid && !isUnpaid) {
+              totalCollected = addMoney(totalCollected, sessionVal);
+              targetB.totalCollected = addMoney(targetB.totalCollected, sessionVal);
+              totalDue = addMoney(totalDue, sessionVal);
+              targetB.totalDue = addMoney(targetB.totalDue, sessionVal);
+
+              methodStats.prepaid_auto.amount = addMoney(methodStats.prepaid_auto.amount, sessionVal);
+              methodStats.prepaid_auto.count++;
+            } else {
+              totalDue = addMoney(totalDue, sessionVal);
+              targetB.totalDue = addMoney(targetB.totalDue, sessionVal);
+              totalRemaining = addMoney(totalRemaining, sessionVal);
+              targetB.totalRemaining = addMoney(targetB.totalRemaining, sessionVal);
+            }
+          }
+        });
+      });
+
+      monthPayments.forEach((p) => {
+        const amt = Number(p.amount) || 0;
+        if (amt <= 0) return;
+
+        const grp = p.groupId ? groups.find((g) => g.id === p.groupId) : (p.enrollmentId ? groups.find((g) => g.id === enrollments.find((e) => e.id === p.enrollmentId)?.groupId) : undefined);
+        const isPrivate = grp?.type === 'private' || (p.groupId && p.groupId.startsWith('private_'));
+        const targetB = isPrivate ? privateBreakdown : groupBreakdown;
+
+        totalCollected = addMoney(totalCollected, amt);
+        targetB.totalCollected = addMoney(targetB.totalCollected, amt);
+
+        if (p.paymentType === 'specific_month') {
+          totalDue = addMoney(totalDue, amt);
+          targetB.totalDue = addMoney(targetB.totalDue, amt);
+        }
+
+        const m = p.paymentMethod || 'cash';
+        if (methodStats[m]) {
+          methodStats[m].amount = addMoney(methodStats[m].amount, amt);
+          methodStats[m].count++;
+        } else {
+          methodStats.other.amount = addMoney(methodStats.other.amount, amt);
+          methodStats.other.count++;
+        }
+      });
+
+      totalRemaining = Math.max(0, subtractMoney(totalDue, totalCollected));
+      groupBreakdown.totalRemaining = Math.max(0, subtractMoney(groupBreakdown.totalDue, groupBreakdown.totalCollected));
+      privateBreakdown.totalRemaining = Math.max(0, subtractMoney(privateBreakdown.totalDue, privateBreakdown.totalCollected));
+
+      monthRecords.push({
+        year,
+        month,
+        monthYear: mKey,
+        monthName,
+        totalCompletedSessions: totalCompleted,
+        presentSessionsCount: presentCount,
+        lateSessionsCount: lateCount,
+        absentChargedCount: absentChargedCount,
+        freeSessionsCount: freeCount,
+        cancelledSessionsCount: cancelledCount,
+        totalSessionValue: totalSessionVal,
+        totalCollected,
+        totalDue,
+        totalRemaining,
+        group: groupBreakdown,
+        private: privateBreakdown,
+        methodStats,
+      });
+    }
+
+    const yearMap: Record<number, MonthFinancialRecord[]> = {};
+    monthRecords.forEach((m) => {
+      if (!yearMap[m.year]) yearMap[m.year] = [];
+      yearMap[m.year].push(m);
+    });
+
+    const yearRecords: YearFinancialRecord[] = Object.entries(yearMap)
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+      .map(([yearStr, mList]) => {
+        const yr = Number(yearStr);
+        const initB = (): PeriodFinancialBreakdown => ({
+          totalSessions: 0,
+          completedSessions: 0,
+          presentCount: 0,
+          lateCount: 0,
+          absentChargedCount: 0,
+          freeCount: 0,
+          totalSessionValue: 0,
+          totalCollected: 0,
+          totalDue: 0,
+          totalRemaining: 0,
+        });
+
+        const grpB = initB();
+        const privB = initB();
+
+        let totalComp = 0;
+        let pCount = 0;
+        let lCount = 0;
+        let aCount = 0;
+        let fCount = 0;
+        let tVal = 0;
+        let tColl = 0;
+        let tDue = 0;
+        let tRem = 0;
+
+        mList.forEach((m) => {
+          totalComp += m.totalCompletedSessions;
+          pCount += m.presentSessionsCount;
+          lCount += m.lateSessionsCount;
+          aCount += m.absentChargedCount;
+          fCount += m.freeSessionsCount;
+          tVal = addMoney(tVal, m.totalSessionValue);
+          tColl = addMoney(tColl, m.totalCollected);
+          tDue = addMoney(tDue, m.totalDue);
+          tRem = addMoney(tRem, m.totalRemaining);
+
+          grpB.totalSessions += m.group.totalSessions;
+          grpB.completedSessions += m.group.completedSessions;
+          grpB.presentCount += m.group.presentCount;
+          grpB.lateCount += m.group.lateCount;
+          grpB.absentChargedCount += m.group.absentChargedCount;
+          grpB.freeCount += m.group.freeCount;
+          grpB.totalSessionValue = addMoney(grpB.totalSessionValue, m.group.totalSessionValue);
+          grpB.totalCollected = addMoney(grpB.totalCollected, m.group.totalCollected);
+          grpB.totalDue = addMoney(grpB.totalDue, m.group.totalDue);
+          grpB.totalRemaining = addMoney(grpB.totalRemaining, m.group.totalRemaining);
+
+          privB.totalSessions += m.private.totalSessions;
+          privB.completedSessions += m.private.completedSessions;
+          privB.presentCount += m.private.presentCount;
+          privB.lateCount += m.private.lateCount;
+          privB.absentChargedCount += m.private.absentChargedCount;
+          privB.freeCount += m.private.freeCount;
+          privB.totalSessionValue = addMoney(privB.totalSessionValue, m.private.totalSessionValue);
+          privB.totalCollected = addMoney(privB.totalCollected, m.private.totalCollected);
+          privB.totalDue = addMoney(privB.totalDue, m.private.totalDue);
+          privB.totalRemaining = addMoney(privB.totalRemaining, m.private.totalRemaining);
+        });
+
+        return {
+          year: yr,
+          yearName: `${yr}`,
+          totalCompletedSessions: totalComp,
+          presentSessionsCount: pCount,
+          lateSessionsCount: lCount,
+          absentChargedCount: aCount,
+          freeSessionsCount: fCount,
+          totalSessionValue: tVal,
+          totalCollected: tColl,
+          totalDue: tDue,
+          totalRemaining: tRem,
+          group: grpB,
+          private: privB,
+          months: mList.sort((a, b) => b.month - a.month),
+        };
+      });
+
+    const lifeGrp: PeriodFinancialBreakdown = {
+      totalSessions: 0,
+      completedSessions: 0,
+      presentCount: 0,
+      lateCount: 0,
+      absentChargedCount: 0,
+      freeCount: 0,
+      totalSessionValue: 0,
+      totalCollected: 0,
+      totalDue: 0,
+      totalRemaining: 0,
+    };
+    const lifePriv: PeriodFinancialBreakdown = {
+      totalSessions: 0,
+      completedSessions: 0,
+      presentCount: 0,
+      lateCount: 0,
+      absentChargedCount: 0,
+      freeCount: 0,
+      totalSessionValue: 0,
+      totalCollected: 0,
+      totalDue: 0,
+      totalRemaining: 0,
+    };
+
+    let lifetimeCompleted = 0;
+    let lifetimePresent = 0;
+    let lifetimeLate = 0;
+    let lifetimeAbsent = 0;
+    let lifetimeFree = 0;
+    let lifetimeValue = 0;
+    let lifetimeCollected = 0;
+    let lifetimeDue = 0;
+    let lifetimeRemaining = 0;
+
+    monthRecords.forEach((m) => {
+      lifetimeCompleted += m.totalCompletedSessions;
+      lifetimePresent += m.presentSessionsCount;
+      lifetimeLate += m.lateSessionsCount;
+      lifetimeAbsent += m.absentChargedCount;
+      lifetimeFree += m.freeSessionsCount;
+      lifetimeValue = addMoney(lifetimeValue, m.totalSessionValue);
+      lifetimeCollected = addMoney(lifetimeCollected, m.totalCollected);
+      lifetimeDue = addMoney(lifetimeDue, m.totalDue);
+      lifetimeRemaining = addMoney(lifetimeRemaining, m.totalRemaining);
+
+      lifeGrp.totalSessions += m.group.totalSessions;
+      lifeGrp.completedSessions += m.group.completedSessions;
+      lifeGrp.presentCount += m.group.presentCount;
+      lifeGrp.lateCount += m.group.lateCount;
+      lifeGrp.absentChargedCount += m.group.absentChargedCount;
+      lifeGrp.freeCount += m.group.freeCount;
+      lifeGrp.totalSessionValue = addMoney(lifeGrp.totalSessionValue, m.group.totalSessionValue);
+      lifeGrp.totalCollected = addMoney(lifeGrp.totalCollected, m.group.totalCollected);
+      lifeGrp.totalDue = addMoney(lifeGrp.totalDue, m.group.totalDue);
+      lifeGrp.totalRemaining = addMoney(lifeGrp.totalRemaining, m.group.totalRemaining);
+
+      lifePriv.totalSessions += m.private.totalSessions;
+      lifePriv.completedSessions += m.private.completedSessions;
+      lifePriv.presentCount += m.private.presentCount;
+      lifePriv.lateCount += m.private.lateCount;
+      lifePriv.absentChargedCount += m.private.absentChargedCount;
+      lifePriv.freeCount += m.private.freeCount;
+      lifePriv.totalSessionValue = addMoney(lifePriv.totalSessionValue, m.private.totalSessionValue);
+      lifePriv.totalCollected = addMoney(lifePriv.totalCollected, m.private.totalCollected);
+      lifePriv.totalDue = addMoney(lifePriv.totalDue, m.private.totalDue);
+      lifePriv.totalRemaining = addMoney(lifePriv.totalRemaining, m.private.totalRemaining);
+    });
+
+    return {
+      totalCompletedSessions: lifetimeCompleted,
+      presentSessionsCount: lifetimePresent,
+      lateSessionsCount: lifetimeLate,
+      absentChargedCount: lifetimeAbsent,
+      freeSessionsCount: lifetimeFree,
+      totalSessionValue: lifetimeValue,
+      totalCollected: lifetimeCollected,
+      totalDue: lifetimeDue,
+      totalRemaining: lifetimeRemaining,
+      group: lifeGrp,
+      private: lifePriv,
+      years: yearRecords,
+      months: [...monthRecords].reverse(),
+    };
+  },
+
+  /**
    * حساب التقرير العام الشامل للمدرس
    */
   calculateTeacherFinancialOverview: (period?: ReportPeriodFilter): TeacherOverallFinancialSummary => {
+    const history = db.calculateFinancialHistory();
     const students = db.getStudents();
     const payments = db.getPayments();
     const sessions = db.getSessions().filter((s) => s.status === 'completed');
 
-    let totalRevenue = 0;
-    let totalDues = 0;
-    let totalRemaining = 0;
     let totalExtraSessions = 0;
-
     students.forEach((st) => {
       const fin = db.calculateStudentGrandFinancials(st.id);
-      totalDues = addMoney(totalDues, fin.grandTotalDue);
-      totalRemaining = addMoney(totalRemaining, fin.grandRemaining);
       fin.enrollmentsSummary.forEach((e) => {
         totalExtraSessions += e.extraSessionsCount;
       });
     });
 
-    totalRevenue = roundMoney(payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0), 2);
-
-    // Monthly revenues breakdown
-    const monthlyMap: Record<string, { revenue: number; dues: number }> = {};
-    payments.forEach((p) => {
-      const key = `${p.year}-${String(p.month).padStart(2, '0')}`;
-      if (!monthlyMap[key]) monthlyMap[key] = { revenue: 0, dues: 0 };
-      monthlyMap[key].revenue += Number(p.amount) || 0;
-    });
-
-    const monthlyRevenues = Object.entries(monthlyMap)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([monthYear, data]) => ({
-        monthYear,
-        revenue: data.revenue,
-        dues: data.dues,
-      }));
+    const monthlyRevenues = history.months.map((m) => ({
+      monthYear: m.monthYear,
+      month: m.month,
+      year: m.year,
+      monthName: m.monthName,
+      revenue: m.totalCollected,
+      dues: m.totalDue,
+      remaining: m.totalRemaining,
+      sessionsCount: m.totalCompletedSessions,
+      groupRevenue: m.group.totalCollected,
+      privateRevenue: m.private.totalCollected,
+    }));
 
     return {
-      totalRevenue,
-      totalDues,
-      totalRemaining,
+      totalRevenue: history.totalCollected,
+      totalDues: history.totalDue,
+      totalRemaining: history.totalRemaining,
       totalActiveStudents: students.filter((s) => s.status === 'active').length,
       totalSessionsConducted: sessions.length,
       totalExtraSessions,
       monthlyRevenues,
       paymentsList: payments,
+      financialHistory: history,
     };
   },
 

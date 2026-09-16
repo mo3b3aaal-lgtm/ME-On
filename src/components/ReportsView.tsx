@@ -28,7 +28,7 @@ import {
   PieChart,
   X,
 } from 'lucide-react';
-import { Student, Group, Session, Payment, ReportPeriodFilter } from '../types';
+import { Student, Group, Session, Payment, ReportPeriodFilter, Enrollment } from '../types';
 import { db, getArabicMonthName } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 
@@ -37,6 +37,7 @@ interface ReportsViewProps {
   groups: Group[];
   sessions: Session[];
   payments: Payment[];
+  enrollments?: Enrollment[];
   onOpenAddPayment?: (student?: Student, enrollmentId?: string) => void;
   onOpenStudentProfile?: (student: Student) => void;
 }
@@ -46,6 +47,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   groups,
   sessions,
   payments,
+  enrollments,
   onOpenAddPayment,
   onOpenStudentProfile,
 }) => {
@@ -62,6 +64,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
+  // Financial Sub-View: 'overview' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
+  const [financialSubTab, setFinancialSubTab] = useState<'overview' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'>('overview');
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'group' | 'private'>('all');
+  const [expandedMonthYear, setExpandedMonthYear] = useState<string | null>(null);
+  const [expandedYear, setExpandedYear] = useState<number | null>(currentYear);
+
   // Selected Student / Group for dedicated reports
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || '');
@@ -70,10 +78,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [overdueSearchQuery, setOverdueSearchQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
 
+  const activeEnrollments = useMemo(() => enrollments || db.getEnrollments(), [enrollments]);
+
   // 1. Overall Teacher Calculations
   const teacherSummary = useMemo(() => {
     return db.calculateTeacherFinancialOverview(periodFilter);
   }, [periodFilter, students, payments, sessions]);
+
+  // Full Financial History Engine
+  const financialHistory = useMemo(() => {
+    return teacherSummary.financialHistory || db.calculateFinancialHistory();
+  }, [teacherSummary, payments, sessions, activeEnrollments, groups, students]);
 
   // Filter payments by period
   const filteredPayments = useMemo(() => {
@@ -127,8 +142,30 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   }, [payments, paymentSearchQuery, students, methodFilter, periodFilter, currentMonth, currentYear, selectedSpecificMonth, selectedSpecificYear, customStartDate, customEndDate]);
 
   const periodRevenue = useMemo(() => {
+    // If filtering by predefined periods, use financialHistory to include prepaid revenue properly
+    if (periodFilter === 'all_time') {
+      return financialHistory.totalCollected;
+    }
+    if (periodFilter === 'this_month') {
+      const key = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      const mRec = financialHistory.months.find((m) => m.monthYear === key);
+      return mRec ? mRec.totalCollected : filteredPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    }
+    if (periodFilter === 'last_month') {
+      const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+      const key = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}`;
+      const mRec = financialHistory.months.find((m) => m.monthYear === key);
+      return mRec ? mRec.totalCollected : filteredPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    }
+    if (periodFilter === 'specific_month') {
+      const key = `${selectedSpecificYear}-${String(selectedSpecificMonth).padStart(2, '0')}`;
+      const mRec = financialHistory.months.find((m) => m.monthYear === key);
+      return mRec ? mRec.totalCollected : filteredPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    }
+
     return filteredPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-  }, [filteredPayments]);
+  }, [filteredPayments, periodFilter, financialHistory, currentMonth, currentYear, selectedSpecificMonth, selectedSpecificYear]);
 
   // Payment Methods Breakdown Calculations
   const methodStats = useMemo(() => {
@@ -430,184 +467,743 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {reportType === 'teacher_overview' && (
         <div className="space-y-4">
           
-          {/* Main 4 Financial Highlight Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            
-            <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-emerald-600">
-                <span className="text-[10px] font-medium text-slate-500">المحصل بالفترة</span>
-                <DollarSign className="w-4 h-4 text-emerald-600" />
-              </div>
-              <p className="text-xl font-bold text-emerald-700 mt-0.5">{periodRevenue} <span className="text-[10px] text-slate-400">ج</span></p>
-              <p className="text-[10px] text-slate-400">إجمالي المقبوضات</p>
+          {/* Sub-Navigation for Financial Ledger */}
+          <div className="flex items-center justify-between flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 text-xs">
+            <div className="flex items-center gap-1 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setFinancialSubTab('overview')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                  financialSubTab === 'overview'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>نظرة عامة</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFinancialSubTab('monthly_ledger')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                  financialSubTab === 'monthly_ledger'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>السجل الشهري ({financialHistory.months.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFinancialSubTab('yearly_summary')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                  financialSubTab === 'yearly_summary'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>السجل السنوي ({financialHistory.years.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFinancialSubTab('lifetime')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                  financialSubTab === 'lifetime'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>الإجمالي الشامل</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFinancialSubTab('payments')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                  financialSubTab === 'payments'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>سجل المقبوضات ({filteredPayments.length})</span>
+              </button>
             </div>
 
-            <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-rose-600">
-                <span className="text-[10px] font-medium text-slate-500">المستحقات المعلقة</span>
-                <Receipt className="w-4 h-4 text-rose-600" />
-              </div>
-              <p className={`text-xl font-bold mt-0.5 ${teacherSummary.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                {teacherSummary.totalRemaining} <span className="text-[10px] text-slate-400">ج</span>
-              </p>
-              <p className="text-[10px] text-slate-400">المتبقي على الطلاب</p>
+            {/* Group vs Private Service Filter */}
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-slate-500 font-medium ml-1">الخدمة:</span>
+              <button
+                type="button"
+                onClick={() => setServiceTypeFilter('all')}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                  serviceTypeFilter === 'all'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                الكل
+              </button>
+              <button
+                type="button"
+                onClick={() => setServiceTypeFilter('group')}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                  serviceTypeFilter === 'group'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                مجموعات
+              </button>
+              <button
+                type="button"
+                onClick={() => setServiceTypeFilter('private')}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                  serviceTypeFilter === 'private'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                خاص
+              </button>
             </div>
-
-            <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="text-[10px] font-medium text-slate-500">إجمالي الرسوم</span>
-                <Wallet className="w-4 h-4 text-slate-500" />
-              </div>
-              <p className="text-xl font-bold text-slate-900 mt-0.5">{teacherSummary.totalDues} <span className="text-[10px] text-slate-400">ج</span></p>
-              <p className="text-[10px] text-slate-400">قيمة الخدمات المسجلة</p>
-            </div>
-
-            <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-blue-600">
-                <span className="text-[10px] font-medium text-slate-500">الحصص المنفذة</span>
-                <CalendarCheck2 className="w-4 h-4 text-blue-600" />
-              </div>
-              <p className="text-xl font-bold text-slate-900 mt-0.5">{teacherSummary.totalSessionsConducted}</p>
-              <p className="text-[10px] text-slate-400">حصص تم رصدها</p>
-            </div>
-
           </div>
 
-          {/* Payment Methods Breakdown Section */}
-          <div className="p-3.5 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-2.5">
-            <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-              <PieChart className="w-4 h-4 text-blue-600" />
-              <span>توزيع طرق الدفع والتحصيل</span>
-            </h3>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {(Object.entries(methodStats) as [string, { label: string; amount: number; count: number; color: string }][]).map(([key, stat]) => {
-                const percentage = periodRevenue > 0 ? Math.round((stat.amount / periodRevenue) * 100) : 0;
-                return (
-                  <div
-                    key={key}
-                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1"
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-medium text-slate-600">
-                      <span>{stat.label}</span>
-                      <span className="text-[10px] bg-white px-1.5 py-0.2 rounded border border-slate-200 text-slate-700">{percentage}%</span>
-                    </div>
-                    <p className="text-base font-bold text-slate-900">{stat.amount} <span className="text-[10px] text-slate-400">ج.م</span></p>
-                    <p className="text-[10px] text-slate-400 font-medium">{stat.count} عملية دفع</p>
+          {/* 1.1 FINANCIAL OVERVIEW SUB-TAB */}
+          {financialSubTab === 'overview' && (
+            <div className="space-y-4">
+              {/* Main 4 Financial Highlight Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                
+                <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-emerald-600">
+                    <span className="text-[10px] font-medium text-slate-500">المحصل بالفترة</span>
+                    <DollarSign className="w-4 h-4 text-emerald-600" />
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                  <p className="text-xl font-bold text-emerald-700 mt-0.5">
+                    {serviceTypeFilter === 'group'
+                      ? financialHistory.group.totalCollected
+                      : serviceTypeFilter === 'private'
+                      ? financialHistory.private.totalCollected
+                      : periodRevenue} <span className="text-[10px] text-slate-400">ج</span>
+                  </p>
+                  <p className="text-[10px] text-slate-400">مقبوضات مسددة ومسبقة</p>
+                </div>
 
-          {/* Monthly Revenue History Breakdown */}
-          {teacherSummary.monthlyRevenues.length > 0 && (
-            <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-2.5">
-              <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                <CalendarDays className="w-4 h-4 text-blue-600" />
-                <span>سجل التحصيلات الشهرية والاتجاهات:</span>
-              </h3>
+                <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-rose-600">
+                    <span className="text-[10px] font-medium text-slate-500">المستحقات المعلقة</span>
+                    <Receipt className="w-4 h-4 text-rose-600" />
+                  </div>
+                  <p className={`text-xl font-bold mt-0.5 ${teacherSummary.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                    {serviceTypeFilter === 'group'
+                      ? financialHistory.group.totalRemaining
+                      : serviceTypeFilter === 'private'
+                      ? financialHistory.private.totalRemaining
+                      : teacherSummary.totalRemaining} <span className="text-[10px] text-slate-400">ج</span>
+                  </p>
+                  <p className="text-[10px] text-slate-400">المتبقي على الطلاب</p>
+                </div>
 
-              <div className="space-y-1.5">
-                {teacherSummary.monthlyRevenues.map((m) => {
-                  const maxRevenue = Math.max(...teacherSummary.monthlyRevenues.map((x) => x.revenue), 1);
-                  const barWidth = Math.min(100, Math.round((m.revenue / maxRevenue) * 100));
+                <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="text-[10px] font-medium text-slate-500">إجمالي الرسوم</span>
+                    <Wallet className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <p className="text-xl font-bold text-slate-900 mt-0.5">
+                    {serviceTypeFilter === 'group'
+                      ? financialHistory.group.totalDue
+                      : serviceTypeFilter === 'private'
+                      ? financialHistory.private.totalDue
+                      : teacherSummary.totalDues} <span className="text-[10px] text-slate-400">ج</span>
+                  </p>
+                  <p className="text-[10px] text-slate-400">قيمة الخدمات المسجلة</p>
+                </div>
 
-                  return (
-                    <div
-                      key={m.monthYear}
-                      className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-slate-800">{m.monthYear}</span>
-                        <strong className="text-emerald-700 font-bold">{m.revenue} ج.م</strong>
+                <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-blue-600">
+                    <span className="text-[10px] font-medium text-slate-500">الحصص المنفذة</span>
+                    <CalendarCheck2 className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <p className="text-xl font-bold text-slate-900 mt-0.5">
+                    {serviceTypeFilter === 'group'
+                      ? financialHistory.group.totalSessions
+                      : serviceTypeFilter === 'private'
+                      ? financialHistory.private.totalSessions
+                      : teacherSummary.totalSessionsConducted}
+                  </p>
+                  <p className="text-[10px] text-slate-400">حصص تم رصدها</p>
+                </div>
+
+              </div>
+
+              {/* Group vs Private Split Overview Card */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-blue-600" />
+                      <span className="font-bold text-xs text-blue-950">خدمات المجموعات (Groups)</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                      {financialHistory.group.totalSessions} حصة
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-blue-200/60 text-center">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">المحصل</span>
+                      <strong className="text-xs font-bold text-emerald-700">{financialHistory.group.totalCollected} ج.م</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">المستحق</span>
+                      <strong className="text-xs font-bold text-slate-800">{financialHistory.group.totalDue} ج.م</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">المتبقي</span>
+                      <strong className={`text-xs font-bold ${financialHistory.group.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                        {financialHistory.group.totalRemaining} ج.م
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-purple-50/70 border border-purple-200/80 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-purple-600" />
+                      <span className="font-bold text-xs text-purple-950">الدروس الخاصة (Private)</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                      {financialHistory.private.totalSessions} حصة
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-purple-200/60 text-center">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">المحصل</span>
+                      <strong className="text-xs font-bold text-emerald-700">{financialHistory.private.totalCollected} ج.م</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">المستحق</span>
+                      <strong className="text-xs font-bold text-slate-800">{financialHistory.private.totalDue} ج.م</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">المتبقي</span>
+                      <strong className={`text-xs font-bold ${financialHistory.private.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                        {financialHistory.private.totalRemaining} ج.م
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Methods Breakdown Section */}
+              <div className="p-3.5 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-2.5">
+                <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                  <PieChart className="w-4 h-4 text-blue-600" />
+                  <span>توزيع طرق الدفع والتحصيل</span>
+                </h3>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(Object.entries(methodStats) as [string, { label: string; amount: number; count: number; color: string }][]).map(([key, stat]) => {
+                    const percentage = periodRevenue > 0 ? Math.round((stat.amount / periodRevenue) * 100) : 0;
+                    return (
+                      <div
+                        key={key}
+                        className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1"
+                      >
+                        <div className="flex items-center justify-between text-[11px] font-medium text-slate-600">
+                          <span>{stat.label}</span>
+                          <span className="text-[10px] bg-white px-1.5 py-0.2 rounded border border-slate-200 text-slate-700">{percentage}%</span>
+                        </div>
+                        <p className="text-base font-bold text-slate-900">{stat.amount} <span className="text-[10px] text-slate-400">ج.م</span></p>
+                        <p className="text-[10px] text-slate-400 font-medium">{stat.count} عملية دفع</p>
                       </div>
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Monthly Revenue History Breakdown */}
+              {financialHistory.months.length > 0 && (
+                <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-2.5">
+                  <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                    <CalendarDays className="w-4 h-4 text-blue-600" />
+                    <span>سجل التحصيلات الشهرية والاتجاهات:</span>
+                  </h3>
+
+                  <div className="space-y-1.5">
+                    {financialHistory.months.slice(0, 6).map((m) => {
+                      const maxRevenue = Math.max(...financialHistory.months.map((x) => x.totalCollected), 1);
+                      const barWidth = Math.min(100, Math.round((m.totalCollected / maxRevenue) * 100));
+
+                      return (
                         <div
-                          className="bg-blue-600 h-full rounded-full transition-all duration-300"
-                          style={{ width: `${barWidth}%` }}
-                        />
+                          key={m.monthYear}
+                          className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-slate-800">{m.monthName} {m.year}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-slate-500">{m.totalCompletedSessions} حصة</span>
+                              <strong className="text-emerald-700 font-bold">{m.totalCollected} ج.م</strong>
+                            </div>
+                          </div>
+                          <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-blue-600 h-full rounded-full transition-all duration-300"
+                              style={{ width: `${barWidth}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 1.2 MONTHLY LEDGER SUB-TAB */}
+          {financialSubTab === 'monthly_ledger' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                    <CalendarDays className="w-4 h-4 text-blue-600" />
+                    <span>السجل المالي الشهري المفصل ({financialHistory.months.length} أشهر)</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    يشمل إجمالي الحصص المنفذة، الإيرادات المحصلة (المسبقة والمسددة)، والمستحقات المتبقية
+                  </p>
+                </div>
+              </div>
+
+              {financialHistory.months.length === 0 ? (
+                <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl text-slate-500 text-xs">
+                  لا توجد سجلات مالية شهرية مسجلة حتى الآن.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {financialHistory.months.map((m) => {
+                    const isExpanded = expandedMonthYear === m.monthYear;
+                    const collectionRate = m.totalDue > 0 ? Math.min(100, Math.round((m.totalCollected / m.totalDue) * 100)) : 100;
+                    const relevantData = serviceTypeFilter === 'group' ? m.group : serviceTypeFilter === 'private' ? m.private : m;
+
+                    return (
+                      <div
+                        key={m.monthYear}
+                        className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden transition-all"
+                      >
+                        {/* Month Header Card */}
+                        <div
+                          onClick={() => setExpandedMonthYear(isExpanded ? null : m.monthYear)}
+                          className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors gap-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex flex-col items-center justify-center text-blue-700 shrink-0">
+                              <span className="text-[10px] font-medium leading-none">{m.year}</span>
+                              <span className="text-xs font-bold leading-none mt-0.5">{m.month}</span>
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                                <span>{m.monthName} {m.year}</span>
+                                {m.month === currentMonth && m.year === currentYear && (
+                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-blue-600 text-white">الشهر الحالي</span>
+                                )}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                <span>{m.totalCompletedSessions} حصة منتهية</span>
+                                <span>•</span>
+                                <span>حضور: {m.presentSessionsCount}</span>
+                                {m.lateSessionsCount > 0 && <span>• تأخير: {m.lateSessionsCount}</span>}
+                                {m.absentChargedCount > 0 && <span>• غياب محتسب: {m.absentChargedCount}</span>}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-left">
+                            <div>
+                              <p className="text-sm font-black text-emerald-700">{relevantData.totalCollected} ج.م</p>
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                من أصل {relevantData.totalDue} ج.م ({collectionRate}%)
+                              </p>
+                            </div>
+                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </div>
+                        </div>
+
+                        {/* Expandable Details */}
+                        {isExpanded && (
+                          <div className="p-3.5 bg-slate-50/80 border-t border-slate-100 space-y-3 text-xs">
+                            {/* Financial Summary Strip */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                              <div className="p-2 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">المحصل الفعلي</span>
+                                <strong className="text-xs font-bold text-emerald-700">{relevantData.totalCollected} ج.م</strong>
+                              </div>
+                              <div className="p-2 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">قيمة الحصص (المستحق)</span>
+                                <strong className="text-xs font-bold text-slate-800">{relevantData.totalDue} ج.م</strong>
+                              </div>
+                              <div className="p-2 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">المتبقي</span>
+                                <strong className={`text-xs font-bold ${relevantData.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                                  {relevantData.totalRemaining} ج.م
+                                </strong>
+                              </div>
+                              <div className="p-2 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">نسبة التحصيل</span>
+                                <strong className="text-xs font-bold text-blue-600">{collectionRate}%</strong>
+                              </div>
+                            </div>
+
+                            {/* Group vs Private comparison in this month */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              <div className="p-2.5 rounded-xl bg-blue-50/60 border border-blue-200/70 flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                                  <span className="font-bold text-[11px] text-blue-950">المجموعات:</span>
+                                  <span className="text-[10px] text-blue-700">({m.group.totalSessions} حصة)</span>
+                                </div>
+                                <div className="text-left font-bold text-[11px] text-emerald-700">
+                                  {m.group.totalCollected} ج.م
+                                </div>
+                              </div>
+
+                              <div className="p-2.5 rounded-xl bg-purple-50/60 border border-purple-200/70 flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <User className="w-3.5 h-3.5 text-purple-600" />
+                                  <span className="font-bold text-[11px] text-purple-950">الدروس الخاصة:</span>
+                                  <span className="text-[10px] text-purple-700">({m.private.totalSessions} حصة)</span>
+                                </div>
+                                <div className="text-left font-bold text-[11px] text-emerald-700">
+                                  {m.private.totalCollected} ج.م
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Attendance Breakdown for Month */}
+                            <div className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                              <span className="font-bold text-slate-700">حالات الحضور:</span>
+                              <div className="flex items-center gap-3">
+                                <span className="text-emerald-700 font-medium">حاضر: {m.presentSessionsCount}</span>
+                                <span className="text-amber-700 font-medium">متأخر: {m.lateSessionsCount}</span>
+                                <span className="text-rose-700 font-medium">غياب محتسب: {m.absentChargedCount}</span>
+                                <span className="text-slate-500 font-medium">غياب معذور: {m.freeSessionsCount}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 1.3 YEARLY SUMMARY SUB-TAB */}
+          {financialSubTab === 'yearly_summary' && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span>السجل المالي السنوي ({financialHistory.years.length} سنوات)</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  ملخص الإيرادات والمستحقات مجمعة سنوياً مع التفصيل الشهري
+                </p>
+              </div>
+
+              {financialHistory.years.length === 0 ? (
+                <div className="p-8 text-center bg-white border border-slate-200 rounded-2xl text-slate-500 text-xs">
+                  لا توجد سجلات سنوية مسجلة حتى الآن.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {financialHistory.years.map((y) => {
+                    const isExpanded = expandedYear === y.year;
+                    const relevantData = serviceTypeFilter === 'group' ? y.group : serviceTypeFilter === 'private' ? y.private : y;
+                    const collectionRate = y.totalDue > 0 ? Math.min(100, Math.round((y.totalCollected / y.totalDue) * 100)) : 100;
+
+                    return (
+                      <div
+                        key={y.year}
+                        className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden"
+                      >
+                        {/* Year Card Header */}
+                        <div
+                          onClick={() => setExpandedYear(isExpanded ? null : y.year)}
+                          className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-black text-base flex items-center justify-center shadow-xs">
+                              {y.year}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-base text-slate-900">
+                                عام {y.year}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                {y.totalCompletedSessions} حصة منتهية • {y.months.length} أشهر نشطة
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-left">
+                            <div>
+                              <p className="text-base font-black text-emerald-700">{relevantData.totalCollected} ج.م</p>
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                من أصل {relevantData.totalDue} ج.م ({collectionRate}%)
+                              </p>
+                            </div>
+                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </div>
+                        </div>
+
+                        {/* Year Details & Months Table */}
+                        {isExpanded && (
+                          <div className="p-4 bg-slate-50/80 border-t border-slate-100 space-y-3 text-xs">
+                            {/* Year KPIs */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                              <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">المحصل الإجمالي</span>
+                                <strong className="text-sm font-bold text-emerald-700">{relevantData.totalCollected} ج.م</strong>
+                              </div>
+                              <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">إجمالي المستحق</span>
+                                <strong className="text-sm font-bold text-slate-800">{relevantData.totalDue} ج.م</strong>
+                              </div>
+                              <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">المتبقي</span>
+                                <strong className={`text-sm font-bold ${relevantData.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                                  {relevantData.totalRemaining} ج.م
+                                </strong>
+                              </div>
+                              <div className="p-2.5 bg-white rounded-xl border border-slate-200">
+                                <span className="text-[10px] text-slate-500 block">متوسط التحصيل الشهري</span>
+                                <strong className="text-sm font-bold text-blue-600">
+                                  {y.months.length > 0 ? Math.round(relevantData.totalCollected / y.months.length) : 0} ج.م
+                                </strong>
+                              </div>
+                            </div>
+
+                            {/* Months Grid within this year */}
+                            <div className="space-y-1.5 pt-2">
+                              <h5 className="font-bold text-xs text-slate-800">الأشهر المسجلة في عام {y.year}:</h5>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {y.months.map((m) => (
+                                  <div
+                                    key={m.monthYear}
+                                    className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between"
+                                  >
+                                    <div>
+                                      <span className="font-bold text-slate-900 block text-xs">{m.monthName}</span>
+                                      <span className="text-[10px] text-slate-500">{m.totalCompletedSessions} حصة</span>
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="font-bold text-emerald-700 text-xs">{m.totalCollected} ج.م</p>
+                                      <span className="text-[9px] text-slate-400">من {m.totalDue} ج.م</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 1.4 LIFETIME / ALL-TIME SUMMARY SUB-TAB */}
+          {financialSubTab === 'lifetime' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <span>الإجمالي الشامل طوال فترة العمل (All-Time Lifetime)</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  إجمالي العمليات المالية والحصص منذ بداية استخدام التطبيق
+                </p>
+              </div>
+
+              {/* Lifetime Grand Highlight Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3.5 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <span className="text-[10px] font-medium text-slate-500 block">إجمالي المقبوضات الشامل</span>
+                  <p className="text-2xl font-black text-emerald-700">{financialHistory.totalCollected} <span className="text-xs text-slate-400">ج.م</span></p>
+                  <p className="text-[10px] text-emerald-600 font-medium">شامل الحصص المسبقة والدفعات</p>
+                </div>
+
+                <div className="p-3.5 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <span className="text-[10px] font-medium text-slate-500 block">إجمالي المستحقات الكلي</span>
+                  <p className="text-2xl font-black text-slate-900">{financialHistory.totalDue} <span className="text-xs text-slate-400">ج.م</span></p>
+                  <p className="text-[10px] text-slate-400">قيمة كافة الحصص والخدمات</p>
+                </div>
+
+                <div className="p-3.5 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <span className="text-[10px] font-medium text-slate-500 block">إجمالي المتبقي غير المسدد</span>
+                  <p className={`text-2xl font-black ${financialHistory.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                    {financialHistory.totalRemaining} <span className="text-xs text-slate-400">ج.م</span>
+                  </p>
+                  <p className="text-[10px] text-slate-400">ديون معلقة على الطلاب</p>
+                </div>
+
+                <div className="p-3.5 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-1">
+                  <span className="text-[10px] font-medium text-slate-500 block">إجمالي الحصص المنفذة</span>
+                  <p className="text-2xl font-black text-blue-600">{financialHistory.totalCompletedSessions}</p>
+                  <p className="text-[10px] text-slate-400">حصة تم رصد حضورها</p>
+                </div>
+              </div>
+
+              {/* Group vs Private Lifetime Breakdown */}
+              <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3">
+                <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <span>مقارنة إجماليات المجموعات والدروس الخاصة (All-Time)</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-blue-950">خدمات المجموعات</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                        {financialHistory.group.totalSessions} حصة
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-blue-200/60">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">المحصل</span>
+                        <strong className="text-xs font-bold text-emerald-700">{financialHistory.group.totalCollected} ج.م</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">المستحق</span>
+                        <strong className="text-xs font-bold text-slate-800">{financialHistory.group.totalDue} ج.م</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">المتبقي</span>
+                        <strong className={`text-xs font-bold ${financialHistory.group.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                          {financialHistory.group.totalRemaining} ج.م
+                        </strong>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-purple-950">الدروس الخاصة</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                        {financialHistory.private.totalSessions} حصة
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-purple-200/60">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">المحصل</span>
+                        <strong className="text-xs font-bold text-emerald-700">{financialHistory.private.totalCollected} ج.م</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">المستحق</span>
+                        <strong className="text-xs font-bold text-slate-800">{financialHistory.private.totalDue} ج.م</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">المتبقي</span>
+                        <strong className={`text-xs font-bold ${financialHistory.private.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                          {financialHistory.private.totalRemaining} ج.م
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Detailed Payment History Log */}
-          <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                <Receipt className="w-4 h-4 text-blue-600" />
-                <span>سجل المدفوعات المسجلة ({filteredPayments.length}):</span>
-              </h3>
+          {/* 1.5 PAYMENT RECEIPTS LOG SUB-TAB */}
+          {financialSubTab === 'payments' && (
+            <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                  <Receipt className="w-4 h-4 text-blue-600" />
+                  <span>سجل المدفوعات المسجلة ({filteredPayments.length}):</span>
+                </h3>
 
-              <div className="flex items-center gap-2">
-                <select
-                  value={methodFilter}
-                  onChange={(e) => setMethodFilter(e.target.value)}
-                  className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800"
-                >
-                  <option value="all">كل طرق الدفع</option>
-                  <option value="cash">كاش</option>
-                  <option value="vodafone_cash">فودافون كاش</option>
-                  <option value="instapay">إنستاباي</option>
-                  <option value="bank_transfer">تحويل بنكي</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={methodFilter}
+                    onChange={(e) => setMethodFilter(e.target.value)}
+                    className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800"
+                  >
+                    <option value="all">كل طرق الدفع</option>
+                    <option value="cash">كاش</option>
+                    <option value="vodafone_cash">فودافون كاش</option>
+                    <option value="instapay">إنستاباي</option>
+                    <option value="bank_transfer">تحويل بنكي</option>
+                  </select>
 
-                <div className="relative w-36 sm:w-44">
-                  <Search className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={paymentSearchQuery}
-                    onChange={(e) => setPaymentSearchQuery(e.target.value)}
-                    placeholder="بحث في المدفوعات..."
-                    className="w-full pr-8 pl-7 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-900"
-                  />
-                  {paymentSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentSearchQuery('')}
-                      className="absolute left-2 top-2 text-slate-400 hover:text-slate-800"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                  <div className="relative w-36 sm:w-44">
+                    <Search className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={paymentSearchQuery}
+                      onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                      placeholder="بحث في المدفوعات..."
+                      className="w-full pr-8 pl-7 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-900"
+                    />
+                    {paymentSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentSearchQuery('')}
+                        className="absolute left-2 top-2 text-slate-400 hover:text-slate-800"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              {filteredPayments.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center p-4">لا توجد مدفوعات مطابقة للفترة والبحث.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-72 overflow-y-auto android-scrollbar">
+                  {filteredPayments.slice(0, 30).map((p) => {
+                    const student = students.find((s) => s.id === p.studentId);
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs gap-2"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <span className="font-bold text-slate-900 block truncate">{student?.name || 'طالب غير محدد'}</span>
+                          <p className="text-[10px] text-slate-500">
+                            {p.date} • {p.paymentType === 'specific_month' ? `شهر ${getArabicMonthName(p.targetMonth || 1)}` : 'سداد حصص'} {p.notes ? `• ${p.notes}` : ''}
+                          </p>
+                        </div>
+
+                        <div className="text-left shrink-0">
+                          <p className="font-bold text-emerald-700">{p.amount} ج.م</p>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-white border border-slate-200 text-slate-600">
+                            {p.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' : p.paymentMethod === 'instapay' ? 'إنستاباي' : p.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' : 'كاش'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-
-            {filteredPayments.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center p-4">لا توجد مدفوعات مطابقة للفترة والبحث.</p>
-            ) : (
-              <div className="space-y-1.5 max-h-72 overflow-y-auto android-scrollbar">
-                {filteredPayments.slice(0, 30).map((p) => {
-                  const student = students.find((s) => s.id === p.studentId);
-                  return (
-                    <div
-                      key={p.id}
-                      className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs gap-2"
-                    >
-                      <div className="space-y-0.5 min-w-0">
-                        <span className="font-bold text-slate-900 block truncate">{student?.name || 'طالب غير محدد'}</span>
-                        <p className="text-[10px] text-slate-500">
-                          {p.date} • {p.paymentType === 'specific_month' ? `شهر ${getArabicMonthName(p.targetMonth || 1)}` : 'سداد حصص'} {p.notes ? `• ${p.notes}` : ''}
-                        </p>
-                      </div>
-
-                      <div className="text-left shrink-0">
-                        <p className="font-bold text-emerald-700">{p.amount} ج.م</p>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-white border border-slate-200 text-slate-600">
-                          {p.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' : p.paymentMethod === 'instapay' ? 'إنستاباي' : p.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' : 'كاش'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          )}
 
         </div>
       )}

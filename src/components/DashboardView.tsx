@@ -29,7 +29,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { Student, Group, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, Enrollment } from '../types';
-import { db } from '../utils/storage';
+import { db, roundMoney, multiplyMoney, addMoney, getEffectiveSessionPrice } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { getScheduledClassesForDate, ScheduledClassItem, parseTimeToMinutes } from '../utils/schedule';
 import { getSmartReminders, SmartReminderItem } from '../utils/reminders';
@@ -110,14 +110,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return Math.max(0, totalTodayClassesCount - completedTodaySessionsCount);
   }, [totalTodayClassesCount, completedTodaySessionsCount]);
 
-  // Revenue stats
-  const { totalMonthRevenue, totalTodayRevenue } = useMemo(() => {
-    const monthPayments = payments.filter((p) => p.month === currentMonth && p.year === currentYear);
-    const mRev = monthPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  // Revenue stats - including prepaid collected session revenue
+  const { totalMonthRevenue, totalTodayRevenue, totalAllTimeRevenue } = useMemo(() => {
+    const finHistory = db.calculateFinancialHistory();
+    const currentMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+    const curMonthRecord = finHistory.months.find((m) => m.monthYear === currentMonthKey);
+    const mRev = curMonthRecord ? curMonthRecord.totalCollected : 0;
+
+    // Today's revenue: explicit payments recorded today + prepaid sessions completed today
     const tPayments = payments.filter((p) => p.date === todayStr);
-    const tRev = tPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-    return { totalMonthRevenue: mRev, totalTodayRevenue: tRev };
-  }, [payments, currentMonth, currentYear, todayStr]);
+    let tRev = tPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+
+    const todayCompletedSessions = sessions.filter((s) => s.date === todayStr && s.status === 'completed');
+    todayCompletedSessions.forEach((s) => {
+      const atts = db.getSessionAttendance(s.id);
+      const grp = groups.find((g) => g.id === s.groupId);
+      atts.forEach((a) => {
+        const isCharged = a.status === 'present' || a.status === 'late' || a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false);
+        if (isCharged) {
+          const enr = enrollments.find((e) => e.id === a.enrollmentId || (e.studentId === a.studentId && e.groupId === s.groupId));
+          const isHourly = enr?.billingType === 'hourly' || enr?.billingMode === 'hourly' || grp?.billingType === 'hourly' || grp?.billingMode === 'hourly';
+          const isPackage = !isHourly && (enr?.billingMode === 'package' || enr?.billingType === 'package' || grp?.billingType === 'package');
+          const isPrepaid = !isHourly && !isPackage && (enr?.billingMode === 'prepaid' || enr?.billingType === 'prepaid' || (enr?.billingType === 'per_session' && enr?.billingMode !== 'postpaid') || grp?.billingType === 'prepaid' || (!enr?.billingMode && !enr?.billingType));
+          const isUnpaid = a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false;
+          if (isPrepaid && !isUnpaid) {
+            let sessionVal = 0;
+            if (isHourly) {
+              const hours = a.hours !== undefined && a.hours !== null ? Number(a.hours) : (s.hours !== undefined && s.hours !== null ? Number(s.hours) : 1);
+              const rate = a.hourlyRate || s.hourlyRate || enr?.hourlyRate || grp?.hourlyRate || enr?.customPrice || grp?.defaultPrice || 100;
+              sessionVal = roundMoney(multiplyMoney(hours, rate), 2);
+            } else {
+              const sRate = a.sessionPriceSnapshot || (enr ? getEffectiveSessionPrice(enr, grp) : (grp?.defaultPrice || 100));
+              sessionVal = roundMoney(sRate, 2);
+            }
+            tRev = addMoney(tRev, sessionVal);
+          }
+        }
+      });
+    });
+
+    return { totalMonthRevenue: mRev, totalTodayRevenue: tRev, totalAllTimeRevenue: finHistory.totalCollected };
+  }, [payments, sessions, groups, enrollments, currentMonth, currentYear, todayStr]);
 
   // Outstanding balances & Low credit calculations across active students
   const { totalOutstandingDues, overdueStudentsCount, lowCreditStudentsCount } = useMemo(() => {

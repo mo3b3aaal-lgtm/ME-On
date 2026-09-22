@@ -26,6 +26,7 @@ export const translations = {
     navStudents: 'الطلاب',
     navGroups: 'المجموعات',
     navSessions: 'الحصص',
+    navHomework: 'الواجبات والاختبارات',
     navReports: 'التقارير',
     navSettings: 'الإعدادات',
 
@@ -468,6 +469,7 @@ export const translations = {
     navStudents: 'Students',
     navGroups: 'Groups & Classes',
     navSessions: 'Timetable',
+    navHomework: 'Homework & Quizzes',
     navReports: 'Reports',
     navSettings: 'Settings',
 
@@ -910,6 +912,7 @@ export const translations = {
     navStudents: 'Students',
     navGroups: 'Groups & Classes',
     navSessions: 'Schedule',
+    navHomework: 'Homework & Quizzes',
     navReports: 'Reports',
     navSettings: 'Settings',
 

@@ -46,6 +46,12 @@ import {
   BulkCreateSessionsParams,
   BulkCreateSessionsResult,
   BulkStudentResultItem,
+  HomeworkTest,
+  HomeworkAssignment,
+  HomeworkQuestionResult,
+  HomeworkAssignmentStatus,
+  NotificationSettings,
+  NotificationStateItem,
 } from '../types';
 import { getAppLanguage } from './i18n';
 import {
@@ -84,7 +90,12 @@ const STORAGE_KEYS = {
   ATTENDANCE: 'tm_v2_attendance',
   PAYMENTS: 'tm_v2_payments',
   CREDIT_LOGS: 'tm_v2_session_credit_logs',
+  HOMEWORK_TESTS: 'tm_v2_homework_tests',
+  HOMEWORK_ASSIGNMENTS: 'tm_v2_homework_assignments',
+  HOMEWORK_QUESTION_RESULTS: 'tm_v2_homework_question_results',
   TEACHER_PROFILE: 'tm_v2_teacher_profile',
+  NOTIFICATION_SETTINGS: 'tm_v2_notification_settings',
+  NOTIFICATION_STATES: 'tm_v2_notification_states',
   ACCOUNTS: 'tm_v2_accounts',
   CURRENT_SESSION: 'tm_v2_current_session',
   AUTO_SYNC_CONFIG: 'tm_v2_auto_sync_config',
@@ -227,9 +238,92 @@ const DEFAULT_TEACHER_PROFILE: TeacherProfile = {
   currency: 'ج.م',
 };
 
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  enableEarlyPackageWarning: false,
+  earlyWarningLessonThreshold: 1,
+  enableAttendanceReminders: true,
+  enableOverdueReminders: true,
+  enableAbsenceReminders: true,
+};
+
+// ==========================================
+// Homework Launch URL & Share Message Helpers
+// ==========================================
+
+export function buildHomeworkLaunchUrl(params: {
+  test: HomeworkTest | string;
+  student?: Student;
+  assignmentId?: string;
+}): string {
+  const { test } = params;
+  let baseUrl = '';
+
+  if (typeof test === 'string') {
+    baseUrl = test.trim();
+  } else if (test && test.directUrlTemplate && test.directUrlTemplate.trim()) {
+    baseUrl = test.directUrlTemplate.trim();
+  }
+
+  return baseUrl || '';
+}
+
+export function generateAssignmentShareMessage(
+  paramsOrAssignment:
+    | {
+        assignment: HomeworkAssignment;
+        student?: Student | { name: string; phone?: string; parentPhone?: string };
+        teacherName?: string;
+        subject?: string;
+      }
+    | HomeworkAssignment,
+  optionalStudentName?: string
+): string {
+  let assignment: HomeworkAssignment;
+  let studentName = 'طالب';
+  let teacherName = 'معلم المادة';
+  let subject = 'المادة';
+
+  if ('title' in paramsOrAssignment || 'launchUrl' in paramsOrAssignment) {
+    assignment = paramsOrAssignment as HomeworkAssignment;
+    studentName = optionalStudentName || assignment.studentName || 'طالب';
+    const profile = db.getTeacherProfile();
+    teacherName = profile.name || teacherName;
+    subject = profile.subject || subject;
+  } else {
+    const p = paramsOrAssignment as {
+      assignment: HomeworkAssignment;
+      student?: Student | { name: string };
+      teacherName?: string;
+      subject?: string;
+    };
+    assignment = p.assignment;
+    studentName = p.student?.name || assignment.studentName || 'طالب';
+    teacherName = p.teacherName || db.getTeacherProfile().name || teacherName;
+    subject = p.subject || db.getTeacherProfile().subject || subject;
+  }
+
+  const deadlineStr = assignment.dueAt
+    ? `\n⏰ موعد التسليم: ${new Date(assignment.dueAt).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+    : '';
+
+  return `السلام عليكم ورحمة الله وبركاته 🌸
+مرحباً بالبطل/ة: *${studentName}*
+
+تم إسناد واجب/اختبار إلكتروني جديد بعنوان:
+📝 *${assignment.title}*
+📚 المادة: *${subject}*
+👨‍🏫 إعداد: *${teacherName}*${deadlineStr}
+
+🔗 رابط الاختبار المباشر الخاص بك:
+${assignment.launchUrl}
+
+نتمنى لك كل التوفيق والتميز دائماً ✨`;
+}
+
 // ==========================================
 // Base Generic Storage Helper
 // ==========================================
+
 function getList<T>(key: string, fallback: T[] = []): T[] {
   try {
     const raw = localStorage.getItem(key);
@@ -624,6 +718,30 @@ function ensureDataMigrated(): void {
       return l;
     });
     if (logsChanged) saveList(STORAGE_KEYS.CREDIT_LOGS, migratedLogs);
+
+    // Migrate homework tests
+    const rawHwTests = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []);
+    let hwTestsChanged = false;
+    const migratedHwTests = rawHwTests.map((t) => {
+      if (!t.userId) {
+        hwTestsChanged = true;
+        return { ...t, userId: defaultUserId };
+      }
+      return t;
+    });
+    if (hwTestsChanged) saveList(STORAGE_KEYS.HOMEWORK_TESTS, migratedHwTests);
+
+    // Migrate homework assignments
+    const rawHwAssignments = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
+    let hwAssignmentsChanged = false;
+    const migratedHwAssignments = rawHwAssignments.map((a) => {
+      if (!a.userId) {
+        hwAssignmentsChanged = true;
+        return { ...a, userId: defaultUserId };
+      }
+      return a;
+    });
+    if (hwAssignmentsChanged) saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, migratedHwAssignments);
   } catch (err) {
     console.error('Migration error:', err);
   }
@@ -634,7 +752,7 @@ ensureDataMigrated();
 
 /**
  * دالة مزامنة بيانات المستخدم مع حسابه تلقائياً
- * تقوم بجمع كافة الطلاب والمجموعات والحصص والاشتراكات والحضور والمدفوعات
+ * تقوم بجمع كافة الطلاب والمجموعات والحصص والاشتراكات والحضور والمدفوعات والواجبات
  * وحفظها بشكل مشفر وآمن داخل كائن الحساب ومفتاح التخزين الاحتياطي الخاص به
  */
 export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
@@ -647,6 +765,9 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   const allAttendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
   const allPayments = getList<Payment>(STORAGE_KEYS.PAYMENTS, []);
   const allCreditLogs = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
+  const allHomeworkTests = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []);
+  const allHomeworkAssignments = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
+  const allHomeworkQuestionResults = getList<HomeworkQuestionResult>(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, []);
 
   const userStudents = allStudents.filter((s) => (s.userId ? s.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userGroups = allGroups.filter((g) => (g.userId ? g.userId === targetUserId : targetUserId === 'acc_master_teacher'));
@@ -655,6 +776,11 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   const userAttendance = allAttendance.filter((a) => (a.userId ? a.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userPayments = allPayments.filter((p) => (p.userId ? p.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userCreditLogs = allCreditLogs.filter((l) => (l.userId ? l.userId === targetUserId : targetUserId === 'acc_master_teacher'));
+  const userHomeworkTests = allHomeworkTests.filter((t) => (t.userId ? t.userId === targetUserId : targetUserId === 'acc_master_teacher'));
+  const userHomeworkAssignments = allHomeworkAssignments.filter((a) => (a.userId ? a.userId === targetUserId : targetUserId === 'acc_master_teacher'));
+
+  const userAssignmentIds = new Set(userHomeworkAssignments.map((a) => a.id));
+  const userHomeworkQuestionResults = allHomeworkQuestionResults.filter((r) => userAssignmentIds.has(r.assignmentId));
 
   let userProfile: TeacherProfile = DEFAULT_TEACHER_PROFILE;
   try {
@@ -677,6 +803,9 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
     attendance: userAttendance,
     payments: userPayments,
     creditLogs: userCreditLogs,
+    homeworkTests: userHomeworkTests,
+    homeworkAssignments: userHomeworkAssignments,
+    homeworkQuestionResults: userHomeworkQuestionResults,
     teacherProfile: userProfile,
     tombstones: userTombstones,
     resetAllBefore,
@@ -685,6 +814,7 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
       totalGroups: userGroups.length,
       totalSessions: userSessions.length,
       totalPayments: userPayments.length,
+      totalHomeworkAssignments: userHomeworkAssignments.length,
     },
   };
 
@@ -2621,6 +2751,323 @@ export const db = {
   },
 
   // ==========================================
+  // Smart Notification & Alert Settings & States
+  // ==========================================
+
+  getNotificationSettings: (userId?: string): NotificationSettings => {
+    const currentUserId = userId || getActiveUserId();
+    try {
+      const scoped = localStorage.getItem(`${STORAGE_KEYS.NOTIFICATION_SETTINGS}_${currentUserId}`);
+      if (scoped) return { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(scoped) };
+      const rawDefault = localStorage.getItem(STORAGE_KEYS.NOTIFICATION_SETTINGS);
+      if (rawDefault) return { ...DEFAULT_NOTIFICATION_SETTINGS, ...JSON.parse(rawDefault) };
+    } catch {}
+    return DEFAULT_NOTIFICATION_SETTINGS;
+  },
+
+  saveNotificationSettings: (settings: NotificationSettings, userId?: string): void => {
+    const currentUserId = userId || getActiveUserId();
+    try {
+      localStorage.setItem(`${STORAGE_KEYS.NOTIFICATION_SETTINGS}_${currentUserId}`, JSON.stringify(settings));
+      if (currentUserId === 'acc_master_teacher') {
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATION_SETTINGS, JSON.stringify(settings));
+      }
+      autoSyncUserAccount(currentUserId);
+    } catch {}
+  },
+
+  getNotificationStates: (userId?: string): Record<string, NotificationStateItem> => {
+    const currentUserId = userId || getActiveUserId();
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEYS.NOTIFICATION_STATES}_${currentUserId}`) ||
+                  localStorage.getItem(STORAGE_KEYS.NOTIFICATION_STATES);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  },
+
+  saveNotificationState: (item: NotificationStateItem, userId?: string): void => {
+    const currentUserId = userId || getActiveUserId();
+    try {
+      const states = db.getNotificationStates(currentUserId);
+      states[item.id] = { ...states[item.id], ...item };
+      localStorage.setItem(`${STORAGE_KEYS.NOTIFICATION_STATES}_${currentUserId}`, JSON.stringify(states));
+      if (currentUserId === 'acc_master_teacher') {
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
+      }
+    } catch {}
+  },
+
+  markNotificationAsRead: (id: string, userId?: string): void => {
+    const currentUserId = userId || getActiveUserId();
+    const states = db.getNotificationStates(currentUserId);
+    const existing = states[id] || { id, isRead: false };
+    existing.isRead = !existing.isRead;
+    existing.readAt = existing.isRead ? new Date().toISOString() : undefined;
+    states[id] = existing;
+    try {
+      localStorage.setItem(`${STORAGE_KEYS.NOTIFICATION_STATES}_${currentUserId}`, JSON.stringify(states));
+      if (currentUserId === 'acc_master_teacher') {
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
+      }
+    } catch {}
+  },
+
+  markAllNotificationsAsRead: (ids: string[], userId?: string): void => {
+    const currentUserId = userId || getActiveUserId();
+    const states = db.getNotificationStates(currentUserId);
+    const now = new Date().toISOString();
+    ids.forEach((id) => {
+      states[id] = {
+        ...(states[id] || { id }),
+        isRead: true,
+        readAt: now,
+      };
+    });
+    try {
+      localStorage.setItem(`${STORAGE_KEYS.NOTIFICATION_STATES}_${currentUserId}`, JSON.stringify(states));
+      if (currentUserId === 'acc_master_teacher') {
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
+      }
+    } catch {}
+  },
+
+  dismissNotification: (id: string, userId?: string): void => {
+    const currentUserId = userId || getActiveUserId();
+    const states = db.getNotificationStates(currentUserId);
+    states[id] = {
+      ...(states[id] || { id, isRead: true }),
+      isDismissed: true,
+      dismissedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(`${STORAGE_KEYS.NOTIFICATION_STATES}_${currentUserId}`, JSON.stringify(states));
+      if (currentUserId === 'acc_master_teacher') {
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
+      }
+    } catch {}
+  },
+
+  // ==========================================
+  // 7.1 Homework & Quizzes System
+  // ==========================================
+
+  getHomeworkTests: (userId?: string): HomeworkTest[] => {
+    const currentUserId = userId || getActiveUserId();
+    const all = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []);
+    return all.filter((t) => (t.userId ? t.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+  },
+
+  getHomeworkTestById: (id: string): HomeworkTest | undefined => {
+    return db.getHomeworkTests().find((t) => t.id === id);
+  },
+
+  saveHomeworkTest: (test: HomeworkTest): HomeworkTest => {
+    const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
+    const testWithUser: HomeworkTest = {
+      ...test,
+      userId: test.userId || activeUserId,
+      updatedAt: now,
+      createdAt: test.createdAt || now,
+    };
+    removeDeletionTombstone('homeworkTest', test.id, activeUserId);
+    const list = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []);
+    const idx = list.findIndex((t) => t.id === test.id);
+    if (idx >= 0) {
+      list[idx] = testWithUser;
+    } else {
+      list.unshift(testWithUser);
+    }
+    saveList(STORAGE_KEYS.HOMEWORK_TESTS, list);
+    autoSyncUserAccount(activeUserId);
+    return testWithUser;
+  },
+
+  deleteHomeworkTest: (id: string): void => {
+    const activeUserId = getActiveUserId();
+    addDeletionTombstone('homeworkTest', id, activeUserId);
+    const list = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []).filter((t) => t.id !== id);
+    saveList(STORAGE_KEYS.HOMEWORK_TESTS, list);
+    autoSyncUserAccount(activeUserId);
+    performFullSync(activeUserId, false).catch(() => {});
+  },
+
+  getHomeworkAssignments: (userId?: string): HomeworkAssignment[] => {
+    const currentUserId = userId || getActiveUserId();
+    const all = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
+    return all.filter((a) => (a.userId ? a.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+  },
+
+  getHomeworkAssignmentById: (id: string): HomeworkAssignment | undefined => {
+    return db.getHomeworkAssignments().find((a) => a.id === id);
+  },
+
+  getStudentHomeworkAssignments: (studentId: string): HomeworkAssignment[] => {
+    return db.getHomeworkAssignments().filter((a) => a.studentId === studentId);
+  },
+
+  getGroupHomeworkAssignments: (groupId: string): HomeworkAssignment[] => {
+    return db.getHomeworkAssignments().filter((a) => a.groupId === groupId);
+  },
+
+  saveHomeworkAssignment: (assignment: HomeworkAssignment): HomeworkAssignment => {
+    const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
+    const assignmentWithUser: HomeworkAssignment = {
+      ...assignment,
+      userId: assignment.userId || activeUserId,
+      updatedAt: now,
+      createdAt: assignment.createdAt || now,
+    };
+    removeDeletionTombstone('homeworkAssignment', assignment.id, activeUserId);
+    const list = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
+    const idx = list.findIndex((a) => a.id === assignment.id);
+    if (idx >= 0) {
+      list[idx] = assignmentWithUser;
+    } else {
+      list.unshift(assignmentWithUser);
+    }
+    saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, list);
+    autoSyncUserAccount(activeUserId);
+    return assignmentWithUser;
+  },
+
+  saveHomeworkAssignmentsBatch: (assignments: HomeworkAssignment[]): HomeworkAssignment[] => {
+    const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
+    const list = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
+    const map = new Map<string, HomeworkAssignment>();
+
+    for (const item of list) {
+      map.set(item.id, item);
+    }
+
+    const savedItems: HomeworkAssignment[] = [];
+    for (const a of assignments) {
+      const itemWithUser: HomeworkAssignment = {
+        ...a,
+        userId: a.userId || activeUserId,
+        updatedAt: now,
+        createdAt: a.createdAt || now,
+      };
+      removeDeletionTombstone('homeworkAssignment', a.id, activeUserId);
+      map.set(a.id, itemWithUser);
+      savedItems.push(itemWithUser);
+    }
+
+    saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, Array.from(map.values()));
+    autoSyncUserAccount(activeUserId);
+    return savedItems;
+  },
+
+  deleteHomeworkAssignment: (id: string): void => {
+    const activeUserId = getActiveUserId();
+    addDeletionTombstone('homeworkAssignment', id, activeUserId);
+    const list = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []).filter((a) => a.id !== id);
+    saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, list);
+    autoSyncUserAccount(activeUserId);
+    performFullSync(activeUserId, false).catch(() => {});
+  },
+
+  getHomeworkQuestionResults: (assignmentId?: string): HomeworkQuestionResult[] => {
+    const all = getList<HomeworkQuestionResult>(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, []);
+    if (!assignmentId) return all;
+    return all.filter((r) => r.assignmentId === assignmentId);
+  },
+
+  saveHomeworkQuestionResultsBatch: (results: HomeworkQuestionResult[]): void => {
+    const all = getList<HomeworkQuestionResult>(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, []);
+    const map = new Map<string, HomeworkQuestionResult>();
+    for (const r of all) {
+      map.set(`${r.assignmentId}_${r.questionId}`, r);
+    }
+    for (const r of results) {
+      map.set(`${r.assignmentId}_${r.questionId}`, r);
+    }
+    saveList(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, Array.from(map.values()));
+  },
+
+  /**
+   * Bulk assign a test to multiple students (e.g. all group members or selected students)
+   */
+  createAssignmentsForStudents: (params: {
+    testId: string;
+    studentIds: string[];
+    groupId?: string;
+    title?: string;
+    description?: string;
+    dueAt?: string;
+  }): HomeworkAssignment[] => {
+    const activeUserId = getActiveUserId();
+    const test = db.getHomeworkTestById(params.testId);
+    if (!test) {
+      throw new Error(`Master test ${params.testId} not found`);
+    }
+
+    const students = db.getStudents();
+    const group = params.groupId ? db.getGroupById(params.groupId) : undefined;
+    const now = new Date().toISOString();
+    const createdAssignments: HomeworkAssignment[] = [];
+
+    for (const sId of params.studentIds) {
+      const student = students.find((s) => s.id === sId);
+      if (!student) continue;
+
+      const assignmentId = `hwa_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const launchUrl = buildHomeworkLaunchUrl({
+        test,
+        student,
+        assignmentId,
+      });
+
+      const newAssignment: HomeworkAssignment = {
+        id: assignmentId,
+        userId: activeUserId,
+        testId: test.id,
+        studentId: student.id,
+        studentName: student.name,
+        groupId: group?.id || params.groupId,
+        groupName: group?.name,
+        title: params.title || test.title,
+        description: params.description || test.description,
+        assignedAt: now,
+        dueAt: params.dueAt,
+        status: 'PENDING',
+        launchUrl,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      createdAssignments.push(newAssignment);
+    }
+
+    return db.saveHomeworkAssignmentsBatch(createdAssignments);
+  },
+
+  assignHomeworkBatch: (params: {
+    testId: string;
+    studentIds: string[];
+    groupId?: string;
+    dueDate?: string;
+    dueAt?: string;
+    customTitle?: string;
+    title?: string;
+    customInstructions?: string;
+    description?: string;
+  }): HomeworkAssignment[] => {
+    return db.createAssignmentsForStudents({
+      testId: params.testId,
+      studentIds: params.studentIds,
+      groupId: params.groupId,
+      dueAt: params.dueDate || params.dueAt,
+      title: params.customTitle || params.title,
+      description: params.customInstructions || params.description,
+    });
+  },
+
+
+  // ==========================================
   // 8. Advanced Financial Engine & Ledger Calculations
   // ==========================================
 
@@ -3608,12 +4055,16 @@ export const db = {
       attendance: db.getAttendance(activeUserId),
       payments: db.getPayments(activeUserId),
       creditLogs: db.getCreditLogs(activeUserId),
+      homeworkTests: db.getHomeworkTests(activeUserId),
+      homeworkAssignments: db.getHomeworkAssignments(activeUserId),
+      homeworkQuestionResults: db.getHomeworkQuestionResults(),
       teacherProfile: db.getTeacherProfile(activeUserId),
       stats: {
         totalStudents: db.getStudents(activeUserId).length,
         totalGroups: db.getGroups(activeUserId).length,
         totalSessions: db.getSessions(activeUserId).length,
         totalPayments: db.getPayments(activeUserId).length,
+        totalHomeworkAssignments: db.getHomeworkAssignments(activeUserId).length,
       },
     };
     return JSON.stringify(payload, null, 2);
@@ -3793,6 +4244,12 @@ export const db = {
       const restoredAttendance = mergeEntityList('attendance', STORAGE_KEYS.ATTENDANCE, dataToRestore.attendance);
       const restoredPayments = mergeEntityList('payment', STORAGE_KEYS.PAYMENTS, dataToRestore.payments);
       const restoredCreditLogs = mergeEntityList('creditLog', STORAGE_KEYS.CREDIT_LOGS, dataToRestore.creditLogs);
+      mergeEntityList('homeworkTest', STORAGE_KEYS.HOMEWORK_TESTS, dataToRestore.homeworkTests);
+      mergeEntityList('homeworkAssignment', STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, dataToRestore.homeworkAssignments);
+
+      if (dataToRestore.homeworkQuestionResults && dataToRestore.homeworkQuestionResults.length > 0) {
+        db.saveHomeworkQuestionResultsBatch(dataToRestore.homeworkQuestionResults);
+      }
 
       // Restore profile
       if (dataToRestore.teacherProfile) {
@@ -3876,6 +4333,19 @@ export const db = {
         const existing = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter((p) => p.userId !== activeUserId);
         const imported = data.payments.map((p: Payment) => ({ ...p, userId: activeUserId }));
         saveList(STORAGE_KEYS.PAYMENTS, [...imported, ...existing]);
+      }
+      if (Array.isArray(data.homeworkTests)) {
+        const existing = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []).filter((t) => t.userId !== activeUserId);
+        const imported = data.homeworkTests.map((t: HomeworkTest) => ({ ...t, userId: activeUserId }));
+        saveList(STORAGE_KEYS.HOMEWORK_TESTS, [...imported, ...existing]);
+      }
+      if (Array.isArray(data.homeworkAssignments)) {
+        const existing = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []).filter((a) => a.userId !== activeUserId);
+        const imported = data.homeworkAssignments.map((a: HomeworkAssignment) => ({ ...a, userId: activeUserId }));
+        saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, [...imported, ...existing]);
+      }
+      if (Array.isArray(data.homeworkQuestionResults)) {
+        db.saveHomeworkQuestionResultsBatch(data.homeworkQuestionResults);
       }
       if (data.teacherProfile) db.saveTeacherProfile(data.teacherProfile);
       autoSyncUserAccount(activeUserId);
@@ -4318,6 +4788,9 @@ export const db = {
     filterUser(STORAGE_KEYS.ATTENDANCE);
     filterUser(STORAGE_KEYS.PAYMENTS);
     filterUser(STORAGE_KEYS.CREDIT_LOGS);
+    filterUser(STORAGE_KEYS.HOMEWORK_TESTS);
+    filterUser(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS);
+    saveList(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, []);
 
     // 4. Clear local tombstones for this user since resetAllBefore clears all prior history
     saveDeletionTombstones([], targetUserId);

@@ -27,6 +27,7 @@ import { StudentProfileModal } from './components/StudentProfileModal';
 import { GroupProfileModal } from './components/GroupProfileModal';
 import { RecordAttendanceModal } from './components/RecordAttendanceModal';
 import { AddPaymentModal } from './components/AddPaymentModal';
+import { NotificationsModal } from './components/NotificationsModal';
 
 export default function App() {
   const { popTopModal } = useModalContext();
@@ -97,6 +98,7 @@ export default function App() {
   const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
   const [selectedGroupForProfile, setSelectedGroupForProfile] = useState<Group | null>(null);
   const [selectedSessionForAttendance, setSelectedSessionForAttendance] = useState<Session | null>(null);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
 
   // Sync profile data if updated
   useEffect(() => {
@@ -266,6 +268,7 @@ export default function App() {
                   onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
                   onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
                   onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+                  onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
                   onNavigateToTab={(tab) => setActiveTab(tab)}
                   onDataChanged={refreshData}
                 />
@@ -453,6 +456,20 @@ export default function App() {
           targetEnrollmentId={targetEnrollmentIdForPayment}
           allStudents={students}
           onPaymentSaved={refreshData}
+        />
+
+        {/* Notifications & Smart Alerts Modal */}
+        <NotificationsModal
+          isOpen={isNotificationsModalOpen}
+          onClose={() => setIsNotificationsModalOpen(false)}
+          students={students}
+          groups={groups}
+          sessions={sessions}
+          enrollments={db.getEnrollments()}
+          onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+          onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+          onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+          onDataChanged={refreshData}
         />
 
       </div>

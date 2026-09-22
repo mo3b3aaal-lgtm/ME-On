@@ -258,77 +258,84 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-slate-900 pb-24" dir="rtl">
       
       {/* Top Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 neu-card p-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            التقارير والكشوف المالية
-          </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            اللوحة المالية الشاملة وتحليلات الإيرادات والتحصيل
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#172554] text-[#C9A227] flex items-center justify-center shadow-xs">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#111827] tracking-tight">
+                التقارير والكشوف المالية
+              </h1>
+              <p className="text-xs text-[#64748B] font-medium mt-0.5">
+                اللوحة المالية الشاملة وتحليلات الإيرادات والتحصيل
+              </p>
+            </div>
+          </div>
         </div>
 
         <button
           onClick={handlePrint}
-          className="px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95"
+          className="px-4 py-2 rounded-xl bg-[#F7F8FC] hover:bg-[#E2E8F0] text-[#172554] border border-[#E2E8F0] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer"
         >
-          <Printer className="w-4 h-4 text-blue-600" />
-          <span>طباعة</span>
+          <Printer className="w-4 h-4 text-[#C9A227]" />
+          <span>طباعة الكشف</span>
         </button>
       </div>
 
       {/* 4 Report Navigation Tabs - Sticky on Mobile & Desktop */}
-      <div className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur-xs pt-1 pb-1 -mx-1 px-1">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-white border border-slate-200/90 rounded-2xl shadow-xs text-xs font-bold">
+      <div className="sticky top-0 z-20 bg-[#F7F8FC]/95 backdrop-blur-xs pt-1 pb-1 -mx-1 px-1">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 neu-card text-xs font-bold">
           <button
             type="button"
             onClick={() => setReportType('teacher_overview')}
-            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'teacher_overview'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-50'
+                ? 'bg-[#172554] text-white shadow-xs'
+                : 'text-[#64748B] hover:bg-[#F7F8FC] hover:text-[#111827]'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+            <BarChart3 className={`w-3.5 h-3.5 shrink-0 ${reportType === 'teacher_overview' ? 'text-[#C9A227]' : ''}`} />
             <span className="truncate">اللوحة المالية</span>
           </button>
 
           <button
             type="button"
             onClick={() => setReportType('overdue_list')}
-            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'overdue_list'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-50'
+                ? 'bg-[#172554] text-white shadow-xs'
+                : 'text-[#64748B] hover:bg-[#F7F8FC] hover:text-[#111827]'
             }`}
           >
-            <Receipt className="w-3.5 h-3.5 shrink-0" />
+            <Receipt className={`w-3.5 h-3.5 shrink-0 ${reportType === 'overdue_list' ? 'text-[#C9A227]' : ''}`} />
             <span className="truncate">المستحقات ({overdueStudentsList.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setReportType('group_report')}
-            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'group_report'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-50'
+                ? 'bg-[#172554] text-white shadow-xs'
+                : 'text-[#64748B] hover:bg-[#F7F8FC] hover:text-[#111827]'
             }`}
           >
-            <Layers className="w-3.5 h-3.5 shrink-0" />
+            <Layers className={`w-3.5 h-3.5 shrink-0 ${reportType === 'group_report' ? 'text-[#C9A227]' : ''}`} />
             <span className="truncate">المجموعات</span>
           </button>
 
           <button
             type="button"
             onClick={() => setReportType('student_report')}
-            className={`py-2 px-1 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'student_report'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-50'
+                ? 'bg-[#172554] text-white shadow-xs'
+                : 'text-[#64748B] hover:bg-[#F7F8FC] hover:text-[#111827]'
             }`}
           >
-            <User className="w-3.5 h-3.5 shrink-0" />
+            <User className={`w-3.5 h-3.5 shrink-0 ${reportType === 'student_report' ? 'text-[#C9A227]' : ''}`} />
             <span className="truncate">تقرير الطالب</span>
           </button>
         </div>
@@ -336,70 +343,70 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
       {/* Time Period Filter Bar (Common for Reports) */}
       {reportType !== 'overdue_list' && (
-        <div className="p-3 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-2 text-xs">
+        <div className="p-3.5 neu-card space-y-2.5 text-xs">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <span className="font-bold text-slate-800 flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-blue-600" />
+            <span className="font-bold text-[#111827] flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-[#C9A227]" />
               <span>الفترة الزمنية:</span>
             </span>
 
             <div className="flex items-center gap-1 flex-wrap">
               <button
                 onClick={() => setPeriodFilter('last_7_days')}
-                className={`px-2 py-1 rounded-lg font-medium text-[11px] border transition-all ${
+                className={`px-2.5 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'last_7_days'
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'bg-[#F7F8FC] text-[#64748B] border border-[#E2E8F0] hover:bg-slate-100'
                 }`}
               >
                 آخر 7 أيام
               </button>
               <button
                 onClick={() => setPeriodFilter('this_month')}
-                className={`px-2 py-1 rounded-lg font-medium text-[11px] border transition-all ${
+                className={`px-2.5 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'this_month'
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'bg-[#F7F8FC] text-[#64748B] border border-[#E2E8F0] hover:bg-slate-100'
                 }`}
               >
                 هذا الشهر
               </button>
               <button
                 onClick={() => setPeriodFilter('last_month')}
-                className={`px-2 py-1 rounded-lg font-medium text-[11px] border transition-all ${
+                className={`px-2.5 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'last_month'
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'bg-[#F7F8FC] text-[#64748B] border border-[#E2E8F0] hover:bg-slate-100'
                 }`}
               >
                 الشهر الماضي
               </button>
               <button
                 onClick={() => setPeriodFilter('all_time')}
-                className={`px-2 py-1 rounded-lg font-medium text-[11px] border transition-all ${
+                className={`px-2.5 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'all_time'
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'bg-[#F7F8FC] text-[#64748B] border border-[#E2E8F0] hover:bg-slate-100'
                 }`}
               >
                 كل الوقت
               </button>
               <button
                 onClick={() => setPeriodFilter('specific_month')}
-                className={`px-2 py-1 rounded-lg font-medium text-[11px] border transition-all ${
+                className={`px-2.5 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'specific_month'
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'bg-[#F7F8FC] text-[#64748B] border border-[#E2E8F0] hover:bg-slate-100'
                 }`}
               >
                 شهر محدد
               </button>
               <button
                 onClick={() => setPeriodFilter('custom_range')}
-                className={`px-2 py-1 rounded-lg font-medium text-[11px] border transition-all ${
+                className={`px-2.5 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'custom_range'
-                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'bg-[#F7F8FC] text-[#64748B] border border-[#E2E8F0] hover:bg-slate-100'
                 }`}
               >
                 فترة مخصصة
@@ -409,12 +416,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           {/* Extended controls for specific month or custom range */}
           {periodFilter === 'specific_month' && (
-            <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-              <span className="text-slate-500 text-[11px]">اختر الشهر والسنة:</span>
+            <div className="flex items-center gap-2 pt-2 border-t border-[#E2E8F0]">
+              <span className="text-[#64748B] text-[11px] font-bold">اختر الشهر والسنة:</span>
               <select
                 value={selectedSpecificMonth}
                 onChange={(e) => setSelectedSpecificMonth(Number(e.target.value))}
-                className="p-1 rounded-lg bg-slate-50 border border-slate-200 font-medium text-xs text-slate-800"
+                className="p-1.5 rounded-xl bg-[#F7F8FC] border border-[#E2E8F0] font-bold text-xs text-[#111827]"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>
@@ -425,7 +432,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <select
                 value={selectedSpecificYear}
                 onChange={(e) => setSelectedSpecificYear(Number(e.target.value))}
-                className="p-1 rounded-lg bg-slate-50 border border-slate-200 font-medium text-xs text-slate-800"
+                className="p-1.5 rounded-xl bg-[#F7F8FC] border border-[#E2E8F0] font-bold text-xs text-[#111827]"
               >
                 {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
                   <option key={y} value={y}>
@@ -437,23 +444,23 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           )}
 
           {periodFilter === 'custom_range' && (
-            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E2E8F0]">
               <div>
-                <span className="text-slate-500 text-[10px] block">من تاريخ:</span>
+                <span className="text-[#64748B] text-[10px] block font-bold mb-1">من تاريخ:</span>
                 <input
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="w-full p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800"
+                  className="w-full p-2 rounded-xl bg-[#F7F8FC] border border-[#E2E8F0] text-xs font-bold text-[#111827]"
                 />
               </div>
               <div>
-                <span className="text-slate-500 text-[10px] block">إلى تاريخ:</span>
+                <span className="text-[#64748B] text-[10px] block font-bold mb-1">إلى تاريخ:</span>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="w-full p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800"
+                  className="w-full p-2 rounded-xl bg-[#F7F8FC] border border-[#E2E8F0] text-xs font-bold text-[#111827]"
                 />
               </div>
             </div>
@@ -468,15 +475,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="space-y-4">
           
           {/* Sub-Navigation for Financial Ledger */}
-          <div className="flex items-center justify-between flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 text-xs">
+          <div className="flex items-center justify-between flex-wrap gap-2 p-1.5 neu-card text-xs">
             <div className="flex items-center gap-1 flex-wrap">
               <button
                 type="button"
                 onClick={() => setFinancialSubTab('overview')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   financialSubTab === 'overview'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'text-[#64748B] hover:text-[#111827]'
                 }`}
               >
                 <TrendingUp className="w-3.5 h-3.5" />
@@ -486,10 +493,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setFinancialSubTab('monthly_ledger')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   financialSubTab === 'monthly_ledger'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'text-[#64748B] hover:text-[#111827]'
                 }`}
               >
                 <CalendarDays className="w-3.5 h-3.5" />
@@ -499,10 +506,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setFinancialSubTab('yearly_summary')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   financialSubTab === 'yearly_summary'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'text-[#64748B] hover:text-[#111827]'
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
@@ -512,10 +519,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setFinancialSubTab('lifetime')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   financialSubTab === 'lifetime'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'text-[#64748B] hover:text-[#111827]'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -525,10 +532,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setFinancialSubTab('payments')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   financialSubTab === 'payments'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#172554] text-white shadow-xs'
+                    : 'text-[#64748B] hover:text-[#111827]'
                 }`}
               >
                 <Receipt className="w-3.5 h-3.5" />
@@ -538,14 +545,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
             {/* Group vs Private Service Filter */}
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 font-medium ml-1">الخدمة:</span>
+              <span className="text-[10px] text-[#64748B] font-bold ml-1">الخدمة:</span>
               <button
                 type="button"
                 onClick={() => setServiceTypeFilter('all')}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                   serviceTypeFilter === 'all'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    ? 'bg-[#172554] text-white border-[#172554]'
+                    : 'bg-white text-[#64748B] border-[#E2E8F0] hover:bg-[#F7F8FC]'
                 }`}
               >
                 الكل
@@ -553,10 +560,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setServiceTypeFilter('group')}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                   serviceTypeFilter === 'group'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    ? 'bg-[#172554] text-white border-[#172554]'
+                    : 'bg-white text-[#64748B] border-[#E2E8F0] hover:bg-[#F7F8FC]'
                 }`}
               >
                 مجموعات
@@ -564,10 +571,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setServiceTypeFilter('private')}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
                   serviceTypeFilter === 'private'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    ? 'bg-[#172554] text-white border-[#172554]'
+                    : 'bg-white text-[#64748B] border-[#E2E8F0] hover:bg-[#F7F8FC]'
                 }`}
               >
                 خاص

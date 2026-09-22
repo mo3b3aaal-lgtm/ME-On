@@ -33,7 +33,7 @@ export type AchievementFrame =
 // Deletion Tombstone for synchronization across devices and Cloud
 export interface DeletionTombstone {
   id: string;
-  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog' | 'any';
+  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog' | 'homeworkAssignment' | 'homeworkTest' | 'any';
   deletedAt: string;
   userId?: string;
 }
@@ -514,6 +514,80 @@ export interface TeacherProfile {
   currency: string; // e.g. "ج.م"
 }
 
+// ==========================================
+// Homework & Quizzes Domain Models
+// ==========================================
+
+export type HomeworkAssignmentStatus = 'PENDING' | 'STARTED' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
+
+// 1. Master Test (قالب الاختبار أو الواجب)
+export interface HomeworkTest {
+  id: string; // Internal unique ID (e.g. hwt_...)
+  userId?: string; // Owner teacher user account ID
+  title: string; // Test Title / عنوان الاختبار
+  description?: string; // Instructions or description
+  category?: string; // e.g. "واجب منزلي", "اختبار شهري", "تقييم أسبوعي"
+  subject?: string; // المادة
+  gradeLevel?: string; // المرحلة الدراسية
+  durationMinutes?: number; // مدة الاختبار بالدقائق
+  passingPercentage?: number; // نسبة النجاح (مثال 50%)
+  questionCount?: number; // عدد الأسئلة
+  totalPoints?: number; // إجمالي الدرجات
+  directUrlTemplate?: string; // Custom or direct URL (e.g. Google Forms / Quiz URL)
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// 2. Homework Assignment (تكليف واجب لطالب محدد أو مجموعة)
+export interface HomeworkAssignment {
+  id: string; // Internal assignment ID (e.g. hwa_...)
+  userId?: string; // Owner teacher user account ID
+  testId: string; // Reference to HomeworkTest.id
+  studentId: string; // Reference to Student.id
+  studentName: string; // Cached student name
+  groupId?: string; // Reference to Group.id if assigned to group
+  groupName?: string; // Cached group name
+  title: string; // Assignment title
+  testTitle?: string; // Alias for title
+  description?: string; // Assignment instructions
+  assignedAt: string; // ISO date string
+  dueAt?: string; // ISO date string for deadline
+  status: HomeworkAssignmentStatus;
+  launchUrl: string; // Direct link for student or online test link
+  startedAt?: string;
+  completedAt?: string;
+  score?: number; // Points scored
+  percentage?: number; // Percentage score (0 - 100)
+  scorePercentage?: number; // Alias for percentage
+  pointsScored?: number;
+  scoreScored?: number; // Alias for pointsScored
+  pointsAvailable?: number;
+  scoreTotal?: number; // Alias for pointsAvailable
+  passed?: boolean;
+  durationSeconds?: number;
+  timeStarted?: number | string;
+  timeFinished?: number | string;
+  externalResultId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// 3. Question-level Result (تفاصيل إجابات الأسئلة)
+export interface HomeworkQuestionResult {
+  id: string; // Internal ID (e.g. hqr_...)
+  assignmentId: string; // Reference to HomeworkAssignment.id
+  questionId: string | number;
+  questionText: string;
+  type?: string; // multiple_choice, true_false, short_answer, etc.
+  selectedAnswer?: string;
+  correctAnswer?: string;
+  isCorrect: boolean;
+  pointsScored: number;
+  pointsAvailable: number;
+  timeSpentSeconds?: number;
+}
+
 // حزمة بيانات الحساب المتزامنة
 export interface UserAccountDataPackage {
   lastSyncTime: string;
@@ -526,6 +600,9 @@ export interface UserAccountDataPackage {
   attendance: Attendance[];
   payments: Payment[];
   creditLogs?: SessionCreditLog[];
+  homeworkTests?: HomeworkTest[];
+  homeworkAssignments?: HomeworkAssignment[];
+  homeworkQuestionResults?: HomeworkQuestionResult[];
   teacherProfile?: TeacherProfile;
   tombstones?: DeletionTombstone[];
   deletedIds?: {
@@ -536,6 +613,8 @@ export interface UserAccountDataPackage {
     attendance?: string[];
     payments?: string[];
     creditLogs?: string[];
+    homeworkTests?: string[];
+    homeworkAssignments?: string[];
   };
   resetAllBefore?: string; // ISO timestamp when user intentionally cleared all data
   stats?: {
@@ -543,6 +622,7 @@ export interface UserAccountDataPackage {
     totalGroups: number;
     totalSessions: number;
     totalPayments: number;
+    totalHomeworkAssignments?: number;
   };
 }
 
@@ -657,3 +737,76 @@ export interface BulkCreateSessionsResult {
   createdSessions: Session[];
   results: BulkStudentResultItem[];
 }
+
+// ==========================================
+// Notification & Smart Reminders Domain Models
+// ==========================================
+
+export type NotificationType =
+  | 'package_completed'
+  | 'package_almost_due'
+  | 'finished_package'
+  | 'payment_overdue'
+  | 'unrecorded_attendance'
+  | 'repeated_absence'
+  | 'low_credit'
+  | 'upcoming_class';
+
+export type NotificationStatus = 'active' | 'resolved' | 'dismissed';
+export type NotificationPriority = 'high' | 'medium' | 'low';
+export type NotificationActionType =
+  | 'record_attendance'
+  | 'add_payment'
+  | 'open_student'
+  | 'open_group'
+  | 'whatsapp'
+  | 'call';
+
+export interface NotificationSettings {
+  enableEarlyPackageWarning: boolean; // تنبيه مبكر قبل اكتمال الباقة/الحصص
+  earlyWarningLessonThreshold: number; // عدد الحصص قبل الاكتمال (افتراضي 1)
+  enableAttendanceReminders: boolean; // تنبيهات رصد الحضور
+  enableOverdueReminders: boolean; // تنبيهات مستحقات السداد
+  enableAbsenceReminders: boolean; // تنبيهات الغياب المتكرر
+}
+
+export interface NotificationStateItem {
+  id: string;
+  isRead: boolean;
+  isDismissed?: boolean;
+  readAt?: string;
+  dismissedAt?: string;
+}
+
+export interface SmartReminderItem {
+  id: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  status: NotificationStatus;
+  isRead: boolean;
+  title: string;
+  description: string;
+  badge: string;
+  studentId?: string;
+  studentName?: string;
+  studentPhone?: string;
+  parentPhone?: string;
+  parentRelation?: string;
+  groupId?: string;
+  groupName?: string;
+  sessionId?: string;
+  amount?: number;
+  remainingCredits?: number;
+  timeStr?: string;
+  actionType: NotificationActionType;
+  // Package / Cycle tracking metadata
+  enrollmentId?: string;
+  packageSize?: number;
+  cycleIndex?: number;
+  totalCompletedSessions?: number;
+  lessonsRemaining?: number;
+  createdAt?: string;
+  resolvedAt?: string;
+}
+
+export type AppNotification = SmartReminderItem;

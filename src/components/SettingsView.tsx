@@ -29,8 +29,10 @@ import {
   Zap,
   Globe,
   Languages,
+  Bell,
+  Sliders,
 } from 'lucide-react';
-import { TeacherProfile, UserAccount, AutoSyncFrequency, AutoSyncConfig } from '../types';
+import { TeacherProfile, UserAccount, AutoSyncFrequency, AutoSyncConfig, NotificationSettings } from '../types';
 import {
   db,
   formatSyncTimeArabic,
@@ -69,6 +71,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => db.getLastSyncTime(currentUser?.id));
   const [autoSyncConfig, setAutoSyncConfig] = useState<AutoSyncConfig>(() => db.getAutoSyncConfig(currentUser?.id));
   const [networkStatus, setNetworkStatus] = useState<DetailedNetworkStatus>(() => getCachedNetworkStatus());
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(() => db.getNotificationSettings(currentUser?.id));
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 
@@ -280,6 +283,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
+  const handleUpdateNotifSettings = (newSettings: NotificationSettings) => {
+    setNotifSettings(newSettings);
+    db.saveNotificationSettings(newSettings, currentUser?.id);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPassMessage(null);
@@ -342,27 +352,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { language, setLanguage, isRTL, t } = useTranslation();
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-slate-900 pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#111827] pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-          {t('settingsTitle')}
-        </h1>
-        <p className="text-xs text-slate-500 font-medium mt-0.5">
-          {t('settingsSubtitle')}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 neu-card p-4">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#172554] text-[#C9A227] flex items-center justify-center shadow-xs">
+              <SettingsIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#111827] tracking-tight">
+                {t('settingsTitle')}
+              </h1>
+              <p className="text-xs text-[#64748B] font-medium mt-0.5">
+                {t('settingsSubtitle')}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Global Sync Notification / Alert */}
       {syncFeedback && (
         <div
-          className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2.5 transition-all shadow-xs ${
+          className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all shadow-xs ${
             syncFeedback.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
               : syncFeedback.type === 'error'
               ? 'bg-rose-50 text-rose-800 border border-rose-200'
-              : 'bg-blue-50 text-blue-800 border border-blue-200'
+              : 'bg-[#172554]/5 text-[#172554] border border-[#172554]/20'
           }`}
         >
           {syncFeedback.type === 'success' ? (
@@ -370,27 +389,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           ) : syncFeedback.type === 'error' ? (
             <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
           ) : (
-            <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-blue-600" />
+            <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-[#172554]" />
           )}
           <span>{syncFeedback.message}</span>
         </div>
       )}
 
       {/* LANGUAGE SELECTOR CARD (اللغة وخيارات العرض) */}
-      <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+      <div className="p-4 neu-card space-y-3.5">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#172554]/10 text-[#172554] flex items-center justify-center">
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs sm:text-sm font-bold text-slate-900">{t('languageSection')}</h2>
-              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+              <h2 className="text-xs sm:text-sm font-bold text-[#111827]">{t('languageSection')}</h2>
+              <p className="text-[10px] sm:text-[11px] text-[#64748B] font-medium">
                 {t('languageDesc')}
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-[#172554]/10 text-[#172554] border border-[#172554]/20">
             {language === 'ar' ? 'العربية (RTL)' : language === 'en-GB' ? 'UK English (LTR)' : 'US English (LTR)'}
           </span>
         </div>
@@ -408,15 +427,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 key={langOpt.id}
                 type="button"
                 onClick={() => setLanguage(langOpt.id)}
-                className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                className={`p-3 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer ${
                   isSelected
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-2xs font-bold'
-                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                    ? 'bg-[#172554] border-[#172554] text-white shadow-xs font-bold'
+                    : 'bg-[#F7F8FC] hover:bg-slate-100 border-[#E2E8F0] text-[#111827]'
                 }`}
               >
                 <span className="text-base">{langOpt.flag}</span>
                 <span className="text-xs font-bold leading-tight">{langOpt.title}</span>
-                <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-slate-500'}`}>
+                <span className={`text-[9px] ${isSelected ? 'text-[#C9A227]' : 'text-[#64748B] font-bold'}`}>
                   {langOpt.sub}
                 </span>
               </button>
@@ -426,18 +445,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* 1. AUTO-SYNC & SCHEDULING (المزامنة التلقائية والنسخ الاحتياطي) */}
-      <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-4">
+      <div className="p-4 neu-card space-y-4">
         {/* Section Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-2xs">
-              <RefreshCw className={`w-4 h-4 ${autoSyncConfig.status === 'syncing' ? 'animate-spin text-blue-600' : 'text-blue-600'}`} />
+            <div className="w-8 h-8 rounded-xl bg-[#172554]/10 text-[#172554] flex items-center justify-center">
+              <RefreshCw className={`w-4 h-4 ${autoSyncConfig.status === 'syncing' ? 'animate-spin text-[#C9A227]' : 'text-[#172554]'}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xs sm:text-sm font-bold text-slate-900">المزامنة التلقائية والنسخ الاحتياطي</h2>
+                <h2 className="text-xs sm:text-sm font-bold text-[#111827]">المزامنة التلقائية والنسخ الاحتياطي</h2>
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[10px] font-bold ${
                     autoSyncConfig.frequency === 'off'
                       ? 'bg-slate-100 text-slate-600 border border-slate-200'
                       : !networkStatus.isOnline
@@ -463,7 +482,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     : 'نشطة ومجدولة'}
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-[#64748B] font-medium mt-0.5">
                 مزامنة بيانات المستخدم تلقائياً مع السحابة حسب الفترة المحددة مع استقلالية تامة لكل حساب
               </p>
             </div>
@@ -472,7 +491,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {/* Connectivity Status Pill */}
           <div className="flex items-center gap-2 flex-wrap">
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium border shadow-2xs ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border shadow-2xs ${
                 networkStatus.isOnline
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : networkStatus.deviceConnected && !networkStatus.apiReachable
@@ -509,11 +528,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Frequency Options Selection */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <label className="text-xs font-bold text-[#111827] flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#C9A227]" />
               <span>فترة المزامنة التلقائية (Sync Schedule):</span>
             </label>
-            <span className="text-[10px] text-slate-500 font-medium">يُحفظ الإعداد تلقائياً بشكل دائم</span>
+            <span className="text-[10px] text-[#64748B] font-bold">يُحفظ الإعداد تلقائياً بشكل دائم</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -530,14 +549,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => handleFrequencyChange(opt.value as AutoSyncFrequency)}
-                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                  className={`p-3 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                     isSelected
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-2xs font-bold'
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                      ? 'bg-[#172554] border-[#172554] text-white shadow-xs font-bold'
+                      : 'bg-[#F7F8FC] hover:bg-slate-100 border-[#E2E8F0] text-[#111827]'
                   }`}
                 >
                   <span className="text-xs font-bold">{opt.label}</span>
-                  <span className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-slate-500'}`}>
+                  <span className={`text-[9px] ${isSelected ? 'text-[#C9A227]' : 'text-[#64748B] font-bold'}`}>
                     {opt.desc}
                   </span>
                 </button>
@@ -547,15 +566,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Sync Status, Last Sync & Next Sync Times */}
-        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs">
+        <div className="p-3.5 bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl space-y-3 text-xs">
           {/* Current Sync Status */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-600" />
-              <span className="font-bold text-slate-900">حالة المزامنة الحالية:</span>
+              <Activity className="w-4 h-4 text-[#172554]" />
+              <span className="font-bold text-[#111827]">حالة المزامنة الحالية:</span>
             </div>
             <div
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium ${
+              className={`px-3 py-1 rounded-xl text-[11px] font-bold ${
                 formatSyncStatusArabic(autoSyncConfig.status, networkStatus.isOnline, networkStatus.statusReason).badgeClass
               }`}
             >
@@ -566,20 +585,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {/* Last Sync & Next Sync Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
             {/* Last Sync */}
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
+            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-[#E2E8F0] shadow-xs">
               <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
               <div>
-                <span className="text-slate-500 block font-medium">آخر مزامنة (Last Sync):</span>
-                <span className="font-bold text-slate-900 text-xs">{formatSyncTimeArabic(lastSyncTime)}</span>
+                <span className="text-[#64748B] block font-bold">آخر مزامنة (Last Sync):</span>
+                <span className="font-bold text-[#111827] text-xs">{formatSyncTimeArabic(lastSyncTime)}</span>
               </div>
             </div>
 
             {/* Next Sync */}
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-slate-200 shadow-2xs">
-              <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-[#E2E8F0] shadow-xs">
+              <Calendar className="w-4 h-4 text-[#172554] shrink-0" />
               <div>
-                <span className="text-slate-500 block font-medium">موعد المزامنة القادمة (Next Sync):</span>
-                <span className="font-bold text-slate-900 text-xs">
+                <span className="text-[#64748B] block font-bold">موعد المزامنة القادمة (Next Sync):</span>
+                <span className="font-bold text-[#111827] text-xs">
                   {formatNextSyncTimeArabic(autoSyncConfig.nextSyncTime, autoSyncConfig.frequency)}
                 </span>
               </div>
@@ -593,9 +612,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={handleSyncNow}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            className="py-2.5 px-3 rounded-xl bg-[#172554] hover:bg-[#0F172A] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : 'text-[#C9A227]'}`} />
             <span>مزامنة الآن (Sync Now)</span>
           </button>
 
@@ -603,9 +622,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={handleBackupNow}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            className="py-2.5 px-3 rounded-xl bg-[#0F172A] hover:bg-black text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-[#C9A227]" />
             <span>تصدير نسخة احتياطية (.json)</span>
           </button>
 
@@ -613,16 +632,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={handleRestoreFromAccount}
             disabled={isSyncing}
-            className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            className="py-2.5 px-3 rounded-xl bg-[#F7F8FC] hover:bg-slate-100 border border-[#E2E8F0] text-[#172554] font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
-            <HardDriveDownload className="w-3.5 h-3.5 text-blue-600" />
+            <HardDriveDownload className="w-3.5 h-3.5 text-[#C9A227]" />
             <span>استعادة البيانات السحابية</span>
           </button>
         </div>
 
         {/* Synced Entities Pill Badges */}
-        <div className="pt-2 border-t border-slate-100">
-          <span className="text-[10px] font-medium text-slate-500 block mb-1.5">
+        <div className="pt-2 border-t border-[#E2E8F0]">
+          <span className="text-[10px] font-bold text-[#64748B] block mb-1.5">
             البيانات المشمولة في المزامنة التلقائية:
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -641,9 +660,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             ].map((entity, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[10px] font-medium"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F7F8FC] text-[#172554] border border-[#E2E8F0] text-[10px] font-bold"
               >
-                <Check className="w-2.5 h-2.5 text-blue-600" />
+                <Check className="w-2.5 h-2.5 text-[#C9A227]" />
                 {entity}
               </span>
             ))}
@@ -651,9 +670,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Secondary Import File Option */}
-        <div className="pt-2 border-t border-slate-100">
-          <label className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
-            <Upload className="w-3.5 h-3.5 text-blue-600" />
+        <div className="pt-2 border-t border-[#E2E8F0]">
+          <label className="w-full py-2.5 px-3 rounded-xl bg-[#F7F8FC] hover:bg-slate-100 border border-dashed border-[#CBD5E1] text-[#172554] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
+            <Upload className="w-3.5 h-3.5 text-[#C9A227]" />
             <span>استيراد واستعادة من ملف نسخة احتياطية (.json)</span>
             <input
               type="file"
@@ -665,24 +684,207 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* 2. ACCOUNT INFO & LOGOUT CARD */}
-      <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
+      {/* 2. SMART NOTIFICATIONS & BILLING REMINDERS (إعدادات التنبيهات والإشعارات الذكية) */}
+      <div className="p-4 neu-card space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-base border border-blue-100">
+            <div className="w-8 h-8 rounded-xl bg-[#C9A227]/10 text-[#C9A227] flex items-center justify-center">
+              <Bell className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-bold text-[#111827]">
+                إعدادات التنبيهات والإشعارات الذكية
+              </h2>
+              <p className="text-[10px] sm:text-[11px] text-[#64748B] font-medium mt-0.5">
+                تخصيص قواعد استحقاق سداد الباقات، التنبيه المبكر، ومتابعة الحضور والغياب
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {/* Rule 1: Package Payment Due (Core Rule) */}
+          <div className="p-3.5 rounded-xl bg-[#F7F8FC] border border-[#E2E8F0] flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#111827]">
+                  تنبيه استحقاق سداد الباقة عند اكتمال الحصص المحددة
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                  نشط أساسي
+                </span>
+              </div>
+              <p className="text-[10px] text-[#64748B] font-medium">
+                يظهر التنبيه حصراً عند إتمام الطالب لعدد الحصص المسجلة بالباقة (ديناميكياً لكل طالب) ويختفي فور تسجيل السداد.
+              </p>
+            </div>
+            <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <Check className="w-3 h-3" />
+            </div>
+          </div>
+
+          {/* Rule 2: Early Warning Before Package Completion */}
+          <div className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-[#111827]">
+                  تنبيه مبكر قبل اكتمال الباقة (Early Warning)
+                </span>
+                <p className="text-[10px] text-[#64748B] font-medium">
+                  إشعار استباقي لتذكير ولي الأمر باقتراب تجديد الباقة قبل الحصة الأخيرة.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={notifSettings.enableEarlyPackageWarning}
+                  onChange={(e) =>
+                    handleUpdateNotifSettings({
+                      ...notifSettings,
+                      enableEarlyPackageWarning: e.target.checked,
+                    })
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#172554]"></div>
+              </label>
+            </div>
+
+            {notifSettings.enableEarlyPackageWarning && (
+              <div className="pt-2.5 border-t border-[#E2E8F0] flex items-center justify-between gap-2 flex-wrap bg-[#F7F8FC] p-3 rounded-xl">
+                <span className="text-xs font-bold text-[#111827]">
+                  إظهار التنبيه عندما يتبقى للطالب:
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {[
+                    { val: 1, label: 'حصة واحدة (1)' },
+                    { val: 2, label: 'حصتان (2)' },
+                    { val: 3, label: '3 حصص' },
+                  ].map((opt) => {
+                    const isSelected = (notifSettings.earlyWarningLessonThreshold || 1) === opt.val;
+                    return (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() =>
+                          handleUpdateNotifSettings({
+                            ...notifSettings,
+                            earlyWarningLessonThreshold: opt.val,
+                          })
+                        }
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#172554] text-white shadow-xs'
+                            : 'bg-white border border-[#E2E8F0] text-[#111827] hover:bg-slate-50'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Rule 3: Overdue Balances & Remaining Debt */}
+          <div className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-[#111827]">
+                تنبيهات مستحقات السداد والديون المتبقية
+              </span>
+              <p className="text-[10px] text-[#64748B] font-medium">
+                إشعار بمستحقات الاشتراكات الشهرية والحسابات المؤجلة التي عليها مبالغ معلقة.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={notifSettings.enableOverdueReminders}
+                onChange={(e) =>
+                  handleUpdateNotifSettings({
+                    ...notifSettings,
+                    enableOverdueReminders: e.target.checked,
+                  })
+                }
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#172554]"></div>
+            </label>
+          </div>
+
+          {/* Rule 4: Unrecorded Attendance Reminders */}
+          <div className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-[#111827]">
+                تنبيهات رصد حضور الحصص المجدولة
+              </span>
+              <p className="text-[10px] text-[#64748B] font-medium">
+                تذكير تلقائي بالحصص المستحقة اليوم التي لم يتم تسجيل حضورها وغيابها بعد.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={notifSettings.enableAttendanceReminders}
+                onChange={(e) =>
+                  handleUpdateNotifSettings({
+                    ...notifSettings,
+                    enableAttendanceReminders: e.target.checked,
+                  })
+                }
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#172554]"></div>
+            </label>
+          </div>
+
+          {/* Rule 5: Repeated Absence Alerts */}
+          <div className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-[#111827]">
+                تنبيهات الغياب المتكرر (حصتان متتاليتان)
+              </span>
+              <p className="text-[10px] text-[#64748B] font-medium">
+                تنبيه فوري عند تغيب الطالب عن حصتين متتاليتين للمتابعة السريعة مع ولي الأمر.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={notifSettings.enableAbsenceReminders}
+                onChange={(e) =>
+                  handleUpdateNotifSettings({
+                    ...notifSettings,
+                    enableAbsenceReminders: e.target.checked,
+                  })
+                }
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#172554]"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. ACCOUNT INFO & LOGOUT CARD */}
+      <div className="p-4 neu-card space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-[#172554] text-[#C9A227] flex items-center justify-center font-bold text-base shadow-xs">
               {currentUser?.name?.[0] || teacherProfile.name?.[0] || 'م'}
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-slate-900">
+                <p className="text-xs font-bold text-[#111827]">
                   {currentUser?.name || teacherProfile.name || 'حساب المعلم'}
                 </p>
-                <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[9px] font-medium border border-emerald-200">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-bold border border-emerald-200">
                   حساب معتمد
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                <Mail className="w-3 h-3 text-slate-400" />
+              <p className="text-[11px] text-[#64748B] font-medium flex items-center gap-1">
+                <Mail className="w-3 h-3 text-[#64748B]" />
                 <span>{currentUser?.email || 'teacher@example.com'}</span>
               </p>
             </div>
@@ -695,7 +897,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onLogout();
               }
             }}
-            className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs"
+            className="py-2 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>تسجيل الخروج</span>
@@ -703,21 +905,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Change Password Collapsible */}
-        <div className="pt-2 border-t border-slate-100">
+        <div className="pt-2.5 border-t border-[#E2E8F0]">
           {!isChangingPassword ? (
             <button
               type="button"
               onClick={() => setIsChangingPassword(true)}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1.5"
+              className="text-xs font-bold text-[#172554] hover:text-[#0F172A] flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <KeyRound className="w-3.5 h-3.5" />
+              <KeyRound className="w-3.5 h-3.5 text-[#C9A227]" />
               <span>تغيير كلمة المرور الخاصة بالحساب</span>
             </button>
           ) : (
-            <form onSubmit={handleUpdatePassword} className="space-y-2.5 pt-1 text-xs">
+            <form onSubmit={handleUpdatePassword} className="space-y-3 pt-1 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-slate-900 flex items-center gap-1">
-                  <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                <span className="font-bold text-xs text-[#111827] flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-[#C9A227]" />
                   تغيير كلمة المرور
                 </span>
                 <button
@@ -726,7 +928,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     setIsChangingPassword(false);
                     setPassMessage(null);
                   }}
-                  className="text-[11px] text-slate-500 font-medium hover:text-slate-800"
+                  className="text-[11px] text-[#64748B] font-bold hover:text-[#111827] cursor-pointer"
                 >
                   إلغاء
                 </button>
@@ -734,7 +936,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               {passMessage && (
                 <div
-                  className={`p-2 rounded-xl text-xs font-medium flex items-center gap-1.5 ${
+                  className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
                     passMessage.type === 'success'
                       ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                       : 'bg-rose-50 text-rose-800 border border-rose-200'
@@ -751,34 +953,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-0.5">الحالية</label>
+                  <label className="block text-[11px] font-bold text-[#64748B] mb-1">الحالية</label>
                   <input
                     type="password"
                     required
                     value={currentPass}
                     onChange={(e) => setCurrentPass(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2.5 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-0.5">الجديدة</label>
+                  <label className="block text-[11px] font-bold text-[#64748B] mb-1">الجديدة</label>
                   <input
                     type="password"
                     required
                     value={newPass}
                     onChange={(e) => setNewPass(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2.5 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                className="w-full py-2.5 rounded-xl bg-[#172554] hover:bg-[#0F172A] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-[0.98] cursor-pointer"
               >
-                <Save className="w-3.5 h-3.5" />
+                <Save className="w-3.5 h-3.5 text-[#C9A227]" />
                 <span>حفظ كلمة المرور الجديدة</span>
               </button>
             </form>
@@ -787,88 +989,92 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* 3. TEACHER PROFILE CARD */}
-      <div className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3.5">
-        <h2 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-          <User className="w-4 h-4 text-blue-600" />
+      <div className="p-4 neu-card space-y-4">
+        <h2 className="text-xs font-bold text-[#111827] flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-[#172554]/10 text-[#172554] flex items-center justify-center">
+            <User className="w-4 h-4" />
+          </div>
           <span>تعديل بيانات المعلم والسنتر</span>
         </h2>
 
         {savedSuccess && (
-          <div className="p-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-medium flex items-center gap-2">
+          <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>تم حفظ وتحديث بيانات الملف الشخصي بنجاح!</span>
           </div>
         )}
 
-        <form onSubmit={handleSaveProfile} className="space-y-3 text-xs text-slate-900">
+        <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs text-[#111827]">
           <div>
-            <label className="block font-medium text-slate-700 mb-1">اسم المعلم / اللقب *</label>
+            <label className="block font-bold text-[#64748B] mb-1.5">اسم المعلم / اللقب *</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-3 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-medium text-slate-700 mb-1">المادة الدراسية الأساسية *</label>
+              <label className="block font-bold text-[#64748B] mb-1.5">المادة الدراسية الأساسية *</label>
               <input
                 type="text"
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-3 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-slate-700 mb-1">رقم الهاتف / واتساب</label>
+              <label className="block font-bold text-[#64748B] mb-1.5">رقم الهاتف / واتساب</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-3 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-medium text-slate-700 mb-1">اسم السنتر / المدرسة / القاعة</label>
+            <label className="block font-bold text-[#64748B] mb-1.5">اسم السنتر / المدرسة / القاعة</label>
             <input
               type="text"
               value={centerOrSchool}
               onChange={(e) => setCenterOrSchool(e.target.value)}
               placeholder="مثال: سنتر الأوائل التعليمي - مدينة نصر"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-3 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all active:scale-[0.99]"
+            className="w-full py-3 rounded-xl bg-[#172554] hover:bg-[#0F172A] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-4 h-4 text-[#C9A227]" />
             <span>حفظ البيانات وتحديث الحساب</span>
           </button>
         </form>
       </div>
 
       {/* 4. DANGER ZONE: CLEAR LOCAL DATA */}
-      <div className="p-4 bg-white border border-rose-200 rounded-2xl shadow-xs space-y-2.5">
-        <h2 className="text-xs font-bold text-rose-600 flex items-center gap-1.5">
-          <AlertTriangle className="w-4 h-4" />
+      <div className="p-4 bg-white border border-rose-100 rounded-xl shadow-xs space-y-3">
+        <h2 className="text-xs font-bold text-rose-600 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <AlertTriangle className="w-4 h-4" />
+          </div>
           <span>إعادة ضبط البيانات المحلية</span>
         </h2>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-[#64748B] font-medium">
           مسح السجلات المحلية والبدء من جديد. لن تفقد النسخ الاحتياطية المتزامنة مع حسابك.
         </p>
 
         <button
           onClick={handleClearAll}
-          className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95"
+          className="py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs cursor-pointer"
         >
           <Trash2 className="w-4 h-4" />
           <span>مسح البيانات المحلية الحالية</span>
@@ -876,9 +1082,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* App Info Footer */}
-      <div className="text-center text-[11px] text-slate-400 space-y-0.5 pt-2">
-        <p className="font-bold text-slate-700">Classy v2.0</p>
-        <p>مزامنة آمنة للحسابات • يدعم العمل بدون إنترنت والنسخ السحابي</p>
+      <div className="text-center text-[11px] text-[#64748B] space-y-0.5 pt-2">
+        <p className="font-bold text-[#172554]">Classy Royal Edition</p>
+        <p className="font-medium">مزامنة آمنة للحسابات • يدعم العمل بدون إنترنت والنسخ السحابي</p>
       </div>
     </div>
   );

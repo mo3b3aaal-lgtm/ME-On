@@ -352,20 +352,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { language, setLanguage, isRTL, t } = useTranslation();
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#111827] pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#14152C] pb-24 bg-[#F4F3FA]" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 neu-card p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 classy-card p-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#172554] text-[#C9A227] flex items-center justify-center shadow-xs">
-              <SettingsIcon className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-2xl bg-[#EDE8FF] text-[#7B61FF] flex items-center justify-center shadow-xs">
+              <SettingsIcon className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[#111827] tracking-tight">
+              <h1 className="text-xl font-black text-[#14152C] tracking-tight">
                 {t('settingsTitle')}
               </h1>
-              <p className="text-xs text-[#64748B] font-medium mt-0.5">
+              <p className="text-xs text-[#727494] font-medium mt-0.5">
                 {t('settingsSubtitle')}
               </p>
             </div>
@@ -376,40 +376,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Global Sync Notification / Alert */}
       {syncFeedback && (
         <div
-          className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all shadow-xs ${
+          className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 transition-all shadow-xs ${
             syncFeedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              ? 'bg-[#E0F7EF] text-emerald-800 border border-emerald-200'
               : syncFeedback.type === 'error'
-              ? 'bg-rose-50 text-rose-800 border border-rose-200'
-              : 'bg-[#172554]/5 text-[#172554] border border-[#172554]/20'
+              ? 'bg-[#FFEBEB] text-rose-800 border border-[#FFD6D6]'
+              : 'bg-[#EDE8FF] text-[#7B61FF] border border-[#DDD6FE]'
           }`}
         >
           {syncFeedback.type === 'success' ? (
             <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           ) : syncFeedback.type === 'error' ? (
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[#FF5E62]" />
           ) : (
-            <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-[#172554]" />
+            <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-[#7B61FF]" />
           )}
           <span>{syncFeedback.message}</span>
         </div>
       )}
 
       {/* LANGUAGE SELECTOR CARD (اللغة وخيارات العرض) */}
-      <div className="p-4 neu-card space-y-3.5">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+      <div className="p-4 classy-card space-y-3.5">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E8E4F5]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#172554]/10 text-[#172554] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#EDE8FF] text-[#7B61FF] flex items-center justify-center font-bold">
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs sm:text-sm font-bold text-[#111827]">{t('languageSection')}</h2>
-              <p className="text-[10px] sm:text-[11px] text-[#64748B] font-medium">
+              <h2 className="text-xs sm:text-sm font-black text-[#14152C]">{t('languageSection')}</h2>
+              <p className="text-[10px] sm:text-[11px] text-[#727494] font-medium">
                 {t('languageDesc')}
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-[#172554]/10 text-[#172554] border border-[#172554]/20">
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#EDE8FF] text-[#7B61FF]">
             {language === 'ar' ? 'العربية (RTL)' : language === 'en-GB' ? 'UK English (LTR)' : 'US English (LTR)'}
           </span>
         </div>
@@ -427,15 +427,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 key={langOpt.id}
                 type="button"
                 onClick={() => setLanguage(langOpt.id)}
-                className={`p-3 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                className={`p-3 rounded-2xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#172554] border-[#172554] text-white shadow-xs font-bold'
-                    : 'bg-[#F7F8FC] hover:bg-slate-100 border-[#E2E8F0] text-[#111827]'
+                    ? 'bg-[#1E1F3D] border-[#1E1F3D] text-white shadow-md font-bold'
+                    : 'bg-[#F4F3FA] hover:bg-[#ECEAF6] border-[#E8E4F5] text-[#14152C]'
                 }`}
               >
                 <span className="text-base">{langOpt.flag}</span>
-                <span className="text-xs font-bold leading-tight">{langOpt.title}</span>
-                <span className={`text-[9px] ${isSelected ? 'text-[#C9A227]' : 'text-[#64748B] font-bold'}`}>
+                <span className="text-xs font-black leading-tight">{langOpt.title}</span>
+                <span className={`text-[9px] ${isSelected ? 'text-[#FF758C]' : 'text-[#727494] font-bold'}`}>
                   {langOpt.sub}
                 </span>
               </button>

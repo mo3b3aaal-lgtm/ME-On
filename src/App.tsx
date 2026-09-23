@@ -8,6 +8,7 @@ import { useModalContext } from './contexts/ModalContext';
 // Mobile UI components
 import { BottomNavBar } from './components/BottomNavBar';
 import { AuthView } from './components/AuthView';
+import { SplashScreen } from './components/SplashScreen';
 
 // Main Views
 import { DashboardView } from './components/DashboardView';
@@ -31,6 +32,9 @@ import { NotificationsModal } from './components/NotificationsModal';
 
 export default function App() {
   const { popTopModal } = useModalContext();
+
+  // Animated Splash Screen
+  const [showSplash, setShowSplash] = useState(true);
 
   // Navigation
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -239,16 +243,21 @@ export default function App() {
   const { isRTL, language } = useTranslation();
 
   return (
-    <div className="min-h-screen bg-slate-900 md:bg-slate-950 flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-slate-900" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-[#0E0F20] md:bg-[#0A0B18] flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#14152C]" dir={isRTL ? 'rtl' : 'ltr'}>
       
-      {/* Android Mobile Frame */}
-      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-slate-50 md:rounded-[44px] md:border-[8px] md:border-slate-800 md:ring-1 md:ring-slate-700/50 flex flex-col overflow-hidden shadow-2xl text-slate-900">
-        
-        {/* Android Punch-hole Camera */}
-        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-slate-900 border border-slate-700 z-50 pointer-events-none shadow-inner" />
+      {/* Animated Splash Screen Experience */}
+      {showSplash && (
+        <SplashScreen onComplete={() => setShowSplash(false)} autoDismissMs={2200} />
+      )}
 
-        {/* Main Screen Body - Extends to the absolute top edge of display */}
-        <main className="flex-1 flex flex-col overflow-hidden relative bg-slate-50">
+      {/* Modern Mobile Frame */}
+      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#F4F3FA] md:rounded-[44px] md:border-[8px] md:border-[#1E1F3D] md:ring-1 md:ring-white/10 flex flex-col overflow-hidden shadow-2xl text-[#14152C]">
+        
+        {/* Mobile Punch-hole Camera */}
+        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#14152C] border border-[#2D2F57] z-50 pointer-events-none shadow-inner" />
+
+        {/* Main Screen Body */}
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F4F3FA]">
           
           {!currentUser ? (
             <AuthView onLoginSuccess={handleLoginSuccess} />

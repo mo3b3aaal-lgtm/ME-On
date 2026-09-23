@@ -17,6 +17,7 @@ import {
 import { Session, Group, Student } from '../types';
 import { db } from '../utils/storage';
 import { MultiYearCalendar } from './MultiYearCalendar';
+import { ClassyOwlMascot } from './ClassyOwlMascot';
 
 interface SessionsViewProps {
   sessions: Session[];
@@ -66,34 +67,34 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#111827] pb-28 bg-[#F7F8FC]" dir="rtl">
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#14152C] pb-28 bg-[#F4F3FA]" dir="rtl">
       
       {/* Primary Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 neu-card p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 classy-card p-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#172554]/10 text-[#172554] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#EDE8FF] text-[#7B61FF] flex items-center justify-center font-bold">
               <CalendarCheck2 className="w-4 h-4" />
             </div>
-            <h1 className="text-xl font-bold text-[#111827] tracking-tight">
+            <h1 className="text-xl font-black text-[#14152C] tracking-tight">
               جدول وتقويم الحصص
             </h1>
           </div>
-          <p className="text-xs text-[#64748B] font-medium mt-0.5">
+          <p className="text-xs text-[#727494] font-medium mt-0.5">
             تصفح ومتابعة الحصص عبر السنوات والشهور ورصد الحضور بدقة
           </p>
         </div>
 
         {/* Tab Switcher: Multi-Year Calendar vs List View */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center bg-[#F4F3FA] p-1 rounded-2xl border border-[#E8E4F5]">
             <button
               type="button"
               onClick={() => setActiveSubTab('calendar')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeSubTab === 'calendar'
-                  ? 'bg-[#172554] text-white shadow-2xs'
-                  : 'text-[#64748B] hover:text-[#111827]'
+                  ? 'bg-white text-[#7B61FF] shadow-sm'
+                  : 'text-[#727494] hover:text-[#14152C]'
               }`}
             >
               <CalendarDays className="w-3.5 h-3.5" />
@@ -103,10 +104,10 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
             <button
               type="button"
               onClick={() => setActiveSubTab('list')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeSubTab === 'list'
-                  ? 'bg-[#172554] text-white shadow-2xs'
-                  : 'text-[#64748B] hover:text-[#111827]'
+                  ? 'bg-white text-[#7B61FF] shadow-sm'
+                  : 'text-[#727494] hover:text-[#14152C]'
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -116,7 +117,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
           <button
             onClick={() => onOpenAddSession()}
-            className="px-3.5 py-2 rounded-xl royal-btn-primary text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 shrink-0 cursor-pointer"
+            className="px-3.5 py-2 rounded-2xl btn-coral text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#FF5E62]/30 transition-all active:scale-95 shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>جدولة حصة</span>
@@ -139,14 +140,14 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       ) : (
         <div className="space-y-3.5">
           {/* Filter Bar */}
-          <div className="neu-card p-3.5 space-y-2">
+          <div className="classy-card p-3.5 space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
-                <label className="block text-[10px] text-[#64748B] font-semibold mb-1">المجموعة</label>
+                <label className="block text-[10px] text-[#727494] font-bold mb-1">المجموعة</label>
                 <select
                   value={selectedGroupFilter}
                   onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                  className="w-full bg-slate-50 border border-[#E2E8F0] rounded-lg px-2.5 py-2 text-xs text-[#111827] font-semibold focus:outline-none focus:border-[#172554] cursor-pointer"
+                  className="w-full bg-[#F4F3FA] border border-[#E8E4F5] rounded-xl px-2.5 py-2 text-xs text-[#14152C] font-bold focus:outline-none focus:border-[#7B61FF] cursor-pointer"
                 >
                   <option value="all">كل المجموعات</option>
                   {groups.map((g) => (
@@ -158,11 +159,11 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] text-[#64748B] font-semibold mb-1">حالة الحصة</label>
+                <label className="block text-[10px] text-[#727494] font-bold mb-1">حالة الحصة</label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full bg-slate-50 border border-[#E2E8F0] rounded-lg px-2.5 py-2 text-xs text-[#111827] font-semibold focus:outline-none focus:border-[#172554] cursor-pointer"
+                  className="w-full bg-[#F4F3FA] border border-[#E8E4F5] rounded-xl px-2.5 py-2 text-xs text-[#14152C] font-bold focus:outline-none focus:border-[#7B61FF] cursor-pointer"
                 >
                   <option value="all">كل الحالات</option>
                   <option value="scheduled">مجدولة (قادمة)</option>
@@ -172,19 +173,19 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] text-[#64748B] font-semibold mb-1">تصفية بالتاريخ</label>
+                <label className="block text-[10px] text-[#727494] font-bold mb-1">تصفية بالتاريخ</label>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-xs text-[#111827] font-semibold focus:outline-none focus:border-[#172554]"
+                    className="w-full bg-[#F4F3FA] border border-[#E8E4F5] rounded-xl px-2.5 py-1.5 text-xs text-[#14152C] font-bold focus:outline-none focus:border-[#7B61FF]"
                   />
                   {selectedDate && (
                     <button
                       type="button"
                       onClick={() => setSelectedDate('')}
-                      className="px-2.5 py-1.5 text-[11px] bg-slate-100 hover:bg-slate-200 text-[#111827] rounded-lg font-bold cursor-pointer"
+                      className="px-2.5 py-1.5 text-[11px] bg-[#EDE8FF] hover:bg-[#DDD6FE] text-[#7B61FF] rounded-xl font-bold cursor-pointer"
                     >
                       إلغاء
                     </button>
@@ -196,24 +197,28 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
           {/* Sessions List */}
           {sessions.length === 0 ? (
-            <div className="neu-card p-8 text-center space-y-2">
-              <CalendarCheck2 className="w-8 h-8 mx-auto text-[#64748B] opacity-60 mb-1" />
-              <h3 className="font-bold text-sm text-[#111827]">لا توجد حصص مسجلة بعد</h3>
-              <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                قم بجدولة حصتك الأولى لتسجيل الحضور ومتابعة الطلاب
-              </p>
+            <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center">
+              <div className="w-20 h-20 rounded-3xl bg-[#EDE8FF] flex items-center justify-center p-2 shadow-inner">
+                <ClassyOwlMascot size="sm" glow={false} pose="smart" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-black text-sm text-[#14152C]">لا توجد حصص مسجلة بعد</h3>
+                <p className="text-xs text-[#727494] max-w-sm mx-auto font-medium">
+                  قم بجدولة حصتك الأولى لتسجيل الحضور ومتابعة الطلاب
+                </p>
+              </div>
               <button
                 onClick={() => onOpenAddSession()}
-                className="mt-3 px-3.5 py-1.5 rounded-xl royal-btn-primary text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="mt-2 px-4 py-2 rounded-2xl btn-coral text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-[#FF5E62]/30 transition-all cursor-pointer active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>جدولة حصة جديدة</span>
               </button>
             </div>
           ) : filteredSessions.length === 0 ? (
-            <div className="neu-card p-8 text-center text-[#64748B] space-y-1">
-              <AlertCircle className="w-6 h-6 mx-auto opacity-60 text-[#C9A227]" />
-              <p className="font-bold text-[#111827] text-xs">لا توجد حصص تطابق خيارات التصفية</p>
+            <div className="classy-card p-8 text-center text-[#727494] space-y-2">
+              <AlertCircle className="w-8 h-8 mx-auto text-[#FFAA2C]" />
+              <p className="font-bold text-[#14152C] text-xs">لا توجد حصص تطابق خيارات التصفية</p>
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -232,10 +237,10 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                 return (
                   <div
                     key={session.id}
-                    className={`neu-card neu-card-hover p-4 transition-all space-y-3 ${
+                    className={`classy-card classy-card-hover p-4 transition-all space-y-3 ${
                       session.status === 'cancelled'
-                        ? 'border-rose-200 bg-rose-50/20'
-                        : 'hover:border-[#CBD5E1]'
+                        ? 'border-[#FFD6D6] bg-[#FFEBEB]/40'
+                        : ''
                     }`}
                   >
                     {/* Top Row: Title, Date, Status */}
@@ -243,29 +248,29 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: group?.accentColor || '#172554' }}
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                            style={{ backgroundColor: group?.accentColor || '#7B61FF' }}
                           />
-                          <h3 className="font-bold text-xs sm:text-sm text-[#111827] truncate">{session.title}</h3>
-                          <span className="text-[10px] font-semibold bg-slate-100 text-[#111827] px-2 py-0.5 rounded-md">
+                          <h3 className="font-bold text-xs sm:text-sm text-[#14152C] truncate">{session.title}</h3>
+                          <span className="text-[10px] font-bold bg-[#EDE8FF] text-[#7B61FF] px-2.5 py-0.5 rounded-full">
                             {group?.name || 'مجموعة'}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-3 text-[11px] text-[#64748B] flex-wrap">
-                          <span className="flex items-center gap-1 font-bold text-[#111827]">
-                            <Calendar className="w-3.5 h-3.5 text-[#64748B]" />
+                        <div className="flex items-center gap-3 text-[11px] text-[#727494] flex-wrap font-medium">
+                          <span className="flex items-center gap-1 font-black text-[#14152C]">
+                            <Calendar className="w-3.5 h-3.5 text-[#727494]" />
                             <span>{session.dayName} {session.date}</span>
                           </span>
 
                           {session.startTime && (
                             <span className="flex items-center gap-1 font-medium">
-                              <Clock className="w-3.5 h-3.5 text-[#64748B]" />
+                              <Clock className="w-3.5 h-3.5 text-[#727494]" />
                               <span>الساعة {session.startTime}</span>
                             </span>
                           )}
 
-                          <span className="flex items-center gap-1 font-bold text-[#172554]">
+                          <span className="flex items-center gap-1 font-bold text-[#7B61FF]">
                             <Users className="w-3.5 h-3.5" />
                             <span>{groupStudents.length} طلاب</span>
                           </span>
@@ -274,12 +279,12 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                       {/* Status Badge */}
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                        className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${
                           session.status === 'completed'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            ? 'bg-[#E0F7EF] text-emerald-700 border border-emerald-200'
                             : session.status === 'cancelled'
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : 'bg-[#FDF8E7] text-[#9A7718] border border-[#EAD89C]'
+                            ? 'bg-[#FFEBEB] text-[#FF5E62] border border-[#FFD6D6]'
+                            : 'bg-[#FFF5E5] text-[#FFAA2C] border border-[#FFE8C2]'
                         }`}
                       >
                         {session.status === 'completed'
@@ -292,7 +297,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                     {/* Cancelled Notice if applicable */}
                     {session.status === 'cancelled' && (
-                      <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold flex items-center gap-1.5">
+                      <div className="p-2.5 rounded-2xl bg-[#FFEBEB] border border-[#FFD6D6] text-[#FF5E62] text-[11px] font-bold flex items-center gap-1.5">
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         <span>حصة ملغاة: لا تُحسب حضوراً ولا تستهلك رصيداً</span>
                       </div>
@@ -300,33 +305,33 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                     {/* Session Notes if any */}
                     {session.notes && (
-                      <p className="text-[11px] text-[#64748B] bg-slate-50 p-2.5 rounded-xl border border-[#E2E8F0] leading-relaxed">
-                        <strong className="text-[#111827]">ملاحظات:</strong> {session.notes}
+                      <p className="text-[11px] text-[#727494] bg-[#F4F3FA] p-2.5 rounded-2xl border border-[#E8E4F5] leading-relaxed">
+                        <strong className="text-[#14152C]">ملاحظات:</strong> {session.notes}
                       </p>
                     )}
 
                     {/* Attendance Summary & Action Strip */}
-                    <div className="flex items-center justify-between pt-2.5 border-t border-[#E2E8F0]">
-                      <div className="text-[11px] text-[#64748B]">
+                    <div className="flex items-center justify-between pt-2.5 border-t border-[#E8E4F5]">
+                      <div className="text-[11px] text-[#727494]">
                         {attendance.length > 0 ? (
-                          <div className="flex items-center gap-2 flex-wrap font-semibold">
-                            <span className="text-emerald-700 font-bold">حاضر: {presentCount}</span>
+                          <div className="flex items-center gap-2 flex-wrap font-bold">
+                            <span className="text-emerald-700">حاضر: {presentCount}</span>
                             {chargedAbsentCount > 0 && (
-                              <span className="text-rose-600">• محسوب: {chargedAbsentCount}</span>
+                              <span className="text-[#FF5E62]">• محسوب: {chargedAbsentCount}</span>
                             )}
                             {freeAbsentCount > 0 && (
-                              <span className="text-[#64748B] font-normal">• معذور: {freeAbsentCount}</span>
+                              <span className="text-[#727494] font-normal">• معذور: {freeAbsentCount}</span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-[#64748B] font-medium">لم يُرصد الحضور</span>
+                          <span className="text-[#727494] font-medium">لم يُرصد الحضور</span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => onOpenAttendanceModal(session)}
-                          className="min-h-[32px] px-3 py-1 rounded-xl royal-btn-primary text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+                          className="min-h-[32px] px-3.5 py-1 rounded-xl btn-coral text-white font-bold text-xs flex items-center gap-1 shadow-sm shadow-[#FF5E62]/30 transition-all active:scale-95 cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>{attendance.length > 0 ? 'تعديل الحضور' : 'رصد الحضور'}</span>
@@ -334,7 +339,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                         <button
                           onClick={() => onEditSession(session)}
-                          className="p-1.5 rounded-lg bg-slate-50 border border-[#E2E8F0] text-[#64748B] hover:text-[#111827] hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-[#F4F3FA] border border-[#E8E4F5] text-[#727494] hover:text-[#14152C] hover:bg-[#ECEAF6] transition-colors cursor-pointer"
                           title="تعديل الحصة"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -342,7 +347,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                         <button
                           onClick={() => handleDelete(session)}
-                          className="p-1.5 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-[#FFEBEB] border border-[#FFD6D6] text-[#FF5E62] hover:bg-[#FFD6D6] transition-colors cursor-pointer"
                           title="حذف الحصة"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

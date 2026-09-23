@@ -17,6 +17,7 @@ import { Group, Student } from '../types';
 import { db } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
+import { ClassyOwlMascot } from './ClassyOwlMascot';
 
 interface GroupsViewProps {
   groups: Group[];
@@ -60,22 +61,25 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#111827] pb-28 bg-[#F7F8FC]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#14152C] pb-28 bg-[#F4F3FA]" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#111827] tracking-tight">
-            {t('groupsTitle')} ({regularGroups.length})
+          <h1 className="text-xl font-black text-[#14152C] tracking-tight flex items-center gap-2">
+            <span>{t('groupsTitle')}</span>
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#EDE8FF] text-[#7B61FF]">
+              {regularGroups.length}
+            </span>
           </h1>
-          <p className="text-xs text-[#64748B] font-medium mt-0.5">
+          <p className="text-xs text-[#727494] font-medium mt-0.5">
             {t('groupsSubtitle')}
           </p>
         </div>
 
         <button
           onClick={onOpenAddGroup}
-          className="px-3.5 py-2 rounded-xl royal-btn-primary text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+          className="px-3.5 py-2 rounded-2xl btn-coral text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#FF5E62]/30 transition-all active:scale-95 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>{t('createGroupBtn')}</span>
@@ -83,21 +87,21 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="neu-card p-3.5 space-y-3">
+      <div className="classy-card p-3.5 space-y-3">
         <div className="relative">
-          <Search className={`w-4 h-4 text-[#64748B] absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-3`} />
+          <Search className={`w-4 h-4 text-[#727494] absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-3.5`} />
           <input
             type="text"
             placeholder={t('groupsSearchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full bg-slate-50 border border-[#E2E8F0] rounded-xl ${isRTL ? 'pr-10 pl-8' : 'pl-10 pr-8'} py-2 text-xs text-[#111827] placeholder-[#64748B] focus:outline-none focus:border-[#172554] font-medium transition-colors`}
+            className={`w-full bg-[#F4F3FA] border border-[#E8E4F5] rounded-2xl ${isRTL ? 'pr-10 pl-8' : 'pl-10 pr-8'} py-2.5 text-xs text-[#14152C] placeholder-[#9A9CB8] focus:outline-none focus:border-[#7B61FF] font-medium transition-colors`}
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className={`absolute top-2.5 text-[#64748B] hover:text-[#111827] p-0.5 rounded-full ${
+              className={`absolute top-2.5 text-[#727494] hover:text-[#14152C] p-1 rounded-full ${
                 isRTL ? 'left-2.5' : 'right-2.5'
               }`}
             >
@@ -107,33 +111,33 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center gap-1.5 bg-[#F4F3FA] p-1 rounded-2xl border border-[#E8E4F5]">
           <button
             onClick={() => setTypeFilter('all')}
-            className={`flex-1 py-1.5 rounded-lg text-xs transition-all text-center cursor-pointer ${
+            className={`flex-1 py-1.5 rounded-xl text-xs transition-all text-center cursor-pointer ${
               typeFilter === 'all'
-                ? 'bg-[#172554] text-white shadow-2xs font-bold'
-                : 'text-[#64748B] hover:text-[#111827] font-semibold'
+                ? 'bg-white text-[#14152C] shadow-sm font-black'
+                : 'text-[#727494] hover:text-[#14152C] font-semibold'
             }`}
           >
             {t('all')} ({groups.length})
           </button>
           <button
             onClick={() => setTypeFilter('group')}
-            className={`flex-1 py-1.5 rounded-lg text-xs transition-all text-center cursor-pointer ${
+            className={`flex-1 py-1.5 rounded-xl text-xs transition-all text-center cursor-pointer ${
               typeFilter === 'group'
-                ? 'bg-[#172554] text-white shadow-2xs font-bold'
-                : 'text-[#64748B] hover:text-[#111827] font-semibold'
+                ? 'bg-white text-[#7B61FF] shadow-sm font-black'
+                : 'text-[#727494] hover:text-[#14152C] font-semibold'
             }`}
           >
             {t('groupTypeGroup')} ({regularGroups.length})
           </button>
           <button
             onClick={() => setTypeFilter('private')}
-            className={`flex-1 py-1.5 rounded-lg text-xs transition-all text-center cursor-pointer ${
+            className={`flex-1 py-1.5 rounded-xl text-xs transition-all text-center cursor-pointer ${
               typeFilter === 'private'
-                ? 'bg-[#172554] text-white shadow-2xs font-bold'
-                : 'text-[#64748B] hover:text-[#111827] font-semibold'
+                ? 'bg-white text-[#FFAA2C] shadow-sm font-black'
+                : 'text-[#727494] hover:text-[#14152C] font-semibold'
             }`}
           >
             {t('groupTypePrivate')} ({privateServices.length})
@@ -143,24 +147,28 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
 
       {/* Groups Grid / Cards */}
       {groups.length === 0 ? (
-        <div className="neu-card p-8 text-center space-y-2">
-          <Layers className="w-8 h-8 mx-auto text-[#64748B] opacity-60 mb-1" />
-          <h3 className="font-bold text-sm text-[#111827]">{t('noGroupsRegisteredYet')}</h3>
-          <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-            {t('createFirstGroupPrompt')}
-          </p>
+        <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center">
+          <div className="w-20 h-20 rounded-3xl bg-[#FFF5E5] flex items-center justify-center p-2 shadow-inner">
+            <ClassyOwlMascot size="sm" glow={false} pose="teacher" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-black text-sm text-[#14152C]">{t('noGroupsRegisteredYet')}</h3>
+            <p className="text-xs text-[#727494] max-w-sm mx-auto font-medium">
+              {t('createFirstGroupPrompt')}
+            </p>
+          </div>
           <button
             onClick={onOpenAddGroup}
-            className="mt-3 px-3.5 py-1.5 rounded-xl royal-btn-primary text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all"
+            className="mt-2 px-4 py-2 rounded-2xl btn-coral text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-[#FF5E62]/30 transition-all cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>{t('createGroupBtn')}</span>
           </button>
         </div>
       ) : filteredGroups.length === 0 ? (
-        <div className="neu-card p-8 text-center text-[#64748B] space-y-1">
-          <AlertCircle className="w-6 h-6 mx-auto opacity-60 text-[#C9A227]" />
-          <p className="font-bold text-[#111827] text-xs">{t('noMatchingSearchResults')}</p>
+        <div className="classy-card p-8 text-center text-[#727494] space-y-2">
+          <AlertCircle className="w-8 h-8 mx-auto text-[#FFAA2C]" />
+          <p className="font-bold text-[#14152C] text-xs">{t('noMatchingSearchResults')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -175,49 +183,49 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
               <div
                 key={group.id}
                 onClick={() => onOpenGroupProfile(group)}
-                className="neu-card neu-card-hover p-4 hover:border-[#CBD5E1] transition-all cursor-pointer space-y-3 active:scale-[0.99]"
+                className="classy-card classy-card-hover p-4 transition-all cursor-pointer space-y-3 active:scale-[0.99]"
               >
                 {/* Card Top: Accent + Title + Type Badge */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: group.accentColor || (isPrivate ? '#C9A227' : '#172554') }}
+                      className="w-3 h-3 rounded-full shrink-0 shadow-xs"
+                      style={{ backgroundColor: group.accentColor || (isPrivate ? '#FFAA2C' : '#7B61FF') }}
                     />
                     <div className="min-w-0 space-y-0.5">
-                      <h3 className="font-bold text-xs sm:text-sm text-[#111827] truncate">
+                      <h3 className="font-bold text-xs sm:text-sm text-[#14152C] truncate">
                         {isPrivate ? (privateStudent ? `خاص — ${privateStudent.name}` : 'درس خاص') : group.name}
                       </h3>
-                      <p className="text-[11px] text-[#64748B] font-medium truncate">
+                      <p className="text-[11px] text-[#727494] font-medium truncate">
                         {group.subject} • {getLocalizedStageName(group.gradeLevel, language)}
                       </p>
                     </div>
                   </div>
 
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                    isPrivate ? 'bg-[#FDF8E7] text-[#9A7718] border border-[#EAD89C]' : 'bg-[#172554]/10 text-[#172554] border border-[#172554]/20'
+                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${
+                    isPrivate ? 'bg-[#FFF5E5] text-[#FFAA2C] border border-[#FFE8C2]' : 'bg-[#EDE8FF] text-[#7B61FF]'
                   }`}>
                     {isPrivate ? t('groupTypePrivate') : t('groupTypeGroup')}
                   </span>
                 </div>
 
                 {/* Pricing & Student Counts Strip */}
-                <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl text-xs border border-[#E2E8F0]">
+                <div className="grid grid-cols-2 gap-2 bg-[#F4F3FA] p-2.5 rounded-2xl text-xs border border-[#E8E4F5]">
                   <div>
-                    <span className="text-[10px] text-[#64748B] block font-semibold">
+                    <span className="text-[10px] text-[#727494] block font-semibold">
                       {isPrivate ? 'نوع الخدمة' : t('enrolledStudentsCount')}
                     </span>
-                    <strong className="text-xs font-bold text-[#111827] flex items-center gap-1.5 mt-0.5">
-                      <Users className="w-3.5 h-3.5 text-[#172554]" />
+                    <strong className="text-xs font-black text-[#14152C] flex items-center gap-1.5 mt-0.5">
+                      <Users className="w-3.5 h-3.5 text-[#7B61FF]" />
                       <span>{isPrivate ? (privateStudent ? privateStudent.name : 'طالب خاص') : `${enrollments.length} ${t('navStudents')}`}</span>
                     </strong>
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-[#64748B] block font-semibold">
+                    <span className="text-[10px] text-[#727494] block font-semibold">
                       {group.billingType === 'monthly' ? t('billingMonthly') : group.billingType === 'package' ? t('packagePrice') : group.billingType === 'hourly' ? 'بالساعة' : t('sessionPrice')}
                     </span>
-                    <strong className="text-xs font-bold text-emerald-700 flex items-center gap-1.5 mt-0.5">
+                    <strong className="text-xs font-black text-emerald-700 flex items-center gap-1.5 mt-0.5">
                       <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
                       <span>{group.defaultPrice} {t('currency')}</span>
                     </strong>
@@ -225,15 +233,15 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 </div>
 
                 {/* Schedule & Location */}
-                <div className="flex items-center justify-between text-[11px] text-[#64748B] pt-1 border-t border-[#E2E8F0]">
+                <div className="flex items-center justify-between text-[11px] text-[#727494] pt-1 border-t border-[#E8E4F5]">
                   <div className="flex items-center gap-1 truncate font-medium">
-                    <Calendar className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
+                    <Calendar className="w-3.5 h-3.5 text-[#727494] shrink-0" />
                     <span className="truncate">{group.scheduleDays.join('، ') || 'Flexible'}</span>
                   </div>
 
                   {group.scheduleTime && (
-                    <div className="flex items-center gap-1 shrink-0 font-bold text-[#111827]">
-                      <Clock className="w-3.5 h-3.5 text-[#64748B]" />
+                    <div className="flex items-center gap-1 shrink-0 font-black text-[#14152C]">
+                      <Clock className="w-3.5 h-3.5 text-[#727494]" />
                       <span>{group.scheduleTime}</span>
                     </div>
                   )}

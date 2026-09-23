@@ -30,7 +30,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChan
   return (
     <nav
       aria-label="Bottom Navigation"
-      className="w-full bg-white border-t border-[#E2E8F0] rounded-t-2xl px-2.5 py-2 flex items-center justify-around shrink-0 shadow-[0_-4px_16px_rgba(15,23,42,0.03)] z-30 select-none safe-area-bottom"
+      className="w-full bg-white/95 backdrop-blur-md border-t border-[#E8E4F5] rounded-t-[28px] px-3 py-2 flex items-center justify-around shrink-0 shadow-[0_-8px_25px_rgba(20,21,44,0.06)] z-30 select-none safe-area-bottom"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;
@@ -40,24 +40,24 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChan
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all duration-150 min-w-[48px] min-h-[46px] cursor-pointer relative group ${
+            className={`flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all duration-200 min-w-[50px] min-h-[48px] cursor-pointer relative group ${
               isActive
-                ? 'text-[#172554] font-bold'
-                : 'text-[#64748B] hover:text-[#0F172A] active:scale-95'
+                ? 'text-[#7B61FF] font-bold'
+                : 'text-[#727494] hover:text-[#14152C] active:scale-95'
             }`}
           >
             <div
-              className={`p-1.5 rounded-xl transition-all duration-150 ${
+              className={`p-2 rounded-2xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-[#172554] text-white shadow-sm ring-2 ring-[#C9A227]/20 -translate-y-0.5'
-                  : 'bg-transparent text-[#64748B] group-hover:bg-slate-100 group-hover:text-[#0F172A]'
+                  ? 'bg-gradient-to-tr from-[#7B61FF] to-[#6C5CE7] text-white shadow-lg shadow-[#7B61FF]/30 -translate-y-1 scale-105'
+                  : 'bg-transparent text-[#727494] group-hover:bg-[#F4F3FA] group-hover:text-[#14152C]'
               }`}
             >
-              <Icon className={`w-4.5 h-4.5 ${isActive ? 'stroke-[2.2]' : 'stroke-[1.75]'}`} />
+              <Icon className={`w-4.5 h-4.5 ${isActive ? 'stroke-[2.2]' : 'stroke-[1.8]'}`} />
             </div>
             <span
-              className={`text-[10px] mt-1 tracking-tight transition-colors ${
-                isActive ? 'text-[#172554] font-bold' : 'text-[#64748B] font-medium'
+              className={`text-[10px] mt-0.5 tracking-tight transition-colors ${
+                isActive ? 'text-[#7B61FF] font-black' : 'text-[#727494] font-medium'
               }`}
             >
               {tab.label}

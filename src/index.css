@@ -7,8 +7,8 @@
 
   body {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #F7F8FC;
-    color: #111827;
+    background-color: #F4F3FA;
+    color: #14152C;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
@@ -17,45 +17,151 @@
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', sans-serif;
     font-weight: 700;
-    color: #111827;
+    color: #14152C;
     letter-spacing: -0.02em;
   }
 }
 
-/* Royal Visual Design System Tokens */
+/* Reference-inspired Modern Visual Design Tokens */
 :root {
-  --royal-navy: #172554;
-  --dark-navy: #0F172A;
-  --royal-gold: #C9A227;
-  --gold-light: #E0C35A;
-  --royal-bg: #F7F8FC;
-  --royal-card: #FFFFFF;
-  --royal-text: #111827;
-  --royal-muted: #64748B;
-  --royal-border: #E2E8F0;
+  --color-dark-bg: #14152C;
+  --color-dark-surface: #1E1F3D;
+  --color-dark-elevated: #26284F;
+  --color-canvas: #F4F3FA;
+  --color-card: #FFFFFF;
+  --color-card-border: #E8E4F5;
+  --color-coral: #FF5E62;
+  --color-coral-light: #FF758C;
+  --color-purple: #7B61FF;
+  --color-indigo: #6C5CE7;
+  --color-sky: #38B6FF;
+  --color-amber: #FFAA2C;
+  --color-text-main: #14152C;
+  --color-text-muted: #727494;
 }
 
-/* Royal Card Standards (12-16px radius, subtle border, soft shadow) */
+/* Modern Rounded Cards & Surfaces */
+.classy-card {
+  background-color: #FFFFFF;
+  border-radius: 24px;
+  border: 1px solid #E8E4F5;
+  box-shadow: 0 4px 20px -2px rgba(20, 21, 44, 0.05), 0 2px 6px -1px rgba(20, 21, 44, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.classy-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -4px rgba(123, 97, 255, 0.12), 0 4px 10px -2px rgba(20, 21, 44, 0.04);
+  border-color: #D6CEF2;
+}
+
+/* Dark Hero / Header Card */
+.classy-dark-card {
+  background: linear-gradient(145deg, #1A1B38 0%, #14152C 100%);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 32px -8px rgba(20, 21, 44, 0.35);
+  color: #FFFFFF;
+}
+
+/* Vibrant Coral Primary Buttons */
+.btn-coral {
+  background: linear-gradient(135deg, #FF5E62 0%, #FF758C 100%);
+  color: #FFFFFF;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px -4px rgba(255, 94, 98, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-coral:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px -4px rgba(255, 94, 98, 0.45);
+}
+
+.btn-coral:active {
+  transform: scale(0.98);
+}
+
+/* Purple Secondary Buttons */
+.btn-purple {
+  background: linear-gradient(135deg, #7B61FF 0%, #6C5CE7 100%);
+  color: #FFFFFF;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px -4px rgba(123, 97, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-purple:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px -4px rgba(123, 97, 255, 0.4);
+}
+
+/* Dark Pill Switcher (like reference header navigation) */
+.dark-pill-container {
+  background-color: #1E1F3D;
+  border-radius: 18px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark-pill-active {
+  background-color: #2D2F57;
+  color: #FFFFFF;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Floating Action Button (FAB) */
+.classy-fab {
+  position: fixed;
+  bottom: 84px;
+  left: 20px;
+  z-index: 40;
+  width: 56px;
+  height: 56px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #FF5E62 0%, #FF758C 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 28px -4px rgba(255, 94, 98, 0.45), 0 4px 12px rgba(255, 94, 98, 0.3);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.classy-fab:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 16px 36px -4px rgba(255, 94, 98, 0.55);
+}
+
+.classy-fab:active {
+  transform: scale(0.95);
+}
+
+/* Compatibility classes for existing references */
 .neu-card, .royal-card {
   background-color: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
-  border: 1px solid #E2E8F0;
+  border-radius: 22px;
+  box-shadow: 0 4px 18px -2px rgba(20, 21, 44, 0.05);
+  border: 1px solid #E8E4F5;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .neu-card-hover:hover, .royal-card-hover:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px -2px rgba(23, 37, 84, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
-  border-color: #CBD5E1;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -3px rgba(123, 97, 255, 0.12);
+  border-color: #D6CEF2;
 }
 
 .bento-stat-card {
   background-color: #FFFFFF;
-  border-radius: 16px;
+  border-radius: 22px;
   padding: 1.125rem;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
-  border: 1px solid #E2E8F0;
+  box-shadow: 0 4px 18px -2px rgba(20, 21, 44, 0.05);
+  border: 1px solid #E8E4F5;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -65,46 +171,67 @@
 }
 
 .bento-stat-card:hover {
-  box-shadow: 0 6px 16px -2px rgba(23, 37, 84, 0.06);
-  border-color: #CBD5E1;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -3px rgba(123, 97, 255, 0.12);
+  border-color: #D6CEF2;
 }
 
-/* Royal Featured Cards */
-.royal-hero-navy {
-  background: linear-gradient(145deg, #172554 0%, #0F172A 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(201, 162, 39, 0.25);
-  box-shadow: 0 8px 24px -4px rgba(23, 37, 84, 0.25);
+/* Custom Keyframe Animations */
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.royal-badge-gold {
-  background-color: #FDF8E7;
-  color: #9A7718;
-  border: 1px solid #EAD89C;
+.animate-slide-up-fade {
+  animation: slideUpFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.royal-btn-primary {
-  background-color: #172554;
-  color: #FFFFFF;
-  border-radius: 12px;
-  font-weight: 600;
-  transition: all 0.15s ease;
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
-.royal-btn-primary:hover {
-  background-color: #0F172A;
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.royal-btn-gold {
-  background-color: #C9A227;
-  color: #FFFFFF;
-  border-radius: 12px;
-  font-weight: 600;
-  transition: all 0.15s ease;
+@keyframes loadingBar {
+  0% {
+    transform: translateX(100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
-.royal-btn-gold:hover {
-  background-color: #B5901F;
+.animate-bounce-subtle {
+  animation: bounceSubtle 3s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 18s linear infinite;
+}
+
+.animate-loading-bar {
+  animation: loadingBar 2s ease-in-out infinite;
 }
 
 /* Custom scrollbars */
@@ -124,9 +251,9 @@
   background: transparent;
 }
 .android-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.25);
+  background: rgba(114, 116, 148, 0.25);
   border-radius: 9999px;
 }
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.45);
+  background: rgba(114, 116, 148, 0.45);
 }

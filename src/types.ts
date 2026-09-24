@@ -30,10 +30,44 @@ export type AchievementFrame =
   | 'diamond_elite'
   | 'emerald_honor';
 
+// Behavior Logging Category & Predefined Tags
+export type BehaviorCategory = 'positive' | 'needs_improvement' | 'neutral';
+
+export interface PredefinedBehaviorTag {
+  id: string;
+  name: string;
+  nameEn?: string;
+  category: BehaviorCategory;
+  emoji: string;
+  points?: number; // e.g. +10, -5, 0
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}
+
+export interface StudentBehaviorLog {
+  id: string;
+  userId?: string;
+  studentId: string;
+  studentName?: string;
+  groupId?: string;
+  groupName?: string;
+  sessionId?: string;
+  tag: string;
+  tagEn?: string;
+  category: BehaviorCategory;
+  emoji?: string;
+  points?: number;
+  note?: string;
+  timestamp: string; // ISO string with date & time
+  createdAt: string;
+  updatedAt?: string;
+}
+
 // Deletion Tombstone for synchronization across devices and Cloud
 export interface DeletionTombstone {
   id: string;
-  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog' | 'homeworkAssignment' | 'homeworkTest' | 'any';
+  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog' | 'homeworkAssignment' | 'homeworkTest' | 'behaviorLog' | 'any';
   deletedAt: string;
   userId?: string;
 }
@@ -600,6 +634,7 @@ export interface UserAccountDataPackage {
   attendance: Attendance[];
   payments: Payment[];
   creditLogs?: SessionCreditLog[];
+  behaviorLogs?: StudentBehaviorLog[];
   homeworkTests?: HomeworkTest[];
   homeworkAssignments?: HomeworkAssignment[];
   homeworkQuestionResults?: HomeworkQuestionResult[];
@@ -613,6 +648,7 @@ export interface UserAccountDataPackage {
     attendance?: string[];
     payments?: string[];
     creditLogs?: string[];
+    behaviorLogs?: string[];
     homeworkTests?: string[];
     homeworkAssignments?: string[];
   };

@@ -35,14 +35,21 @@ import {
   BookMarked,
   MapPin,
   CalendarDays,
+  Zap,
+  Award,
+  Search,
+  Tag,
+  SlidersHorizontal,
 } from 'lucide-react';
-import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode, StudentGrandFinancialSummary } from '../types';
+import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode, StudentGrandFinancialSummary, StudentBehaviorLog, BehaviorCategory } from '../types';
 import { db, getArabicMonthName, getBillingModeLabel, divideMoney, multiplyMoney, roundMoney } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
+import { QuickBehaviorLogModal } from './QuickBehaviorLogModal';
 import { getLocalizedStageName } from '../utils/stages';
 import { getUpcomingClassesForStudent, UpcomingStudentClass } from '../utils/schedule';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { calculateStudentBehaviorStats, formatBehaviorTime, getCategoryBadge } from '../utils/behavior';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -65,9 +72,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onOpenAddPayment,
   onDataChanged,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'groups' | 'private' | 'finances' | 'attendance' | 'history' | 'credit_logs'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'groups' | 'private' | 'finances' | 'attendance' | 'behavior' | 'history' | 'credit_logs'>('overview');
   const [serviceFilter, setServiceFilter] = useState<'all' | 'group' | 'private'>('all');
   const [isRecordPrivateModalOpen, setIsRecordPrivateModalOpen] = useState<boolean>(false);
+  const [isQuickBehaviorModalOpen, setIsQuickBehaviorModalOpen] = useState<boolean>(false);
+  const [behaviorFilterCategory, setBehaviorFilterCategory] = useState<'all' | 'positive' | 'needs_improvement' | 'neutral'>('all');
+  const [behaviorSearchQuery, setBehaviorSearchQuery] = useState<string>('');
+  const [behaviorSelectedTag, setBehaviorSelectedTag] = useState<string>('all');
   const [isAddingPrivateService, setIsAddingPrivateService] = useState<boolean>(false);
   const [newPrivateSubject, setNewPrivateSubject] = useState<string>('درس خاص');
   const [newPrivatePrice, setNewPrivatePrice] = useState<number>(100);
@@ -151,6 +162,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const attendanceList = student ? db.getStudentAttendance(student.id) : [];
   const allSessions = db.getSessions();
   const allCreditLogs = student ? db.getCreditLogs().filter((l) => l.studentId === student.id) : [];
+  const studentBehaviorLogs = student ? db.getStudentBehaviorLogs(student.id) : [];
+  const behaviorStats = calculateStudentBehaviorStats(studentBehaviorLogs);
   const serviceType = student ? db.getStudentServiceType(student.id) : 'none';
 
   // Upcoming scheduled classes for student
@@ -182,10 +195,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     return acc;
   }, {});
 
-  // Recent activity stream (Attendance, Payments, Added sessions, Credit logs)
+  // Recent activity stream (Attendance, Payments, Added sessions, Credit logs, Behavior logs)
   interface ActivityItem {
     id: string;
-    type: 'attendance' | 'payment' | 'credit' | 'session';
+    type: 'attendance' | 'payment' | 'credit' | 'session' | 'behavior';
     date: string;
     title: string;
     subtitle: string;
@@ -195,6 +208,22 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   }
 
   const recentActivity: ActivityItem[] = [];
+
+  // 1. Add behavior activities
+  studentBehaviorLogs.slice(0, 8).forEach((b) => {
+    const isPos = b.category === 'positive';
+    const isNeg = b.category === 'needs_improvement';
+    recentActivity.push({
+      id: `act_bhv_${b.id}`,
+      type: 'behavior',
+      date: b.timestamp.split('T')[0],
+      title: `${b.emoji ? b.emoji + ' ' : ''}${b.tag}`,
+      subtitle: b.note || (b.groupName ? `في ${b.groupName}` : 'تقييم سلوكي سريع'),
+      badge: `${(b.points ?? 0) > 0 ? '+' : ''}${b.points ?? 0} نقطة`,
+      badgeColor: isPos ? 'bg-emerald-50 text-emerald-700' : isNeg ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700',
+      timestamp: new Date(b.timestamp || b.createdAt).getTime(),
+    });
+  });
 
   // 1. Add attendance activities
   attendanceList.slice(0, 8).forEach((att) => {
@@ -500,6 +529,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             ) : null}
 
             <button
+              type="button"
+              onClick={() => setIsQuickBehaviorModalOpen(true)}
+              className="py-1.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 text-indigo-600" />
+              <span>تقييم سلوك سريع</span>
+            </button>
+
+            <button
               onClick={() => onEditStudent(student)}
               className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition-colors cursor-pointer"
               title="تعديل بيانات الطالب"
@@ -521,6 +559,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           >
             <Activity className="w-4 h-4" />
             <span>لوحة الطالب</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('behavior')}
+            className={`py-2.5 px-3 text-center text-xs font-bold border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+              activeSubTab === 'behavior'
+                ? 'border-indigo-600 text-indigo-800 bg-indigo-50'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-indigo-600" />
+            <span>السلوك والتفاعل ({studentBehaviorLogs.length})</span>
           </button>
 
           <button
@@ -616,6 +666,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <span>تسجيل دفعة</span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => setIsQuickBehaviorModalOpen(true)}
+                  className="p-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>رصد سلوك</span>
+                </button>
+
                 {hasPrivate && (
                   <button
                     type="button"
@@ -635,15 +694,94 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <CalendarCheck2 className="w-3.5 h-3.5 text-[#172554]" />
                   <span>سجل الحضور</span>
                 </button>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => onOpenEnrollModal(student)}
-                  className="p-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
-                >
-                  <PlusCircle className="w-3.5 h-3.5 text-[#172554]" />
-                  <span>اشتراك جديد</span>
-                </button>
+              {/* Behavior & Participation Overview Widget */}
+              <div className="p-3.5 bg-white border border-slate-200/80 rounded-2xl shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-indigo-600" />
+                    <span>مؤشرات السلوك والتفاعل</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickBehaviorModalOpen(true)}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>تقييم سريع</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/70">
+                    <span className="text-[10px] text-slate-500 font-bold block">مجموع النقاط</span>
+                    <span className={`text-sm font-black mt-0.5 block ${
+                      behaviorStats.totalPoints > 0
+                        ? 'text-emerald-700'
+                        : behaviorStats.totalPoints < 0
+                        ? 'text-rose-600'
+                        : 'text-slate-700'
+                    }`}>
+                      {behaviorStats.totalPoints > 0 ? `+${behaviorStats.totalPoints}` : behaviorStats.totalPoints}
+                    </span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-800">
+                    <span className="text-[10px] font-bold block">تفاعل وتميز</span>
+                    <span className="text-sm font-black mt-0.5 block">{behaviorStats.positiveCount}</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-rose-50 border border-rose-200/70 text-rose-800">
+                    <span className="text-[10px] font-bold block">يحتاج تحسين</span>
+                    <span className="text-sm font-black mt-0.5 block">{behaviorStats.needsImprovementCount}</span>
+                  </div>
+                </div>
+
+                {studentBehaviorLogs.length > 0 && (
+                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 font-bold">آخر الملاحظات المرصودة:</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab('behavior')}
+                        className="text-indigo-600 font-bold hover:underline cursor-pointer"
+                      >
+                        عرض الكل ({studentBehaviorLogs.length})
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      {studentBehaviorLogs.slice(0, 3).map((b) => {
+                        const isPos = b.category === 'positive';
+                        const isNeg = b.category === 'needs_improvement';
+                        const timeInfo = formatBehaviorTime(b.timestamp);
+                        return (
+                          <div
+                            key={b.id}
+                            className="p-2 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-sm shrink-0">{b.emoji || '📝'}</span>
+                              <div className="min-w-0">
+                                <span className="font-bold text-slate-800 text-xs truncate block">{b.tag}</span>
+                                {b.note && <span className="text-[10px] text-slate-500 truncate block">{b.note}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[10px] text-slate-400 font-medium">{timeInfo.relativeTime}</span>
+                              <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+                                isPos ? 'bg-emerald-50 text-emerald-700' : isNeg ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {(b.points ?? 0) > 0 ? `+${b.points}` : b.points}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* B. Today's & Upcoming Classes Section */}
@@ -2508,6 +2646,427 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             </div>
           )}
 
+          {/* ========================================== */}
+          {/* BEHAVIOR & PARTICIPATION TAB (سجل السلوك والتفاعل) */}
+          {/* ========================================== */}
+          {activeSubTab === 'behavior' && (
+            <div className="space-y-4">
+              
+              {/* Header Stats & Action */}
+              <div className="p-4 bg-white border border-slate-200/80 rounded-2xl shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900">سجل التفاعل والسلوك</h3>
+                      <p className="text-[11px] text-slate-500">متابعة التميز والمشاركات والملاحظات الصفية</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickBehaviorModalOpen(true)}
+                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>رصد سريع</span>
+                  </button>
+                </div>
+
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 text-center pt-1">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
+                    <span className="text-[10px] text-slate-500 font-bold block">مجموع النقاط</span>
+                    <span className={`text-base font-black mt-0.5 block ${
+                      behaviorStats.totalPoints > 0
+                        ? 'text-emerald-700'
+                        : behaviorStats.totalPoints < 0
+                        ? 'text-rose-600'
+                        : 'text-slate-700'
+                    }`}>
+                      {behaviorStats.totalPoints > 0 ? `+${behaviorStats.totalPoints}` : behaviorStats.totalPoints}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-800">
+                    <span className="text-[10px] font-bold block">مشاركات إيجابية</span>
+                    <span className="text-base font-black mt-0.5 block">{behaviorStats.positiveCount}</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200/70 text-rose-800">
+                    <span className="text-[10px] font-bold block">يحتاج تحسين</span>
+                    <span className="text-base font-black mt-0.5 block">{behaviorStats.needsImprovementCount}</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 hidden sm:block">
+                    <span className="text-[10px] text-slate-500 font-bold block">إجمالي التسجيلات</span>
+                    <span className="text-base font-black text-slate-900 mt-0.5 block">{behaviorStats.totalLogs}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter & Search Bar Section */}
+              <div className="space-y-2.5">
+                {/* 1. Search Input Bar */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={behaviorSearchQuery}
+                    onChange={(e) => setBehaviorSearchQuery(e.target.value)}
+                    placeholder="ابحث في السلوكيات، الملاحظات، الأوسمة، المجموعات..."
+                    className="w-full pl-9 pr-9 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                  {behaviorSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setBehaviorSearchQuery('')}
+                      className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      title="مسح البحث"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* 2. Category Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBehaviorFilterCategory('all');
+                      setBehaviorSelectedTag('all');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      behaviorFilterCategory === 'all'
+                        ? 'bg-indigo-600 text-white shadow-2xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    الكل ({studentBehaviorLogs.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBehaviorFilterCategory('positive');
+                      setBehaviorSelectedTag('all');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                      behaviorFilterCategory === 'positive'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <span>🌟</span>
+                    <span>تميز وتفاعل ({behaviorStats.positiveCount})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBehaviorFilterCategory('needs_improvement');
+                      setBehaviorSelectedTag('all');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                      behaviorFilterCategory === 'needs_improvement'
+                        ? 'bg-rose-600 text-white shadow-2xs'
+                        : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-50'
+                    }`}
+                  >
+                    <span>⚠️</span>
+                    <span>يحتاج تحسين ({behaviorStats.needsImprovementCount})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBehaviorFilterCategory('neutral');
+                      setBehaviorSelectedTag('all');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                      behaviorFilterCategory === 'neutral'
+                        ? 'bg-slate-700 text-white shadow-2xs'
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>📝</span>
+                    <span>ملاحظات عامة ({behaviorStats.neutralCount})</span>
+                  </button>
+                </div>
+
+                {/* 3. Specific Tag Filter Bar (when student has logged tags) */}
+                {(() => {
+                  const relevantLogs = studentBehaviorLogs.filter((b) => {
+                    if (behaviorFilterCategory === 'all') return true;
+                    return b.category === behaviorFilterCategory;
+                  });
+
+                  const distinctTags = Array.from(new Set(relevantLogs.map((b) => b.tag.trim()))).filter(Boolean);
+
+                  if (distinctTags.length <= 1 && behaviorSelectedTag === 'all') return null;
+
+                  return (
+                    <div className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-slate-600 flex items-center gap-1">
+                          <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>تصفية حسب الوسم:</span>
+                        </span>
+                        {behaviorSelectedTag !== 'all' && (
+                          <button
+                            type="button"
+                            onClick={() => setBehaviorSelectedTag('all')}
+                            className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                          >
+                            عرض جميع الأوسمة
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setBehaviorSelectedTag('all')}
+                          className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                            behaviorSelectedTag === 'all'
+                              ? 'bg-slate-800 text-white shadow-2xs'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          جميع الأوسمة ({relevantLogs.length})
+                        </button>
+
+                        {distinctTags.map((tagName) => {
+                          const tagLogs = relevantLogs.filter((b) => b.tag === tagName);
+                          const firstLog = tagLogs[0];
+                          const isSelected = behaviorSelectedTag === tagName;
+
+                          return (
+                            <button
+                              key={tagName}
+                              type="button"
+                              onClick={() => setBehaviorSelectedTag(isSelected ? 'all' : tagName)}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                isSelected
+                                  ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-300'
+                                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-indigo-50/50 hover:border-indigo-200'
+                              }`}
+                            >
+                              <span>{firstLog?.emoji || '🏷️'}</span>
+                              <span>{tagName}</span>
+                              <span className={`text-[9px] px-1 py-0.2 rounded-full font-black ${
+                                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {tagLogs.length}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 4. Active Filters Indicator & Reset Bar */}
+                {(behaviorSearchQuery.trim() || behaviorSelectedTag !== 'all' || behaviorFilterCategory !== 'all') && (
+                  <div className="flex items-center justify-between px-2.5 py-1.5 bg-indigo-50/70 border border-indigo-100 rounded-xl text-[11px] text-indigo-900">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold">الفلاتر النشطة:</span>
+                      {behaviorFilterCategory !== 'all' && (
+                        <span className="bg-white px-2 py-0.5 rounded-md border border-indigo-200 font-medium">
+                          القسم: {behaviorFilterCategory === 'positive' ? 'تميز وتفاعل' : behaviorFilterCategory === 'needs_improvement' ? 'يحتاج تحسين' : 'ملاحظات عامة'}
+                        </span>
+                      )}
+                      {behaviorSelectedTag !== 'all' && (
+                        <span className="bg-white px-2 py-0.5 rounded-md border border-indigo-200 font-medium">
+                          الوسم: {behaviorSelectedTag}
+                        </span>
+                      )}
+                      {behaviorSearchQuery.trim() && (
+                        <span className="bg-white px-2 py-0.5 rounded-md border border-indigo-200 font-medium truncate max-w-[120px]">
+                          بحث: "{behaviorSearchQuery.trim()}"
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBehaviorFilterCategory('all');
+                        setBehaviorSelectedTag('all');
+                        setBehaviorSearchQuery('');
+                      }}
+                      className="text-indigo-700 hover:text-indigo-900 font-bold hover:underline shrink-0 cursor-pointer"
+                    >
+                      إعادة ضبط
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Behavior Logs List */}
+              <div className="space-y-2">
+                {(() => {
+                  const filteredLogs = studentBehaviorLogs.filter((b) => {
+                    // 1. Category Filter
+                    if (behaviorFilterCategory !== 'all' && b.category !== behaviorFilterCategory) {
+                      return false;
+                    }
+                    // 2. Tag Filter
+                    if (behaviorSelectedTag !== 'all' && b.tag !== behaviorSelectedTag) {
+                      return false;
+                    }
+                    // 3. Search Query Filter
+                    if (behaviorSearchQuery.trim()) {
+                      const q = behaviorSearchQuery.trim().toLowerCase();
+                      const tagMatch = b.tag.toLowerCase().includes(q);
+                      const tagEnMatch = b.tagEn ? b.tagEn.toLowerCase().includes(q) : false;
+                      const noteMatch = b.note ? b.note.toLowerCase().includes(q) : false;
+                      const groupMatch = b.groupName ? b.groupName.toLowerCase().includes(q) : false;
+                      const dateMatch = b.timestamp.toLowerCase().includes(q);
+                      if (!tagMatch && !tagEnMatch && !noteMatch && !groupMatch && !dateMatch) {
+                        return false;
+                      }
+                    }
+                    return true;
+                  });
+
+                  if (filteredLogs.length === 0) {
+                    const hasActiveFilters = behaviorSearchQuery.trim() || behaviorSelectedTag !== 'all' || behaviorFilterCategory !== 'all';
+                    return (
+                      <div className="p-8 bg-white rounded-2xl border border-slate-200/80 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto">
+                          {hasActiveFilters ? <Search className="w-6 h-6" /> : <Zap className="w-6 h-6" />}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-800">
+                            {hasActiveFilters ? 'لا توجد نتائج مطابقة للبحث أو الفلاتر' : 'لا توجد تسجيلات سلوكية مرصودة بعد'}
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                            {hasActiveFilters
+                              ? 'جرب تعديل كلمات البحث أو اختيار وسم آخر، أو إعادة ضبط الفلاتر'
+                              : 'يمكنك رصد أي سلوك أو ملاحظة فورية للطالب مع اختيار الوسم وتحديد التوقيت'}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          {hasActiveFilters ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBehaviorFilterCategory('all');
+                                setBehaviorSelectedTag('all');
+                                setBehaviorSearchQuery('');
+                              }}
+                              className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs shadow-xs hover:bg-slate-800 transition-all cursor-pointer"
+                            >
+                              مسح الفلاتر والبحث
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsQuickBehaviorModalOpen(true)}
+                              className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-xs hover:bg-indigo-700 transition-all cursor-pointer"
+                            >
+                              رصد سلوك جديد الآن
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return filteredLogs.map((log) => {
+                    const badge = getCategoryBadge(log.category);
+                    const timeInfo = formatBehaviorTime(log.timestamp);
+                    const isPos = log.category === 'positive';
+                    const isNeg = log.category === 'needs_improvement';
+
+                    const handleDeleteLog = () => {
+                      if (confirm(`هل أنت متأكد من حذف هذا التقييم: "${log.tag}"؟`)) {
+                        db.deleteBehaviorLog(log.id);
+                        onDataChanged();
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={log.id}
+                        className="p-3.5 bg-white border border-slate-200/80 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-xl p-1 bg-slate-50 rounded-xl border border-slate-100 shrink-0">
+                              {log.emoji || '📝'}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-black text-xs text-slate-900">{log.tag}</h4>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.badgeClass}`}>
+                                  {badge.label}
+                                </span>
+                              </div>
+                              {log.tagEn && (
+                                <p className="text-[10px] text-slate-400 font-medium">{log.tagEn}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                              className={`text-xs font-black px-2.5 py-1 rounded-xl ${
+                                isPos
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : isNeg
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              {(log.points ?? 0) > 0 ? `+${log.points}` : log.points} نقطة
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={handleDeleteLog}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="حذف التقييم"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {log.note && (
+                          <div className="p-2 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 text-xs leading-relaxed">
+                            {log.note}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <span>{timeInfo.formattedDate} - {timeInfo.formattedTime}</span>
+                            <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.2 rounded">
+                              {timeInfo.relativeTime}
+                            </span>
+                          </div>
+
+                          {log.groupName && (
+                            <span className="font-bold text-slate-600 flex items-center gap-1">
+                              <Layers className="w-3 h-3 text-slate-400" />
+                              <span>{log.groupName}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+            </div>
+          )}
+
         </div>
 
         {/* Footer Actions */}
@@ -2536,6 +3095,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         onClose={() => setIsRecordPrivateModalOpen(false)}
         student={student}
         onSaveComplete={() => {
+          onDataChanged();
+        }}
+      />
+
+      {/* Quick Behavior Log Sub-Modal */}
+      <QuickBehaviorLogModal
+        isOpen={isQuickBehaviorModalOpen}
+        onClose={() => setIsQuickBehaviorModalOpen(false)}
+        student={student}
+        availableGroups={allGroups}
+        onSuccess={() => {
           onDataChanged();
         }}
       />

@@ -7,8 +7,8 @@
 
   body {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #F4F3FA;
-    color: #14152C;
+    background-color: #F6F7FC;
+    color: #191A2E;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
@@ -17,100 +17,132 @@
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', sans-serif;
     font-weight: 700;
-    color: #14152C;
+    color: #191A2E;
     letter-spacing: -0.02em;
   }
 }
 
-/* Reference-inspired Modern Visual Design Tokens */
+/* Classy High-End Design System Tokens */
 :root {
-  --color-dark-bg: #14152C;
-  --color-dark-surface: #1E1F3D;
-  --color-dark-elevated: #26284F;
-  --color-canvas: #F4F3FA;
-  --color-card: #FFFFFF;
-  --color-card-border: #E8E4F5;
-  --color-coral: #FF5E62;
-  --color-coral-light: #FF758C;
-  --color-purple: #7B61FF;
-  --color-indigo: #6C5CE7;
-  --color-sky: #38B6FF;
-  --color-amber: #FFAA2C;
-  --color-text-main: #14152C;
-  --color-text-muted: #727494;
+  --color-midnight: #17163D;
+  --color-royal: #403B9C;
+  --color-violet: #7657F6;
+  --color-lavender: #E8E7FF;
+  --color-coral: #FF647C;
+  --color-cyan: #55C7E8;
+  --color-canvas: #F6F7FC;
+  --color-surface: #FFFFFF;
+  --color-text-main: #191A2E;
+  --color-text-muted: #74778F;
 }
 
 /* Modern Rounded Cards & Surfaces */
 .classy-card {
   background-color: #FFFFFF;
-  border-radius: 24px;
-  border: 1px solid #E8E4F5;
-  box-shadow: 0 4px 20px -2px rgba(20, 21, 44, 0.05), 0 2px 6px -1px rgba(20, 21, 44, 0.02);
+  border-radius: 22px;
+  border: 1px solid #E8E7FF;
+  box-shadow: 0 4px 20px -4px rgba(23, 22, 61, 0.05), 0 1px 3px rgba(23, 22, 61, 0.02);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .classy-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(123, 97, 255, 0.12), 0 4px 10px -2px rgba(20, 21, 44, 0.04);
-  border-color: #D6CEF2;
+  box-shadow: 0 12px 28px -6px rgba(118, 87, 246, 0.12), 0 2px 8px -1px rgba(23, 22, 61, 0.04);
+  border-color: #D3D0FB;
 }
 
-/* Dark Hero / Header Card */
+/* Executive Midnight Indigo Dark Card */
 .classy-dark-card {
-  background: linear-gradient(145deg, #1A1B38 0%, #14152C 100%);
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 32px -8px rgba(20, 21, 44, 0.35);
+  background: linear-gradient(135deg, #17163D 0%, #25225C 50%, #403B9C 100%);
+  border-radius: 26px;
+  border: 1px solid rgba(232, 231, 255, 0.12);
+  box-shadow: 0 16px 36px -8px rgba(23, 22, 61, 0.35);
   color: #FFFFFF;
 }
 
-/* Vibrant Coral Primary Buttons */
-.btn-coral {
-  background: linear-gradient(135deg, #FF5E62 0%, #FF758C 100%);
+/* Classy Primary & Accent Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #17163D 0%, #403B9C 100%);
   color: #FFFFFF;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 8px 20px -4px rgba(255, 94, 98, 0.35);
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px -2px rgba(23, 22, 61, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -2px rgba(64, 59, 156, 0.45);
+  filter: brightness(1.06);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Electric Violet Button */
+.btn-violet {
+  background: linear-gradient(135deg, #7657F6 0%, #5B3CE0 100%);
+  color: #FFFFFF;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px -3px rgba(118, 87, 246, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-violet:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -2px rgba(118, 87, 246, 0.45);
+  filter: brightness(1.05);
+}
+
+.btn-violet:active {
+  transform: scale(0.98);
+}
+
+/* Vibrant Coral Action Button */
+.btn-coral {
+  background: linear-gradient(135deg, #FF647C 0%, #F44964 100%);
+  color: #FFFFFF;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px -3px rgba(255, 100, 124, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-coral:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px -4px rgba(255, 94, 98, 0.45);
+  box-shadow: 0 10px 24px -2px rgba(255, 100, 124, 0.45);
+  filter: brightness(1.05);
 }
 
 .btn-coral:active {
   transform: scale(0.98);
 }
 
-/* Purple Secondary Buttons */
-.btn-purple {
-  background: linear-gradient(135deg, #7B61FF 0%, #6C5CE7 100%);
-  color: #FFFFFF;
+/* Icon Box Containers */
+.icon-box-violet {
+  background-color: #E8E7FF;
+  color: #7657F6;
   border-radius: 16px;
-  font-weight: 700;
-  box-shadow: 0 8px 20px -4px rgba(123, 97, 255, 0.3);
-  transition: all 0.2s ease;
 }
 
-.btn-purple:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px -4px rgba(123, 97, 255, 0.4);
+.icon-box-coral {
+  background-color: rgba(255, 100, 124, 0.12);
+  color: #FF647C;
+  border-radius: 16px;
 }
 
-/* Dark Pill Switcher (like reference header navigation) */
-.dark-pill-container {
-  background-color: #1E1F3D;
-  border-radius: 18px;
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.icon-box-cyan {
+  background-color: rgba(85, 199, 232, 0.15);
+  color: #0284C7;
+  border-radius: 16px;
 }
 
-.dark-pill-active {
-  background-color: #2D2F57;
-  color: #FFFFFF;
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+.icon-box-midnight {
+  background-color: rgba(23, 22, 61, 0.08);
+  color: #17163D;
+  border-radius: 16px;
 }
 
 /* Floating Action Button (FAB) */
@@ -122,46 +154,46 @@
   width: 56px;
   height: 56px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #FF5E62 0%, #FF758C 100%);
+  background: linear-gradient(135deg, #7657F6 0%, #FF647C 100%);
   color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 28px -4px rgba(255, 94, 98, 0.45), 0 4px 12px rgba(255, 94, 98, 0.3);
+  box-shadow: 0 12px 28px -4px rgba(118, 87, 246, 0.45), 0 4px 10px rgba(255, 100, 124, 0.3);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 
 .classy-fab:hover {
-  transform: translateY(-3px) scale(1.04);
-  box-shadow: 0 16px 36px -4px rgba(255, 94, 98, 0.55);
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 16px 34px -4px rgba(118, 87, 246, 0.55);
 }
 
 .classy-fab:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
-/* Compatibility classes for existing references */
+/* Compatibility classes */
 .neu-card, .royal-card {
   background-color: #FFFFFF;
   border-radius: 22px;
-  box-shadow: 0 4px 18px -2px rgba(20, 21, 44, 0.05);
-  border: 1px solid #E8E4F5;
+  box-shadow: 0 4px 20px -4px rgba(23, 22, 61, 0.05);
+  border: 1px solid #E8E7FF;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .neu-card-hover:hover, .royal-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px -3px rgba(123, 97, 255, 0.12);
-  border-color: #D6CEF2;
+  box-shadow: 0 12px 28px -4px rgba(118, 87, 246, 0.12);
+  border-color: #D3D0FB;
 }
 
 .bento-stat-card {
   background-color: #FFFFFF;
   border-radius: 22px;
-  padding: 1.125rem;
-  box-shadow: 0 4px 18px -2px rgba(20, 21, 44, 0.05);
-  border: 1px solid #E8E4F5;
+  padding: 1.25rem;
+  box-shadow: 0 4px 20px -4px rgba(23, 22, 61, 0.05);
+  border: 1px solid #E8E7FF;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -172,15 +204,15 @@
 
 .bento-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px -3px rgba(123, 97, 255, 0.12);
-  border-color: #D6CEF2;
+  box-shadow: 0 12px 28px -4px rgba(118, 87, 246, 0.12);
+  border-color: #D3D0FB;
 }
 
 /* Custom Keyframe Animations */
 @keyframes slideUpFadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -189,7 +221,7 @@
 }
 
 .animate-slide-up-fade {
-  animation: slideUpFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slideUpFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes bounceSubtle {
@@ -227,7 +259,7 @@
 }
 
 .animate-spin-slow {
-  animation: spinSlow 18s linear infinite;
+  animation: spinSlow 20s linear infinite;
 }
 
 .animate-loading-bar {
@@ -244,16 +276,16 @@
 }
 
 .android-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 .android-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .android-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(114, 116, 148, 0.25);
+  background: rgba(116, 119, 143, 0.25);
   border-radius: 9999px;
 }
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(114, 116, 148, 0.45);
+  background: rgba(116, 119, 143, 0.45);
 }

@@ -52,6 +52,7 @@ import {
   HomeworkAssignmentStatus,
   NotificationSettings,
   NotificationStateItem,
+  StudentBehaviorLog,
 } from '../types';
 import { getAppLanguage } from './i18n';
 import {
@@ -90,6 +91,7 @@ const STORAGE_KEYS = {
   ATTENDANCE: 'tm_v2_attendance',
   PAYMENTS: 'tm_v2_payments',
   CREDIT_LOGS: 'tm_v2_session_credit_logs',
+  BEHAVIOR_LOGS: 'tm_v2_student_behavior_logs',
   HOMEWORK_TESTS: 'tm_v2_homework_tests',
   HOMEWORK_ASSIGNMENTS: 'tm_v2_homework_assignments',
   HOMEWORK_QUESTION_RESULTS: 'tm_v2_homework_question_results',
@@ -742,6 +744,18 @@ function ensureDataMigrated(): void {
       return a;
     });
     if (hwAssignmentsChanged) saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, migratedHwAssignments);
+
+    // Migrate behavior logs
+    const rawBehaviorLogs = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
+    let behaviorLogsChanged = false;
+    const migratedBehaviorLogs = rawBehaviorLogs.map((b) => {
+      if (!b.userId) {
+        behaviorLogsChanged = true;
+        return { ...b, userId: defaultUserId };
+      }
+      return b;
+    });
+    if (behaviorLogsChanged) saveList(STORAGE_KEYS.BEHAVIOR_LOGS, migratedBehaviorLogs);
   } catch (err) {
     console.error('Migration error:', err);
   }
@@ -765,6 +779,7 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   const allAttendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
   const allPayments = getList<Payment>(STORAGE_KEYS.PAYMENTS, []);
   const allCreditLogs = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
+  const allBehaviorLogs = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
   const allHomeworkTests = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []);
   const allHomeworkAssignments = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
   const allHomeworkQuestionResults = getList<HomeworkQuestionResult>(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, []);
@@ -776,6 +791,7 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   const userAttendance = allAttendance.filter((a) => (a.userId ? a.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userPayments = allPayments.filter((p) => (p.userId ? p.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userCreditLogs = allCreditLogs.filter((l) => (l.userId ? l.userId === targetUserId : targetUserId === 'acc_master_teacher'));
+  const userBehaviorLogs = allBehaviorLogs.filter((b) => (b.userId ? b.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userHomeworkTests = allHomeworkTests.filter((t) => (t.userId ? t.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userHomeworkAssignments = allHomeworkAssignments.filter((a) => (a.userId ? a.userId === targetUserId : targetUserId === 'acc_master_teacher'));
 
@@ -803,6 +819,7 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
     attendance: userAttendance,
     payments: userPayments,
     creditLogs: userCreditLogs,
+    behaviorLogs: userBehaviorLogs,
     homeworkTests: userHomeworkTests,
     homeworkAssignments: userHomeworkAssignments,
     homeworkQuestionResults: userHomeworkQuestionResults,
@@ -3066,6 +3083,60 @@ export const db = {
     });
   },
 
+  // ==========================================
+  // 7.2 Student Behavior & Quick Logs System
+  // ==========================================
+
+  getBehaviorLogs: (userId?: string): StudentBehaviorLog[] => {
+    const currentUserId = userId || getActiveUserId();
+    const all = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
+    return all.filter((b) => (b.userId ? b.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+  },
+
+  getStudentBehaviorLogs: (studentId: string): StudentBehaviorLog[] => {
+    return db.getBehaviorLogs()
+      .filter((b) => b.studentId === studentId)
+      .sort((a, b) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime());
+  },
+
+  getGroupBehaviorLogs: (groupId: string): StudentBehaviorLog[] => {
+    return db.getBehaviorLogs()
+      .filter((b) => b.groupId === groupId)
+      .sort((a, b) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime());
+  },
+
+  saveBehaviorLog: (log: StudentBehaviorLog): StudentBehaviorLog => {
+    const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
+    const logWithUser: StudentBehaviorLog = {
+      ...log,
+      userId: log.userId || activeUserId,
+      timestamp: log.timestamp || now,
+      updatedAt: now,
+      createdAt: log.createdAt || now,
+    };
+    removeDeletionTombstone('behaviorLog', log.id, activeUserId);
+    const list = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
+    const idx = list.findIndex((b) => b.id === log.id);
+    if (idx >= 0) {
+      list[idx] = logWithUser;
+    } else {
+      list.unshift(logWithUser);
+    }
+    saveList(STORAGE_KEYS.BEHAVIOR_LOGS, list);
+    autoSyncUserAccount(activeUserId);
+    return logWithUser;
+  },
+
+  deleteBehaviorLog: (id: string): void => {
+    const activeUserId = getActiveUserId();
+    addDeletionTombstone('behaviorLog', id, activeUserId);
+    const list = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []).filter((b) => b.id !== id);
+    saveList(STORAGE_KEYS.BEHAVIOR_LOGS, list);
+    autoSyncUserAccount(activeUserId);
+    performFullSync(activeUserId, false).catch(() => {});
+  },
+
 
   // ==========================================
   // 8. Advanced Financial Engine & Ledger Calculations
@@ -4055,6 +4126,7 @@ export const db = {
       attendance: db.getAttendance(activeUserId),
       payments: db.getPayments(activeUserId),
       creditLogs: db.getCreditLogs(activeUserId),
+      behaviorLogs: db.getBehaviorLogs(activeUserId),
       homeworkTests: db.getHomeworkTests(activeUserId),
       homeworkAssignments: db.getHomeworkAssignments(activeUserId),
       homeworkQuestionResults: db.getHomeworkQuestionResults(),
@@ -4244,6 +4316,7 @@ export const db = {
       const restoredAttendance = mergeEntityList('attendance', STORAGE_KEYS.ATTENDANCE, dataToRestore.attendance);
       const restoredPayments = mergeEntityList('payment', STORAGE_KEYS.PAYMENTS, dataToRestore.payments);
       const restoredCreditLogs = mergeEntityList('creditLog', STORAGE_KEYS.CREDIT_LOGS, dataToRestore.creditLogs);
+      mergeEntityList('behaviorLog', STORAGE_KEYS.BEHAVIOR_LOGS, dataToRestore.behaviorLogs);
       mergeEntityList('homeworkTest', STORAGE_KEYS.HOMEWORK_TESTS, dataToRestore.homeworkTests);
       mergeEntityList('homeworkAssignment', STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, dataToRestore.homeworkAssignments);
 
@@ -4333,6 +4406,16 @@ export const db = {
         const existing = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter((p) => p.userId !== activeUserId);
         const imported = data.payments.map((p: Payment) => ({ ...p, userId: activeUserId }));
         saveList(STORAGE_KEYS.PAYMENTS, [...imported, ...existing]);
+      }
+      if (Array.isArray(data.creditLogs)) {
+        const existing = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []).filter((l) => l.userId !== activeUserId);
+        const imported = data.creditLogs.map((l: SessionCreditLog) => ({ ...l, userId: activeUserId }));
+        saveList(STORAGE_KEYS.CREDIT_LOGS, [...imported, ...existing]);
+      }
+      if (Array.isArray(data.behaviorLogs)) {
+        const existing = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []).filter((b) => b.userId !== activeUserId);
+        const imported = data.behaviorLogs.map((b: StudentBehaviorLog) => ({ ...b, userId: activeUserId }));
+        saveList(STORAGE_KEYS.BEHAVIOR_LOGS, [...imported, ...existing]);
       }
       if (Array.isArray(data.homeworkTests)) {
         const existing = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []).filter((t) => t.userId !== activeUserId);

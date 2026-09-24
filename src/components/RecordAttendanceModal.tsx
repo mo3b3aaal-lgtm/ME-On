@@ -314,41 +314,41 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#14152C]/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir="rtl"
       >
-        <div className="bg-[#F4F3FA] border border-[#E8E4F5] rounded-t-3xl sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="bg-[#F8FAFC] border border-slate-200 rounded-t-3xl sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
         
         {/* Header */}
-        <div className="p-4 flex items-center justify-between border-b border-[#E8E4F5] bg-white">
+        <div className="p-4 flex items-center justify-between border-b border-slate-200 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-[#EDE8FF] text-[#7B61FF] shadow-xs">
+            <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 shadow-2xs">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-black text-[#14152C]">
+              <h2 className="text-base font-black text-[#0F172A]">
                 رصد الحضور واستهلاك الحصص
               </h2>
-              <p className="text-[11px] text-[#727494] font-medium">
+              <p className="text-[11px] text-slate-500 font-medium">
                 {group?.name} • {session.title || 'حصة بدون عنوان'} ({session.date})
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-[#F4F3FA] text-[#727494] hover:text-[#14152C] hover:bg-[#ECEAF6] transition-colors cursor-pointer"
+            className="p-1.5 rounded-full bg-slate-100 text-slate-500 hover:text-[#0F172A] hover:bg-slate-200 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Quick Batch Actions & Stats Bar */}
-        <div className="p-3 bg-[#F4F3FA] border-b border-[#E8E4F5] flex items-center justify-between gap-2 flex-wrap text-xs">
+        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap text-xs">
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
               onClick={setAllPresent}
-              className="px-2.5 py-1 rounded-xl bg-white border border-[#E8E4F5] text-emerald-700 font-bold hover:bg-emerald-600 hover:text-white transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-emerald-700 font-bold hover:bg-emerald-600 hover:text-white transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>الكل حاضر</span>
@@ -361,26 +361,26 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 setBatchCustomReason('');
                 setIsBatchAbsentConfirmOpen(true);
               }}
-              className="px-2.5 py-1 rounded-xl bg-white border border-[#E8E4F5] text-rose-700 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-rose-700 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
             >
               <UserX className="w-3.5 h-3.5" />
               <span>الكل غائب</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] font-black text-[#727494]">
+          <div className="flex items-center gap-2 text-[11px] font-black text-slate-600">
             <span className="text-emerald-700">حاضر: {presentCount}</span>
             <span>•</span>
-            <span className="text-[#FF5E62]">محسوبة: {chargedAbsentCount}</span>
+            <span className="text-rose-700">محسوبة: {chargedAbsentCount}</span>
             <span>•</span>
-            <span className="text-[#727494]">غير محسوبة: {freeAbsentCount}</span>
+            <span className="text-slate-500">غير محسوبة: {freeAbsentCount}</span>
           </div>
         </div>
 
         {/* Students List */}
         <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-2.5">
           {enrolledStudents.length === 0 ? (
-            <div className="p-8 text-center text-[#727494] space-y-2">
+            <div className="p-8 text-center text-slate-400 space-y-2">
               <Users className="w-8 h-8 mx-auto opacity-40" />
               <p className="text-xs">لا يوجد طلاب مسجلين في هذه المجموعة حالياً.</p>
             </div>
@@ -401,12 +401,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <div
                   key={student.id}
                   style={{ animationDelay: `${index * 45}ms` }}
-                  className={`p-3 rounded-2xl bg-white border transition-all shadow-xs space-y-2.5 animate-slide-up-fade ${
+                  className={`p-3 rounded-2xl bg-white border transition-all shadow-2xs space-y-2.5 animate-slide-up-fade ${
                     isAbsent
                       ? currentRecord.isCharged
                         ? 'border-rose-300 bg-rose-50/40'
-                        : 'border-[#E8E4F5] bg-[#F4F3FA]/80'
-                      : 'border-[#E8E4F5]'
+                        : 'border-slate-200 bg-slate-50'
+                      : 'border-slate-200'
                   }`}
                 >
                   {/* Top Row: Name + Credit Badge + Homework Checkbox */}
@@ -419,13 +419,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                         className="shrink-0"
                       />
                       <div>
-                        <h4 className="font-bold text-[#14152C] text-xs leading-tight">{student.name}</h4>
+                        <h4 className="font-bold text-[#0F172A] text-xs leading-tight">{student.name}</h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span
                             className={`text-[10px] font-black px-2 py-0.2 rounded-full ${
                               credit <= 0
-                                ? 'bg-[#FFEBEB] text-[#FF5E62] border border-[#FFD6D6]'
-                                : 'bg-[#EDE8FF] text-[#7B61FF]'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-indigo-50 text-indigo-700'
                             }`}
                           >
                             رصيد: {credit} حصص
@@ -440,8 +440,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       onClick={() => toggleHomework(student.id)}
                       className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
                         currentRecord.homeworkDone
-                          ? 'bg-[#E0F7EF] text-emerald-700 border-emerald-200'
-                          : 'bg-[#F4F3FA] text-[#727494] border-[#E8E4F5]'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-slate-50 text-slate-500 border-slate-200'
                       }`}
                     >
                       <BookCheck className="w-3.5 h-3.5" />
@@ -458,8 +458,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       onClick={() => markPresent(student.id)}
                       className={`py-1.5 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1 cursor-pointer ${
                         currentRecord.status === 'present'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-[#F4F3FA] text-[#14152C] border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                          : 'bg-slate-50 text-[#0F172A] border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -472,8 +472,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       onClick={() => markLate(student.id)}
                       className={`py-1.5 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1 cursor-pointer ${
                         currentRecord.status === 'late'
-                          ? 'bg-[#FFAA2C] text-white border-[#FFAA2C] shadow-xs'
-                          : 'bg-[#F4F3FA] text-[#14152C] border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                          : 'bg-slate-50 text-[#0F172A] border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       <Clock className="w-3.5 h-3.5" />
@@ -487,9 +487,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       className={`py-1.5 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1 cursor-pointer ${
                         isAbsent
                           ? currentRecord.isCharged
-                            ? 'bg-[#FF5E62] text-white border-[#FF5E62] shadow-xs'
-                            : 'bg-slate-600 text-white border-slate-600 shadow-xs'
-                          : 'bg-[#F4F3FA] text-[#FF5E62] border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                            ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                            : 'bg-slate-700 text-white border-slate-700 shadow-2xs'
+                          : 'bg-slate-50 text-rose-600 border-slate-200 hover:bg-rose-50'
                       }`}
                     >
                       <XCircle className="w-3.5 h-3.5" />
@@ -512,13 +512,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-[11px] ${
                         currentRecord.isCharged
                           ? 'bg-rose-50 border-rose-200 text-rose-800'
-                          : 'bg-[#F4F3FA] border-[#E8E4F5] text-[#14152C]'
+                          : 'bg-slate-100 border-slate-200 text-[#0F172A]'
                       }`}
                     >
                       <div className="flex items-center gap-1.5">
                         {currentRecord.isCharged ? (
                           <>
-                            <span className="w-2 h-2 rounded-full bg-[#FF5E62] shrink-0" />
+                            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
                             <span className="font-bold">حصة محسوبة:</span>
                             <span>تستهلك رصيد حصة أو تُضاف للمستحقات</span>
                           </>
@@ -526,7 +526,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                           <>
                             <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
                             <span className="font-bold">غير محسوبة:</span>
-                            <span className="font-medium text-[#727494]">
+                            <span className="font-medium text-slate-500">
                               السبب: {currentRecord.absenceReason || 'معفي'}
                             </span>
                           </>
@@ -536,9 +536,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       <button
                         type="button"
                         onClick={() => openAbsenceModal(student)}
-                        className="px-2.5 py-0.5 rounded-lg bg-white border border-[#E8E4F5] text-[10px] font-bold text-[#14152C] hover:bg-[#F4F3FA] transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-[#0F172A] hover:bg-slate-50 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
                       >
-                        <Edit3 className="w-3 h-3 text-[#7B61FF]" />
+                        <Edit3 className="w-3 h-3 text-indigo-600" />
                         <span>تعديل</span>
                       </button>
                     </div>
@@ -551,12 +551,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         </div>
 
         {/* Footer with Save Action */}
-        <div className="p-4 bg-white border-t border-[#E8E4F5] flex items-center gap-2">
+        <div className="p-4 bg-white border-t border-slate-200 flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
             disabled={isSavedSuccess}
-            className="flex-1 py-3 rounded-2xl border border-[#E8E4F5] bg-white text-[#727494] font-bold text-xs hover:bg-[#F4F3FA] transition-all disabled:opacity-50 cursor-pointer"
+            className="flex-1 py-3 rounded-2xl border border-slate-200 bg-white text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all disabled:opacity-50 cursor-pointer"
           >
             إلغاء
           </button>
@@ -567,7 +567,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
             className={`flex-1 py-3 rounded-2xl text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               isSavedSuccess
                 ? 'bg-emerald-700 scale-[0.99] ring-2 ring-emerald-500/50'
-                : 'btn-coral'
+                : 'btn-primary'
             }`}
           >
             {isSavedSuccess ? (

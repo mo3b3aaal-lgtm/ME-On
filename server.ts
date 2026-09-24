@@ -566,6 +566,127 @@ Return a valid JSON array of objects with the structure:
   }
 });
 
+// AI Smart Attendance Insights & Student Risk Analyzer
+app.post("/api/ai/attendance-insights", async (req, res) => {
+  const { students = [], attendanceSummary = [], teacherSubject = "عام", teacherName = "المعلم" } = req.body;
+  const ai = getGenAI();
+
+  // Local rule-based fallback generator
+  const generateFallbackInsights = () => {
+    const atRiskStudents: any[] = [];
+    let totalPresent = 0;
+    let totalAbsences = 0;
+    let totalRecorded = 0;
+
+    attendanceSummary.forEach((stSummary: any) => {
+      totalPresent += stSummary.presentCount || 0;
+      totalAbsences += (stSummary.absentChargedCount || 0) + (stSummary.absentFreeCount || 0);
+      totalRecorded += stSummary.totalSessions || 0;
+
+      const rate = stSummary.totalSessions > 0 ? Math.round((stSummary.presentCount / stSummary.totalSessions) * 100) : 100;
+      const recentAbsences = (stSummary.recentStatuses || []).slice(0, 2).filter((s: string) => s && s.includes("absent")).length;
+
+      if (recentAbsences >= 2 || rate < 75) {
+        const studentInfo = students.find((s: any) => s.id === stSummary.studentId);
+        atRiskStudents.push({
+          studentId: stSummary.studentId,
+          studentName: stSummary.studentName || studentInfo?.name || "طالب",
+          riskLevel: recentAbsences >= 2 ? "high" : "medium",
+          attendanceRate: rate,
+          reason: recentAbsences >= 2 ? "غياب متتالي في آخر حصتين" : `نسبة الحضور منخفضة (${rate}%)`,
+          recommendation: "التواصل مع ولي الأمر للاطمئنان ومتابعة تعويض الدروس الفائتة",
+          parentPhone: studentInfo?.parentPhone || studentInfo?.phone || "",
+        });
+      }
+    });
+
+    const overallRate = totalRecorded > 0 ? Math.round((totalPresent / totalRecorded) * 100) : 100;
+
+    return {
+      overallHealthScore: overallRate,
+      headline: atRiskStudents.length > 0
+        ? `تم رصد ${atRiskStudents.length} طلاب بحاجة لمتابعة إضافية لتعزيز التزامهم بالحضور`
+        : "معدل التزام ممتاز واستقرار عام في حضور الطلاب لجميع المجموعات",
+      summary: `معدل الحضور العام ${overallRate}%. يوصى بمتابعة الطلاب المتغيبين للحفاظ على استمرارية التحصيل الأكاديمي.`,
+      attentionNeededStudents: atRiskStudents.slice(0, 5),
+      positiveNotes: totalRecorded > 0 ? "معظم الطلاب يحافظون على حضور منتظم دون انقطاع" : "سجل الحضور منتظم",
+      generatedAt: new Date().toISOString(),
+    };
+  };
+
+  if (!ai || attendanceSummary.length === 0) {
+    return res.json(generateFallbackInsights());
+  }
+
+  try {
+    const prompt = `You are an expert educational data analyst assisting teacher "${teacherName}" (Subject: ${teacherSubject}).
+Analyze the following student attendance records and generate actionable pedagogical insights in Arabic.
+
+Student Attendance Data:
+${JSON.stringify(attendanceSummary.slice(0, 30), null, 2)}
+
+Instructions:
+1. Calculate overall health score (0-100) of attendance.
+2. Identify students who need extra attention due to:
+   - Repeated/consecutive absences
+   - Frequent tardiness
+   - Sudden drop in attendance rate
+3. For each identified student, provide:
+   - studentId
+   - studentName
+   - riskLevel: "high" (2+ consecutive absences or <60% attendance) or "medium" (tardiness or 60-75% attendance) or "low"
+   - attendanceRate: number (0-100)
+   - reason: concise explanation in Arabic (e.g. "غياب متتالي لآخر حصتين", "تكرار التأخر مع انخفاض الحضور")
+   - recommendation: practical action for the teacher in Arabic
+4. Provide a positive note acknowledging good performance or overall trend.
+
+Respond ONLY with this JSON schema:
+{
+  "overallHealthScore": number,
+  "headline": "Short punchy 1-sentence headline in Arabic",
+  "summary": "1-2 sentences explaining the trend and key action in Arabic",
+  "attentionNeededStudents": [
+    {
+      "studentId": "string",
+      "studentName": "string",
+      "riskLevel": "high" | "medium" | "low",
+      "attendanceRate": number,
+      "reason": "string",
+      "recommendation": "string"
+    }
+  ],
+  "positiveNotes": "string in Arabic"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    try {
+      const parsed = JSON.parse(response.text || "{}");
+      if (parsed.attentionNeededStudents && Array.isArray(parsed.attentionNeededStudents)) {
+        parsed.attentionNeededStudents = parsed.attentionNeededStudents.map((st: any) => {
+          const matched = students.find((s: any) => s.id === st.studentId);
+          return {
+            ...st,
+            parentPhone: matched?.parentPhone || matched?.phone || "",
+          };
+        });
+      }
+      res.json(parsed);
+    } catch {
+      res.json(generateFallbackInsights());
+    }
+  } catch (error: any) {
+    console.warn("Attendance insights AI notice, returning fallback:", error?.message);
+    res.json(generateFallbackInsights());
+  }
+});
+
 // AI Student Evaluation / Report Card Comment
 app.post("/api/ai/student-remark", async (req, res) => {
   try {

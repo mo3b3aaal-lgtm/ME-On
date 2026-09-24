@@ -165,21 +165,21 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-[#14152C]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in"
+      className="fixed inset-0 bg-[#17163D]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in"
       dir="rtl"
     >
-      <div className="bg-white rounded-[28px] w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[#E8E4F5] overflow-hidden">
+      <div className="bg-white rounded-[28px] w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[#E8E7FF] overflow-hidden">
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-l from-[#14152C] via-[#1E1F3D] to-[#2E2050] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+        <div className="p-4 sm:p-5 bg-gradient-to-l from-[#17163D] via-[#17163D] to-[#2E2050] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10">
-            <div className="w-10 h-10 rounded-2xl bg-[#EDE8FF]/20 border border-[#EDE8FF]/30 flex items-center justify-center text-[#EDE8FF] shadow-inner">
+            <div className="w-10 h-10 rounded-2xl bg-[#E8E7FF]/20 border border-[#E8E7FF]/30 flex items-center justify-center text-[#E8E7FF] shadow-inner">
               <Bell className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-black text-white">مركز التنبيهات والإشعارات</h2>
                 {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FF5E62] text-white shadow-md shadow-[#FF5E62]/40 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FF647C] text-white shadow-md shadow-[#FF647C]/40 animate-pulse">
                     {unreadCount} جديد
                   </span>
                 )}
@@ -209,7 +209,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         )}
 
         {/* Filter Tabs & Mark All Read */}
-        <div className="p-3 bg-[#F4F3FA] border-b border-[#E8E4F5] flex items-center justify-between gap-2 shrink-0 flex-wrap">
+        <div className="p-3 bg-[#F6F7FC] border-b border-[#E8E7FF] flex items-center justify-between gap-2 shrink-0 flex-wrap">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {[
               { id: 'active' as TabType, label: 'النشطة', count: activeCount },
@@ -247,15 +247,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     isSelected
-                      ? 'bg-[#1E1F3D] text-white shadow-md'
-                      : 'bg-white text-[#727494] hover:bg-slate-100 border border-[#E8E4F5]'
+                      ? 'bg-[#17163D] text-white shadow-md'
+                      : 'bg-white text-[#74778F] hover:bg-slate-100 border border-[#E8E7FF]'
                   }`}
                 >
                   <span className="font-bold">{tab.label}</span>
                   {tab.count > 0 && (
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-[#EDE8FF] text-[#7B61FF]'
+                        isSelected ? 'bg-white/20 text-white' : 'bg-[#E8E7FF] text-[#7657F6]'
                       }`}
                     >
                       {tab.count}
@@ -269,7 +269,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           {unreadCount > 0 && activeTab !== 'resolved' && (
             <button
               onClick={handleMarkAllRead}
-              className="text-[11px] font-bold text-[#7B61FF] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+              className="text-[11px] font-bold text-[#7657F6] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
               <span>تحديد الكل كمقروء</span>

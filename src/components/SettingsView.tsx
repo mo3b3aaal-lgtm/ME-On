@@ -352,20 +352,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { language, setLanguage, isRTL, t } = useTranslation();
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#14152C] pb-24 bg-[#F4F3FA]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#17163D] pb-24 bg-[#F6F7FC]" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 classy-card p-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[#EDE8FF] text-[#7B61FF] flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-2xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center shadow-xs">
               <SettingsIcon className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-[#14152C] tracking-tight">
+              <h1 className="text-xl font-black text-[#17163D] tracking-tight">
                 {t('settingsTitle')}
               </h1>
-              <p className="text-xs text-[#727494] font-medium mt-0.5">
+              <p className="text-xs text-[#74778F] font-medium mt-0.5">
                 {t('settingsSubtitle')}
               </p>
             </div>
@@ -381,15 +381,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               ? 'bg-[#E0F7EF] text-emerald-800 border border-emerald-200'
               : syncFeedback.type === 'error'
               ? 'bg-[#FFEBEB] text-rose-800 border border-[#FFD6D6]'
-              : 'bg-[#EDE8FF] text-[#7B61FF] border border-[#DDD6FE]'
+              : 'bg-[#E8E7FF] text-[#7657F6] border border-[#DDD6FE]'
           }`}
         >
           {syncFeedback.type === 'success' ? (
             <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           ) : syncFeedback.type === 'error' ? (
-            <AlertTriangle className="w-4 h-4 shrink-0 text-[#FF5E62]" />
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[#FF647C]" />
           ) : (
-            <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-[#7B61FF]" />
+            <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-[#7657F6]" />
           )}
           <span>{syncFeedback.message}</span>
         </div>
@@ -397,19 +397,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* LANGUAGE SELECTOR CARD (اللغة وخيارات العرض) */}
       <div className="p-4 classy-card space-y-3.5">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E8E4F5]">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E8E7FF]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#EDE8FF] text-[#7B61FF] flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center font-bold">
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs sm:text-sm font-black text-[#14152C]">{t('languageSection')}</h2>
-              <p className="text-[10px] sm:text-[11px] text-[#727494] font-medium">
+              <h2 className="text-xs sm:text-sm font-black text-[#17163D]">{t('languageSection')}</h2>
+              <p className="text-[10px] sm:text-[11px] text-[#74778F] font-medium">
                 {t('languageDesc')}
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#EDE8FF] text-[#7B61FF]">
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E8E7FF] text-[#7657F6]">
             {language === 'ar' ? 'العربية (RTL)' : language === 'en-GB' ? 'UK English (LTR)' : 'US English (LTR)'}
           </span>
         </div>
@@ -429,13 +429,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={() => setLanguage(langOpt.id)}
                 className={`p-3 rounded-2xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#1E1F3D] border-[#1E1F3D] text-white shadow-md font-bold'
-                    : 'bg-[#F4F3FA] hover:bg-[#ECEAF6] border-[#E8E4F5] text-[#14152C]'
+                    ? 'bg-[#17163D] border-[#17163D] text-white shadow-md font-bold'
+                    : 'bg-[#F6F7FC] hover:bg-[#E8E7FF] border-[#E8E7FF] text-[#17163D]'
                 }`}
               >
                 <span className="text-base">{langOpt.flag}</span>
                 <span className="text-xs font-black leading-tight">{langOpt.title}</span>
-                <span className={`text-[9px] ${isSelected ? 'text-[#FF758C]' : 'text-[#727494] font-bold'}`}>
+                <span className={`text-[9px] ${isSelected ? 'text-[#FF647C]' : 'text-[#74778F] font-bold'}`}>
                   {langOpt.sub}
                 </span>
               </button>

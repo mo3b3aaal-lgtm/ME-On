@@ -240,7 +240,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       title: ses?.title || grp?.name || 'حصة دراسية',
       subtitle: isPres ? 'حضور كامل' : isLate ? 'حضور متأخر' : isCharged ? 'غياب محسوب' : `غياب معفى (${att.absenceReason || 'معتذر'})`,
       badge: isPres ? 'حاضر' : isLate ? 'متأخر' : isCharged ? 'غياب محسوب' : 'غياب معفى',
-      badgeColor: isPres ? 'bg-[#748C70]/15 text-[#60755C]' : isLate ? 'bg-[#D49B4B]/15 text-[#9C6615]' : isCharged ? 'bg-[#C97C5D]/15 text-[#C97C5D]' : 'bg-[#8A9187]/15 text-[#434B3E]',
+      badgeColor: isPres ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : isLate ? 'bg-amber-50 text-amber-700 border border-amber-200' : isCharged ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]' : 'bg-[#E8E7FF] text-[#403B9C]',
       timestamp: new Date(att.recordedAt || ses?.date || 0).getTime(),
     });
   });
@@ -254,7 +254,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       title: `سداد مبلغ ${p.amount} ج.م`,
       subtitle: `${p.notes || (p.targetMonth ? `عن شهر ${getArabicMonthName(p.targetMonth)}` : 'دفعة حساب')}`,
       badge: p.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' : p.paymentMethod === 'instapay' ? 'إنستاباي' : p.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' : 'كاش',
-      badgeColor: 'bg-[#748C70]/15 text-[#748C70]',
+      badgeColor: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
       timestamp: new Date(p.createdAt || p.date).getTime(),
     });
   });
@@ -268,7 +268,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       title: log.reason || 'تعديل رصيد الحصص',
       subtitle: `الرصيد بعد العملية: ${log.balanceAfter} حصص`,
       badge: `${log.sessionsDelta > 0 ? '+' : ''}${log.sessionsDelta} حصة`,
-      badgeColor: log.sessionsDelta > 0 ? 'bg-[#748C70]/15 text-[#60755C]' : 'bg-[#D49B4B]/15 text-[#9C6615]',
+      badgeColor: log.sessionsDelta > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200',
       timestamp: new Date(log.date).getTime(),
     });
   });

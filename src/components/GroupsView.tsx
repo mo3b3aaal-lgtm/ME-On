@@ -61,25 +61,25 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#14152C] pb-28 bg-[#F4F3FA]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#191A2E] pb-32 bg-[#F6F7FC]" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-[#14152C] tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-black text-[#17163D] tracking-tight flex items-center gap-2">
             <span>{t('groupsTitle')}</span>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#EDE8FF] text-[#7B61FF]">
+            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#7657F6]">
               {regularGroups.length}
             </span>
           </h1>
-          <p className="text-xs text-[#727494] font-medium mt-0.5">
+          <p className="text-xs text-[#74778F] font-medium mt-0.5">
             {t('groupsSubtitle')}
           </p>
         </div>
 
         <button
           onClick={onOpenAddGroup}
-          className="px-3.5 py-2 rounded-2xl btn-coral text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#FF5E62]/30 transition-all active:scale-95 cursor-pointer"
+          className="px-3.5 py-2 rounded-2xl btn-coral text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#FF647C]/30 transition-all active:scale-95 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>{t('createGroupBtn')}</span>
@@ -89,19 +89,19 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
       {/* Search & Filter Bar */}
       <div className="classy-card p-3.5 space-y-3">
         <div className="relative">
-          <Search className={`w-4 h-4 text-[#727494] absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-3.5`} />
+          <Search className={`w-4 h-4 text-[#74778F] absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-3.5`} />
           <input
             type="text"
             placeholder={t('groupsSearchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full bg-[#F4F3FA] border border-[#E8E4F5] rounded-2xl ${isRTL ? 'pr-10 pl-8' : 'pl-10 pr-8'} py-2.5 text-xs text-[#14152C] placeholder-[#9A9CB8] focus:outline-none focus:border-[#7B61FF] font-medium transition-colors`}
+            className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl ${isRTL ? 'pr-10 pl-8' : 'pl-10 pr-8'} py-2.5 text-xs text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] font-medium transition-colors`}
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className={`absolute top-2.5 text-[#727494] hover:text-[#14152C] p-1 rounded-full ${
+              className={`absolute top-2.5 text-[#74778F] hover:text-[#191A2E] p-1 rounded-full ${
                 isRTL ? 'left-2.5' : 'right-2.5'
               }`}
             >
@@ -110,34 +110,28 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           )}
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 bg-[#F4F3FA] p-1 rounded-2xl border border-[#E8E4F5]">
+        {/* Filter Tabs (Classy Segmented Pill Bar) */}
+        <div className="classy-segment">
           <button
             onClick={() => setTypeFilter('all')}
-            className={`flex-1 py-1.5 rounded-xl text-xs transition-all text-center cursor-pointer ${
-              typeFilter === 'all'
-                ? 'bg-white text-[#14152C] shadow-sm font-black'
-                : 'text-[#727494] hover:text-[#14152C] font-semibold'
+            className={`classy-segment-btn ${
+              typeFilter === 'all' ? 'classy-segment-btn-active' : 'classy-segment-btn-inactive'
             }`}
           >
             {t('all')} ({groups.length})
           </button>
           <button
             onClick={() => setTypeFilter('group')}
-            className={`flex-1 py-1.5 rounded-xl text-xs transition-all text-center cursor-pointer ${
-              typeFilter === 'group'
-                ? 'bg-white text-[#7B61FF] shadow-sm font-black'
-                : 'text-[#727494] hover:text-[#14152C] font-semibold'
+            className={`classy-segment-btn ${
+              typeFilter === 'group' ? 'classy-segment-btn-active' : 'classy-segment-btn-inactive'
             }`}
           >
             {t('groupTypeGroup')} ({regularGroups.length})
           </button>
           <button
             onClick={() => setTypeFilter('private')}
-            className={`flex-1 py-1.5 rounded-xl text-xs transition-all text-center cursor-pointer ${
-              typeFilter === 'private'
-                ? 'bg-white text-[#FFAA2C] shadow-sm font-black'
-                : 'text-[#727494] hover:text-[#14152C] font-semibold'
+            className={`classy-segment-btn ${
+              typeFilter === 'private' ? 'classy-segment-btn-active' : 'classy-segment-btn-inactive'
             }`}
           >
             {t('groupTypePrivate')} ({privateServices.length})
@@ -148,27 +142,27 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
       {/* Groups Grid / Cards */}
       {groups.length === 0 ? (
         <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center">
-          <div className="w-20 h-20 rounded-3xl bg-[#FFF5E5] flex items-center justify-center p-2 shadow-inner">
+          <div className="w-20 h-20 rounded-3xl bg-[#E8E7FF] flex items-center justify-center p-2 shadow-inner">
             <ClassyOwlMascot size="sm" glow={false} pose="teacher" />
           </div>
           <div className="space-y-1">
-            <h3 className="font-black text-sm text-[#14152C]">{t('noGroupsRegisteredYet')}</h3>
-            <p className="text-xs text-[#727494] max-w-sm mx-auto font-medium">
+            <h3 className="font-black text-sm text-[#17163D]">{t('noGroupsRegisteredYet')}</h3>
+            <p className="text-xs text-[#74778F] max-w-sm mx-auto font-medium">
               {t('createFirstGroupPrompt')}
             </p>
           </div>
           <button
             onClick={onOpenAddGroup}
-            className="mt-2 px-4 py-2 rounded-2xl btn-coral text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-[#FF5E62]/30 transition-all cursor-pointer active:scale-95"
+            className="mt-2 px-4 py-2 rounded-2xl btn-coral text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-[#FF647C]/30 transition-all cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>{t('createGroupBtn')}</span>
           </button>
         </div>
       ) : filteredGroups.length === 0 ? (
-        <div className="classy-card p-8 text-center text-[#727494] space-y-2">
-          <AlertCircle className="w-8 h-8 mx-auto text-[#FFAA2C]" />
-          <p className="font-bold text-[#14152C] text-xs">{t('noMatchingSearchResults')}</p>
+        <div className="classy-card p-8 text-center text-[#74778F] space-y-2">
+          <AlertCircle className="w-8 h-8 mx-auto text-[#FF647C]" />
+          <p className="font-bold text-[#17163D] text-xs">{t('noMatchingSearchResults')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -190,39 +184,39 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className="w-3 h-3 rounded-full shrink-0 shadow-xs"
-                      style={{ backgroundColor: group.accentColor || (isPrivate ? '#FFAA2C' : '#7B61FF') }}
+                      style={{ backgroundColor: group.accentColor || (isPrivate ? '#FF647C' : '#7657F6') }}
                     />
                     <div className="min-w-0 space-y-0.5">
-                      <h3 className="font-bold text-xs sm:text-sm text-[#14152C] truncate">
+                      <h3 className="font-bold text-xs sm:text-sm text-[#191A2E] truncate">
                         {isPrivate ? (privateStudent ? `خاص — ${privateStudent.name}` : 'درس خاص') : group.name}
                       </h3>
-                      <p className="text-[11px] text-[#727494] font-medium truncate">
+                      <p className="text-[11px] text-[#74778F] font-medium truncate">
                         {group.subject} • {getLocalizedStageName(group.gradeLevel, language)}
                       </p>
                     </div>
                   </div>
 
                   <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${
-                    isPrivate ? 'bg-[#FFF5E5] text-[#FFAA2C] border border-[#FFE8C2]' : 'bg-[#EDE8FF] text-[#7B61FF]'
+                    isPrivate ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]' : 'bg-[#E8E7FF] text-[#403B9C]'
                   }`}>
                     {isPrivate ? t('groupTypePrivate') : t('groupTypeGroup')}
                   </span>
                 </div>
 
                 {/* Pricing & Student Counts Strip */}
-                <div className="grid grid-cols-2 gap-2 bg-[#F4F3FA] p-2.5 rounded-2xl text-xs border border-[#E8E4F5]">
+                <div className="grid grid-cols-2 gap-2 bg-[#F6F7FC] p-2.5 rounded-2xl text-xs border border-[#E8E7FF]">
                   <div>
-                    <span className="text-[10px] text-[#727494] block font-semibold">
+                    <span className="text-[10px] text-[#74778F] block font-semibold">
                       {isPrivate ? 'نوع الخدمة' : t('enrolledStudentsCount')}
                     </span>
-                    <strong className="text-xs font-black text-[#14152C] flex items-center gap-1.5 mt-0.5">
-                      <Users className="w-3.5 h-3.5 text-[#7B61FF]" />
+                    <strong className="text-xs font-black text-[#191A2E] flex items-center gap-1.5 mt-0.5">
+                      <Users className="w-3.5 h-3.5 text-[#7657F6]" />
                       <span>{isPrivate ? (privateStudent ? privateStudent.name : 'طالب خاص') : `${enrollments.length} ${t('navStudents')}`}</span>
                     </strong>
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-[#727494] block font-semibold">
+                    <span className="text-[10px] text-[#74778F] block font-semibold">
                       {group.billingType === 'monthly' ? t('billingMonthly') : group.billingType === 'package' ? t('packagePrice') : group.billingType === 'hourly' ? 'بالساعة' : t('sessionPrice')}
                     </span>
                     <strong className="text-xs font-black text-emerald-700 flex items-center gap-1.5 mt-0.5">
@@ -233,15 +227,15 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 </div>
 
                 {/* Schedule & Location */}
-                <div className="flex items-center justify-between text-[11px] text-[#727494] pt-1 border-t border-[#E8E4F5]">
+                <div className="flex items-center justify-between text-[11px] text-[#74778F] pt-1 border-t border-[#E8E7FF]">
                   <div className="flex items-center gap-1 truncate font-medium">
-                    <Calendar className="w-3.5 h-3.5 text-[#727494] shrink-0" />
+                    <Calendar className="w-3.5 h-3.5 text-[#74778F] shrink-0" />
                     <span className="truncate">{group.scheduleDays.join('، ') || 'Flexible'}</span>
                   </div>
 
                   {group.scheduleTime && (
-                    <div className="flex items-center gap-1 shrink-0 font-black text-[#14152C]">
-                      <Clock className="w-3.5 h-3.5 text-[#727494]" />
+                    <div className="flex items-center gap-1 shrink-0 font-black text-[#191A2E]">
+                      <Clock className="w-3.5 h-3.5 text-[#74778F]" />
                       <span>{group.scheduleTime}</span>
                     </div>
                   )}

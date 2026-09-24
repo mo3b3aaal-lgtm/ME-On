@@ -86,11 +86,11 @@ export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
     desc: { ar: 'المظهر الافتراضي البسيط بدون مؤثرات', 'en-GB': 'Default clean circular avatar', 'en-US': 'Default clean circular avatar' },
     tierLabel: { ar: 'افتراضي', 'en-GB': 'Standard', 'en-US': 'Standard' },
     tierNumber: 0,
-    themeColor: '#8A9187',
+    themeColor: '#74778F',
     bgClass: '',
     badgeBg: '',
     icon: User,
-    iconColor: 'text-[#8A9187]',
+    iconColor: 'text-[#74778F]',
   },
   default: {
     id: 'default',
@@ -98,11 +98,11 @@ export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
     desc: { ar: 'المظهر الافتراضي البسيط', 'en-GB': 'Default simple appearance', 'en-US': 'Default simple appearance' },
     tierLabel: { ar: 'افتراضي', 'en-GB': 'Standard', 'en-US': 'Standard' },
     tierNumber: 0,
-    themeColor: '#8A9187',
+    themeColor: '#74778F',
     bgClass: '',
     badgeBg: '',
     icon: User,
-    iconColor: 'text-[#8A9187]',
+    iconColor: 'text-[#74778F]',
   },
   bronze_star: {
     id: 'bronze_star',
@@ -250,7 +250,7 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
   showFrame = true,
 }) => {
   const finalName = student?.name || propName || 'طالب';
-  const finalColor = student?.avatarColor || propColor || '#748C70';
+  const finalColor = student?.avatarColor || propColor || '#7657F6';
   const finalPhoto = student?.profilePhoto !== undefined ? student?.profilePhoto : propPhoto;
   const rawFrame = (student?.achievementFrame || propFrame || 'none') as AchievementFrame;
 
@@ -284,7 +284,7 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
         className={`rounded-full overflow-hidden flex items-center justify-center text-white font-bold select-none relative shadow-inner z-0 ${
           hasFrame ? `${sizeConfig.photoFramed} ring-1 ring-black/20` : 'w-full h-full shadow-sm'
         }`}
-        style={{ backgroundColor: hasPhoto ? '#E8E2D6' : finalColor }}
+        style={{ backgroundColor: hasPhoto ? '#E8E7FF' : finalColor }}
       >
         {hasPhoto ? (
           <img

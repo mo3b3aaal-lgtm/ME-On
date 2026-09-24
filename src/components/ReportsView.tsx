@@ -170,11 +170,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Payment Methods Breakdown Calculations
   const methodStats = useMemo(() => {
     const stats = {
-      cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#607B5E' },
-      vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#B86B52' },
-      instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#586E7E' },
-      bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#B88438' },
-      other: { label: 'أخرى', amount: 0, count: 0, color: '#878E82' },
+      cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#10B981' },
+      vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#FF647C' },
+      instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#55C7E8' },
+      bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#F59E0B' },
+      other: { label: 'أخرى', amount: 0, count: 0, color: '#74778F' },
     };
 
     filteredPayments.forEach((p) => {
@@ -255,20 +255,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#14152C] pb-24 bg-[#F4F3FA]" dir="rtl">
+    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#17163D] pb-24 bg-[#F6F7FC]" dir="rtl">
       
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 classy-card p-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[#EDE8FF] text-[#7B61FF] flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-2xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center shadow-xs">
               <BarChart3 className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-[#14152C] tracking-tight">
+              <h1 className="text-xl font-black text-[#17163D] tracking-tight">
                 التقارير والكشوف المالية
               </h1>
-              <p className="text-xs text-[#727494] font-medium mt-0.5">
+              <p className="text-xs text-[#74778F] font-medium mt-0.5">
                 اللوحة المالية الشاملة وتحليلات الإيرادات والتحصيل
               </p>
             </div>
@@ -277,26 +277,26 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
         <button
           onClick={handlePrint}
-          className="px-4 py-2 rounded-2xl bg-white hover:bg-[#F4F3FA] text-[#14152C] border border-[#E8E4F5] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer shadow-xs"
+          className="px-4 py-2 rounded-2xl bg-white hover:bg-[#F6F7FC] text-[#17163D] border border-[#E8E7FF] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer shadow-xs"
         >
-          <Printer className="w-4 h-4 text-[#FF5E62]" />
+          <Printer className="w-4 h-4 text-[#FF647C]" />
           <span>طباعة الكشف</span>
         </button>
       </div>
 
       {/* 4 Report Navigation Tabs - Sticky on Mobile & Desktop */}
-      <div className="sticky top-0 z-20 bg-[#F4F3FA]/95 backdrop-blur-xs pt-1 pb-1 -mx-1 px-1">
+      <div className="sticky top-0 z-20 bg-[#F6F7FC]/95 backdrop-blur-xs pt-1 pb-1 -mx-1 px-1">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 classy-card text-xs font-bold">
           <button
             type="button"
             onClick={() => setReportType('teacher_overview')}
             className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'teacher_overview'
-                ? 'bg-[#1E1F3D] text-white shadow-md'
-                : 'text-[#727494] hover:bg-[#F4F3FA] hover:text-[#14152C]'
+                ? 'bg-[#17163D] text-white shadow-md'
+                : 'text-[#74778F] hover:bg-[#F6F7FC] hover:text-[#17163D]'
             }`}
           >
-            <BarChart3 className={`w-3.5 h-3.5 shrink-0 ${reportType === 'teacher_overview' ? 'text-[#FF758C]' : ''}`} />
+            <BarChart3 className={`w-3.5 h-3.5 shrink-0 ${reportType === 'teacher_overview' ? 'text-[#FF647C]' : ''}`} />
             <span className="truncate font-black">اللوحة المالية</span>
           </button>
 
@@ -305,11 +305,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             onClick={() => setReportType('overdue_list')}
             className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'overdue_list'
-                ? 'bg-[#1E1F3D] text-white shadow-md'
-                : 'text-[#727494] hover:bg-[#F4F3FA] hover:text-[#14152C]'
+                ? 'bg-[#17163D] text-white shadow-md'
+                : 'text-[#74778F] hover:bg-[#F6F7FC] hover:text-[#17163D]'
             }`}
           >
-            <Receipt className={`w-3.5 h-3.5 shrink-0 ${reportType === 'overdue_list' ? 'text-[#FF758C]' : ''}`} />
+            <Receipt className={`w-3.5 h-3.5 shrink-0 ${reportType === 'overdue_list' ? 'text-[#FF647C]' : ''}`} />
             <span className="truncate font-black">المستحقات ({overdueStudentsList.length})</span>
           </button>
 
@@ -318,11 +318,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             onClick={() => setReportType('group_report')}
             className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'group_report'
-                ? 'bg-[#1E1F3D] text-white shadow-md'
-                : 'text-[#727494] hover:bg-[#F4F3FA] hover:text-[#14152C]'
+                ? 'bg-[#17163D] text-white shadow-md'
+                : 'text-[#74778F] hover:bg-[#F6F7FC] hover:text-[#17163D]'
             }`}
           >
-            <Layers className={`w-3.5 h-3.5 shrink-0 ${reportType === 'group_report' ? 'text-[#FF758C]' : ''}`} />
+            <Layers className={`w-3.5 h-3.5 shrink-0 ${reportType === 'group_report' ? 'text-[#FF647C]' : ''}`} />
             <span className="truncate font-black">المجموعات</span>
           </button>
 
@@ -331,11 +331,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             onClick={() => setReportType('student_report')}
             className={`py-2 px-2 rounded-xl text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               reportType === 'student_report'
-                ? 'bg-[#1E1F3D] text-white shadow-md'
-                : 'text-[#727494] hover:bg-[#F4F3FA] hover:text-[#14152C]'
+                ? 'bg-[#17163D] text-white shadow-md'
+                : 'text-[#74778F] hover:bg-[#F6F7FC] hover:text-[#17163D]'
             }`}
           >
-            <User className={`w-3.5 h-3.5 shrink-0 ${reportType === 'student_report' ? 'text-[#FF758C]' : ''}`} />
+            <User className={`w-3.5 h-3.5 shrink-0 ${reportType === 'student_report' ? 'text-[#FF647C]' : ''}`} />
             <span className="truncate font-black">تقرير الطالب</span>
           </button>
         </div>
@@ -345,8 +345,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {reportType !== 'overdue_list' && (
         <div className="p-3.5 classy-card space-y-2.5 text-xs">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <span className="font-black text-[#14152C] flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-[#7B61FF]" />
+            <span className="font-black text-[#17163D] flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-[#7657F6]" />
               <span>الفترة الزمنية:</span>
             </span>
 
@@ -355,8 +355,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setPeriodFilter('last_7_days')}
                 className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'last_7_days'
-                    ? 'bg-[#1E1F3D] text-white shadow-xs'
-                    : 'bg-[#F4F3FA] text-[#727494] border border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
                 }`}
               >
                 آخر 7 أيام
@@ -365,8 +365,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setPeriodFilter('this_month')}
                 className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'this_month'
-                    ? 'bg-[#1E1F3D] text-white shadow-xs'
-                    : 'bg-[#F4F3FA] text-[#727494] border border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
                 }`}
               >
                 هذا الشهر
@@ -375,8 +375,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setPeriodFilter('last_month')}
                 className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'last_month'
-                    ? 'bg-[#1E1F3D] text-white shadow-xs'
-                    : 'bg-[#F4F3FA] text-[#727494] border border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
                 }`}
               >
                 الشهر الماضي
@@ -385,8 +385,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setPeriodFilter('all_time')}
                 className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'all_time'
-                    ? 'bg-[#1E1F3D] text-white shadow-xs'
-                    : 'bg-[#F4F3FA] text-[#727494] border border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
                 }`}
               >
                 كل الوقت
@@ -395,8 +395,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setPeriodFilter('specific_month')}
                 className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'specific_month'
-                    ? 'bg-[#1E1F3D] text-white shadow-xs'
-                    : 'bg-[#F4F3FA] text-[#727494] border border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
                 }`}
               >
                 شهر محدد
@@ -405,8 +405,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setPeriodFilter('custom_range')}
                 className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${
                   periodFilter === 'custom_range'
-                    ? 'bg-[#1E1F3D] text-white shadow-xs'
-                    : 'bg-[#F4F3FA] text-[#727494] border border-[#E8E4F5] hover:bg-[#ECEAF6]'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
                 }`}
               >
                 فترة مخصصة
@@ -416,12 +416,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           {/* Extended controls for specific month or custom range */}
           {periodFilter === 'specific_month' && (
-            <div className="flex items-center gap-2 pt-2 border-t border-[#E8E4F5]">
-              <span className="text-[#727494] text-[11px] font-bold">اختر الشهر والسنة:</span>
+            <div className="flex items-center gap-2 pt-2 border-t border-[#E8E7FF]">
+              <span className="text-[#74778F] text-[11px] font-bold">اختر الشهر والسنة:</span>
               <select
                 value={selectedSpecificMonth}
                 onChange={(e) => setSelectedSpecificMonth(Number(e.target.value))}
-                className="p-1.5 rounded-xl bg-[#F4F3FA] border border-[#E8E4F5] font-bold text-xs text-[#14152C]"
+                className="p-1.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-bold text-xs text-[#17163D]"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>
@@ -432,7 +432,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <select
                 value={selectedSpecificYear}
                 onChange={(e) => setSelectedSpecificYear(Number(e.target.value))}
-                className="p-1.5 rounded-xl bg-[#F4F3FA] border border-[#E8E4F5] font-bold text-xs text-[#14152C]"
+                className="p-1.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-bold text-xs text-[#17163D]"
               >
                 {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
                   <option key={y} value={y}>
@@ -444,23 +444,23 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           )}
 
           {periodFilter === 'custom_range' && (
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E8E4F5]">
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E8E7FF]">
               <div>
-                <span className="text-[#727494] text-[10px] block font-bold mb-1">من تاريخ:</span>
+                <span className="text-[#74778F] text-[10px] block font-bold mb-1">من تاريخ:</span>
                 <input
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="w-full p-2 rounded-2xl bg-[#F4F3FA] border border-[#E8E4F5] text-xs font-bold text-[#14152C]"
+                  className="w-full p-2 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs font-bold text-[#17163D]"
                 />
               </div>
               <div>
-                <span className="text-[#727494] text-[10px] block font-bold mb-1">إلى تاريخ:</span>
+                <span className="text-[#74778F] text-[10px] block font-bold mb-1">إلى تاريخ:</span>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="w-full p-2 rounded-2xl bg-[#F4F3FA] border border-[#E8E4F5] text-xs font-bold text-[#14152C]"
+                  className="w-full p-2 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs font-bold text-[#17163D]"
                 />
               </div>
             </div>

@@ -302,6 +302,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         <div className="space-y-2.5">
           {filteredStudents.map((student) => {
             const studentGroups = db.getStudentGroups(student.id);
+            const privateEnrollments = db.getStudentPrivateEnrollments(student.id);
             const fin = db.calculateStudentFinancials(student.id);
             const isSelected = selectedStudentIds.has(student.id);
 
@@ -371,8 +372,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Enrolled Groups Badges */}
-                {studentGroups.length > 0 && (
+                {/* Enrolled Groups or Private Badges */}
+                {(studentGroups.length > 0 || privateEnrollments.length > 0) && (
                   <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-[#E8E7FF]">
                     {studentGroups.map(({ group, enrollment }) => (
                       <span
@@ -385,6 +386,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         />
                         <span>{group.name}</span>
                         <span className="text-[#74778F] font-normal">({enrollment.customPrice} {t('currency')})</span>
+                      </span>
+                    ))}
+                    {privateEnrollments.map(({ group, enrollment }) => (
+                      <span
+                        key={enrollment.id}
+                        className="text-[10px] font-bold bg-[#FFF1F3] border border-[#FECDD3] text-[#FF647C] px-2 py-0.5 rounded-lg flex items-center gap-1.5"
+                      >
+                        <span className="w-2 h-2 rounded-full shrink-0 bg-[#FF647C] shadow-xs" />
+                        <span>درس خاص {group?.subject ? `(${group.subject})` : ''}</span>
+                        <span className="text-[#FF647C]/80 font-normal">({enrollment.customPrice || enrollment.hourlyRate || group?.defaultPrice || 0} {t('currency')})</span>
                       </span>
                     ))}
                   </div>

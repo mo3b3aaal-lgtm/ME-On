@@ -22,7 +22,9 @@
   }
 }
 
-/* Classy High-End Design System Tokens */
+/* ==========================================================================
+   CLASSY UNIFIED DESIGN TOKENS (Single Source of Truth)
+   ========================================================================== */
 :root {
   --color-midnight: #17163D;
   --color-royal: #403B9C;
@@ -34,9 +36,26 @@
   --color-surface: #FFFFFF;
   --color-text-main: #191A2E;
   --color-text-muted: #74778F;
+  --color-border-subtle: #E8E7FF;
+
+  /* Semantic Status Tokens */
+  --status-success: #10B981;
+  --status-success-bg: #ECFDF5;
+  --status-success-border: #A7F3D0;
+  --status-warning: #F59E0B;
+  --status-warning-bg: #FFFBEB;
+  --status-warning-border: #FDE68A;
+  --status-danger: #FF647C;
+  --status-danger-bg: #FFF1F3;
+  --status-danger-border: #FECDD3;
+  --status-info: #55C7E8;
+  --status-info-bg: #F0F9FF;
+  --status-info-border: #BAE6FD;
 }
 
-/* Modern Rounded Cards & Surfaces */
+/* ==========================================================================
+   CARDS & SURFACES
+   ========================================================================== */
 .classy-card {
   background-color: #FFFFFF;
   border-radius: 22px;
@@ -51,16 +70,53 @@
   border-color: #D3D0FB;
 }
 
+.classy-subtle-card {
+  background-color: #F6F7FC;
+  border-radius: 18px;
+  border: 1px solid #E8E7FF;
+  padding: 0.875rem;
+}
+
+.classy-lavender-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F4F3FF 100%);
+  border-radius: 22px;
+  border: 1px solid #D8D5FB;
+  box-shadow: 0 4px 20px -4px rgba(118, 87, 246, 0.08);
+}
+
+.classy-rose-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F7 100%);
+  border-radius: 22px;
+  border: 1px solid #FED7E2;
+  box-shadow: 0 4px 20px -4px rgba(255, 100, 124, 0.08);
+}
+
+.classy-cyan-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F0FAFD 100%);
+  border-radius: 22px;
+  border: 1px solid #BAE6FD;
+  box-shadow: 0 4px 20px -4px rgba(85, 199, 232, 0.08);
+}
+
+.classy-mint-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);
+  border-radius: 22px;
+  border: 1px solid #BBF7D0;
+  box-shadow: 0 4px 20px -4px rgba(34, 160, 107, 0.08);
+}
+
 /* Executive Midnight Indigo Dark Card */
 .classy-dark-card {
   background: linear-gradient(135deg, #17163D 0%, #25225C 50%, #403B9C 100%);
   border-radius: 26px;
-  border: 1px solid rgba(232, 231, 255, 0.12);
+  border: 1px solid rgba(232, 231, 255, 0.14);
   box-shadow: 0 16px 36px -8px rgba(23, 22, 61, 0.35);
   color: #FFFFFF;
 }
 
-/* Classy Primary & Accent Buttons */
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
 .btn-primary {
   background: linear-gradient(135deg, #17163D 0%, #403B9C 100%);
   color: #FFFFFF;
@@ -80,7 +136,26 @@
   transform: scale(0.98);
 }
 
-/* Electric Violet Button */
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: #17163D;
+  border: 1px solid #E8E7FF;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(23, 22, 61, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-secondary:hover {
+  background-color: #E8E7FF;
+  border-color: #D3D0FB;
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: scale(0.98);
+}
+
 .btn-violet {
   background: linear-gradient(135deg, #7657F6 0%, #5B3CE0 100%);
   color: #FFFFFF;
@@ -100,7 +175,6 @@
   transform: scale(0.98);
 }
 
-/* Vibrant Coral Action Button */
 .btn-coral {
   background: linear-gradient(135deg, #FF647C 0%, #F44964 100%);
   color: #FFFFFF;
@@ -120,7 +194,102 @@
   transform: scale(0.98);
 }
 
-/* Icon Box Containers */
+/* ==========================================================================
+   INPUTS & FORMS
+   ========================================================================== */
+.classy-input,
+.classy-select,
+.classy-textarea {
+  width: 100%;
+  background-color: #F6F7FC;
+  border: 1px solid #E8E7FF;
+  border-radius: 16px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #191A2E;
+  transition: all 0.2s ease;
+}
+
+.classy-input:focus,
+.classy-select:focus,
+.classy-textarea:focus {
+  outline: none;
+  border-color: #7657F6;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(118, 87, 246, 0.12);
+}
+
+.classy-input::placeholder,
+.classy-textarea::placeholder {
+  color: rgba(116, 119, 143, 0.65);
+  font-weight: 500;
+}
+
+.classy-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #191A2E;
+  margin-bottom: 0.375rem;
+}
+
+/* ==========================================================================
+   SEMANTIC BADGES
+   ========================================================================== */
+.badge-success {
+  background-color: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.badge-warning {
+  background-color: #FFFBEB;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.badge-danger {
+  background-color: #FFF1F3;
+  color: #9F1239;
+  border: 1px solid #FECDD3;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.badge-info {
+  background-color: #F0F9FF;
+  color: #0369A1;
+  border: 1px solid #BAE6FD;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.badge-primary {
+  background-color: #E8E7FF;
+  color: #403B9C;
+  border: 1px solid #D3D0FB;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   ICON BOX CONTAINERS
+   ========================================================================== */
 .icon-box-violet {
   background-color: #E8E7FF;
   color: #7657F6;
@@ -145,7 +314,49 @@
   border-radius: 16px;
 }
 
-/* Floating Action Button (FAB) */
+/* ==========================================================================
+   SEGMENTED CONTROLS / TABS
+   ========================================================================== */
+.classy-segment {
+  background-color: #F6F7FC;
+  border: 1px solid #E8E7FF;
+  border-radius: 18px;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.classy-segment-btn {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-align: center;
+}
+
+.classy-segment-btn-active {
+  background-color: #17163D;
+  color: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(23, 22, 61, 0.18);
+}
+
+.classy-segment-btn-inactive {
+  color: #74778F;
+  background-color: transparent;
+}
+
+.classy-segment-btn-inactive:hover {
+  color: #191A2E;
+  background-color: rgba(232, 231, 255, 0.4);
+}
+
+/* ==========================================================================
+   FLOATING ACTION BUTTON (FAB)
+   ========================================================================== */
 .classy-fab {
   position: fixed;
   bottom: 84px;
@@ -173,7 +384,9 @@
   transform: scale(0.96);
 }
 
-/* Compatibility classes */
+/* ==========================================================================
+   BACKWARD COMPATIBILITY ALIASES
+   ========================================================================== */
 .neu-card, .royal-card {
   background-color: #FFFFFF;
   border-radius: 22px;
@@ -208,7 +421,9 @@
   border-color: #D3D0FB;
 }
 
-/* Custom Keyframe Animations */
+/* ==========================================================================
+   ANIMATIONS & SCROLLBARS
+   ========================================================================== */
 @keyframes slideUpFadeIn {
   from {
     opacity: 0;
@@ -266,7 +481,6 @@
   animation: loadingBar 2s ease-in-out infinite;
 }
 
-/* Custom scrollbars */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

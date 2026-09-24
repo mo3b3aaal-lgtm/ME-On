@@ -51,9 +51,28 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   onSaveComplete,
 }) => {
   const group = session ? db.getGroupById(session.groupId) : undefined;
-  const enrolledStudents = session ? db.getGroupStudents(session.groupId) : [];
+  const isPrivateSession = group?.type === 'private' || !!session?.studentId;
+  let privateStudent: Student | undefined = undefined;
+  if (session?.studentId) {
+    privateStudent = db.getStudentById(session.studentId);
+  } else if (group?.type === 'private') {
+    const enrs = db.getGroupEnrollments(group.id);
+    if (enrs[0]) {
+      privateStudent = db.getStudentById(enrs[0].studentId);
+    }
+  }
+
+  const enrolledStudents = session
+    ? privateStudent
+      ? [privateStudent]
+      : db.getGroupStudents(session.groupId)
+    : [];
   const existingAttendance = session ? db.getSessionAttendance(session.id) : [];
-  const allEnrollments = session ? db.getGroupEnrollments(session.groupId) : [];
+  const allEnrollments = session
+    ? isPrivateSession && privateStudent
+      ? db.getStudentPrivateEnrollments(privateStudent.id).map((p) => p.enrollment)
+      : db.getGroupEnrollments(session.groupId)
+    : [];
 
   // Local state for attendance records mapping: studentId -> StudentAttendanceRecord
   const [records, setRecords] = useState<Record<string, StudentAttendanceRecord>>({});
@@ -322,15 +341,17 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-slate-200 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 shadow-2xs">
+            <div className={`p-2.5 rounded-2xl shadow-2xs ${isPrivateSession ? 'bg-rose-50 text-[#FF647C]' : 'bg-indigo-50 text-indigo-600'}`}>
               <Users className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-black text-[#0F172A]">
-                رصد الحضور واستهلاك الحصص
+                {isPrivateSession ? 'رصد حضور الدرس الخاص' : 'رصد الحضور واستهلاك الحصص'}
               </h2>
               <p className="text-[11px] text-slate-500 font-medium">
-                {group?.name} • {session.title || 'حصة بدون عنوان'} ({session.date})
+                {isPrivateSession && privateStudent
+                  ? `الطالب: ${privateStudent.name}`
+                  : (group?.name || 'مجموعة')} • {session.title || (isPrivateSession ? 'درس خاص' : 'حصة بدون عنوان')} ({session.date})
               </p>
             </div>
           </div>

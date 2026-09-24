@@ -325,41 +325,44 @@ export function getScheduledClassesForDate(
     const isPrivate = group.type === 'private';
     const groupEnrollments = studentEnrollmentsByGroup.get(group.id) || [];
 
-    if (groupEnrollments.length > 0) {
-      for (const enr of groupEnrollments) {
-        const stu = activeStudentsMap.get(enr.studentId);
-        if (!stu) continue;
+    if (isPrivate) {
+      // Private lesson: Each private enrollment represents a private student
+      if (groupEnrollments.length > 0) {
+        for (const enr of groupEnrollments) {
+          const stu = activeStudentsMap.get(enr.studentId);
+          if (!stu) continue;
 
-        const occurrenceTimes = getTimesForDayInEnrollment(enr, group, arabicDayName);
-        const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [''];
+          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, arabicDayName);
+          const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [''];
 
-        effectiveTimes.forEach((rawTime, timeIdx) => {
-          const sortMinutes = parseTimeToMinutes(rawTime);
-          const formattedTime = formatTimeDisplay(rawTime, isRTL);
-          const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+          effectiveTimes.forEach((rawTime, timeIdx) => {
+            const sortMinutes = parseTimeToMinutes(rawTime);
+            const formattedTime = formatTimeDisplay(rawTime, isRTL);
+            const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
 
-          scheduledItems.push({
-            id: `sched_${group.id}_${stu.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
-            studentId: stu.id,
-            studentName: stu.name,
-            student: stu,
-            groupId: group.id,
-            groupName: group.name,
-            group: group,
-            enrollmentId: enr.id,
-            isPrivate,
-            subject: group.subject || (isPrivate ? 'درس خاص' : 'مجموعة'),
-            dayName: arabicDayName,
-            time: formattedTime,
-            rawTime,
-            sortMinutes,
-            location: group.roomOrLocation,
-            accentColor: group.accentColor || (isPrivate ? '#D49B4B' : '#748C70'),
+            scheduledItems.push({
+              id: `sched_priv_${group.id}_${stu.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
+              studentId: stu.id,
+              studentName: stu.name,
+              student: stu,
+              groupId: group.id,
+              groupName: 'درس خاص',
+              group: group,
+              enrollmentId: enr.id,
+              isPrivate: true,
+              subject: group.subject || 'درس خاص',
+              dayName: arabicDayName,
+              time: formattedTime,
+              rawTime,
+              sortMinutes,
+              location: group.roomOrLocation,
+              accentColor: group.accentColor || '#FF647C',
+            });
           });
-        });
+        }
       }
     } else {
-      // Group scheduled with no students yet, still show on schedule
+      // Real Group: Scheduled as ONE group class session
       const groupTimes = getTimesForDayInGroup(group, arabicDayName);
       const effectiveGroupTimes = groupTimes.length > 0 ? groupTimes : [''];
 
@@ -371,18 +374,18 @@ export function getScheduledClassesForDate(
         scheduledItems.push({
           id: `sched_grp_${group.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
           studentId: '',
-          studentName: isPrivate ? group.name : `${group.name} (المجموعة)`,
+          studentName: group.name,
           groupId: group.id,
           groupName: group.name,
           group: group,
-          isPrivate,
-          subject: group.subject,
+          isPrivate: false,
+          subject: group.subject || 'مجموعة دراسية',
           dayName: arabicDayName,
           time: formattedTime,
           rawTime,
           sortMinutes,
           location: group.roomOrLocation,
-          accentColor: group.accentColor || (isPrivate ? '#D49B4B' : '#748C70'),
+          accentColor: group.accentColor || '#7657F6',
         });
       });
     }
@@ -482,7 +485,7 @@ export function getUpcomingClassesForStudent(
           isPrivate,
           subject: group.subject || (isPrivate ? 'درس خاص' : 'مجموعة'),
           location: group.roomOrLocation,
-          accentColor: group.accentColor || (isPrivate ? '#D49B4B' : '#748C70'),
+          accentColor: group.accentColor || (isPrivate ? '#FF647C' : '#7657F6'),
         });
       }
     }

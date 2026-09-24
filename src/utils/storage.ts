@@ -1356,13 +1356,13 @@ export function formatSyncStatusArabic(
     if (statusReason === 'api_unreachable') {
       return {
         label: 'مؤجل - تعذر الوصول للسيرفر السحابي (البيانات محفوظة محلياً)',
-        badgeClass: 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30',
+        badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
         iconType: 'offline',
       };
     }
     return {
       label: 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
-      badgeClass: 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30',
+      badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
       iconType: 'offline',
     };
   }
@@ -1371,26 +1371,26 @@ export function formatSyncStatusArabic(
     case 'syncing':
       return {
         label: 'جاري مزامنة البيانات مع السحابة...',
-        badgeClass: 'bg-[#5C788A]/15 text-[#5C788A] border border-[#5C788A]/30',
+        badgeClass: 'bg-[#55C7E8]/15 text-[#0284C7] border border-[#55C7E8]/30',
         iconType: 'syncing',
       };
     case 'success':
     case 'idle':
       return {
         label: 'متزامن وجاهز (جميع البيانات مؤمنة بالسحابة)',
-        badgeClass: 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30',
+        badgeClass: 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30',
         iconType: 'success',
       };
     case 'error':
       return {
         label: 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
-        badgeClass: 'bg-[#C97C5D]/15 text-[#C97C5D] border border-[#C97C5D]/30',
+        badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
         iconType: 'error',
       };
     default:
       return {
         label: 'متزامن وجاهز',
-        badgeClass: 'bg-[#748C70]/15 text-[#748C70] border border-[#748C70]/30',
+        badgeClass: 'bg-[#7657F6]/15 text-[#7657F6] border border-[#7657F6]/30',
         iconType: 'idle',
       };
   }
@@ -1606,9 +1606,15 @@ export const db = {
   },
 
   getGroupStudents: (groupId: string): Student[] => {
-    const enrollments = db.getGroupEnrollments(groupId);
+    const group = db.getGroupById(groupId);
+    const enrollments = db.getGroupEnrollments(groupId).filter((e) => {
+      if (group && group.type !== 'private') {
+        return e.serviceType !== 'private';
+      }
+      return true;
+    });
     const studentIds = new Set(enrollments.map((e) => e.studentId));
-    return db.getStudents().filter((s) => studentIds.has(s.id));
+    return db.getStudents().filter((s) => studentIds.has(s.id) && s.status !== 'archived');
   },
 
   getStudentGroups: (studentId: string): { group: Group; enrollment: Enrollment }[] => {
@@ -1618,7 +1624,22 @@ export const db = {
 
     for (const enr of enrollments) {
       const g = groups.find((grp) => grp.id === enr.groupId);
-      if (g) {
+      // ONLY REAL GROUPS: Not private pseudo-groups and not serviceType private
+      if (g && g.type !== 'private' && enr.serviceType !== 'private') {
+        result.push({ group: g, enrollment: enr });
+      }
+    }
+    return result;
+  },
+
+  getStudentPrivateEnrollments: (studentId: string): { group?: Group; enrollment: Enrollment }[] => {
+    const enrollments = db.getStudentEnrollments(studentId);
+    const groups = db.getGroups();
+    const result: { group?: Group; enrollment: Enrollment }[] = [];
+
+    for (const enr of enrollments) {
+      const g = groups.find((grp) => grp.id === enr.groupId);
+      if (enr.serviceType === 'private' || g?.type === 'private') {
         result.push({ group: g, enrollment: enr });
       }
     }
@@ -1694,7 +1715,7 @@ export const db = {
       scheduleTime: options.scheduleTime || '04:00 م',
       scheduleTimes: options.scheduleTimes,
       roomOrLocation: options.roomOrLocation || 'منزل الطالب / أونلاين',
-      accentColor: '#D49B4B', // Gold accent for private lessons
+      accentColor: '#FF647C', // Coral accent for private lessons
       notes: options.notes || '',
       createdAt: new Date().toISOString(),
     };
@@ -3152,9 +3173,11 @@ export const db = {
     const group = db.getGroupById(enrollment.groupId);
     const groupName = group ? group.name : 'مجموعة محذوفة';
     const groupType = group ? group.type : enrollment.serviceType;
-    const accentColor = group ? group.accentColor : '#748C70';
+    const accentColor = group ? group.accentColor : '#7657F6';
 
-    const sessions = db.getSessions().filter((s) => s.groupId === enrollment.groupId && s.status === 'completed');
+    const allGroupSessions = db.getSessions().filter((s) => s.groupId === enrollment.groupId);
+    const sessions = allGroupSessions.filter((s) => s.status === 'completed');
+    const allGroupSessionIds = new Set(allGroupSessions.map((s) => s.id));
     const attendanceRecords = db.getStudentAttendance(enrollment.studentId);
     const payments = db.getEnrollmentPayments(enrollment.id);
 
@@ -3332,7 +3355,7 @@ export const db = {
     }
 
     const freeAttendance = attendanceRecords.filter((a) => {
-      if (!sessionIds.has(a.sessionId)) return false;
+      if (!allGroupSessionIds.has(a.sessionId)) return false;
       if (a.isCharged !== undefined) return !a.isCharged;
       return a.status === 'absent_free' || a.status === 'excused';
     });

@@ -352,7 +352,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { language, setLanguage, isRTL, t } = useTranslation();
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#17163D] pb-24 bg-[#F6F7FC]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-4 space-y-4 text-[#17163D] pb-24 bg-[#F6F7FC]" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* View Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 classy-card p-4">

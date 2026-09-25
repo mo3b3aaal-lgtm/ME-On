@@ -31,6 +31,7 @@ import {
 } from '../types';
 import { db } from '../utils/storage';
 import { getSmartReminders } from '../utils/reminders';
+import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 
 interface NotificationsModalProps {
   isOpen: boolean;
@@ -163,12 +164,18 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
   };
 
+  const modalLayer = useModalLayer('notifications', isOpen, onClose);
+
+  if (!isOpen) return null;
+
   return (
-    <div
-      className="fixed inset-0 bg-[#17163D]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in"
-      dir="rtl"
-    >
-      <div className="bg-white rounded-[28px] w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[#E8E7FF] overflow-hidden">
+    <ModalPortal>
+      <div
+        style={{ zIndex: modalLayer.zIndex }}
+        className="fixed inset-0 bg-[#17163D]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in"
+        dir="rtl"
+      >
+        <div className="bg-white rounded-[28px] w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[#E8E7FF] overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 bg-gradient-to-l from-[#17163D] via-[#17163D] to-[#2E2050] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10">
@@ -467,5 +474,6 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  </ModalPortal>
+);
 };

@@ -76,7 +76,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 max-w-5xl mx-auto text-[#191A2E] pb-32 bg-[#F6F7FC]" dir="rtl">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-4 space-y-4 max-w-5xl mx-auto text-[#191A2E] pb-32 bg-[#F6F7FC]" dir="rtl">
       
       {/* Primary Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 classy-card p-4">

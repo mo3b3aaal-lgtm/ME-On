@@ -40,12 +40,15 @@ import {
   Search,
   Tag,
   SlidersHorizontal,
+  RotateCcw,
+  Archive,
 } from 'lucide-react';
 import { Student, Group, Enrollment, Payment, Attendance, Session, AttendanceStatus, BillingMode, StudentGrandFinancialSummary, StudentBehaviorLog, BehaviorCategory } from '../types';
 import { db, getArabicMonthName, getBillingModeLabel, divideMoney, multiplyMoney, roundMoney } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
 import { QuickBehaviorLogModal } from './QuickBehaviorLogModal';
+import { SafeDeleteStudentModal } from './SafeDeleteStudentModal';
 import { getLocalizedStageName } from '../utils/stages';
 import { getUpcomingClassesForStudent, UpcomingStudentClass } from '../utils/schedule';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
@@ -407,6 +410,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     }
   };
 
+  const [isSafeDeleteModalOpen, setIsSafeDeleteModalOpen] = useState(false);
+
   const handleRemoveEnrollment = (enrollmentId: string, groupName: string) => {
     if (confirm(`هل أنت متأكد من إلغاء قيد الطالب من ${groupName}؟`)) {
       db.removeEnrollment(enrollmentId);
@@ -414,18 +419,30 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     }
   };
 
-  const handleDeleteStudent = () => {
+  const handleConfirmArchive = (targetStudent: Student) => {
+    db.archiveStudent(targetStudent.id);
+    onDataChanged();
+    onClose();
+  };
+
+  const handleConfirmPermanentDelete = (targetStudent: Student) => {
+    db.deleteStudentPermanently(targetStudent.id);
+    onDataChanged();
+    onClose();
+  };
+
+  const handleRestoreStudent = () => {
     if (!student) return;
-    if (confirm(`هل أنت متأكد من حذف الطالب ${student.name} نهائياً مع كافة تسجيلاته ومدفوعاته؟`)) {
-      db.deleteStudent(student.id);
-      onDataChanged();
-      onClose();
-    }
+    db.restoreStudent(student.id);
+    onDataChanged();
+    onClose();
   };
 
   const modalLayer = useModalLayer('student-profile', isOpen && !!student, onClose);
 
   if (!isOpen || !student) return null;
+
+  const isArchived = student.status === 'archived';
 
   return (
     <ModalPortal>
@@ -454,38 +471,46 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             />
 
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">{student.name}</h2>
                 
+                {/* Archived Badge */}
+                {isArchived && (
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-xs">
+                    <Archive className="w-3 h-3 text-amber-700" />
+                    <span>طالب مؤرشف</span>
+                  </span>
+                )}
+
                 {/* Service Tag Badge */}
                 {serviceType === 'both' && (
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#172554]/10 text-[#172554] border border-[#172554]/20">
-                    مجموعة + Private
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#7657F6]/10 text-[#7657F6] border border-[#7657F6]/20">
+                    مجموعة + درس خاص
                   </span>
                 )}
                 {serviceType === 'private_only' && (
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                    درس خاص (Private)
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]">
+                    درس خاص
                   </span>
                 )}
                 {serviceType === 'group_only' && (
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#172554]/10 text-[#172554] border border-[#172554]/20">
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#403B9C] border border-[#403B9C]/20">
                     مجموعة فقط
                   </span>
                 )}
-                {serviceType === 'none' && (
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                {serviceType === 'none' && !isArchived && (
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF]">
                     بدون اشتراك
                   </span>
                 )}
               </div>
 
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                <span className="text-[11px] font-bold text-[#191A2E] bg-[#E8E7FF]/60 px-2.5 py-0.5 rounded-full border border-[#D8D5FB]">
                   {getLocalizedStageName(student.gradeLevel) || 'الصف غير محدد'}
                 </span>
                 {student.school && (
-                  <span className="text-[11px] text-slate-500 font-medium">
+                  <span className="text-[11px] text-[#74778F] font-medium">
                     مدرسة {student.school}
                   </span>
                 )}
@@ -493,16 +518,34 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             </div>
           </div>
 
+          {/* Archived Banner if student is archived */}
+          {isArchived && (
+            <div className="mt-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <div className="text-xs font-medium text-amber-900 leading-relaxed text-right w-full sm:w-auto">
+                <strong className="font-bold block text-amber-950">هذا الطالب مؤرشف حالياً</strong>
+                <span>السجلات والحصص والمدفوعات التاريخية محفوظة بالكامل لأغراض المحاسبة والتقارير.</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleRestoreStudent}
+                className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0 active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>استعادة الطالب</span>
+              </button>
+            </div>
+          )}
+
           {/* Quick Contacts & Action Bar */}
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#E8E7FF] flex-wrap">
             {hasPrivate && (
               <button
                 type="button"
                 onClick={() => setIsRecordPrivateModalOpen(true)}
-                className="w-full py-2 px-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                className="w-full py-2 px-3.5 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#E04860] hover:from-[#E04860] hover:to-[#C9334A] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 text-amber-200" />
-                <span>تسجيل حصة Private</span>
+                <Sparkles className="w-4 h-4 text-white/90" />
+                <span>تسجيل حصة خاصة</span>
               </button>
             )}
 
@@ -647,7 +690,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         </div>
 
         {/* Tab Contents */}
-        <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-slate-700">
+        <div className="p-4 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar flex-1 space-y-4 text-xs text-slate-700">
           
           {/* ========================================== */}
           {/* 0. OVERVIEW / DASHBOARD TAB (لوحة الطالب الشاملة) */}
@@ -3070,16 +3113,40 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-white border-t border-slate-200/80 flex items-center justify-between">
-          <button
-            onClick={handleDeleteStudent}
-            className="px-3.5 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>حذف الطالب</span>
-          </button>
+        <div className="p-4 bg-white border-t border-slate-200/80 flex items-center justify-between gap-2">
+          {isArchived ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRestoreStudent}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>استعادة الطالب</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsSafeDeleteModalOpen(true)}
+                className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>خيارات الحذف</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsSafeDeleteModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>حذف الطالب</span>
+            </button>
+          )}
 
           <button
+            type="button"
             onClick={onClose}
             className="px-6 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
           >
@@ -3088,6 +3155,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         </div>
 
       </div>
+
+      {/* Safe Delete Student Modal */}
+      <SafeDeleteStudentModal
+        isOpen={isSafeDeleteModalOpen}
+        onClose={() => setIsSafeDeleteModalOpen(false)}
+        student={student}
+        onConfirmArchive={handleConfirmArchive}
+        onConfirmPermanentDelete={handleConfirmPermanentDelete}
+      />
 
       {/* Record Private Session Sub-Modal */}
       <RecordPrivateSessionModal

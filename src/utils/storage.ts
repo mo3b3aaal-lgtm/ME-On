@@ -1490,7 +1490,83 @@ export const db = {
     autoSyncUserAccount(activeUserId);
   },
 
-  deleteStudent: (id: string): void => {
+  getActiveStudents: (userId?: string): Student[] => {
+    return db.getStudents(userId).filter((s) => s.status !== 'archived');
+  },
+
+  getArchivedStudents: (userId?: string): Student[] => {
+    return db.getStudents(userId).filter((s) => s.status === 'archived');
+  },
+
+  archiveStudent: (id: string, reason?: string): void => {
+    const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
+    const students = getList<Student>(STORAGE_KEYS.STUDENTS, []);
+    const idx = students.findIndex((s) => s.id === id);
+    if (idx >= 0) {
+      students[idx] = {
+        ...students[idx],
+        status: 'archived',
+        archivedAt: now,
+        archivedReason: reason || 'حذف مع الاحتفاظ بالسجلات التاريخية',
+        updatedAt: now,
+      };
+      saveList(STORAGE_KEYS.STUDENTS, students);
+    }
+
+    // Mark active enrollments as paused so student does not count in active group rosters, but keep pricing/data intact
+    const enrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
+    let enrChanged = false;
+    const updatedEnrs = enrollments.map((e) => {
+      if (e.studentId === id && e.status === 'active') {
+        enrChanged = true;
+        return { ...e, status: 'paused' as const, updatedAt: now };
+      }
+      return e;
+    });
+    if (enrChanged) {
+      saveList(STORAGE_KEYS.ENROLLMENTS, updatedEnrs);
+    }
+
+    autoSyncUserAccount(activeUserId);
+  },
+
+  restoreStudent: (id: string): Student | undefined => {
+    const activeUserId = getActiveUserId();
+    const now = new Date().toISOString();
+    const students = getList<Student>(STORAGE_KEYS.STUDENTS, []);
+    const idx = students.findIndex((s) => s.id === id);
+    if (idx < 0) return undefined;
+
+    const restored: Student = {
+      ...students[idx],
+      status: 'active',
+      archivedAt: undefined,
+      archivedReason: undefined,
+      updatedAt: now,
+    };
+    students[idx] = restored;
+    saveList(STORAGE_KEYS.STUDENTS, students);
+
+    // Reactivate paused enrollments
+    const enrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
+    let enrChanged = false;
+    const updatedEnrs = enrollments.map((e) => {
+      if (e.studentId === id && e.status === 'paused') {
+        enrChanged = true;
+        return { ...e, status: 'active' as const, updatedAt: now };
+      }
+      return e;
+    });
+    if (enrChanged) {
+      saveList(STORAGE_KEYS.ENROLLMENTS, updatedEnrs);
+    }
+
+    autoSyncUserAccount(activeUserId);
+    return restored;
+  },
+
+  deleteStudentPermanently: (id: string): void => {
     const activeUserId = getActiveUserId();
 
     // 1. Add tombstone for student
@@ -1511,15 +1587,36 @@ export const db = {
     const studentAtt = attendance.filter((a) => a.studentId === id);
     studentAtt.forEach((a) => addDeletionTombstone('attendance', a.id, activeUserId));
 
-    // 5. Update local storage
+    // 5. Cascade tombstones for behavior logs
+    const behaviorLogs = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
+    const studentBehaviors = behaviorLogs.filter((b) => b.studentId === id);
+    studentBehaviors.forEach((b) => addDeletionTombstone('behaviorLog', b.id, activeUserId));
+
+    // 6. Cascade tombstones for private sessions created exclusively for this student
+    const sessions = getList<Session>(STORAGE_KEYS.SESSIONS, []);
+    const privSessions = sessions.filter((s) => s.studentId === id);
+    privSessions.forEach((s) => addDeletionTombstone('session', s.id, activeUserId));
+    const privSessionIds = new Set(privSessions.map((s) => s.id));
+
+    // 7. Update local storage
     const list = getList<Student>(STORAGE_KEYS.STUDENTS, []).filter((s) => s.id !== id);
     saveList(STORAGE_KEYS.STUDENTS, list);
     saveList(STORAGE_KEYS.ENROLLMENTS, enrollments.filter((e) => e.studentId !== id));
     saveList(STORAGE_KEYS.PAYMENTS, payments.filter((p) => p.studentId !== id));
-    saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => a.studentId !== id));
+    saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => a.studentId !== id && !privSessionIds.has(a.sessionId)));
+    saveList(STORAGE_KEYS.BEHAVIOR_LOGS, behaviorLogs.filter((b) => b.studentId !== id));
+    saveList(STORAGE_KEYS.SESSIONS, sessions.filter((s) => s.studentId !== id));
 
     autoSyncUserAccount(activeUserId);
     performFullSync(activeUserId, false).catch(() => {});
+  },
+
+  deleteStudent: (id: string, options?: { permanent?: boolean; reason?: string }): void => {
+    if (options?.permanent) {
+      db.deleteStudentPermanently(id);
+    } else {
+      db.archiveStudent(id, options?.reason);
+    }
   },
 
   // 2. Groups (المجموعات والدروس الخاصة)

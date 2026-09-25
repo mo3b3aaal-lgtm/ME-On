@@ -15,6 +15,8 @@ import {
   CalendarCheck2,
   X,
   Sparkles,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
 import { Student, Group } from '../types';
 import { db } from '../utils/storage';
@@ -29,6 +31,7 @@ interface StudentsViewProps {
   onOpenAddStudent: () => void;
   onOpenStudentProfile: (student: Student) => void;
   onOpenBulkAddSession?: (students: Student[]) => void;
+  onDataChanged?: () => void;
 }
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
@@ -37,8 +40,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onOpenAddStudent,
   onOpenStudentProfile,
   onOpenBulkAddSession,
+  onDataChanged,
 }) => {
   const { t, language } = useTranslation();
+  const [activeTabType, setActiveTabType] = useState<'active' | 'archived'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('all');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
@@ -48,14 +53,25 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const [isSelectionMode, setIsSelectionMode] = useState<boolean>(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
+  const activeStudentsCount = students.filter((s) => s.status !== 'archived').length;
+  const archivedStudentsCount = students.filter((s) => s.status === 'archived').length;
+
   // Collect distinct grade levels
   const gradeLevels = Array.from(
     new Set(students.map((s) => s.gradeLevel).filter(Boolean))
   ) as string[];
 
-  // Filter students
+  // Filter students based on active/archived tab and search
   const filteredStudents = students.filter((student) => {
-    // Text search
+    // 1. Tab filter (active vs archived)
+    if (activeTabType === 'active' && student.status === 'archived') {
+      return false;
+    }
+    if (activeTabType === 'archived' && student.status !== 'archived') {
+      return false;
+    }
+
+    // 2. Text search
     const matchesSearch =
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (student.phone && student.phone.includes(searchQuery)) ||
@@ -64,19 +80,19 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
     if (!matchesSearch) return false;
 
-    // Grade filter
+    // 3. Grade filter
     if (selectedGradeFilter !== 'all' && student.gradeLevel !== selectedGradeFilter) {
       return false;
     }
 
-    // Group filter
+    // 4. Group filter
     if (selectedGroupFilter !== 'all') {
       const enrs = db.getStudentEnrollments(student.id);
       const isEnrolled = enrs.some((e) => e.groupId === selectedGroupFilter && e.status !== 'stopped');
       if (!isEnrolled) return false;
     }
 
-    // Debt filter
+    // 5. Debt filter
     if (onlyDebtors) {
       const fin = db.calculateStudentFinancials(student.id);
       if (fin.balance >= 0) return false;
@@ -84,6 +100,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
     return true;
   });
+
+  // Handle restoring an archived student
+  const handleRestore = (studentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    db.restoreStudent(studentId);
+    if (onDataChanged) {
+      onDataChanged();
+    }
+  };
 
   // Toggle single student selection
   const toggleSelectStudent = (id: string, e?: React.MouseEvent) => {
@@ -129,24 +154,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     filteredStudents.every((s) => selectedStudentIds.has(s.id));
 
   return (
-    <div className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4 text-[#191A2E] pb-32 bg-[#F6F7FC]" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-4 space-y-4 text-[#191A2E] pb-32 bg-[#F6F7FC]" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* View Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-black text-[#17163D] tracking-tight flex items-center gap-2">
             <span>{t('studentsTitle')}</span>
             <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#7657F6]">
-              {students.length}
+              {activeTabType === 'active' ? activeStudentsCount : archivedStudentsCount}
             </span>
           </h1>
           <p className="text-xs text-[#74778F] font-medium mt-0.5">
-            {t('studentsSubtitle')}
+            {activeTabType === 'active' ? t('studentsSubtitle') : 'الطلاب المحذوفون مع الاحتفاظ بسجلاتهم التاريخية'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Select Mode Toggle Button */}
-          {students.length > 0 && (
+          {activeTabType === 'active' && activeStudentsCount > 0 && (
             <button
               onClick={() => {
                 if (isSelectionMode) {
@@ -176,8 +201,54 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       </div>
 
+      {/* Active vs Archived Segmented Control */}
+      <div className="classy-segment p-1 flex items-center">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTabType('active');
+            handleExitSelectionMode();
+          }}
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTabType === 'active'
+              ? 'classy-segment-btn-active shadow-xs'
+              : 'classy-segment-btn-inactive'
+          }`}
+        >
+          <span>الطلاب النشطون</span>
+          <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+            activeTabType === 'active' ? 'bg-[#7657F6]/15 text-[#7657F6]' : 'bg-slate-200/80 text-slate-600'
+          }`}>
+            {activeStudentsCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTabType('archived');
+            handleExitSelectionMode();
+          }}
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTabType === 'archived'
+              ? 'classy-segment-btn-active shadow-xs'
+              : 'classy-segment-btn-inactive'
+          }`}
+        >
+          <Archive className="w-3.5 h-3.5" />
+          <span>الطلاب المؤرشفون</span>
+          {archivedStudentsCount > 0 && (
+            <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+              activeTabType === 'archived' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200/80 text-slate-600'
+            }`}>
+              {archivedStudentsCount}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Selection Mode Toolbar Banner */}
-      {isSelectionMode && (
+      {isSelectionMode && activeTabType === 'active' && (
         <div className="p-3 bg-[#E8E7FF]/60 border border-[#7657F6]/30 rounded-2xl flex items-center justify-between gap-2 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
             <span className="font-bold text-[#403B9C] text-xs">
@@ -211,7 +282,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <Search className={`w-4 h-4 text-[#74778F] absolute top-3.5 ${language === 'ar' ? 'right-3.5' : 'left-3.5'}`} />
           <input
             type="text"
-            placeholder={t('search')}
+            placeholder={activeTabType === 'active' ? t('search') : 'البحث في الطلاب المؤرشفين بالاسم أو الهاتف...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl py-2.5 text-xs text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] font-medium transition-colors ${
@@ -295,8 +366,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="classy-card p-8 text-center text-[#74778F] space-y-2">
-          <AlertCircle className="w-8 h-8 mx-auto text-[#FF647C]" />
-          <p className="font-bold text-[#17163D] text-xs">{t('noStudentsFound')}</p>
+          {activeTabType === 'archived' ? (
+            <Archive className="w-8 h-8 mx-auto text-[#7657F6]" />
+          ) : (
+            <AlertCircle className="w-8 h-8 mx-auto text-[#FF647C]" />
+          )}
+          <p className="font-bold text-[#17163D] text-xs">
+            {activeTabType === 'archived' ? 'لا يوجد طلاب مطابقين في الأرشيف' : t('noStudentsFound')}
+          </p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -305,12 +382,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             const privateEnrollments = db.getStudentPrivateEnrollments(student.id);
             const fin = db.calculateStudentFinancials(student.id);
             const isSelected = selectedStudentIds.has(student.id);
+            const isStudentArchived = student.status === 'archived';
 
             return (
               <div
                 key={student.id}
                 onClick={() => {
-                  if (isSelectionMode) {
+                  if (isSelectionMode && !isStudentArchived) {
                     toggleSelectStudent(student.id);
                   } else {
                     onOpenStudentProfile(student);
@@ -319,13 +397,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 className={`classy-card classy-card-hover p-3.5 transition-all cursor-pointer space-y-2.5 active:scale-[0.99] ${
                   isSelected
                     ? 'border-[#7657F6] bg-[#E8E7FF]/40 ring-2 ring-[#7657F6]/40'
+                    : isStudentArchived
+                    ? 'bg-slate-50/80 border-slate-200'
                     : ''
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   {/* Left: Checkbox (if in selection mode) + Avatar + Name + Grade */}
                   <div className="flex items-center gap-3 min-w-0">
-                    {isSelectionMode && (
+                    {isSelectionMode && !isStudentArchived && (
                       <button
                         type="button"
                         onClick={(e) => toggleSelectStudent(student.id, e)}
@@ -342,9 +422,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     <StudentAvatar student={student} size="md" />
 
                     <div className="min-w-0 space-y-0.5">
-                      <h3 className="font-bold text-xs sm:text-sm text-[#191A2E] truncate">
-                        {student.name}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-xs sm:text-sm text-[#191A2E] truncate">
+                          {student.name}
+                        </h3>
+                        {isStudentArchived && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
+                            <Archive className="w-3 h-3 text-amber-700" />
+                            <span>مؤرشف</span>
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-[#74778F] font-medium truncate">
                         {getLocalizedStageName(student.gradeLevel) || '-'}
                         {student.phone ? ` • ${student.phone}` : ''}
@@ -352,23 +440,35 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Right: Financial Status Chip */}
-                  <div className="shrink-0">
-                    <span
-                      className={`text-[10px] font-black px-2.5 py-1 rounded-xl ${
-                        fin.balance < 0
-                          ? 'bg-[#FF647C]/10 text-[#FF647C] border border-[#FF647C]/25'
+                  {/* Right: Actions or Financial Status */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isStudentArchived ? (
+                      <button
+                        type="button"
+                        onClick={(e) => handleRestore(student.id, e)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+                        title="استعادة الطالب وإعادته للقائمة النشطة"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>استعادة</span>
+                      </button>
+                    ) : (
+                      <span
+                        className={`text-[10px] font-black px-2.5 py-1 rounded-xl ${
+                          fin.balance < 0
+                            ? 'bg-[#FF647C]/10 text-[#FF647C] border border-[#FF647C]/25'
+                            : fin.balance > 0
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-[#E8E7FF]/60 text-[#403B9C]'
+                        }`}
+                      >
+                        {fin.balance < 0
+                          ? `${Math.abs(fin.balance)} ${t('currency')} ${t('hasDue')}`
                           : fin.balance > 0
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-[#E8E7FF]/60 text-[#403B9C]'
-                      }`}
-                    >
-                      {fin.balance < 0
-                        ? `${Math.abs(fin.balance)} ${t('currency')} ${t('hasDue')}`
-                        : fin.balance > 0
-                        ? `+${fin.balance} ${t('currency')} ${t('hasCredit')}`
-                        : t('settled')}
-                    </span>
+                          ? `+${fin.balance} ${t('currency')} ${t('hasCredit')}`
+                          : t('settled')}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -407,7 +507,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       )}
 
       {/* Floating Bottom Action Bar when students are selected */}
-      {isSelectionMode && selectedCount > 0 && (
+      {isSelectionMode && selectedCount > 0 && activeTabType === 'active' && (
         <div className="fixed bottom-20 inset-x-0 z-40 max-w-lg mx-auto px-4 pb-2 animate-in slide-in-from-bottom-3 duration-200">
           <div className="bg-[#17163D] text-white p-3 rounded-2xl shadow-xl flex items-center justify-between border border-[#403B9C]/40">
             <div className="flex items-center gap-2.5">

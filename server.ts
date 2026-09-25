@@ -67,6 +67,7 @@ app.use(
 );
 
 // Initialize Gemini Client safely
+const AI_MODELS_CASCADE = ["gemini-3.8-flash", "gemini-3.7-flash"];
 let aiClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
   if (!aiClient && process.env.GEMINI_API_KEY) {
@@ -80,6 +81,31 @@ function getGenAI(): GoogleGenAI | null {
     });
   }
   return aiClient;
+}
+
+async function safeGenerateContent(
+  ai: GoogleGenAI,
+  params: {
+    contents: string | any;
+    config?: any;
+  }
+): Promise<string | null> {
+  for (const model of AI_MODELS_CASCADE) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: params.config,
+      });
+      if (response && response.text) {
+        return response.text;
+      }
+    } catch {
+      // Continue to next fallback model
+      continue;
+    }
+  }
+  return null;
 }
 
 // Health check and Database Status
@@ -438,14 +464,9 @@ Specific Goals/Notes: ${objectives || "Engaging hands-on activity, clear formati
 
 Format your response cleanly in Markdown with bold headers, bullet points, time breakdown, interactive activities, and an exit ticket.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
-
-    res.json({ plan: response.text || fallbackPlan });
-  } catch (error: any) {
-    console.warn("Lesson plan AI call notice, returning fallback:", error?.message);
+    const text = await safeGenerateContent(ai, { contents: prompt });
+    res.json({ plan: text || fallbackPlan });
+  } catch {
     res.json({ plan: fallbackPlan });
   }
 });
@@ -483,25 +504,19 @@ Generate a JSON object with two fields:
 "subject": A concise, clear email/SMS subject line in Arabic
 "message": The body of the message in Arabic.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const text = await safeGenerateContent(ai, {
       contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
+      config: { responseMimeType: "application/json" },
     });
 
-    try {
-      const parsed = JSON.parse(response.text || "{}");
-      res.json(parsed);
-    } catch {
-      res.json({
-        subject: fallbackSubject,
-        message: response.text || fallbackBody,
-      });
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        return res.json(parsed);
+      } catch {}
     }
-  } catch (error: any) {
-    console.warn("Parent message AI notice, returning fallback:", error?.message);
+    res.json({ subject: fallbackSubject, message: text || fallbackBody });
+  } catch {
     res.json({ subject: fallbackSubject, message: fallbackBody });
   }
 });
@@ -550,18 +565,19 @@ Return a valid JSON array of objects with the structure:
   }
 ]`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const text = await safeGenerateContent(ai, {
       contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
+      config: { responseMimeType: "application/json" },
     });
 
-    const parsed = JSON.parse(response.text || "[]");
-    res.json({ questions: Array.isArray(parsed) ? parsed : parsed.questions || fallbackQuestions });
-  } catch (error: any) {
-    console.warn("Quiz generator AI notice, returning fallback:", error?.message);
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        return res.json({ questions: Array.isArray(parsed) ? parsed : parsed.questions || fallbackQuestions });
+      } catch {}
+    }
+    res.json({ questions: fallbackQuestions });
+  } catch {
     res.json({ questions: fallbackQuestions });
   }
 });
@@ -658,109 +674,105 @@ Respond ONLY with this JSON schema:
   "positiveNotes": "string in Arabic"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const text = await safeGenerateContent(ai, {
       contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
+      config: { responseMimeType: "application/json" },
     });
 
-    try {
-      const parsed = JSON.parse(response.text || "{}");
-      if (parsed.attentionNeededStudents && Array.isArray(parsed.attentionNeededStudents)) {
-        parsed.attentionNeededStudents = parsed.attentionNeededStudents.map((st: any) => {
-          const matched = students.find((s: any) => s.id === st.studentId);
-          return {
-            ...st,
-            parentPhone: matched?.parentPhone || matched?.phone || "",
-          };
-        });
-      }
-      res.json(parsed);
-    } catch {
-      res.json(generateFallbackInsights());
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.attentionNeededStudents && Array.isArray(parsed.attentionNeededStudents)) {
+          parsed.attentionNeededStudents = parsed.attentionNeededStudents.map((st: any) => {
+            const matched = students.find((s: any) => s.id === st.studentId);
+            return {
+              ...st,
+              parentPhone: matched?.parentPhone || matched?.phone || "",
+            };
+          });
+        }
+        return res.json(parsed);
+      } catch {}
     }
-  } catch (error: any) {
-    console.warn("Attendance insights AI notice, returning fallback:", error?.message);
+    res.json(generateFallbackInsights());
+  } catch {
     res.json(generateFallbackInsights());
   }
 });
 
 // AI Student Evaluation / Report Card Comment
 app.post("/api/ai/student-remark", async (req, res) => {
+  const { studentName, subject, gradeAverage, attendanceRate, behaviorPoints, strengths, areasForGrowth } = req.body;
+  const fallbackRemark = {
+    remark: `${studentName || "الطالب"} أظهر التزاماً واجتهاداً ملحوظاً في مادة ${subject || "الدراسية"}. بمعدل إجمالي ${gradeAverage || "88%"} ونسبة حضور ممتازة (${attendanceRate || "95%"})، يشارك بفاعلية وتركيز في الأنشطة. للاستمرار في هذا التميز، يوصى بالتركيز على مراجعة النقاط الدقيقة قبل الاختبارات.`,
+    actionPlan: [
+      "المشاركة المستمرة في التدريبات والأنشطة التطبيقية",
+      "تخصيص وقت للمراجعة الأسبوعية للمفاهيم الأساسية",
+      "طرح الأسئلة ومتابعة أي استفسارات أثناء الحصة"
+    ]
+  };
+
+  const ai = getGenAI();
+  if (!ai) {
+    return res.json(fallbackRemark);
+  }
+
   try {
-    const { studentName, subject, gradeAverage, attendanceRate, behaviorPoints, strengths, areasForGrowth } = req.body;
-    const ai = getGenAI();
-
-    if (!ai) {
-      return res.json({
-        remark: `${studentName} has demonstrated steady dedication in ${subject} this term. With an overall average of ${gradeAverage || "88%"} and strong attendance (${attendanceRate || "95%"}), they consistently contribute thoughtful ideas to classroom discussions. To continue excelling, focusing on ${areasForGrowth || "thorough revision before assessments and detailed proofreading"} will help unlock their full potential. It is a pleasure having ${studentName} in class!`,
-        actionPlan: [
-          "Maintain active engagement in collaborative lab and group tasks",
-          "Complete regular 15-minute weekly review sessions on complex topics",
-          "Seek proactive clarification during office hours or review periods"
-        ]
-      });
-    }
-
-    const prompt = `Write a balanced, constructive, and motivating report card comment for a student.
+    const prompt = `Write a balanced, constructive, and motivating report card comment in Arabic for a student.
 Student Name: ${studentName}
 Subject: ${subject}
 Current Grade Average: ${gradeAverage}%
 Attendance: ${attendanceRate}%
 Merit/Demerit Points: ${behaviorPoints}
-Observed Strengths: ${strengths || "Good participation, respectful, active listener"}
-Areas for Growth: ${areasForGrowth || "Submitting homework consistently, double-checking exam work"}
+Observed Strengths: ${strengths || "مشاركة جيدة، تركيز في الحصة، أدب واجتهاد"}
+Areas for Growth: ${areasForGrowth || "المداومة على حل الواجبات بدقة، المراجعة قبل الاختبارات"}
 
 Return a JSON object:
 {
-  "remark": "2-3 polished sentences suitable for official report cards",
-  "actionPlan": ["Bullet 1", "Bullet 2", "Bullet 3"]
+  "remark": "2-3 polished sentences suitable for official report cards in Arabic",
+  "actionPlan": ["Bullet 1 in Arabic", "Bullet 2 in Arabic", "Bullet 3 in Arabic"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+    const text = await safeGenerateContent(ai, {
       contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
+      config: { responseMimeType: "application/json" },
     });
 
-    const parsed = JSON.parse(response.text || "{}");
-    res.json(parsed);
-  } catch (error: any) {
-    console.error("Student remark error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate student remark." });
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        return res.json(parsed);
+      } catch {}
+    }
+    res.json(fallbackRemark);
+  } catch {
+    res.json(fallbackRemark);
   }
 });
 
 // General AI Classroom Copilot
 app.post("/api/ai/copilot", async (req, res) => {
+  const { prompt, context } = req.body;
+  const fallbackResponse = {
+    response: `إليك أفضل التوصيات العملية للمعلم:\n\n1. **التنظيم والتسلسل:** تقسيم الأنشطة إلى مراحل واضحة (تمهيد، شرح تطبيقي، تقييم سريع).\n2. **التفاعل الإيجابي:** تشجيع المشاركة وطرح أسئلة بمستويات تفكير متدرجة.\n3. **المتابعة المستمرة:** رصد الملاحظات مباشرة لتقديم الدعم المناسب لكل طالب.`
+  };
+
+  const ai = getGenAI();
+  if (!ai) {
+    return res.json(fallbackResponse);
+  }
+
   try {
-    const { prompt, context } = req.body;
-    const ai = getGenAI();
+    const systemInstruction = "You are 'Classy Copilot', an expert K-12 educator, classroom management coach, and instructional designer. Provide clear, direct, actionable, practical, and empathetic advice to help teachers save time, engage students, and resolve classroom challenges in Arabic.";
 
-    if (!ai) {
-      return res.json({
-        response: `As an AI Teacher Assistant, here are actionable recommendations for "${prompt}":\n\n1. **Structured Engagement:** Use tiered questions (recall, application, analysis) to involve all learning styles.\n2. **Clear Feedback Loops:** Provide immediate formative feedback using rubrics or peer reviews.\n3. **Classroom Flow:** Establish transparent routines with 2-minute transition timers.\n\n*Note: Add a GEMINI_API_KEY in Settings > Secrets for real-time live generative responses.*`
-      });
-    }
-
-    const systemInstruction = "You are 'Classy Copilot', an expert K-12 educator, classroom management coach, and instructional designer. Provide clear, direct, actionable, practical, and empathetic advice to help teachers save time, engage students, and resolve classroom challenges.";
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+    const text = await safeGenerateContent(ai, {
       contents: `${context ? `Context: ${context}\n\n` : ""}Teacher Question: ${prompt}`,
-      config: {
-        systemInstruction,
-      },
+      config: { systemInstruction },
     });
 
-    res.json({ response: response.text || "No response received." });
-  } catch (error: any) {
-    console.error("Copilot error:", error);
-    res.status(500).json({ error: error.message || "Failed to consult copilot." });
+    res.json({ response: text || fallbackResponse.response });
+  } catch {
+    res.json(fallbackResponse);
   }
 });
 

@@ -107,6 +107,8 @@ export interface Student {
   avatarColor: string;
   profilePhoto?: string; // Lightweight base64 image data URL (< 30KB)
   achievementFrame?: AchievementFrame; // إطار التميز (none, gold, silver, platinum, crown, star, champion)
+  archivedAt?: string; // تاريخ الأرشفة عند الحذف الآمن مع الاحتفاظ بالسجلات
+  archivedReason?: string; // سبب الأرشفة
   createdAt: string;
   updatedAt?: string;
 }

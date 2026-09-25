@@ -251,13 +251,13 @@ export default function App() {
       )}
 
       {/* Modern Mobile Frame */}
-      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#F8FAFC] md:rounded-[40px] md:border-[8px] md:border-[#1E293B] md:ring-1 md:ring-white/10 flex flex-col overflow-hidden shadow-2xl text-[#0F172A]">
+      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#F6F7FC] md:rounded-[40px] md:border-[8px] md:border-[#17163D] md:ring-1 md:ring-white/10 flex flex-col overflow-hidden shadow-2xl text-[#191A2E]">
         
         {/* Mobile Punch-hole Camera */}
-        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#0F172A] border border-[#334155] z-50 pointer-events-none shadow-inner" />
+        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#17163D] border border-[#403B9C]/40 z-50 pointer-events-none shadow-inner" />
 
         {/* Main Screen Body */}
-        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F8FAFC]">
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#F6F7FC]">
           
           {!currentUser ? (
             <AuthView onLoginSuccess={handleLoginSuccess} />

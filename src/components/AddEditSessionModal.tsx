@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, CalendarCheck2, Clock, Calendar, BookOpen, DollarSign } from 'lucide-react';
+import { X, CalendarCheck2, Clock, Calendar, BookOpen, DollarSign, Check } from 'lucide-react';
 import { Session, Group } from '../types';
 import { db, getEffectiveSessionPrice, roundMoney, multiplyMoney } from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { useTranslation } from '../utils/i18n';
 
 interface AddEditSessionModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   allGroups,
   onSaveComplete,
 }) => {
+  const { t, isRTL } = useTranslation();
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [groupId, setGroupId] = useState(defaultGroupId || allGroups[0]?.id || '');
@@ -167,40 +169,40 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#191A2E]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir="rtl"
+        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-3xl sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         
-        {/* Header - Fixed Top */}
-        <div className="p-4 flex items-center justify-between border-b border-[#E8E7FF] bg-white shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#7657F6] text-white shadow-sm">
-              <CalendarCheck2 className="w-5 h-5" />
+        {/* Signature Header */}
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+          <div className="flex items-center gap-3 relative z-10 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-sm shrink-0">
+              <CalendarCheck2 className="w-5 h-5 text-[#55C7E8]" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-[#191A2E]">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
                 {editingSession ? 'تعديل بيانات الحصة' : 'جدولة حصة دراسية جديدة'}
               </h2>
-              <p className="text-[11px] text-[#74778F]">
-                تدعم أكثر من حصة في نفس اليوم ومرتبطة بالتاريخ والشهر والسنة
+              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
+                تدعم أكثر من حصة في نفس اليوم ومرتبطة بالسجل المحاسبي
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-[#F6F7FC] text-[#74778F] hover:text-[#191A2E] hover:bg-[#E8E7FF]"
+            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body - Scrollable */}
-        <form id="add-session-form" onSubmit={handleSubmit} className="p-4 overflow-y-auto overscroll-contain android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E]">
+        <form id="add-session-form" onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto overscroll-contain android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E]">
           
           {/* Select Group */}
-          <div>
-            <label className="block font-bold text-[#74778F] mb-1">المجموعة المستهدفة *</label>
+          <div className="classy-card p-3.5 space-y-1.5">
+            <label className="font-black text-xs text-[#17163D] mb-1">المجموعة المستهدفة *</label>
             <select
               value={groupId}
               onChange={(e) => {
@@ -209,7 +211,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                 const grp = allGroups.find((g) => g.id === gId);
                 if (grp) setPricePerStudent(getEffectiveSessionPrice(null, grp));
               }}
-              className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none focus:border-[#7657F6]"
+              className="classy-select"
             >
               {allGroups.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -220,73 +222,73 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
           </div>
 
           {/* Title / Topic */}
-          <div>
-            <label className="block font-bold text-[#74778F] mb-1">عنوان أو موضوع الحصة *</label>
+          <div className="classy-card p-3.5 space-y-1.5">
+            <label className="font-black text-xs text-[#17163D] mb-1">عنوان أو موضوع الحصة *</label>
             <input
               type="text"
               required
               placeholder="مثال: الباب الأول - شرح قوانين الحركة وحل مسائل"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none focus:border-[#7657F6]"
+              className="classy-input"
             />
           </div>
 
           {/* Date & Day */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div>
-              <label className="block font-bold text-[#74778F] mb-1">تاريخ الحصة *</label>
+            <div className="classy-card p-3 space-y-1">
+              <label className="font-black text-xs text-[#17163D] mb-1">تاريخ الحصة *</label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none focus:border-[#7657F6]"
+                className="classy-input font-bold"
               />
             </div>
 
-            <div>
-              <label className="block font-bold text-[#74778F] mb-1">رقم الحصة التسلسلي</label>
+            <div className="classy-card p-3 space-y-1">
+              <label className="font-black text-xs text-[#17163D] mb-1">رقم الحصة التسلسلي</label>
               <input
                 type="number"
                 min={1}
                 value={sessionNumber}
                 onChange={(e) => setSessionNumber(Number(e.target.value))}
-                className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none"
+                className="classy-input font-bold"
               />
             </div>
           </div>
 
           {/* Times */}
           <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="block font-bold text-[#74778F] mb-1">وقت البدء</label>
+            <div className="classy-card p-3 space-y-1">
+              <label className="font-black text-xs text-[#17163D] mb-1">وقت البدء</label>
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => handleTimeChange(e.target.value, endTime)}
-                className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none"
+                className="classy-input font-bold"
               />
             </div>
 
-            <div>
-              <label className="block font-bold text-[#74778F] mb-1">وقت الانتهاء</label>
+            <div className="classy-card p-3 space-y-1">
+              <label className="font-black text-xs text-[#17163D] mb-1">وقت الانتهاء</label>
               <input
                 type="time"
                 value={endTime}
                 onChange={(e) => handleTimeChange(startTime, e.target.value)}
-                className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none"
+                className="classy-input font-bold"
               />
             </div>
           </div>
 
           {/* Status & Pricing Options */}
-          <div>
-            <label className="block font-bold text-[#74778F] mb-1">حالة الحصة</label>
+          <div className="classy-card p-3.5 space-y-1.5">
+            <label className="font-black text-xs text-[#17163D] mb-1">حالة الحصة</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none"
+              className="classy-select"
             >
               <option value="scheduled">مجدولة (قادمة)</option>
               <option value="completed">تمت واكتملت</option>
@@ -295,17 +297,17 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
           </div>
 
           {isHourly ? (
-            <div className="p-3 bg-[#E8E7FF] border border-[#E8E7FF] rounded-2xl space-y-2.5">
+            <div className="classy-card p-4 space-y-3 bg-[#E8E7FF]/30 border-[#D8D5FB]">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#191A2E]">حساب الحصة بالساعة (مجموعة بالساعة)</span>
-                <span className="text-[11px] font-bold text-[#7657F6]">
+                <span className="text-xs font-black text-[#17163D]">حساب الحصة بالساعة (مجموعة بالساعة)</span>
+                <span className="text-xs font-black text-[#7657F6]">
                   الإجمالي: {multiplyMoney(hours, hourlyRate)} ج.م
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-[#74778F] mb-1">مدة الحصة (بالساعات)</label>
+                  <label className="block text-[11px] font-black text-[#74778F] mb-1">مدة الحصة (بالساعات)</label>
                   <input
                     type="number"
                     step="0.25"
@@ -316,12 +318,12 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                       setHours(h);
                       setPricePerStudent(multiplyMoney(h, hourlyRate));
                     }}
-                    className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2 text-xs text-[#191A2E] focus:outline-none"
+                    className="classy-input font-bold"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-[#74778F] mb-1">سعر الساعة للطالب (ج.م)</label>
+                  <label className="block text-[11px] font-black text-[#74778F] mb-1">سعر الساعة للطالب (ج.م)</label>
                   <input
                     type="number"
                     step="any"
@@ -332,7 +334,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                       setHourlyRate(rate);
                       setPricePerStudent(multiplyMoney(hours, rate));
                     }}
-                    className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2 text-xs text-[#191A2E] focus:outline-none"
+                    className="classy-input font-bold"
                   />
                 </div>
               </div>
@@ -347,9 +349,9 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
                       setHours(val);
                       setPricePerStudent(multiplyMoney(val, hourlyRate));
                     }}
-                    className={`flex-1 py-1 text-[10px] font-bold rounded-lg border transition-all ${
+                    className={`flex-1 py-1 text-xs font-black rounded-xl border transition-all cursor-pointer ${
                       hours === val
-                        ? 'bg-[#7657F6] text-white border-[#7657F6]'
+                        ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-xs'
                         : 'bg-white text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]'
                     }`}
                   >
@@ -359,48 +361,49 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
               </div>
             </div>
           ) : (
-            <div>
-              <label className="block font-bold text-[#74778F] mb-1">سعر الحصة للطالب (ج.م)</label>
+            <div className="classy-card p-3.5 space-y-1.5">
+              <label className="font-black text-xs text-[#17163D] mb-1">سعر الحصة للطالب (ج.م)</label>
               <input
                 type="number"
                 step="any"
                 min={0}
                 value={pricePerStudent}
                 onChange={(e) => setPricePerStudent(Number(e.target.value))}
-                className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none"
+                className="classy-input font-bold"
               />
             </div>
           )}
 
           {/* Notes */}
-          <div>
-            <label className="block font-bold text-[#74778F] mb-1">ملاحظات أو واجبات الحصة</label>
+          <div className="classy-card p-3.5 space-y-1.5">
+            <label className="font-black text-xs text-[#17163D] mb-1">ملاحظات أو واجبات الحصة</label>
             <textarea
               rows={2}
               placeholder="الواجب المطلوب: صفحة 24 إلى 28..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-white border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] focus:outline-none resize-none"
+              className="classy-textarea"
             />
           </div>
 
         </form>
 
         {/* Pinned Sticky Action Footer */}
-        <div className="p-3.5 bg-white border-t border-[#E8E7FF] flex items-center gap-2 shrink-0">
+        <div className="p-4 bg-white border-t border-[#E8E7FF] flex items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-bold text-xs hover:bg-[#F6F7FC] transition-all"
+            className="flex-1 py-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs hover:bg-[#F6F7FC] transition-all cursor-pointer"
           >
-            إلغاء
+            {t('cancel')}
           </button>
           <button
             type="submit"
             form="add-session-form"
-            className="flex-1 py-3 rounded-2xl bg-[#7657F6] hover:bg-[#6344E0] text-white font-bold text-xs shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-1.5"
+            className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white font-black text-xs shadow-lg shadow-[#7657F6]/30 transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer hover:brightness-105"
           >
-            <span>{editingSession ? 'حفظ تعديلات الحصة' : 'جدولة الحصة'}</span>
+            <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
+            <span>{editingSession ? 'حفظ تعديلات الحصة' : '+ جدولة الحصة'}</span>
           </button>
         </div>
 

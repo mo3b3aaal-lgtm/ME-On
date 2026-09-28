@@ -19,6 +19,7 @@ import { PREDEFINED_BEHAVIOR_TAGS } from '../utils/behavior';
 import { db } from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { StudentAvatar } from './StudentAvatar';
+import { useTranslation } from '../utils/i18n';
 
 interface QuickBehaviorLogModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
   availableGroups = [],
   onSuccess,
 }) => {
+  const { t, isRTL } = useTranslation();
   const modalLayer = useModalLayer('quick-behavior-log-modal', isOpen, onClose);
 
   // Filter state for predefined tags
@@ -67,7 +69,6 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
 
   useEffect(() => {
     if (isOpen && student) {
-      // Default tag: 'مشاركة وتفاعل ممتاز' (Excellent participation)
       const defaultTag = PREDEFINED_BEHAVIOR_TAGS.find((t) => t.id === 'excellent_participation') || PREDEFINED_BEHAVIOR_TAGS[0];
       setSelectedTag(defaultTag);
       setIsCustomMode(false);
@@ -160,30 +161,30 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir="rtl"
+        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F8FAFC] border border-slate-200 rounded-t-3xl sm:rounded-[28px] max-w-xl w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-xl w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative">
           
-          {/* Header */}
-          <div className="p-4 flex items-center justify-between border-b border-slate-200 bg-white">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 shadow-2xs">
-                <Zap className="w-5 h-5" />
+          {/* Signature Classy Header */}
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+            <div className="flex items-center gap-3 relative z-10 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Zap className="w-5 h-5 text-[#55C7E8]" />
               </div>
-              <div>
-                <h2 className="text-base font-black text-[#0F172A] flex items-center gap-1.5">
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2 truncate">
                   <span>تسجيل سلوك وتفاعل سريع</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
                     Quick Log
                   </span>
                 </h2>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs font-bold text-slate-700">{student.name}</span>
+                  <span className="text-xs font-bold text-[#E8E7FF]">{student.name}</span>
                   {student.gradeLevel && (
                     <>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-[11px] text-slate-500 font-medium">{student.gradeLevel}</span>
+                      <span className="text-[#E8E7FF]/50">•</span>
+                      <span className="text-[11px] text-[#E8E7FF]/80 font-medium">{student.gradeLevel}</span>
                     </>
                   )}
                 </div>
@@ -193,50 +194,50 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             <button
               onClick={onClose}
               type="button"
-              className="p-1.5 rounded-full bg-slate-100 text-slate-500 hover:text-[#0F172A] hover:bg-slate-200 transition-colors cursor-pointer"
+              className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Form Content */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto android-scrollbar p-4 space-y-4">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto android-scrollbar p-4 sm:p-5 space-y-4 text-xs text-[#191A2E]">
             
             {/* Student Pill Bar */}
-            <div className="p-2.5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
+            <div className="classy-card p-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <StudentAvatar
                   student={student}
                   size="sm"
-                  showAchievementFrame={true}
+                  showFrame={true}
                   className="shrink-0"
                 />
-                <div>
-                  <h4 className="text-xs font-black text-[#0F172A] leading-tight">{student.name}</h4>
-                  <p className="text-[10px] text-slate-500 mt-0.5">رصد فوري لتقييم الحصة والسلوك</p>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black text-[#17163D] leading-tight truncate">{student.name}</h4>
+                  <p className="text-[10px] text-[#74778F] mt-0.5">رصد فوري لتقييم الحصة والأداء</p>
                 </div>
               </div>
 
               {/* Quick Points Display Badge */}
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200">
-                <Award className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-[11px] font-black text-slate-700">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#E8E7FF]/50 border border-[#D8D5FB] shrink-0">
+                <Award className="w-3.5 h-3.5 text-[#7657F6]" />
+                <span className="text-xs font-black text-[#17163D]">
                   {points > 0 ? `+${points}` : points} نقطة
                 </span>
               </div>
             </div>
 
             {/* Category Filter Tabs */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-slate-700">اختر نوع التقييم / الوسم:</label>
+                <label className="text-xs font-black text-[#17163D]">اختر نوع التقييم / الوسم:</label>
                 <button
                   type="button"
                   onClick={handleEnableCustomTag}
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                  className={`text-[11px] font-black px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
                     isCustomMode
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                      : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'
+                      ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-xs'
+                      : 'bg-white text-[#7657F6] border-[#D8D5FB] hover:bg-[#E8E7FF]/40'
                   }`}
                 >
                   <Plus className="w-3 h-3" />
@@ -244,14 +245,14 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 android-scrollbar">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                 <button
                   type="button"
                   onClick={() => setActiveCategory('all')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                     activeCategory === 'all'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                      ? 'bg-[#17163D] text-white shadow-xs'
+                      : 'bg-white text-[#74778F] border border-[#E8E7FF] hover:bg-[#F6F7FC]'
                   }`}
                 >
                   الكل
@@ -259,9 +260,9 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveCategory('positive')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeCategory === 'positive'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      ? 'bg-emerald-600 text-white shadow-xs'
                       : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50'
                   }`}
                 >
@@ -271,10 +272,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveCategory('needs_improvement')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeCategory === 'needs_improvement'
-                      ? 'bg-rose-600 text-white shadow-2xs'
-                      : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-50'
+                      ? 'bg-[#FF647C] text-white shadow-xs'
+                      : 'bg-white text-[#FF647C] border border-[#FECDD3] hover:bg-[#FFF1F3]'
                   }`}
                 >
                   <span>⚠️</span>
@@ -283,10 +284,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveCategory('neutral')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeCategory === 'neutral'
-                      ? 'bg-slate-700 text-white shadow-2xs'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      ? 'bg-[#403B9C] text-white shadow-xs'
+                      : 'bg-white text-[#403B9C] border border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                   }`}
                 >
                   <span>📝</span>
@@ -297,17 +298,17 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
 
             {/* Custom Mode Tag Input */}
             {isCustomMode && (
-              <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-2.5 animate-in fade-in duration-150">
+              <div className="classy-card p-3.5 space-y-2.5 bg-[#E8E7FF]/30 border-[#D8D5FB] animate-in fade-in duration-150">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-indigo-900 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#7657F6]" />
                     كتابة وسم مخصص
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setCategory('positive')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
                         category === 'positive'
                           ? 'bg-emerald-600 text-white'
                           : 'bg-white text-emerald-700 border border-emerald-200'
@@ -318,10 +319,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setCategory('needs_improvement')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
                         category === 'needs_improvement'
-                          ? 'bg-rose-600 text-white'
-                          : 'bg-white text-rose-700 border border-rose-200'
+                          ? 'bg-[#FF647C] text-white'
+                          : 'bg-white text-[#FF647C] border border-[#FECDD3]'
                       }`}
                     >
                       يحتاج تحسين
@@ -329,10 +330,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setCategory('neutral')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
                         category === 'neutral'
-                          ? 'bg-slate-700 text-white'
-                          : 'bg-white text-slate-700 border border-slate-200'
+                          ? 'bg-[#17163D] text-white'
+                          : 'bg-white text-[#191A2E] border border-[#E8E7FF]'
                       }`}
                     >
                       عام
@@ -345,7 +346,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   value={customTagName}
                   onChange={(e) => setCustomTagName(e.target.value)}
                   placeholder="مثال: تميز في حفظ جدول الضرب، حل مسألة صعبة..."
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-indigo-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800"
+                  className="classy-input font-bold"
                   autoFocus
                 />
               </div>
@@ -360,26 +361,26 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     key={tag.id}
                     type="button"
                     onClick={() => handleSelectPredefinedTag(tag)}
-                    className={`p-2.5 rounded-2xl border text-right transition-all flex flex-col justify-between gap-1.5 cursor-pointer text-xs ${
+                    className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between gap-2 cursor-pointer text-xs ${
                       isSelected
-                        ? 'border-indigo-600 bg-indigo-50/90 ring-2 ring-indigo-500/40 shadow-xs'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-[#7657F6] bg-[#E8E7FF]/40 ring-2 ring-[#7657F6]/25 shadow-xs'
+                        : 'border-[#E8E7FF] bg-white hover:border-[#D8D5FB] hover:bg-[#F6F7FC]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1 w-full">
-                      <span className="text-base leading-none">{tag.emoji}</span>
+                      <span className="text-lg leading-none">{tag.emoji}</span>
                       {isSelected ? (
-                        <span className="p-0.5 rounded-full bg-indigo-600 text-white">
-                          <Check className="w-3 h-3" />
+                        <span className="p-1 rounded-full bg-[#7657F6] text-white">
+                          <Check className="w-3 h-3 stroke-[3]" />
                         </span>
                       ) : (
                         <span
-                          className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
                             (tag.points ?? 0) > 0
-                              ? 'bg-emerald-50 text-emerald-700'
+                              ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]'
                               : (tag.points ?? 0) < 0
-                              ? 'bg-rose-50 text-rose-700'
-                              : 'bg-slate-100 text-slate-600'
+                              ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+                              : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF]'
                           }`}
                         >
                           {(tag.points ?? 0) > 0 ? `+${tag.points}` : tag.points}
@@ -387,9 +388,9 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       )}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800 text-[11px] leading-tight line-clamp-1">{tag.name}</h4>
+                      <h4 className="font-black text-[#17163D] text-xs leading-tight line-clamp-1">{tag.name}</h4>
                       {tag.nameEn && (
-                        <p className="text-[9px] text-slate-600 mt-0.5 line-clamp-1">{tag.nameEn}</p>
+                        <p className="text-[10px] text-[#74778F] mt-0.5 line-clamp-1 font-medium">{tag.nameEn}</p>
                       )}
                     </div>
                   </button>
@@ -398,10 +399,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             </div>
 
             {/* Timestamp & Timing Controls */}
-            <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-2.5">
+            <div className="classy-card p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-slate-800">
-                  <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#17163D]">
+                  <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
                   <span>توقيت التسجيل (Timestamp):</span>
                 </div>
 
@@ -409,10 +410,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsCustomTimestamp(false)}
-                    className={`px-2.5 py-1 rounded-xl font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-xl font-black transition-all cursor-pointer text-[11px] ${
                       !isCustomTimestamp
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        ? 'bg-[#17163D] text-white shadow-xs'
+                        : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]'
                     }`}
                   >
                     الآن (تلقائي)
@@ -420,10 +421,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsCustomTimestamp(true)}
-                    className={`px-2.5 py-1 rounded-xl font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-xl font-black transition-all cursor-pointer text-[11px] ${
                       isCustomTimestamp
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        ? 'bg-[#17163D] text-white shadow-xs'
+                        : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]'
                     }`}
                   >
                     تحديد وقت سابق
@@ -434,28 +435,28 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               {isCustomTimestamp ? (
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">التاريخ:</label>
+                    <label className="text-[10px] font-bold text-[#74778F] mb-1 block">التاريخ:</label>
                     <input
                       type="date"
                       value={customDate}
                       onChange={(e) => setCustomDate(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-xs font-bold rounded-xl bg-slate-50 border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                      className="classy-input font-bold"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">الوقت:</label>
+                    <label className="text-[10px] font-bold text-[#74778F] mb-1 block">الوقت:</label>
                     <input
                       type="time"
                       value={customTime}
                       onChange={(e) => setCustomTime(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-xs font-bold rounded-xl bg-slate-50 border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                      className="classy-input font-bold"
                     />
                   </div>
                 </div>
               ) : (
-                <div className="p-2 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between text-[11px] text-slate-600">
+                <div className="p-2.5 bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl flex items-center justify-between text-[11px] text-[#74778F]">
                   <span>سيتم حفظ التقييم بتوقيت اللحظة الحالية بدقة.</span>
-                  <span className="font-bold text-indigo-700">
+                  <span className="font-black text-[#17163D]">
                     {new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                   </span>
                 </div>
@@ -466,15 +467,15 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {/* Group selection */}
               {studentGroups.length > 0 && (
-                <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-1.5">
-                  <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                <div className="classy-card p-3 space-y-1.5">
+                  <label className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-[#7657F6]" />
                     <span>المجموعة / الحصة المرتبطة:</span>
                   </label>
                   <select
                     value={selectedGroupId}
                     onChange={(e) => setSelectedGroupId(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs font-bold rounded-xl bg-slate-50 border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800 cursor-pointer"
+                    className="classy-select"
                   >
                     <option value="">عام (بدون مجموعة محددة)</option>
                     {studentGroups.map((g) => (
@@ -487,21 +488,21 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               )}
 
               {/* Points Adjustment */}
-              <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-1.5">
-                <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-amber-500" />
+              <div className="classy-card p-3 space-y-1.5">
+                <label className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-[#7657F6]" />
                   <span>النقاط / التأثير:</span>
                 </label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {[-10, -5, 0, 5, 10, 15].map((val) => (
                     <button
                       key={val}
                       type="button"
                       onClick={() => setPoints(val)}
-                      className={`flex-1 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex-1 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
                         points === val
-                          ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-500'
-                          : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#7657F6] text-white shadow-xs ring-1 ring-[#7657F6]'
+                          : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
                       }`}
                     >
                       {val > 0 ? `+${val}` : val}
@@ -512,9 +513,9 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             </div>
 
             {/* Note & Comments */}
-            <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-1.5">
-              <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-slate-500" />
+            <div className="classy-card p-3 space-y-1.5">
+              <label className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-[#7657F6]" />
                 <span>ملاحظة أو تفاصيل إضافية (اختياري):</span>
               </label>
               <textarea
@@ -522,41 +523,41 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="أضف أي تفاصيل سريعة تخص هذا التقييم، تفاعل الطالب، أو سبب التنبيه..."
                 rows={2}
-                className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800 resize-none font-medium"
+                className="classy-textarea"
               />
             </div>
 
           </form>
 
           {/* Footer Actions */}
-          <div className="p-4 bg-white border-t border-slate-200 flex items-center gap-2">
+          <div className="p-4 bg-white border-t border-[#E8E7FF] flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting || isSavedSuccess}
-              className="flex-1 py-3 rounded-2xl border border-slate-200 bg-white text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all disabled:opacity-50 cursor-pointer"
+              className="flex-1 py-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs hover:bg-[#F6F7FC] transition-all disabled:opacity-50 cursor-pointer"
             >
-              إلغاء
+              {t('cancel')}
             </button>
 
             <button
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || isSavedSuccess || (isCustomMode && !customTagName.trim())}
-              className={`flex-1 py-3 rounded-2xl text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 py-3 rounded-2xl text-white font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 isSavedSuccess
-                  ? 'bg-emerald-700 scale-[0.99] ring-2 ring-emerald-500/50'
-                  : 'btn-primary'
+                  ? 'bg-emerald-600 ring-2 ring-emerald-500/50'
+                  : 'bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] shadow-[#7657F6]/30 hover:brightness-105 active:scale-95'
               }`}
             >
               {isSavedSuccess ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 animate-bounce" />
+                  <CheckCircle2 className="w-4 h-4" />
                   <span>تم حفظ التقييم بنجاح!</span>
                 </>
               ) : (
                 <>
-                  <Zap className="w-4 h-4" />
+                  <Zap className="w-4 h-4 text-[#55C7E8]" />
                   <span>حفظ تقييم السلوك</span>
                 </>
               )}

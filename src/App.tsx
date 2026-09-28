@@ -287,9 +287,16 @@ export default function App() {
                 <StudentsView
                   students={students}
                   groups={groups}
+                  sessions={sessions}
+                  payments={payments}
                   onOpenAddStudent={handleOpenAddStudent}
                   onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
+                  onOpenEditStudent={handleOpenEditStudent}
+                  onOpenAddPayment={(s, enrId) => handleOpenAddPayment(s, enrId)}
+                  onOpenAddSession={(defaultGroupId, defaultDate) => handleOpenAddSession(defaultGroupId, defaultDate)}
+                  onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
                   onOpenBulkAddSession={(stList) => handleOpenBulkAddSession(stList)}
+                  onDataChanged={refreshData}
                 />
               )}
 
@@ -297,8 +304,18 @@ export default function App() {
                 <GroupsView
                   groups={groups}
                   allStudents={students}
+                  sessions={sessions}
+                  payments={payments}
                   onOpenAddGroup={handleOpenAddGroup}
                   onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
+                  onEditGroup={handleOpenEditGroup}
+                  onOpenAddSession={(groupId, date) => handleOpenAddSession(groupId, date)}
+                  onOpenAddStudent={handleOpenAddStudent}
+                  onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+                  onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+                  onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+                  onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
+                  onDataChanged={refreshData}
                 />
               )}
 
@@ -307,9 +324,12 @@ export default function App() {
                   sessions={sessions}
                   groups={groups}
                   students={students}
+                  payments={payments}
                   onOpenAddSession={handleOpenAddSession}
                   onEditSession={handleOpenEditSession}
                   onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+                  onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+                  onOpenGroupProfile={(grp) => setSelectedGroupForProfile(grp)}
                   onSessionDeleted={refreshData}
                   onDataChanged={refreshData}
                 />

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, BookOpen, Layers, CheckCircle2, Sparkles, Hash, AlignRight, Timer } from 'lucide-react';
+import { X, Calendar, Clock, BookOpen, Layers, CheckCircle2, Sparkles, Hash, AlignRight, Timer, Check } from 'lucide-react';
 import { Student, Enrollment, Group } from '../types';
 import { db, roundMoney, multiplyMoney, divideMoney } from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { useTranslation } from '../utils/i18n';
 
 interface RecordPrivateSessionModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   student,
   onSaveComplete,
 }) => {
+  const { t, isRTL } = useTranslation();
   const todayStr = new Date().toISOString().split('T')[0];
   const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -170,48 +172,50 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200"
-        dir="rtl"
+        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F7F8FC] border border-slate-200 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         
-        {/* Header */}
-        <div className="p-4 bg-gradient-to-l from-[#0F172A] via-[#172554] to-[#1E293B] text-white relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#C9A227]/20 text-[#E0C35A] border border-[#C9A227]/30 flex items-center justify-center font-bold shrink-0">
-              <Sparkles className="w-5 h-5" />
+        {/* Signature Classy Header */}
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+          <div className="flex items-center gap-3 relative z-10 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Sparkles className="w-5 h-5 text-[#55C7E8]" />
             </div>
-            <div>
-              <h3 className="font-bold text-sm text-white">تسجيل حصة Private</h3>
-              <p className="text-[11px] text-slate-300 flex items-center gap-1.5 mt-0.5">
-                <span>الطالب:</span>
-                <strong className="text-white font-bold">{student.name}</strong>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
+                تسجيل حصة Private
+              </h2>
+              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
+                الطالب: <strong className="text-white font-black">{student.name}</strong>
               </p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto android-scrollbar flex-1 text-xs text-slate-700">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 overflow-y-auto android-scrollbar flex-1 text-xs text-[#191A2E]">
           
           {/* If student has multiple private subjects/groups */}
           {studentPrivateEnrollments.length > 1 && (
-            <div className="space-y-1">
-              <label className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-[#C9A227]" />
+            <div className="classy-card p-3.5 space-y-1.5">
+              <label className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[#7657F6]" />
                 <span>اختر المادة / الاشتراك الخاص:</span>
               </label>
               <select
                 value={selectedEnrollmentId}
                 onChange={(e) => setSelectedEnrollmentId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 focus:ring-2 focus:ring-[#C9A227] outline-hidden cursor-pointer"
+                className="w-full classy-select"
               >
                 {studentPrivateEnrollments.map((enr) => {
                   const grp = allGroups.find((g) => g.id === enr.groupId);
@@ -227,9 +231,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-2.5">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-800 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#172554]" />
+            <div className="classy-card p-3 space-y-1">
+              <label className="font-black text-xs text-[#17163D] flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-[#7657F6]" />
                 <span>التاريخ:</span>
               </label>
               <input
@@ -237,13 +241,13 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-xs focus:ring-2 focus:ring-[#172554] outline-hidden"
+                className="classy-input font-bold"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="font-bold text-slate-800 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-[#172554]" />
+            <div className="classy-card p-3 space-y-1">
+              <label className="font-black text-xs text-[#17163D] flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
                 <span>وقت البدء:</span>
               </label>
               <input
@@ -251,30 +255,30 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                 required
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-xs focus:ring-2 focus:ring-[#172554] outline-hidden"
+                className="classy-input font-bold"
               />
             </div>
           </div>
 
           {/* Duration in Hours (If Hourly) OR Session Count */}
           {isHourly ? (
-            <div className="space-y-2.5 p-3.5 bg-white rounded-2xl border border-amber-200 shadow-xs">
-              <label className="font-bold text-slate-900 text-xs flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-amber-800">
-                  <Timer className="w-4 h-4" />
+            <div className="classy-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
+                  <Timer className="w-4 h-4 text-[#7657F6]" />
                   <span>مدة الحصة بالساعات:</span>
-                </span>
-                <span className="text-xs font-black text-[#C9A227]">
+                </label>
+                <span className="text-xs font-black text-[#7657F6]">
                   {hours} {hours === 1 ? 'ساعة' : hours === 2 ? 'ساعتان' : 'ساعة'}
                   {Math.round((hours % 1) * 60) > 0 ? ` (${Math.floor(hours)} س و ${Math.round((hours % 1) * 60)} د)` : ''}
                 </span>
-              </label>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setHours((prev) => Math.max(0.25, Number((prev - 0.25).toFixed(2))))}
-                  className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 font-black text-base text-slate-800 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center shadow-xs cursor-pointer"
+                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
                 >
                   -
                 </button>
@@ -285,12 +289,12 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   required
                   value={hours}
                   onChange={(e) => setHours(Math.max(0.25, parseFloat(e.target.value) || 1))}
-                  className="flex-1 p-2.5 text-center text-base font-black rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-[#C9A227] outline-hidden"
+                  className="classy-input flex-1 text-center font-black text-base"
                 />
                 <button
                   type="button"
                   onClick={() => setHours((prev) => Number((prev + 0.25).toFixed(2)))}
-                  className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 font-black text-base text-slate-800 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center shadow-xs cursor-pointer"
+                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
                 >
                   +
                 </button>
@@ -298,23 +302,22 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
               {/* Quick presets for hours */}
               <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                <span className="text-[10px] text-slate-400 font-bold">خيارات سريعة:</span>
+                <span className="text-[11px] text-[#74778F] font-bold">خيارات سريعة:</span>
                 {[
-                  { val: 1, label: '1 ساعة' },
-                  { val: 1.5, label: '1.5 ساعة (1:30)' },
-                  { val: 2, label: '2 ساعة' },
-                  { val: 2.25, label: '2.25 س (2:15)' },
-                  { val: 2.5, label: '2.5 ساعة (2:30)' },
-                  { val: 3, label: '3 ساعات' },
+                  { val: 1, label: '1 س' },
+                  { val: 1.5, label: '1.5 س (1:30)' },
+                  { val: 2, label: '2 س' },
+                  { val: 2.5, label: '2.5 س (2:30)' },
+                  { val: 3, label: '3 س' },
                 ].map((preset) => (
                   <button
                     key={preset.val}
                     type="button"
                     onClick={() => setHours(preset.val)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer ${
                       hours === preset.val
-                        ? 'bg-[#C9A227] text-white border-[#C9A227]'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-xs'
+                        : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]'
                     }`}
                   >
                     {preset.label}
@@ -323,20 +326,20 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               </div>
             </div>
           ) : (
-            <div className="space-y-2 p-3 bg-white rounded-2xl border border-slate-200">
-              <label className="font-bold text-slate-900 text-xs flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Hash className="w-4 h-4 text-[#C9A227]" />
+            <div className="classy-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
+                  <Hash className="w-4 h-4 text-[#7657F6]" />
                   <span>عدد الحصص المسجلة:</span>
-                </span>
-                <span className="text-[11px] font-bold text-slate-400">حصة واحدة أو أكثر</span>
-              </label>
+                </label>
+                <span className="text-[11px] font-bold text-[#74778F]">حصة واحدة أو أكثر</span>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setSessionCount((prev) => Math.max(1, (Number(prev) || 1) - 1))}
-                  className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 font-black text-base text-slate-800 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center shadow-xs cursor-pointer"
+                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
                 >
                   -
                 </button>
@@ -347,12 +350,12 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   required
                   value={sessionCount}
                   onChange={(e) => setSessionCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="flex-1 p-2.5 text-center text-base font-black rounded-xl border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-[#C9A227] outline-hidden"
+                  className="classy-input flex-1 text-center font-black text-base"
                 />
                 <button
                   type="button"
                   onClick={() => setSessionCount((prev) => (Number(prev) || 1) + 1)}
-                  className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 font-black text-base text-slate-800 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center shadow-xs cursor-pointer"
+                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
                 >
                   +
                 </button>
@@ -360,16 +363,16 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
               {/* Quick Presets for Sessions */}
               <div className="flex items-center gap-1.5 pt-1">
-                <span className="text-[10px] text-slate-400 font-bold">اختيار سريع:</span>
+                <span className="text-[11px] text-[#74778F] font-bold">اختيار سريع:</span>
                 {[1, 2, 3, 4].map((cnt) => (
                   <button
                     key={cnt}
                     type="button"
                     onClick={() => setSessionCount(cnt)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer ${
                       sessionCount === cnt
-                        ? 'bg-[#C9A227] text-white border-[#C9A227]'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-xs'
+                        : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]'
                     }`}
                   >
                     {cnt} {cnt === 1 ? 'حصة' : 'حصص'}
@@ -380,28 +383,28 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
           )}
 
           {/* Attendance Status Selection */}
-          <div className="space-y-2 p-3.5 bg-white rounded-2xl border border-slate-200">
-            <label className="font-bold text-slate-900 text-xs flex items-center justify-between">
-              <span>حالة الحضور والاحتساب:</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                isCharged ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+          <div className="classy-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-black text-[#17163D] text-xs">حالة الحضور والاحتساب:</span>
+              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                isCharged ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]' : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF]'
               }`}>
-                {isCharged ? 'محسوبة (تستهلك رصيد أو تضاف للمستحق)' : 'غير محسوبة (لا تؤثر مالياً)'}
+                {isCharged ? 'محسوبة (تستهلك رصيد)' : 'غير محسوبة (معفية)'}
               </span>
-            </label>
+            </div>
 
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setAttendanceType('present')}
-                className={`p-2 rounded-xl text-[11px] font-bold border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
                   attendanceType === 'present'
-                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
-                    : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-white'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                 }`}
               >
                 <span>✓ حاضر (مستهلكة)</span>
-                <span className={`text-[9px] ${attendanceType === 'present' ? 'text-white/80' : 'text-slate-400'}`}>
+                <span className={`text-[10px] ${attendanceType === 'present' ? 'text-white/85' : 'text-[#74778F]'}`}>
                   حضور فعلي
                 </span>
               </button>
@@ -409,14 +412,14 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               <button
                 type="button"
                 onClick={() => setAttendanceType('absent_charged')}
-                className={`p-2 rounded-xl text-[11px] font-bold border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
                   attendanceType === 'absent_charged'
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                    : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-white'
+                    ? 'bg-[#FF647C] text-white border-[#FF647C] shadow-sm'
+                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#FFF1F3]'
                 }`}
               >
                 <span>⚠️ غائب (محسوبة)</span>
-                <span className={`text-[9px] ${attendanceType === 'absent_charged' ? 'text-white/80' : 'text-slate-400'}`}>
+                <span className={`text-[10px] ${attendanceType === 'absent_charged' ? 'text-white/85' : 'text-[#74778F]'}`}>
                   غياب بدون عذر
                 </span>
               </button>
@@ -424,14 +427,14 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               <button
                 type="button"
                 onClick={() => setAttendanceType('absent_free')}
-                className={`p-2 rounded-xl text-[11px] font-bold border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
                   attendanceType === 'absent_free'
-                    ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
-                    : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-white'
+                    ? 'bg-[#17163D] text-white border-[#17163D] shadow-sm'
+                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                 }`}
               >
                 <span>ℹ️ غائب (غير محسوبة)</span>
-                <span className={`text-[9px] ${attendanceType === 'absent_free' ? 'text-white/80' : 'text-slate-400'}`}>
+                <span className={`text-[10px] ${attendanceType === 'absent_free' ? 'text-white/85' : 'text-[#74778F]'}`}>
                   غياب بعذر معفى
                 </span>
               </button>
@@ -439,35 +442,35 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               <button
                 type="button"
                 onClick={() => setAttendanceType('cancelled')}
-                className={`p-2 rounded-xl text-[11px] font-bold border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
+                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
                   attendanceType === 'cancelled'
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                    : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-white'
+                    ? 'bg-[#403B9C] text-white border-[#403B9C] shadow-sm'
+                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                 }`}
               >
                 <span>🚫 حصة ملغاة</span>
-                <span className={`text-[9px] ${attendanceType === 'cancelled' ? 'text-white/80' : 'text-slate-400'}`}>
-                  إلغاء الحصة مسبقاً
+                <span className={`text-[10px] ${attendanceType === 'cancelled' ? 'text-white/85' : 'text-[#74778F]'}`}>
+                  إلغاء مسبق
                 </span>
               </button>
             </div>
 
             {/* Absence / Cancellation Reason Selector */}
             {(attendanceType === 'absent_free' || attendanceType === 'cancelled') && (
-              <div className="pt-2 border-t border-slate-200 space-y-1.5 animate-in fade-in duration-150">
-                <label className="text-[11px] font-bold text-slate-900 block">
+              <div className="pt-2 border-t border-[#E8E7FF] space-y-2 animate-in fade-in duration-150">
+                <label className="text-[11px] font-black text-[#17163D] block">
                   سبب {attendanceType === 'cancelled' ? 'الإلغاء' : 'الغياب المعفى'}:
                 </label>
-                <div className="grid grid-cols-3 gap-1">
+                <div className="grid grid-cols-3 gap-1.5">
                   {['الطالب ألغى', 'المدرس ألغى', 'مرض', 'ظرف طارئ', 'سبب آخر'].map((rsn) => (
                     <button
                       key={rsn}
                       type="button"
                       onClick={() => setAbsenceReason(rsn)}
-                      className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-xl text-[11px] font-black border transition-all cursor-pointer ${
                         absenceReason === rsn
-                          ? 'bg-[#172554] text-white border-[#172554]'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-white'
+                          ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
+                          : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                       }`}
                     >
                       {rsn}
@@ -480,7 +483,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                     placeholder="اكتب سبب الإلغاء أو الغياب..."
                     value={customReason}
                     onChange={(e) => setCustomReason(e.target.value)}
-                    className="w-full p-2 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-[#172554] outline-hidden mt-1"
+                    className="classy-input mt-1"
                   />
                 )}
               </div>
@@ -488,156 +491,96 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
           </div>
 
           {/* Pricing & Financial Calculation Preview Card */}
-          <div className="p-3.5 bg-white rounded-2xl border border-slate-200 space-y-2.5">
+          <div className="classy-card p-4 space-y-3">
             {isHourly ? (
               <>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">نظام المحاسبة:</span>
-                  <span className="font-bold text-amber-800 px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-200">
-                    Hourly Billing (محاسبة بالساعة)
+                  <span className="text-[#74778F] font-bold">نظام المحاسبة:</span>
+                  <span className="font-black text-[#7657F6] px-2.5 py-0.5 rounded-full bg-[#E8E7FF]">
+                    محاسبة بالساعة (Hourly)
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">سعر الساعة:</span>
-                  <strong className="text-slate-900 font-bold">{hourlyRate} جنيه / ساعة</strong>
+                  <span className="text-[#74778F] font-bold">سعر الساعة:</span>
+                  <strong className="text-[#191A2E] font-black">{hourlyRate} ج.م / ساعة</strong>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">مدة الحصة:</span>
-                  <strong className="text-slate-900 font-bold">{hours} ساعة</strong>
+                  <span className="text-[#74778F] font-bold">مدة الحصة:</span>
+                  <strong className="text-[#191A2E] font-black">{hours} ساعة</strong>
                 </div>
 
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs text-slate-900 block">إجمالي قيمة الحصة:</span>
-                    <span className="text-[10px] text-slate-500 font-medium">{hours} ساعة × {hourlyRate} جنيه</span>
+                    <span className="font-black text-xs text-[#17163D] block">إجمالي قيمة الحصة:</span>
+                    <span className="text-[10px] text-[#74778F] font-medium">{hours} ساعة × {hourlyRate} ج.م</span>
                   </div>
-                  <span className="text-base font-black text-[#C9A227]">{totalSessionValue} جنيه</span>
-                </div>
-
-                <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-[10px] text-emerald-800 font-bold">
-                  ✓ سيتم إضافة {totalSessionValue} جنيه إلى إجمالي المستحق للمادة، ويتم تسجيل {hours} ساعة حضور.
+                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} ج.م</span>
                 </div>
               </>
             ) : isPackage ? (
               <>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">نظام المحاسبة:</span>
-                  <span className="font-bold text-amber-800 px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-200">
-                    Session Package (باقة حصص)
+                  <span className="text-[#74778F] font-bold">نظام المحاسبة:</span>
+                  <span className="font-black text-[#7657F6] px-2.5 py-0.5 rounded-full bg-[#E8E7FF]">
+                    باقة حصص (Package)
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 rounded-xl text-xs border border-slate-200">
+                <div className="grid grid-cols-2 gap-2 p-2.5 bg-[#F6F7FC] rounded-2xl text-xs border border-[#E8E7FF]">
                   <div>
-                    <span className="text-slate-500 block text-[10px] mb-0.5">إجمالي الباقة:</span>
-                    <strong className="text-slate-900 font-bold text-xs">{packageTotalPrice} جنيه</strong>
+                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">إجمالي الباقة:</span>
+                    <strong className="text-[#191A2E] font-black text-xs">{packageTotalPrice} ج.م</strong>
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px] mb-0.5">عدد حصص الباقة:</span>
-                    <strong className="text-slate-900 font-bold text-xs">{packageSessionsCount} حصص</strong>
+                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">عدد حصص الباقة:</span>
+                    <strong className="text-[#191A2E] font-black text-xs">{packageSessionsCount} حصص</strong>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-slate-500">سعر الحصة الفعلي:</span>
-                  <div className="text-right">
-                    <strong className="text-slate-900 font-bold text-sm text-emerald-700">{effectiveSessionPrice} جنيه</strong>
-                    <span className="text-[10px] text-slate-400 block">({packageTotalPrice} ÷ {packageSessionsCount} حصص)</span>
-                  </div>
+                  <span className="text-[#74778F] font-bold">سعر الحصة الفعلي:</span>
+                  <strong className="text-[#191A2E] font-black text-sm text-emerald-600">{effectiveSessionPrice} ج.م</strong>
                 </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">عدد الحصص المسجلة:</span>
-                  <strong className="text-slate-900 font-bold">{sessionCount} {sessionCount === 1 ? 'حصة' : 'حصص'}</strong>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs text-slate-900 block">إجمالي قيمة الحصص المسجلة:</span>
-                    <span className="text-[10px] text-slate-500 font-medium">{sessionCount} × {effectiveSessionPrice} جنيه</span>
+                    <span className="font-black text-xs text-[#17163D] block">إجمالي قيمة الحصص:</span>
+                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} ج.م</span>
                   </div>
-                  <span className="text-base font-black text-[#C9A227]">{totalSessionValue} جنيه</span>
+                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} ج.م</span>
                 </div>
-
-                {/* Live Package Balance Impact Note */}
-                {finSummary && (
-                  <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-[10px] text-emerald-800 space-y-1">
-                    <div className="flex justify-between">
-                      <span>رصيد الباقة المتاح حالياً:</span>
-                      <strong>{finSummary.sessionCredit} حصص ({multiplyMoney(finSummary.sessionCredit, effectiveSessionPrice)} جنيه)</strong>
-                    </div>
-                    {finSummary.sessionCredit >= sessionCount ? (
-                      <div className="text-emerald-800 font-bold">
-                        ✓ سيتم خصم ({sessionCount}) حصص من رصيد الباقة. الرصيد المتبقي سيصبح: <strong>{finSummary.sessionCredit - sessionCount} حصص ({multiplyMoney(finSummary.sessionCredit - sessionCount, effectiveSessionPrice)} جنيه)</strong>
-                      </div>
-                    ) : (
-                      <div className="text-rose-700 font-bold">
-                        ⚠️ الرصيد المتاح ({finSummary.sessionCredit}) حصص. سيتم استهلاك الرصيد، وتسجيل ({sessionCount - finSummary.sessionCredit}) حصص مستحقة بقيمة <strong>{multiplyMoney(sessionCount - finSummary.sessionCredit, effectiveSessionPrice)} جنيه</strong> تضاف إلى المستحق.
-                      </div>
-                    )}
-                  </div>
-                )}
               </>
             ) : (
               <>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">نظام المحاسبة:</span>
-                  <span className="font-bold text-slate-800 px-2 py-0.5 rounded-md bg-slate-100">
-                    {isPostpaid ? 'دفع آجل بعد الحصة (Postpaid)' : 'دفع بالحصة مسبق (Prepaid)'}
+                  <span className="text-[#74778F] font-bold">نظام المحاسبة:</span>
+                  <span className="font-black text-[#17163D] px-2 py-0.5 rounded-lg bg-[#F6F7FC]">
+                    {isPostpaid ? 'دفع آجل (Postpaid)' : 'دفع مسبق (Prepaid)'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">سعر الحصة:</span>
-                  <strong className="text-slate-900 font-bold">{effectiveSessionPrice} جنيه</strong>
+                  <span className="text-[#74778F] font-bold">سعر الحصة:</span>
+                  <strong className="text-[#191A2E] font-black">{effectiveSessionPrice} ج.م</strong>
                 </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">عدد الحصص المسجلة:</span>
-                  <strong className="text-slate-900 font-bold">{sessionCount} {sessionCount === 1 ? 'حصة' : 'حصص'}</strong>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-xs text-slate-900 block">إجمالي القيمة:</span>
-                    <span className="text-[10px] text-slate-500 font-medium">{sessionCount} × {effectiveSessionPrice} جنيه</span>
+                    <span className="font-black text-xs text-[#17163D] block">إجمالي القيمة:</span>
+                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} ج.م</span>
                   </div>
-                  <span className="text-sm font-black text-[#C9A227]">{totalSessionValue} جنيه</span>
+                  <span className="text-sm font-black text-[#7657F6]">{totalSessionValue} ج.م</span>
                 </div>
-
-                {isPrepaid && finSummary && (
-                  <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-[10px] text-emerald-800 space-y-1">
-                    <div className="flex justify-between">
-                      <span>الرصيد المتاح حالياً:</span>
-                      <strong>{finSummary.sessionCredit} حصص ({finSummary.sessionCreditValue || multiplyMoney(finSummary.sessionCredit, effectiveSessionPrice)} جنيه)</strong>
-                    </div>
-                    {finSummary.sessionCredit >= sessionCount ? (
-                      <div className="text-emerald-800 font-bold">
-                        ✓ سيتم استهلاك ({sessionCount}) حصص من الرصيد. الرصيد المتبقي سيصبح: <strong>{finSummary.sessionCredit - sessionCount} حصص ({multiplyMoney(finSummary.sessionCredit - sessionCount, effectiveSessionPrice)} جنيه)</strong>
-                      </div>
-                    ) : (
-                      <div className="text-rose-700 font-bold">
-                        ⚠️ الرصيد المتاح ({finSummary.sessionCredit}) حصص. سيتم استهلاك الرصيد بالكامل (0)، وتسجيل ({sessionCount - finSummary.sessionCredit}) حصص مستحقة بقيمة <strong>{multiplyMoney(sessionCount - finSummary.sessionCredit, effectiveSessionPrice)} جنيه</strong> تضاف إلى المستحق (Current Due).
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {isPostpaid && (
-                  <div className="p-2 bg-rose-50 border border-rose-200 rounded-xl text-[10px] text-rose-800 font-bold">
-                    ✓ نظام آجل: سيتم زيادة الحصص المستحقة (+{sessionCount}) وزيادة المبلغ المستحق بمقدار (+{totalSessionValue} جنيه).
-                  </div>
-                )}
               </>
             )}
           </div>
 
           {/* Optional Title */}
-          <div className="space-y-1">
-            <label className="font-bold text-slate-800 flex items-center gap-1.5">
-              <AlignRight className="w-3.5 h-3.5 text-[#172554]" />
+          <div className="classy-card p-3.5 space-y-1.5">
+            <label className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
+              <AlignRight className="w-3.5 h-3.5 text-[#7657F6]" />
               <span>عنوان أو موضوع الحصة (اختياري):</span>
             </label>
             <input
@@ -645,40 +588,40 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               placeholder="مثال: مراجعة الوحدة الأولى / حل تدريبات"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-[#172554] outline-hidden"
+              className="classy-input"
             />
           </div>
 
           {/* Optional Notes */}
-          <div className="space-y-1">
-            <label className="font-bold text-slate-800 flex items-center gap-1.5">
-              <span>ملاحظات الحصة (اختياري):</span>
+          <div className="classy-card p-3.5 space-y-1.5">
+            <label className="font-black text-xs text-[#17163D]">
+              ملاحظات الحصة (اختياري):
             </label>
             <textarea
               rows={2}
               placeholder="أي ملاحظات خاصة بأداء الطالب أو الحصة..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-[#172554] outline-hidden"
+              className="classy-textarea"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-2.5 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-100 transition-colors cursor-pointer"
+              className="flex-1 py-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs hover:bg-[#F6F7FC] transition-colors cursor-pointer"
             >
-              إلغاء
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-2 py-2.5 rounded-xl bg-[#C9A227] hover:bg-[#B88237] text-white font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all disabled:opacity-50 cursor-pointer"
+              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#7657F6]/30 active:scale-95 transition-all disabled:opacity-50 cursor-pointer hover:brightness-105"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{isHourly ? `تأكيد تسجيل (${hours} ساعة) Private` : `تأكيد تسجيل (${sessionCount}) حصة Private`}</span>
+              <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
+              <span>{isHourly ? `تأكيد تسجيل (${hours} س) Private` : `تأكيد تسجيل (${sessionCount}) حصة Private`}</span>
             </button>
           </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Layers,
   Search,
@@ -12,160 +12,459 @@ import {
   Sparkles,
   UserPlus,
   X,
+  CheckCircle2,
+  CalendarCheck2,
+  Edit2,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  Filter,
+  Zap,
+  Activity,
+  ArrowUpRight,
+  School,
+  BookOpen,
 } from 'lucide-react';
-import { Group, Student } from '../types';
+import { Group, Student, Session, Payment } from '../types';
 import { db } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
+import {
+  getArabicDayForDate,
+  getTimesForDayInGroup,
+  formatTimeDisplay,
+  getWeekdayIndex,
+} from '../utils/schedule';
 
 interface GroupsViewProps {
   groups: Group[];
   allStudents: Student[];
+  sessions?: Session[];
+  payments?: Payment[];
   onOpenAddGroup: () => void;
   onOpenGroupProfile: (group: Group) => void;
+  onEditGroup?: (group: Group) => void;
+  onOpenAddSession?: (defaultGroupId?: string, defaultDate?: string) => void;
+  onOpenAddStudent?: () => void;
+  onOpenAddPayment?: (student?: Student, enrollmentId?: string) => void;
+  onOpenAttendanceModal?: (session: Session) => void;
+  onOpenStudentProfile?: (student: Student) => void;
+  onOpenBulkAddSession?: (students: Student[], groupId?: string) => void;
+  onDataChanged?: () => void;
 }
 
 export const GroupsView: React.FC<GroupsViewProps> = ({
   groups,
   allStudents,
+  sessions = [],
+  payments = [],
   onOpenAddGroup,
   onOpenGroupProfile,
+  onEditGroup,
+  onOpenAddSession,
+  onOpenAddStudent,
+  onOpenAddPayment,
+  onOpenAttendanceModal,
+  onOpenStudentProfile,
+  onOpenBulkAddSession,
+  onDataChanged,
 }) => {
   const { t, isRTL, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'group' | 'private'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'group' | 'private' | 'today'>('all');
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('all');
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
 
-  const regularGroups = groups.filter((g) => g.type !== 'private');
-  const privateServices = groups.filter((g) => g.type === 'private');
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayArabicDay = useMemo(() => getArabicDayForDate(new Date()), []);
 
-  const filteredGroups = groups.filter((group) => {
-    const enrollments = db.getGroupEnrollments(group.id);
-    const privateStudent = group.type === 'private' && enrollments[0]
-      ? allStudents.find((s) => s.id === enrollments[0].studentId)
-      : null;
+  const regularGroups = useMemo(() => groups.filter((g) => g.type !== 'private'), [groups]);
+  const privateServices = useMemo(() => groups.filter((g) => g.type === 'private'), [groups]);
 
-    const displayName = group.type === 'private' && privateStudent
-      ? privateStudent.name
-      : group.name;
+  // Compute all enrollments across regular groups
+  const totalEnrolledStudentsCount = useMemo(() => {
+    const studentIds = new Set<string>();
+    regularGroups.forEach((g) => {
+      const enrs = db.getGroupEnrollments(g.id);
+      enrs.forEach((e) => {
+        if (e.status !== 'stopped') {
+          studentIds.add(e.studentId);
+        }
+      });
+    });
+    return studentIds.size;
+  }, [regularGroups, groups]);
 
-    const matchesSearch =
-      displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.gradeLevel.toLowerCase().includes(searchQuery.toLowerCase());
+  // Compute groups that have sessions scheduled or recurring today
+  const groupsWithTodayClass = useMemo(() => {
+    return groups.filter((g) => {
+      // 1. Direct session record today
+      const hasDirectSessionToday = sessions.some(
+        (s) => s.groupId === g.id && s.date === todayStr && s.status !== 'cancelled'
+      );
+      if (hasDirectSessionToday) return true;
 
-    if (!matchesSearch) return false;
-    if (typeFilter !== 'all' && group.type !== typeFilter) return false;
+      // 2. Schedule recurring day match
+      const todayIdx = getWeekdayIndex(todayArabicDay);
+      const isScheduledToday = (g.scheduleDays || []).some((day) => {
+        return getWeekdayIndex(day) === todayIdx;
+      });
+      return isScheduledToday;
+    });
+  }, [groups, sessions, todayStr, todayArabicDay]);
 
-    return true;
-  });
+  // Collect distinct grade levels & subjects for dropdown filters
+  const gradeLevels = useMemo(
+    () => Array.from(new Set(groups.map((g) => g.gradeLevel).filter(Boolean))),
+    [groups]
+  );
+  const subjects = useMemo(
+    () => Array.from(new Set(groups.map((g) => g.subject).filter(Boolean))),
+    [groups]
+  );
+
+  // Filter groups
+  const filteredGroups = useMemo(() => {
+    return groups.filter((group) => {
+      const isPrivate = group.type === 'private';
+      const enrollments = db.getGroupEnrollments(group.id);
+      const privateStudent = isPrivate && enrollments[0]
+        ? allStudents.find((s) => s.id === enrollments[0].studentId)
+        : null;
+
+      const displayName = isPrivate && privateStudent ? privateStudent.name : group.name;
+
+      // 1. Search Query
+      const q = searchQuery.toLowerCase().trim();
+      if (q) {
+        const matchesSearch =
+          displayName.toLowerCase().includes(q) ||
+          group.name.toLowerCase().includes(q) ||
+          group.subject.toLowerCase().includes(q) ||
+          group.gradeLevel.toLowerCase().includes(q) ||
+          (group.roomOrLocation && group.roomOrLocation.toLowerCase().includes(q));
+
+        if (!matchesSearch) return false;
+      }
+
+      // 2. Tab Filter
+      if (typeFilter === 'group' && group.type !== 'group') return false;
+      if (typeFilter === 'private' && group.type !== 'private') return false;
+      if (typeFilter === 'today') {
+        const isTodayGroup = groupsWithTodayClass.some((g) => g.id === group.id);
+        if (!isTodayGroup) return false;
+      }
+
+      // 3. Grade Filter
+      if (selectedGradeFilter !== 'all' && group.gradeLevel !== selectedGradeFilter) {
+        return false;
+      }
+
+      // 4. Subject Filter
+      if (selectedSubjectFilter !== 'all' && group.subject !== selectedSubjectFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    groups,
+    allStudents,
+    searchQuery,
+    typeFilter,
+    selectedGradeFilter,
+    selectedSubjectFilter,
+    groupsWithTodayClass,
+  ]);
+
+  const hasActiveFilters =
+    searchQuery !== '' ||
+    typeFilter !== 'all' ||
+    selectedGradeFilter !== 'all' ||
+    selectedSubjectFilter !== 'all';
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setTypeFilter('all');
+    setSelectedGradeFilter('all');
+    setSelectedSubjectFilter('all');
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-4 space-y-4 text-[#191A2E] pb-32 bg-[#F6F7FC]" dir={isRTL ? 'rtl' : 'ltr'}>
-      
-      {/* View Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-black text-[#17163D] tracking-tight flex items-center gap-2">
-            <span>{t('groupsTitle')}</span>
-            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#7657F6]">
-              {regularGroups.length}
-            </span>
-          </h1>
-          <p className="text-xs text-[#74778F] font-medium mt-0.5">
-            {t('groupsSubtitle')}
-          </p>
+    <div
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#191A2E] pb-32 bg-[#F5F6FC] relative"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
+      {/* Ambient background glows matching Classy visual identity */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#7657F6]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#55C7E8]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#FF647C]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+
+      {/* =========================================================================
+          1. GROUPS HERO HEADER
+          ========================================================================= */}
+      <div className="rounded-[24px] bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] p-5 sm:p-6 text-white relative overflow-hidden shadow-xl border border-white/10">
+        {/* Soft internal gradient orbs */}
+        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#7657F6]/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#FF647C]/30 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#FF647C] via-[#7657F6] to-[#55C7E8] p-0.5 shadow-lg shadow-[#7657F6]/35 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-[#17163D] flex items-center justify-center text-white">
+                <Layers className="w-6 h-6 text-[#55C7E8]" />
+              </div>
+            </div>
+
+            <div className="space-y-0.5 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#E8E7FF]/90 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#55C7E8]" />
+                  <span>المجموعات والحصص الدراسية</span>
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5 truncate">
+                <span>{t('groupsTitle')}</span>
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/20 shadow-xs">
+                  {regularGroups.length}
+                </span>
+              </h1>
+              <p className="text-xs sm:text-sm text-[#E8E7FF]/85 font-medium truncate">
+                تنظيم المجموعات الدراسية، متابعة المواعيد، ورصد حضور ومستحقات الطلاب
+              </p>
+            </div>
+          </div>
+
+          {/* Primary Action Button */}
+          <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/15 justify-end">
+            <button
+              type="button"
+              onClick={onOpenAddGroup}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#FF647C]/40 transition-all active:scale-95 cursor-pointer hover:brightness-105"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>{t('createGroupBtn')}</span>
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={onOpenAddGroup}
-          className="px-3.5 py-2 rounded-2xl btn-coral text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#FF647C]/30 transition-all active:scale-95 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('createGroupBtn')}</span>
-        </button>
+        {/* Compact Statistics Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-4 mt-4 border-t border-white/15 text-center">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">المجموعات النشطة</span>
+            <span className="text-base sm:text-lg font-black text-white">{regularGroups.length}</span>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">طلاب المجموعات</span>
+            <span className="text-base sm:text-lg font-black text-[#55C7E8]">{totalEnrolledStudentsCount}</span>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">حصص اليوم</span>
+            <span className="text-base sm:text-lg font-black text-[#FF647C]">{groupsWithTodayClass.length}</span>
+          </div>
+          <div className="hidden sm:block bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">الدروس الخاصة</span>
+            <span className="text-base sm:text-lg font-black text-[#E8E7FF]">{privateServices.length}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="classy-card p-3.5 space-y-3">
+      {/* =========================================================================
+          2. SEARCH & FILTERS
+          ========================================================================= */}
+      <div className="classy-card p-3.5 sm:p-4 space-y-3 bg-white">
+        {/* Search Bar */}
         <div className="relative">
-          <Search className={`w-4 h-4 text-[#74778F] absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-3.5`} />
+          <Search
+            className={`w-4.5 h-4.5 text-[#74778F] absolute top-3.5 ${
+              isRTL ? 'right-3.5' : 'left-3.5'
+            }`}
+          />
           <input
             type="text"
-            placeholder={t('groupsSearchPlaceholder')}
+            placeholder="البحث باسم المجموعة، المادة، المرحلة، أو مكان الحصة..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl ${isRTL ? 'pr-10 pl-8' : 'pl-10 pr-8'} py-2.5 text-xs text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] font-medium transition-colors`}
+            className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/70 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all shadow-inner ${
+              isRTL ? 'pr-11 pl-9' : 'pl-11 pr-9'
+            }`}
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className={`absolute top-2.5 text-[#74778F] hover:text-[#191A2E] p-1 rounded-full ${
-                isRTL ? 'left-2.5' : 'right-2.5'
+              className={`absolute top-3 text-[#74778F] hover:text-[#191A2E] p-1 rounded-full hover:bg-[#E8E7FF]/50 transition-colors ${
+                isRTL ? 'left-3' : 'right-3'
               }`}
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Filter Tabs (Classy Segmented Pill Bar) */}
-        <div className="classy-segment">
+        {/* Filter Segmented Control Tabs */}
+        <div className="classy-card p-1 flex items-center gap-1 bg-[#F6F7FC] border-[#E8E7FF]">
           <button
+            type="button"
             onClick={() => setTypeFilter('all')}
-            className={`classy-segment-btn ${
-              typeFilter === 'all' ? 'classy-segment-btn-active' : 'classy-segment-btn-inactive'
+            className={`flex-1 py-2 px-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              typeFilter === 'all'
+                ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-sm'
+                : 'text-[#74778F] hover:text-[#17163D]'
             }`}
           >
-            {t('all')} ({groups.length})
+            <span>الكل</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-[#E8E7FF] text-[#7657F6]'}`}>
+              {groups.length}
+            </span>
           </button>
+
           <button
+            type="button"
             onClick={() => setTypeFilter('group')}
-            className={`classy-segment-btn ${
-              typeFilter === 'group' ? 'classy-segment-btn-active' : 'classy-segment-btn-inactive'
+            className={`flex-1 py-2 px-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              typeFilter === 'group'
+                ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-sm'
+                : 'text-[#74778F] hover:text-[#17163D]'
             }`}
           >
-            {t('groupTypeGroup')} ({regularGroups.length})
+            <span>مجموعات</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'group' ? 'bg-white/20 text-white' : 'bg-[#E8E7FF] text-[#7657F6]'}`}>
+              {regularGroups.length}
+            </span>
           </button>
+
           <button
+            type="button"
             onClick={() => setTypeFilter('private')}
-            className={`classy-segment-btn ${
-              typeFilter === 'private' ? 'classy-segment-btn-active' : 'classy-segment-btn-inactive'
+            className={`flex-1 py-2 px-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              typeFilter === 'private'
+                ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-sm'
+                : 'text-[#74778F] hover:text-[#17163D]'
             }`}
           >
-            {t('groupTypePrivate')} ({privateServices.length})
+            <span>خاص</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'private' ? 'bg-white/20 text-white' : 'bg-[#FFF1F3] text-[#FF647C]'}`}>
+              {privateServices.length}
+            </span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setTypeFilter('today')}
+            className={`flex-1 py-2 px-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              typeFilter === 'today'
+                ? 'bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white shadow-sm'
+                : 'text-[#74778F] hover:text-[#FF647C]'
+            }`}
+          >
+            <span>اليوم</span>
+            {groupsWithTodayClass.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'today' ? 'bg-white/25 text-white' : 'bg-[#FFF1F3] text-[#FF647C]'}`}>
+                {groupsWithTodayClass.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Dropdown Filters Row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap text-xs pt-0.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-[#74778F] text-[11px] font-bold shrink-0">
+              <Filter className="w-3.5 h-3.5 text-[#7657F6]" />
+              <span>تصفية:</span>
+            </div>
+
+            <select
+              value={selectedGradeFilter}
+              onChange={(e) => setSelectedGradeFilter(e.target.value)}
+              className="bg-[#F6F7FC] hover:bg-[#E8E7FF]/30 border border-[#E8E7FF] rounded-xl px-3 py-1.5 text-xs text-[#191A2E] font-bold focus:outline-none focus:border-[#7657F6] cursor-pointer transition-colors"
+            >
+              <option value="all">كل المراحل الدراسية</option>
+              {gradeLevels.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {getLocalizedStageName(lvl)}
+                </option>
+              ))}
+            </select>
+
+            {subjects.length > 1 && (
+              <select
+                value={selectedSubjectFilter}
+                onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                className="bg-[#F6F7FC] hover:bg-[#E8E7FF]/30 border border-[#E8E7FF] rounded-xl px-3 py-1.5 text-xs text-[#191A2E] font-bold focus:outline-none focus:border-[#7657F6] cursor-pointer transition-colors"
+              >
+                <option value="all">كل المواد</option>
+                {subjects.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-3 py-1.5 rounded-xl bg-[#E8E7FF] text-[#7657F6] font-bold text-xs hover:bg-[#7657F6] hover:text-white transition-all cursor-pointer"
+            >
+              إعادة ضبط الفلاتر
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Groups Grid / Cards */}
+      {/* =========================================================================
+          3. GROUP CARDS (Bento Grid)
+          ========================================================================= */}
       {groups.length === 0 ? (
-        <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center">
-          <div className="w-20 h-20 rounded-3xl bg-[#E8E7FF] flex items-center justify-center p-2 shadow-inner">
-            <ClassyOwlMascot size="sm" glow={false} pose="teacher" />
+        <div className="classy-card p-8 sm:p-12 text-center space-y-4 flex flex-col items-center justify-center relative overflow-hidden bg-white">
+          <div className="w-28 h-28 flex items-center justify-center">
+            <ClassyOwlMascot size="lg" glow={true} pose="teacher" />
           </div>
-          <div className="space-y-1">
-            <h3 className="font-black text-sm text-[#17163D]">{t('noGroupsRegisteredYet')}</h3>
-            <p className="text-xs text-[#74778F] max-w-sm mx-auto font-medium">
-              {t('createFirstGroupPrompt')}
+          <div className="max-w-md space-y-1.5">
+            <h3 className="font-black text-base sm:text-lg text-[#17163D]">
+              لسه مفيش مجموعات
+            </h3>
+            <p className="text-xs sm:text-sm text-[#74778F] font-medium leading-relaxed">
+              ابدأ بإضافة أول مجموعة ونظّم حصصك وطلابك بسهولة.
             </p>
           </div>
           <button
             onClick={onOpenAddGroup}
-            className="mt-2 px-4 py-2 rounded-2xl btn-coral text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-[#FF647C]/30 transition-all cursor-pointer active:scale-95"
+            className="mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-[#FF647C]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
           >
-            <Plus className="w-4 h-4" />
-            <span>{t('createGroupBtn')}</span>
+            <Plus className="w-4.5 h-4.5 stroke-[2.5]" />
+            <span>+ إضافة أول مجموعة الآن</span>
           </button>
         </div>
       ) : filteredGroups.length === 0 ? (
-        <div className="classy-card p-8 text-center text-[#74778F] space-y-2">
-          <AlertCircle className="w-8 h-8 mx-auto text-[#FF647C]" />
-          <p className="font-bold text-[#17163D] text-xs">{t('noMatchingSearchResults')}</p>
+        <div className="classy-card p-8 sm:p-12 text-center text-[#74778F] space-y-3 flex flex-col items-center bg-white">
+          <div className="w-16 h-16 rounded-3xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-center shadow-inner">
+            <AlertCircle className="w-8 h-8 text-[#FF647C]" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-black text-sm sm:text-base text-[#17163D]">
+              لا توجد مجموعات مطابقة لبحثك
+            </h3>
+            <p className="text-xs text-[#74778F] font-medium">
+              جرّب تغيير كلمات البحث أو إعادة ضبط خيارات التصفية
+            </p>
+          </div>
+          {hasActiveFilters && (
+            <button
+              onClick={handleResetFilters}
+              className="px-4 py-2 rounded-xl bg-[#E8E7FF] text-[#7657F6] font-bold text-xs hover:bg-[#7657F6] hover:text-white transition-all cursor-pointer"
+            >
+              إعادة ضبط الفلاتر
+            </button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {filteredGroups.map((group) => {
             const enrollments = db.getGroupEnrollments(group.id);
             const isPrivate = group.type === 'private';
@@ -173,80 +472,306 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
               ? allStudents.find((s) => s.id === enrollments[0].studentId)
               : null;
 
+            const groupStats = db.calculateGroupStats(group.id);
+            const groupSessions = sessions.filter((s) => s.groupId === group.id && s.status !== 'cancelled');
+
+            // Check if group has a class today
+            const todaySession = sessions.find((s) => s.groupId === group.id && s.date === todayStr);
+            const hasClassToday = groupsWithTodayClass.some((g) => g.id === group.id);
+
+            const displayTitle = isPrivate
+              ? (privateStudent ? `درس خاص — ${privateStudent.name}` : 'درس خاص')
+              : group.name;
+
+            const themeColor = group.accentColor || (isPrivate ? '#FF647C' : '#7657F6');
+
+            // Format billing label
+            const billingLabel =
+              group.billingType === 'monthly'
+                ? 'شهري'
+                : group.billingType === 'package'
+                ? `باقة (${group.packageSessionsCount || 8} حصص)`
+                : group.billingType === 'hourly'
+                ? 'محاسبة بالساعة'
+                : 'دفع بالحصة';
+
             return (
               <div
                 key={group.id}
                 onClick={() => onOpenGroupProfile(group)}
-                className="classy-card classy-card-hover p-4 transition-all cursor-pointer space-y-3 active:scale-[0.99]"
+                className="classy-card classy-card-hover p-4 sm:p-5 transition-all cursor-pointer space-y-3.5 active:scale-[0.99] relative overflow-hidden group bg-white hover:border-[#7657F6]/50"
               >
-                {/* Card Top: Accent + Title + Type Badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className="w-3 h-3 rounded-full shrink-0 shadow-xs"
-                      style={{ backgroundColor: group.accentColor || (isPrivate ? '#FF647C' : '#7657F6') }}
-                    />
-                    <div className="min-w-0 space-y-0.5">
-                      <h3 className="font-bold text-xs sm:text-sm text-[#191A2E] truncate">
-                        {isPrivate ? (privateStudent ? `خاص — ${privateStudent.name}` : 'درس خاص') : group.name}
-                      </h3>
-                      <p className="text-[11px] text-[#74778F] font-medium truncate">
-                        {group.subject} • {getLocalizedStageName(group.gradeLevel, language)}
-                      </p>
+                {/* Decorative Top Accent Line */}
+                <div
+                  className="absolute top-0 inset-x-0 h-1.5 transition-all group-hover:h-2"
+                  style={{ backgroundColor: themeColor }}
+                />
+
+                {/* Card Top: Group Name + Badges */}
+                <div className="flex items-start justify-between gap-3 pt-1">
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* Glowing Group Icon */}
+                    <div
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-white text-base shadow-md shrink-0 border border-white/20 mt-0.5"
+                      style={{ backgroundColor: themeColor }}
+                    >
+                      {isPrivate ? <Zap className="w-5 h-5 text-white" /> : <Layers className="w-5 h-5 text-white" />}
+                    </div>
+
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-black text-sm sm:text-base text-[#17163D] truncate group-hover:text-[#7657F6] transition-colors">
+                          {displayTitle}
+                        </h3>
+
+                        {/* Dynamic Semantic Session Status Badges */}
+                        {todaySession ? (
+                          todaySession.status === 'completed' ? (
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1 shadow-2xs">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>تم رصد اليوم</span>
+                            </span>
+                          ) : todaySession.status === 'cancelled' ? (
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] inline-flex items-center gap-1 shadow-2xs">
+                              <AlertCircle className="w-3 h-3 text-[#FF647C]" />
+                              <span>حصة اليوم ملغاة</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              <span>حصة اليوم مجدولة</span>
+                            </span>
+                          )
+                        ) : hasClassToday ? (
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span>موعد اليوم</span>
+                          </span>
+                        ) : null}
+
+                        <span
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            isPrivate
+                              ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+                              : 'bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]'
+                          }`}
+                        >
+                          {isPrivate ? 'درس خاص' : 'مجموعة دراسية'}
+                        </span>
+                      </div>
+
+                      {/* Subject and Stage Meta */}
+                      <div className="flex items-center gap-2 text-xs text-[#74778F] font-medium flex-wrap">
+                        <span className="text-[#191A2E] font-bold bg-[#F6F7FC] px-2 py-0.5 rounded-lg border border-[#E8E7FF]">
+                          {group.subject}
+                        </span>
+                        <span>•</span>
+                        <span>{getLocalizedStageName(group.gradeLevel)}</span>
+                        {group.roomOrLocation && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate max-w-[130px] flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-[#FF647C]" />
+                              <span>{group.roomOrLocation}</span>
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${
-                    isPrivate ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]' : 'bg-[#E8E7FF] text-[#403B9C]'
-                  }`}>
-                    {isPrivate ? t('groupTypePrivate') : t('groupTypeGroup')}
-                  </span>
+                  {/* Pricing Badge */}
+                  <div className="shrink-0 text-left">
+                    <span className="text-xs font-black px-3 py-1 rounded-xl inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                      {group.defaultPrice} {t('currency')}
+                    </span>
+                    <span className="text-[10px] text-[#74778F] font-bold block mt-0.5 text-left">
+                      {billingLabel}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Pricing & Student Counts Strip */}
-                <div className="grid grid-cols-2 gap-2 bg-[#F6F7FC] p-2.5 rounded-2xl text-xs border border-[#E8E7FF]">
-                  <div>
-                    <span className="text-[10px] text-[#74778F] block font-semibold">
-                      {isPrivate ? 'نوع الخدمة' : t('enrolledStudentsCount')}
+                {/* Dashboard-Inspired Session Schedule Timeline Strip (Handles multiple times per day cleanly) */}
+                <div className="bg-[#F6F7FC] p-3 rounded-2xl border border-[#E8E7FF] space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#74778F] flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
+                      <span>مواعيد الحصص الأسبوعية:</span>
                     </span>
-                    <strong className="text-xs font-black text-[#191A2E] flex items-center gap-1.5 mt-0.5">
+                    <span className="font-black text-[#191A2E] flex items-center gap-1 text-[11px]">
                       <Users className="w-3.5 h-3.5 text-[#7657F6]" />
-                      <span>{isPrivate ? (privateStudent ? privateStudent.name : 'طالب خاص') : `${enrollments.length} ${t('navStudents')}`}</span>
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] text-[#74778F] block font-semibold">
-                      {group.billingType === 'monthly' ? t('billingMonthly') : group.billingType === 'package' ? t('packagePrice') : group.billingType === 'hourly' ? 'بالساعة' : t('sessionPrice')}
+                      <span>{isPrivate ? (privateStudent ? privateStudent.name : 'طالب خاص') : `${enrollments.length} طلاب مسجلين`}</span>
                     </span>
-                    <strong className="text-xs font-black text-emerald-700 flex items-center gap-1.5 mt-0.5">
-                      <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{group.defaultPrice} {t('currency')}</span>
-                    </strong>
-                  </div>
-                </div>
-
-                {/* Schedule & Location */}
-                <div className="flex items-center justify-between text-[11px] text-[#74778F] pt-1 border-t border-[#E8E7FF]">
-                  <div className="flex items-center gap-1 truncate font-medium">
-                    <Calendar className="w-3.5 h-3.5 text-[#74778F] shrink-0" />
-                    <span className="truncate">{group.scheduleDays.join('، ') || 'Flexible'}</span>
                   </div>
 
-                  {group.scheduleTime && (
-                    <div className="flex items-center gap-1 shrink-0 font-black text-[#191A2E]">
-                      <Clock className="w-3.5 h-3.5 text-[#74778F]" />
-                      <span>{group.scheduleTime}</span>
+                  {/* Multiple Session Times Timeline Entries */}
+                  {group.scheduleDays && group.scheduleDays.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {group.scheduleDays.map((day) => {
+                        const dayTimes = getTimesForDayInGroup(group, day);
+                        const isToday = getWeekdayIndex(day) === getWeekdayIndex(todayArabicDay);
+
+                        return (
+                          <div
+                            key={day}
+                            className={`p-2 sm:p-2.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs ${
+                              isToday
+                                ? 'bg-gradient-to-r from-emerald-50/90 to-white border-emerald-300 ring-1 ring-emerald-300/40'
+                                : 'bg-white border-[#E8E7FF]'
+                            }`}
+                          >
+                            {/* Day Header with Pulse on Today */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${
+                                  isToday ? 'bg-emerald-500 animate-pulse' : 'bg-[#7657F6]'
+                                }`}
+                              />
+                              <span className={`text-xs font-black ${isToday ? 'text-emerald-950' : 'text-[#17163D]'}`}>
+                                {day}
+                              </span>
+                              {isToday && (
+                                <span className="text-[9px] font-black px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                                  اليوم
+                                </span>
+                              )}
+                              {dayTimes.length > 1 && (
+                                <span className="text-[9px] font-bold text-[#74778F]">
+                                  ({dayTimes.length} فترات)
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Session Times Slot Entries matching Dashboard language */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {dayTimes.length > 0 ? (
+                                dayTimes.map((time, tIdx) => (
+                                  <div
+                                    key={tIdx}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all ${
+                                      isToday
+                                        ? 'bg-emerald-100 text-emerald-950 border-emerald-300 shadow-2xs'
+                                        : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] shadow-2xs'
+                                    }`}
+                                    title={dayTimes.length > 1 ? `موعد ${tIdx + 1} يوم ${day}` : `موعد حصة يوم ${day}`}
+                                  >
+                                    <Clock className={`w-3 h-3 ${isToday ? 'text-emerald-700' : 'text-[#7657F6]'}`} />
+                                    <span className="font-mono font-black text-[11px]">
+                                      {formatTimeDisplay(time, isRTL)}
+                                    </span>
+                                    {dayTimes.length > 1 && (
+                                      <span
+                                        className={`text-[9px] px-1.5 py-0.2 rounded-md font-extrabold ${
+                                          isToday
+                                            ? 'bg-emerald-200/90 text-emerald-950'
+                                            : 'bg-[#E8E7FF] text-[#7657F6]'
+                                        }`}
+                                      >
+                                        فترة {tIdx + 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))
+                              ) : group.scheduleTime ? (
+                                <div className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-[#F6F7FC] text-[#191A2E] border border-[#E8E7FF]">
+                                  <Clock className="w-3 h-3 text-[#7657F6]" />
+                                  <span className="font-mono font-black text-[11px]">
+                                    {formatTimeDisplay(group.scheduleTime, isRTL)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-[#74778F]">وقت مرن</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-xl bg-white border border-[#E8E7FF] text-center text-xs text-[#74778F] font-medium">
+                      مواعيد مرنة حسب الاتفاق
                     </div>
                   )}
                 </div>
 
+                {/* Quick Performance & Financial Health Mini-Bento */}
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="bg-[#F8F9FE] p-2 rounded-xl border border-[#E8E7FF]">
+                    <span className="text-[10px] text-[#74778F] block font-bold">الحصص المنفذة</span>
+                    <strong className="text-xs font-black text-[#17163D]">{groupStats.completedSessions}</strong>
+                  </div>
+                  <div className="bg-[#F8F9FE] p-2 rounded-xl border border-[#E8E7FF]">
+                    <span className="text-[10px] text-[#74778F] block font-bold">نسبة الالتزام</span>
+                    <strong
+                      className={`text-xs font-black ${
+                        groupStats.attendanceRate >= 85
+                          ? 'text-emerald-700'
+                          : groupStats.attendanceRate >= 70
+                          ? 'text-amber-700'
+                          : 'text-[#FF647C]'
+                      }`}
+                    >
+                      {groupStats.attendanceRate}%
+                    </strong>
+                  </div>
+                  <div className="bg-[#F8F9FE] p-2 rounded-xl border border-[#E8E7FF]">
+                    <span className="text-[10px] text-[#74778F] block font-bold">المحصل</span>
+                    <strong className="text-xs font-black text-emerald-700">
+                      {groupStats.totalRevenue} {t('currency')}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Quick Action Bar */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E8E7FF]/80">
+                  <div className="flex items-center gap-1.5">
+                    {onEditGroup && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditGroup(group);
+                        }}
+                        className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] hover:text-[#7657F6] border border-[#E8E7FF] transition-all cursor-pointer shadow-2xs active:scale-95"
+                        title="تعديل بيانات المجموعة"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {onOpenAddSession && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenAddSession(group.id);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#17163D] hover:text-[#7657F6] border border-[#E8E7FF] text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                        title="جدولة حصة جديدة لهذه المجموعة"
+                      >
+                        <CalendarCheck2 className="w-3.5 h-3.5 text-[#55C7E8]" />
+                        <span>جدولة حصة</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenGroupProfile(group);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
+                  >
+                    <span>تفاصيل المجموعة</span>
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
-
     </div>
   );
 };

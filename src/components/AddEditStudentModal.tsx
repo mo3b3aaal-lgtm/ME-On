@@ -38,14 +38,14 @@ interface AddEditStudentModalProps {
 }
 
 const AVATAR_COLORS = [
-  '#172554', // Royal navy
-  '#1E3A8A', // Deep navy
-  '#2563EB', // Royal blue
-  '#0284C7', // Sky blue
-  '#C9A227', // Royal gold
-  '#D97706', // Warm amber
-  '#059669', // Emerald
-  '#475569', // Slate
+  '#17163D', // Midnight indigo
+  '#403B9C', // Royal indigo
+  '#7657F6', // Vibrant violet
+  '#FF647C', // Coral rose
+  '#55C7E8', // Cyan
+  '#10B981', // Emerald
+  '#F59E0B', // Warm amber
+  '#64748B', // Slate
 ];
 
 export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
@@ -102,205 +102,211 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setParentName(editingStudent.parentName || '');
       setParentPhone(editingStudent.parentPhone || '');
       setParentRelation(editingStudent.parentRelation || 'ولي الأمر');
-      
-      const currentGrade = editingStudent.gradeLevel || 'الصف الأول الثانوي';
-      setGradeLevel(currentGrade);
-      const matchedStageId = getStageByGrade(currentGrade);
-      if (matchedStageId) {
-        setSelectedStageId(matchedStageId);
-      }
-
       setSchool(editingStudent.school || '');
       setNotes(editingStudent.notes || '');
       setAvatarColor(editingStudent.avatarColor || AVATAR_COLORS[0]);
       setProfilePhoto(editingStudent.profilePhoto);
       setAchievementFrame(editingStudent.achievementFrame || 'default');
+      
+      const stg = getStageByGrade(editingStudent.gradeLevel);
+      if (stg) {
+        setSelectedStageId(stg);
+      }
+      setGradeLevel(editingStudent.gradeLevel || 'الصف الأول الثانوي');
 
-      // Load current enrollments
-      const currentEnrs = db.getStudentEnrollments(editingStudent.id);
-      setSelectedGroupIds(currentEnrs.map((e) => e.groupId));
-
-      const sType = db.getStudentServiceType(editingStudent.id);
-      if (sType === 'both') setSubscriptionMode('both');
-      else if (sType === 'private_only') setSubscriptionMode('private');
-      else if (sType === 'group_only') setSubscriptionMode('group');
-      else setSubscriptionMode('none');
+      // Fetch existing enrollments
+      const enrollments = db.getStudentEnrollments(editingStudent.id);
+      const groupEnrs = enrollments.filter((e) => {
+        const g = allGroups.find((grp) => grp.id === e.groupId);
+        return g && g.type !== 'private' && e.serviceType !== 'private';
+      });
+      setSelectedGroupIds(groupEnrs.map((e) => e.groupId));
     } else {
       setName('');
       setPhone('');
       setParentName('');
       setParentPhone('');
       setParentRelation('ولي الأمر');
-      setSelectedStageId('secondary');
-      setGradeLevel('الصف الأول الثانوي');
       setSchool('');
       setNotes('');
       setAvatarColor(AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]);
       setProfilePhoto(undefined);
       setAchievementFrame('default');
+      setSelectedStageId('secondary');
+      setGradeLevel('الصف الأول الثانوي');
       
-      const regular = allGroups.filter((g) => g.type !== 'private');
       if (defaultGroupId) {
-        setSelectedGroupIds([defaultGroupId]);
         setSubscriptionMode('group');
+        setSelectedGroupIds([defaultGroupId]);
       } else {
-        setSelectedGroupIds(regular.length > 0 ? [regular[0].id] : []);
-        setSubscriptionMode(regular.length > 0 ? 'group' : 'private');
+        setSubscriptionMode('group');
+        setSelectedGroupIds([]);
       }
-
-      setPrivateSubject('رياضيات');
-      setPrivatePrice(150);
-      setPrivateHourlyRate(150);
-      setPrivateBillingMode('prepaid');
-      setPrivateDays(['السبت']);
-      setPrivateTime('04:00 م');
-      setPrivateLocation('منزل الطالب / أونلاين');
     }
-  }, [editingStudent, isOpen, allGroups.length, defaultGroupId]);
+  }, [editingStudent, defaultGroupId, allGroups, isOpen]);
 
+  // Handle stage change
+  const handleStageChange = (stageId: string) => {
+    setSelectedStageId(stageId);
+    const stage = GRADE_STAGES.find((s) => s.id === stageId);
+    if (stage && stage.grades.length > 0) {
+      setGradeLevel(stage.grades[0].nameAr);
+    }
+  };
+
+  // Handle image upload with auto compression
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setIsCompressingPhoto(true);
     try {
-      setIsCompressingPhoto(true);
-      const compressedBase64 = await compressImage(file, 240, 240, 0.8);
-      setProfilePhoto(compressedBase64);
+      const compressedDataUrl = await compressImage(file, 320, 320, 0.8);
+      setProfilePhoto(compressedDataUrl);
     } catch (err) {
-      console.error('Failed to compress image:', err);
-      alert('Could not compress photo, please try another image');
+      console.error('Failed to compress profile photo:', err);
     } finally {
       setIsCompressingPhoto(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleRemovePhoto = () => {
     setProfilePhoto(undefined);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
-  const handleStageChange = (stageId: string) => {
-    setSelectedStageId(stageId);
-    const stage = GRADE_STAGES.find((s) => s.id === stageId);
-    if (stage && stage.grades.length > 0) {
-      setGradeLevel(stage.grades[0]);
-    }
+  const toggleGroup = (groupId: string) => {
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
+    );
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const studentId = editingStudent
-      ? editingStudent.id
-      : `stu_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-
-    const savedStudent: Student = {
-      id: studentId,
+    const studentData: Student = {
+      id: editingStudent ? editingStudent.id : `std_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       name: name.trim(),
-      phone: phone.trim(),
-      parentName: parentName.trim(),
-      parentPhone: parentPhone.trim(),
-      parentRelation,
-      gradeLevel,
-      school: school.trim(),
-      notes: notes.trim(),
-      status: editingStudent ? editingStudent.status : 'active',
+      phone: phone.trim() || undefined,
+      parentName: parentName.trim() || undefined,
+      parentPhone: parentPhone.trim() || undefined,
+      parentRelation: parentRelation || undefined,
+      gradeLevel: gradeLevel || 'الصف الأول الثانوي',
+      school: school.trim() || undefined,
+      notes: notes.trim() || undefined,
       avatarColor,
       profilePhoto,
       achievementFrame,
+      status: editingStudent?.status || 'active',
       createdAt: editingStudent ? editingStudent.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    db.saveStudent(savedStudent);
+    db.saveStudent(studentData);
 
-    // If new student or updating:
+    // Save Enrollments when creating a new student
     if (!editingStudent) {
-      // 1. Group enrollments
+      // 1. Group Enrollments
       if (subscriptionMode === 'group' || subscriptionMode === 'both') {
-        for (const gId of selectedGroupIds) {
-          db.enrollStudent(studentId, gId);
-        }
+        selectedGroupIds.forEach((groupId) => {
+          const group = allGroups.find((g) => g.id === groupId);
+          const defaultPrice = group ? group.defaultPrice : 0;
+          const billingType = group ? group.billingType : 'monthly';
+          db.enrollStudent(studentData.id, groupId, {
+            serviceType: 'group',
+            billingType,
+            billingMode: group?.billingMode || (billingType as any),
+            customPrice: defaultPrice,
+            status: 'active',
+          });
+        });
       }
 
-      // 2. Private lesson creation & enrollment
+      // 2. Private Lesson Creation
       if (subscriptionMode === 'private' || subscriptionMode === 'both') {
-        const isPkg = privateBillingMode === 'package';
-        const isHourly = privateBillingMode === 'hourly';
-
-        // Clean and normalize schedule times
-        const cleanPrivateTimes: Record<string, string[]> = {};
-        privateDays.forEach((d) => {
-          const list = normalizeScheduleTimesList(privateTimes[d] || [privateTime || '16:00']);
-          cleanPrivateTimes[d] = list.length > 0 ? list : ['16:00'];
-        });
-
-        const primaryTime = privateDays.length > 0 && cleanPrivateTimes[privateDays[0]]?.[0]
-          ? cleanPrivateTimes[privateDays[0]][0]
-          : (privateTime.trim() || '16:00');
-
-        db.createPrivateLessonService(studentId, {
-          subject: privateSubject.trim() || t('groupTypePrivate'),
-          gradeLevel,
-          sessionPrice: isPkg
-            ? (Number(privatePackagePrice) || 900)
-            : isHourly
-            ? (Number(privateHourlyRate) || 150)
-            : (Number(privatePrice) || 100),
-          hourlyRate: isHourly ? (Number(privateHourlyRate) || 150) : undefined,
-          billingType: privateBillingMode as BillingType,
+        db.createPrivateLessonService(studentData.id, {
+          subject: privateSubject || 'درس خاص',
+          gradeLevel: gradeLevel || 'الصف الأول الثانوي',
+          sessionPrice: privateBillingMode === 'hourly' ? privateHourlyRate : privatePrice,
+          hourlyRate: privateBillingMode === 'hourly' ? privateHourlyRate : undefined,
+          billingType: privateBillingMode as any,
           billingMode: privateBillingMode,
-          packageSessionsCount: isPkg ? (Number(privatePackageSessions) || 10) : undefined,
-          packagePrice: isPkg ? (Number(privatePackagePrice) || 900) : undefined,
-          scheduleDays: privateDays,
-          scheduleTime: primaryTime,
-          scheduleTimes: cleanPrivateTimes,
+          packageSessionsCount: privateBillingMode === 'package' ? privatePackageSessions : undefined,
+          packagePrice: privateBillingMode === 'package' ? privatePackagePrice : undefined,
+          scheduleDays: privateDays.length > 0 ? privateDays : ['السبت'],
+          scheduleTime: privateTime || '16:00',
+          scheduleTimes: privateTimes,
           roomOrLocation: privateLocation,
         });
       }
     } else {
-      // If editing student, sync selected groups if changed
-      if (subscriptionMode === 'group' || subscriptionMode === 'both') {
-        for (const gId of selectedGroupIds) {
-          db.enrollStudent(studentId, gId);
+      // If editing, sync group enrollments
+      const currentEnrollments = db.getStudentEnrollments(studentData.id);
+      const currentGroupEnrs = currentEnrollments.filter((e) => {
+        const g = allGroups.find((grp) => grp.id === e.groupId);
+        return g && g.type !== 'private' && e.serviceType !== 'private';
+      });
+      const currentGroupIds = currentGroupEnrs.map((e) => e.groupId);
+
+      // Add newly selected groups
+      selectedGroupIds.forEach((groupId) => {
+        if (!currentGroupIds.includes(groupId)) {
+          const group = allGroups.find((g) => g.id === groupId);
+          const defaultPrice = group ? group.defaultPrice : 0;
+          const billingType = group ? group.billingType : 'monthly';
+          db.enrollStudent(studentData.id, groupId, {
+            serviceType: 'group',
+            billingType,
+            billingMode: group?.billingMode || (billingType as any),
+            customPrice: defaultPrice,
+            status: 'active',
+          });
         }
-      }
+      });
+
+      // Remove unselected groups
+      currentGroupEnrs.forEach((enr) => {
+        if (!selectedGroupIds.includes(enr.groupId)) {
+          db.removeEnrollment(enr.id);
+        }
+      });
     }
 
-    onSaveComplete(savedStudent);
+    onSaveComplete(studentData);
     onClose();
   };
 
-  const toggleGroup = (groupId: string) => {
-    if (selectedGroupIds.includes(groupId)) {
-      setSelectedGroupIds(selectedGroupIds.filter((id) => id !== groupId));
-    } else {
-      setSelectedGroupIds([...selectedGroupIds, groupId]);
-    }
-  };
-
   const togglePrivateDay = (day: string) => {
-    if (privateDays.includes(day)) {
-      if (privateDays.length > 1) {
-        setPrivateDays(privateDays.filter((d) => d !== day));
+    setPrivateDays((prev) => {
+      const isAlready = prev.includes(day);
+      if (isAlready) {
+        if (prev.length === 1) return prev;
+        const nextDays = prev.filter((d) => d !== day);
+        setPrivateTimes((pt) => {
+          const copy = { ...pt };
+          delete copy[day];
+          return copy;
+        });
+        return nextDays;
+      } else {
+        const nextDays = [...prev, day];
+        setPrivateTimes((pt) => ({
+          ...pt,
+          [day]: pt[day] && pt[day].length > 0 ? pt[day] : [privateTime || '16:00'],
+        }));
+        return nextDays;
       }
-    } else {
-      setPrivateDays([...privateDays, day]);
-      if (!privateTimes[day] || privateTimes[day].length === 0) {
-        setPrivateTimes((prev) => ({ ...prev, [day]: [privateTime || '16:00'] }));
-      }
-    }
+    });
   };
 
-  const handlePrivateDayTimeChange = (day: string, timeIdx: number, timeVal: string) => {
+  const handlePrivateDayTimeChange = (day: string, timeIdx: number, val: string) => {
     setPrivateTimes((prev) => {
       const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      currentList[timeIdx] = timeVal;
+      currentList[timeIdx] = val;
+      if (timeIdx === 0 && day === privateDays[0]) {
+        setPrivateTime(val);
+      }
       return { ...prev, [day]: currentList };
     });
   };
@@ -308,11 +314,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const handleAddPrivateDayTime = (day: string) => {
     setPrivateTimes((prev) => {
       const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      const lastTime = currentList[currentList.length - 1] || '16:00';
-      const [h, m] = lastTime.split(':').map(Number);
-      const nextH = !isNaN(h) ? Math.min(23, (h + 3) % 24) : 19;
-      const nextTimeStr = `${String(nextH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
-      return { ...prev, [day]: [...currentList, nextTimeStr] };
+      return { ...prev, [day]: [...currentList, '17:00'] };
     });
   };
 
@@ -336,46 +338,47 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F7F8FC] border border-[#E2E8F0] rounded-t-3xl sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-[#F5F6FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
-        {/* Modal Header */}
-        <div className="p-4 flex items-center justify-between border-b border-[#E2E8F0] bg-white">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-[#172554] text-[#C9A227] shadow-sm">
-              <UserPlus className="w-5 h-5" />
+        {/* Modal Signature Header */}
+        <div className="p-4 sm:p-5 flex items-center justify-between border-b border-[#E8E7FF] bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white relative overflow-hidden">
+          <div className="flex items-center gap-3 relative z-10 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <UserPlus className="w-5 h-5 text-[#55C7E8]" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-[#111827]">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
                 {editingStudent ? t('editStudent') : t('newStudent')}
               </h2>
-              <p className="text-[11px] text-[#64748B] font-medium">
-                {editingStudent ? t('editStudent') : t('studentsSubtitle')}
+              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
+                {editingStudent ? 'تحديث وتعديل ملف الطالب واشتراكاته' : t('studentsSubtitle')}
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full bg-[#F1F5F9] text-[#64748B] hover:text-[#111827] hover:bg-[#E2E8F0] transition-colors"
+            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Form Content */}
-        <form onSubmit={handleSave} className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#111827]">
+        <form onSubmit={handleSave} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#191A2E]">
           
           {/* SECTION: Profile Photo, Achievement Frame & Avatar Color */}
-          <div className="p-3.5 bg-white border border-[#E2E8F0] rounded-2xl space-y-3.5 shadow-sm">
+          <div className="classy-card p-4 space-y-3.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="font-bold text-[#111827] text-xs flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-[#C9A227]" />
+              <label className="font-black text-[#17163D] text-xs sm:text-sm flex items-center gap-2">
+                <Camera className="w-4 h-4 text-[#7657F6]" />
                 <span>{t('profilePhoto')}</span>
               </label>
-              <span className="text-[10px] text-[#64748B]">{t('photoOptionalTip')}</span>
+              <span className="text-[11px] text-[#74778F] font-medium">{t('photoOptionalTip')}</span>
             </div>
 
             <div className="flex items-center gap-4">
@@ -404,14 +407,14 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                   className="hidden"
                 />
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isCompressingPhoto}
-                    className="px-3 py-1.5 rounded-xl bg-[#172554] hover:bg-[#1E3A8A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                    className="px-3.5 py-2 rounded-xl bg-[#7657F6] hover:bg-[#403B9C] text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5 text-[#C9A227]" />
+                    <Upload className="w-3.5 h-3.5 text-white" />
                     <span>{isCompressingPhoto ? '...' : profilePhoto ? t('changePhotoBtn') : t('uploadPhotoBtn')}</span>
                   </button>
 
@@ -419,7 +422,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
-                      className="px-2.5 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold text-xs flex items-center gap-1 transition-all"
+                      className="px-3 py-2 rounded-xl bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] hover:bg-[#FF647C] hover:text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>{t('removePhotoBtn')}</span>
@@ -428,16 +431,16 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 </div>
 
                 {/* Avatar Color Picker for Fallback */}
-                <div className="space-y-1 pt-1 border-t border-[#E2E8F0]">
-                  <span className="text-[10px] text-[#64748B] block font-semibold">{t('fallbackColorLabel')}:</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="space-y-1.5 pt-2 border-t border-[#E8E7FF]">
+                  <span className="text-[11px] text-[#74778F] block font-bold">{t('fallbackColorLabel')}:</span>
+                  <div className="flex items-center gap-2 flex-wrap">
                     {AVATAR_COLORS.map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setAvatarColor(c)}
-                        className={`w-5 h-5 rounded-full border-2 transition-transform ${
-                          avatarColor === c ? 'scale-110 border-[#172554]' : 'border-transparent'
+                        className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer ${
+                          avatarColor === c ? 'scale-115 border-[#17163D] shadow-sm' : 'border-transparent'
                         }`}
                         style={{ backgroundColor: c }}
                       />
@@ -448,7 +451,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             </div>
 
             {/* Achievement Frame Selector */}
-            <div className="pt-2 border-t border-[#E2E8F0]">
+            <div className="pt-2.5 border-t border-[#E8E7FF]">
               <AchievementFrameSelector
                 selectedFrame={achievementFrame}
                 onSelectFrame={(frame) => setAchievementFrame(frame)}
@@ -457,74 +460,74 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           </div>
 
           {/* Basic Student Info Card */}
-          <div className="p-3.5 bg-white border border-[#E2E8F0] rounded-2xl space-y-3 shadow-sm">
+          <div className="classy-card p-4 space-y-3 shadow-sm">
             <div>
-              <label className="block text-xs font-bold text-[#111827] mb-1">
+              <label className="block text-xs font-black text-[#17163D] mb-1">
                 {t('studentName')} *
               </label>
               <div className="relative">
-                <User className={`w-4 h-4 text-[#64748B] absolute ${isRTL ? 'right-3' : 'left-3'} top-3`} />
+                <User className={`w-4 h-4 text-[#74778F] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Ahmed Mohamed"
+                  placeholder="مثال: أحمد محمد علي"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className={`w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2.5 text-xs text-[#111827] placeholder-[#94A3B8] focus:outline-none focus:border-[#172554] font-medium`}
+                  className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-bold transition-all`}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-[#111827] mb-1">
+                <label className="block text-xs font-black text-[#17163D] mb-1">
                   {t('studentPhone')}
                 </label>
                 <div className="relative">
-                  <Phone className={`w-4 h-4 text-[#64748B] absolute ${isRTL ? 'right-3' : 'left-3'} top-3`} />
+                  <Phone className={`w-4 h-4 text-[#74778F] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
                   <input
                     type="tel"
                     placeholder="010XXXXXXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className={`w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2.5 text-xs text-[#111827] placeholder-[#94A3B8] focus:outline-none focus:border-[#172554] font-medium`}
+                    className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111827] mb-1">
+                <label className="block text-xs font-black text-[#17163D] mb-1">
                   {t('schoolNameLabel')}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Alexandria Language School"
+                  placeholder="مثال: مدرسة المتفوقين الثانوية"
                   value={school}
                   onChange={(e) => setSchool(e.target.value)}
-                  className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-xs text-[#111827] placeholder-[#94A3B8] focus:outline-none focus:border-[#172554] font-medium"
+                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl px-3.5 py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
                 />
               </div>
             </div>
           </div>
 
           {/* Educational Stage & Grade Level Card */}
-          <div className="p-3.5 bg-white border border-[#E2E8F0] rounded-2xl space-y-3 shadow-sm">
-            <label className="block text-xs font-bold text-[#111827] flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4 text-[#C9A227]" />
+          <div className="classy-card p-4 space-y-3 shadow-sm">
+            <label className="block text-xs font-black text-[#17163D] flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-[#7657F6]" />
               <span>{t('gradeLevel')}</span>
             </label>
 
             {/* Stage Selector Tabs */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl">
               {GRADE_STAGES.map((stg) => (
                 <button
                   key={stg.id}
                   type="button"
                   onClick={() => handleStageChange(stg.id)}
-                  className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                  className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                     selectedStageId === stg.id
-                      ? 'bg-[#172554] text-white shadow-xs'
-                      : 'text-[#64748B] hover:bg-[#E2E8F0]'
+                      ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
+                      : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
                   }`}
                 >
                   {language === 'ar' ? stg.nameAr : stg.nameEn}
@@ -533,7 +536,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             </div>
 
             {/* Specific Grades in Selected Stage */}
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               {currentStage.grades.map((grd) => {
                 const gradeName = grd.nameAr;
                 const isSelected = gradeLevel === gradeName;
@@ -542,10 +545,10 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                     key={grd.id}
                     type="button"
                     onClick={() => setGradeLevel(gradeName)}
-                    className={`p-2 rounded-xl border text-center font-bold text-xs transition-all ${
+                    className={`p-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#172554] text-white border-[#172554] shadow-xs'
-                        : 'bg-[#F7F8FC] text-[#334155] border-[#E2E8F0] hover:bg-[#E2E8F0]'
+                        ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-sm'
+                        : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                     }`}
                   >
                     {getLocalizedStageName(gradeName, language)}
@@ -556,56 +559,56 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           </div>
 
           {/* Guardian / Parent Card */}
-          <div className="p-3.5 bg-white border border-[#E2E8F0] rounded-2xl space-y-3 shadow-sm">
-            <label className="block text-xs font-bold text-[#111827] flex items-center gap-1.5">
-              <User className="w-4 h-4 text-[#C9A227]" />
-              <span>{t('parentName')}</span>
+          <div className="classy-card p-4 space-y-3 shadow-sm">
+            <label className="block text-xs font-black text-[#17163D] flex items-center gap-2">
+              <User className="w-4 h-4 text-[#7657F6]" />
+              <span>بيانات ولي الأمر والتواصل</span>
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-[#64748B] mb-1">{t('parentName')}</label>
+                <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('parentName')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Mohamed Ali"
+                  placeholder="مثال: محمود علي"
                   value={parentName}
                   onChange={(e) => setParentName(e.target.value)}
-                  className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#111827] placeholder-[#94A3B8] focus:outline-none focus:border-[#172554]"
+                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-[#64748B] mb-1">{t('parentPhone')}</label>
+                <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('parentPhone')}</label>
                 <input
                   type="tel"
                   placeholder="010XXXXXXXX"
                   value={parentPhone}
                   onChange={(e) => setParentPhone(e.target.value)}
-                  className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs text-[#111827] placeholder-[#94A3B8] focus:outline-none focus:border-[#172554]"
+                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
                 />
               </div>
             </div>
           </div>
 
           {/* Subscriptions Card */}
-          <div className="p-3.5 bg-white border border-[#E2E8F0] rounded-2xl space-y-3 shadow-sm">
+          <div className="classy-card p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#111827] flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-[#C9A227]" />
+              <label className="text-xs sm:text-sm font-black text-[#17163D] flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#7657F6]" />
                 <span>{t('subscriptionTypeLabel')}</span>
               </label>
-              <span className="text-[10px] text-[#64748B] font-semibold">{t('flexibleEnrollmentSupport')}</span>
+              <span className="text-[11px] text-[#74778F] font-bold">{t('flexibleEnrollmentSupport')}</span>
             </div>
 
             {/* Subscription Type Selector */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl">
               <button
                 type="button"
                 onClick={() => setSubscriptionMode('group')}
-                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'group'
-                    ? 'bg-[#172554] text-white shadow-xs'
-                    : 'text-[#64748B] hover:bg-[#E2E8F0]'
+                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
+                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
                 }`}
               >
                 {t('groupTypeGroup')}
@@ -613,10 +616,10 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSubscriptionMode('private')}
-                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'private'
-                    ? 'bg-[#172554] text-white shadow-xs'
-                    : 'text-[#64748B] hover:bg-[#E2E8F0]'
+                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
+                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
                 }`}
               >
                 {t('groupTypePrivate')}
@@ -624,10 +627,10 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSubscriptionMode('both')}
-                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'both'
-                    ? 'bg-[#172554] text-white shadow-xs'
-                    : 'text-[#64748B] hover:bg-[#E2E8F0]'
+                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
+                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
                 }`}
               >
                 {t('bothTypes')}
@@ -635,10 +638,10 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSubscriptionMode('none')}
-                className={`py-1.5 px-1 rounded-lg text-xs font-bold transition-all text-center ${
+                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'none'
-                    ? 'bg-[#172554] text-white shadow-xs'
-                    : 'text-[#64748B] hover:bg-[#E2E8F0]'
+                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
+                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
                 }`}
               >
                 {t('unassigned')}
@@ -647,13 +650,13 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
             {/* 1. Group Selection when 'group' or 'both' */}
             {(subscriptionMode === 'group' || subscriptionMode === 'both') && (
-              <div className="space-y-2 pt-2 border-t border-[#E2E8F0]">
-                <span className="text-[11px] font-bold text-[#64748B] block">
+              <div className="space-y-2 pt-2 border-t border-[#E8E7FF]">
+                <span className="text-xs font-bold text-[#191A2E] block">
                   {t('selectGroupsPrompt')}:
                 </span>
 
                 {regularGroups.length === 0 ? (
-                  <p className="text-xs text-[#64748B] p-3 bg-[#F7F8FC] rounded-xl text-center">
+                  <p className="text-xs text-[#74778F] p-3 bg-[#F6F7FC] rounded-2xl text-center font-medium">
                     {t('noGroupsRegisteredYet')}
                   </p>
                 ) : (
@@ -664,29 +667,29 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                         <div
                           key={grp.id}
                           onClick={() => toggleGroup(grp.id)}
-                          className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
                             isChecked
-                              ? 'bg-[#172554]/5 border-[#172554] text-[#172554]'
-                              : 'bg-[#F7F8FC] border-[#E2E8F0] text-[#64748B] hover:bg-[#E2E8F0]'
+                              ? 'bg-[#E8E7FF]/40 border-[#7657F6] text-[#17163D]'
+                              : 'bg-[#F6F7FC] border-[#E8E7FF] text-[#74778F] hover:bg-[#E8E7FF]/20'
                           }`}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2.5">
                             <div
-                              className={`w-4 h-4 rounded flex items-center justify-center border ${
+                              className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
                                 isChecked
-                                  ? 'bg-[#172554] border-[#172554] text-white'
-                                  : 'border-[#CBD5E1] bg-white'
+                                  ? 'bg-[#7657F6] border-[#7657F6] text-white shadow-xs'
+                                  : 'border-[#D8D5FB] bg-white'
                               }`}
                             >
-                              {isChecked && <Check className="w-3 h-3" />}
+                              {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                             </div>
-                            <span className="font-bold text-xs">{grp.name}</span>
-                            <span className="text-[10px] text-[#64748B]">
+                            <span className="font-bold text-xs sm:text-sm text-[#191A2E]">{grp.name}</span>
+                            <span className="text-[11px] text-[#74778F]">
                               ({grp.subject} • {getLocalizedStageName(grp.gradeLevel, language)})
                             </span>
                           </div>
 
-                          <span className="text-[11px] font-bold text-[#C9A227]">
+                          <span className="text-xs font-black text-[#7657F6]">
                             {grp.defaultPrice} {t('currency')}
                           </span>
                         </div>
@@ -699,32 +702,32 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
             {/* 2. Private Lesson Configuration when 'private' or 'both' */}
             {(subscriptionMode === 'private' || subscriptionMode === 'both') && (
-              <div className="space-y-2.5 pt-2 border-t border-[#E2E8F0]">
+              <div className="space-y-2.5 pt-2 border-t border-[#E8E7FF]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[#C9A227] flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" />
+                  <span className="text-xs font-black text-[#FF647C] flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
                     <span>{t('privateLessonSetupTitle')}</span>
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[10px] text-[#64748B] mb-0.5">{t('subjectNameLabel')} *</label>
+                    <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('subjectNameLabel')} *</label>
                     <input
                       type="text"
                       value={privateSubject}
                       onChange={(e) => setPrivateSubject(e.target.value)}
-                      placeholder="e.g. Physics"
-                      className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
+                      placeholder="مثال: الفيزياء"
+                      className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-[#64748B] mb-0.5">{t('billingType')}</label>
+                    <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('billingType')}</label>
                     <select
                       value={privateBillingMode}
                       onChange={(e) => setPrivateBillingMode(e.target.value as BillingMode)}
-                      className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
+                      className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white cursor-pointer"
                     >
                       <option value="prepaid">{t('billingPrepaid')}</option>
                       <option value="postpaid">{t('billingPostpaid')}</option>
@@ -736,189 +739,85 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
                   {privateBillingMode === 'hourly' ? (
                     <div>
-                      <label className="block text-[10px] text-[#64748B] mb-0.5">{t('hourlyRateInputLabel')} *</label>
+                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">سعر الساعة *</label>
                       <input
                         type="number"
                         min="0"
                         value={privateHourlyRate}
                         onChange={(e) => setPrivateHourlyRate(Number(e.target.value))}
-                        className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
+                        className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white"
                       />
                     </div>
                   ) : privateBillingMode !== 'package' ? (
                     <div>
-                      <label className="block text-[10px] text-[#64748B] mb-0.5">
-                        {privateBillingMode === 'monthly' ? t('monthlyFeeLabel') : t('perSessionRateLabel')} *
+                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">
+                        {privateBillingMode === 'monthly' ? 'سعر الاشتراك الشهري' : 'سعر الحصة'} *
                       </label>
                       <input
                         type="number"
                         min="0"
                         value={privatePrice}
                         onChange={(e) => setPrivatePrice(Number(e.target.value))}
-                        className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
+                        className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white"
                       />
                     </div>
-                  ) : (
+                  ) : null}
+                </div>
+
+                {privateBillingMode === 'package' && (
+                  <div className="grid grid-cols-2 gap-2.5 p-3 bg-[#F0FAFD] border border-[#BAE6FD] rounded-2xl">
                     <div>
-                      <label className="block text-[10px] text-[#64748B] mb-0.5 font-bold">
-                        {isRTL ? 'إجمالي سعر الباقة (ج.م) *' : 'Package Total Price *'}
-                      </label>
+                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">عدد حصص الباقة *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={privatePackageSessions}
+                        onChange={(e) => setPrivatePackageSessions(Number(e.target.value))}
+                        className="w-full bg-white border border-[#BAE6FD] rounded-xl p-2 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#55C7E8]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">سعر الباقة الإجمالي *</label>
                       <input
                         type="number"
                         min="0"
                         value={privatePackagePrice}
                         onChange={(e) => setPrivatePackagePrice(Number(e.target.value))}
-                        placeholder="e.g. 900"
-                        className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#172554]"
+                        className="w-full bg-white border border-[#BAE6FD] rounded-xl p-2 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#55C7E8]"
                       />
-                    </div>
-                  )}
-                </div>
-
-                {/* Package Sessions Count & Calculated Session Price */}
-                {privateBillingMode === 'package' && (
-                  <div className="p-2.5 bg-[#F7F8FC] rounded-xl border border-[#C9A227]/40 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-[#111827]">{t('packageSessionsNumberLabel')}:</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="1"
-                          value={privatePackageSessions}
-                          onChange={(e) => setPrivatePackageSessions(Math.max(1, Number(e.target.value)))}
-                          className="w-16 bg-white border border-[#E2E8F0] rounded-lg p-1 text-xs font-bold text-[#111827] text-center focus:outline-none focus:border-[#C9A227]"
-                        />
-                        <span className="text-xs font-bold text-[#64748B]">{isRTL ? 'حصة' : 'sessions'}</span>
-                      </div>
-                    </div>
-
-                    <div className="p-2 bg-[#C9A227]/10 rounded-lg flex items-center justify-between text-xs text-[#172554] font-bold">
-                      <span>{isRTL ? 'سعر الحصة الفعلي المحسوب:' : 'Calculated Price Per Session:'}</span>
-                      <span className="text-xs font-black text-[#172554]">
-                        {privatePackageSessions > 0 ? (Math.round((privatePackagePrice / privatePackageSessions) * 100) / 100) : 0} {t('currency')} / {isRTL ? 'حصة' : 'session'}
-                      </span>
                     </div>
                   </div>
                 )}
-
-                {/* Days & Per-Day Time */}
-                <div className="space-y-2 pt-1 border-t border-[#E2E8F0]">
-                  <label className="block text-[10px] font-bold text-[#64748B]">{t('scheduleDays')}:</label>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {[
-                      { key: 'السبت', label: t('daySat') },
-                      { key: 'الأحد', label: t('daySun') },
-                      { key: 'الاثنين', label: t('dayMon') },
-                      { key: 'الثلاثاء', label: t('dayTue') },
-                      { key: 'الأربعاء', label: t('dayWed') },
-                      { key: 'الخميس', label: t('dayThu') },
-                      { key: 'الجمعة', label: t('dayFri') },
-                    ].map(({ key, label }) => {
-                      const isDayChecked = privateDays.includes(key);
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => togglePrivateDay(key)}
-                          className={`px-2 py-0.5 rounded-lg text-xs font-bold border transition-all ${
-                            isDayChecked
-                              ? 'bg-[#172554] text-white border-[#172554]'
-                              : 'bg-white text-[#64748B] border-[#E2E8F0]'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Individual Time Inputs per Day */}
-                  {privateDays.length > 0 && (
-                    <div className="space-y-2 pt-1">
-                      {privateDays.map((day) => {
-                        const dayTimes = privateTimes[day] && privateTimes[day].length > 0 ? privateTimes[day] : ['16:00'];
-                        return (
-                          <div
-                            key={day}
-                            className="p-2 rounded-xl bg-[#F7F8FC] border border-[#E2E8F0] space-y-2"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-[#111827] flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#C9A227]"></span>
-                                {day}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleAddPrivateDayTime(day)}
-                                className="text-[10px] font-bold text-[#172554] hover:text-[#1E3A8A] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#C9A227]/20 hover:bg-[#C9A227]/30 transition-colors"
-                              >
-                                <Plus className="w-3 h-3" />
-                                <span>{isRTL ? 'إضافة موعد آخر' : 'Add another time'}</span>
-                              </button>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {dayTimes.map((tVal, tIdx) => (
-                                <div
-                                  key={`${day}_${tIdx}`}
-                                  className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-lg px-2 py-0.5 shadow-2xs"
-                                >
-                                  <Clock className="w-3 h-3 text-[#64748B]" />
-                                  <input
-                                    type="time"
-                                    value={tVal}
-                                    onChange={(e) => handlePrivateDayTimeChange(day, tIdx, e.target.value)}
-                                    className="bg-transparent text-xs font-bold text-[#111827] focus:outline-none focus:text-[#172554]"
-                                  />
-                                  {dayTimes.length > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemovePrivateDayTime(day, tIdx)}
-                                      className="p-0.5 rounded text-[#64748B] hover:text-red-600 hover:bg-red-50 transition-colors ml-0.5"
-                                      title={isRTL ? 'حذف هذا الموعد' : 'Remove time'}
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
               </div>
             )}
           </div>
 
           {/* Notes Card */}
-          <div className="p-3.5 bg-white border border-[#E2E8F0] rounded-2xl space-y-1 shadow-sm">
-            <label className="block text-xs font-bold text-[#111827] mb-1">{t('notes')}</label>
+          <div className="classy-card p-4 space-y-2 shadow-sm">
+            <label className="block text-xs font-black text-[#17163D]">{t('notes')}</label>
             <textarea
               rows={2}
               placeholder={t('notesPlaceholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-[#F7F8FC] border border-[#E2E8F0] rounded-xl p-2.5 text-xs text-[#111827] placeholder-[#94A3B8] focus:outline-none focus:border-[#172554]"
+              className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl border border-[#E2E8F0] bg-white text-[#64748B] font-bold text-xs hover:bg-[#F1F5F9] transition-all"
+              className="flex-1 py-3 px-4 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs sm:text-sm hover:bg-[#F6F7FC] transition-all cursor-pointer"
             >
               {t('cancel')}
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 rounded-2xl bg-[#172554] hover:bg-[#1E3A8A] text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white font-black text-xs sm:text-sm shadow-lg shadow-[#7657F6]/30 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:brightness-105"
             >
-              <Check className="w-4 h-4 text-[#C9A227]" />
+              <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
               <span>{editingStudent ? t('saveChanges') : t('save')}</span>
             </button>
           </div>

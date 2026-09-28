@@ -50,7 +50,6 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
   const { t, isRTL, language } = useTranslation();
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Modal layer hook - MUST be called unconditionally at the top level
   const modalLayer = useModalLayer('bulk-add-session', isOpen, onClose);
 
   // Steps: form -> confirm -> result
@@ -153,7 +152,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
   // Perform Creation
   const handleExecuteBulkCreation = () => {
-    if (isSubmitting) return; // Prevent double-execution
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
@@ -211,22 +210,22 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17163D]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-white border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
           
-          {/* Header */}
-          <div className="p-4 sm:p-5 flex items-center justify-between bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white">
+          {/* Signature Header */}
+          <div className="p-4 sm:p-5 flex items-center justify-between bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-white/15 text-white shadow-md border border-white/20">
+              <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-sm shrink-0">
                 <CalendarCheck2 className="w-5 h-5 text-[#55C7E8]" />
               </div>
               <div>
-                <h2 className="text-sm sm:text-base font-black text-white tracking-tight">
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
                   {t('addBulkSessionTitle')}
                 </h2>
-                <p className="text-[11px] text-[#E8E7FF]/80 font-semibold">
+                <p className="text-xs text-[#E8E7FF]/85 font-medium">
                   {selectedStudents.length} {t('studentsCountBadge')} • {sessionCount} {sessionCount === 1 ? 'حصة' : 'حصص'}{' '}
                   ({totalSessionsToCreate} {t('summaryTotalSessions')})
                 </p>
@@ -234,7 +233,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
             >
               <X className="w-4 h-4" />
             </button>
@@ -242,35 +241,35 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
           {/* STEP 1: Main Configuration Form */}
           {step === 'form' && (
-            <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E] bg-[#F6F7FC]">
+            <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E]">
               
               {/* Quick Summary Badge */}
-              <div className="p-3 bg-[#E8E7FF] border border-[#7657F6]/20 rounded-2xl flex items-center justify-between">
+              <div className="p-3 bg-[#E8E7FF]/50 border border-[#D8D5FB] rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-[#7657F6]" />
-                  <span className="font-bold text-[#17163D] text-xs">
+                  <span className="font-black text-[#17163D] text-xs">
                     {t('selectedCount', { count: selectedStudents.length.toString() })}
                   </span>
                 </div>
-                <span className="text-[11px] font-bold bg-[#7657F6] text-white px-2.5 py-0.5 rounded-xl shadow-xs">
+                <span className="text-xs font-black bg-[#7657F6] text-white px-3 py-1 rounded-xl shadow-xs">
                   {totalSessionsToCreate} {t('totalSessionsToCreate')}
                 </span>
               </div>
 
               {/* Sessions Count Counter & Quick Chips */}
-              <div className="p-3.5 bg-white border border-[#E8E7FF] rounded-2xl space-y-2.5 shadow-xs">
-                <label className="block font-bold text-[#74778F] text-xs">
+              <div className="classy-card p-4 space-y-3">
+                <label className="block font-black text-[#17163D] text-xs">
                   {t('sessionsCountPerStudent')} *
                 </label>
 
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center border border-[#E8E7FF] rounded-xl bg-[#F6F7FC] p-1">
+                  <div className="flex items-center border border-[#E8E7FF] rounded-2xl bg-[#F6F7FC] p-1">
                     <button
                       type="button"
                       onClick={() => setSessionCount((c) => Math.max(1, c - 1))}
-                      className="p-1.5 rounded-lg bg-white text-[#191A2E] hover:bg-[#E8E7FF] border border-[#E8E7FF] transition-colors active:scale-95 cursor-pointer"
+                      className="p-2 rounded-xl bg-white text-[#191A2E] hover:bg-[#E8E7FF] border border-[#E8E7FF] transition-colors active:scale-95 cursor-pointer"
                     >
-                      <Minus className="w-3.5 h-3.5" />
+                      <Minus className="w-3.5 h-3.5 stroke-[3]" />
                     </button>
                     <span className="w-12 text-center font-black text-sm text-[#17163D]">
                       {sessionCount}
@@ -278,9 +277,9 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSessionCount((c) => c + 1)}
-                      className="p-1.5 rounded-lg bg-white text-[#191A2E] hover:bg-[#E8E7FF] border border-[#E8E7FF] transition-colors active:scale-95 cursor-pointer"
+                      className="p-2 rounded-xl bg-white text-[#191A2E] hover:bg-[#E8E7FF] border border-[#E8E7FF] transition-colors active:scale-95 cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
                     </button>
                   </div>
 
@@ -291,7 +290,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                         key={num}
                         type="button"
                         onClick={() => setSessionCount(num)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                           sessionCount === num
                             ? 'bg-[#7657F6] text-white shadow-xs'
                             : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF] border border-[#E8E7FF]'
@@ -306,31 +305,31 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
               {/* Date & Start Time */}
               <div className="grid grid-cols-2 gap-2.5">
-                <div className="p-3 bg-white border border-[#E8E7FF] rounded-2xl space-y-1 shadow-xs">
-                  <label className="block font-bold text-[#74778F] text-[11px]">{t('sessionDate')} *</label>
+                <div className="classy-card p-3 space-y-1">
+                  <label className="block font-black text-[#17163D] text-[11px]">{t('sessionDate')} *</label>
                   <input
                     type="date"
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl p-2 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6]"
+                    className="classy-input font-bold"
                   />
                 </div>
 
-                <div className="p-3 bg-white border border-[#E8E7FF] rounded-2xl space-y-1 shadow-xs">
-                  <label className="block font-bold text-[#74778F] text-[11px]">{t('sessionStartTime')}</label>
+                <div className="classy-card p-3 space-y-1">
+                  <label className="block font-black text-[#17163D] text-[11px]">{t('sessionStartTime')}</label>
                   <input
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl p-2 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6]"
+                    className="classy-input font-bold"
                   />
                 </div>
               </div>
 
               {/* Session Title / Subject */}
-              <div className="p-3 bg-white border border-[#E8E7FF] rounded-2xl space-y-1.5 shadow-xs">
-                <label className="block font-bold text-[#74778F] text-[11px]">
+              <div className="classy-card p-3.5 space-y-1.5">
+                <label className="block font-black text-[#17163D] text-[11px]">
                   {t('sessionTitleInput')}
                 </label>
                 <input
@@ -338,18 +337,18 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="مثال: مراجعة شاملة وحل تمارين"
-                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl p-2.5 text-xs text-[#191A2E] font-bold focus:outline-none focus:border-[#7657F6]"
+                  className="classy-input font-bold"
                 />
               </div>
 
               {/* Hourly Rate Duration & Calculation Section */}
               {hasHourlyStudents && (
-                <div className="p-3.5 bg-[#FF647C]/10 border border-[#FF647C]/20 rounded-2xl space-y-2.5 shadow-xs">
+                <div className="classy-card p-4 space-y-3 bg-[#FFF1F3] border-[#FECDD3]">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#FF647C]" />
-                    <h4 className="font-bold text-[#191A2E] text-xs">{t('hourlyDurationLabel')}</h4>
+                    <h4 className="font-black text-[#17163D] text-xs">{t('hourlyDurationLabel')}</h4>
                   </div>
-                  <p className="text-[11px] text-[#74778F]">{t('hourlyNote')}</p>
+                  <p className="text-[11px] text-[#74778F] font-medium">{t('hourlyNote')}</p>
 
                   <div className="flex items-center gap-2 flex-wrap">
                     {[1, 1.5, 2, 2.5, 3].map((hrs) => (
@@ -357,7 +356,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                         key={hrs}
                         type="button"
                         onClick={() => setHourlyDuration(hrs)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                           hourlyDuration === hrs
                             ? 'bg-[#FF647C] text-white shadow-xs'
                             : 'bg-white text-[#74778F] border border-[#E8E7FF]'
@@ -374,7 +373,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                         max="10"
                         value={hourlyDuration}
                         onChange={(e) => setHourlyDuration(Number(e.target.value) || 1)}
-                        className="w-16 bg-white border border-[#E8E7FF] rounded-xl p-1.5 text-xs font-bold text-center text-[#191A2E]"
+                        className="w-16 bg-white border border-[#E8E7FF] rounded-xl p-1.5 text-xs font-black text-center text-[#191A2E]"
                       />
                       <span className="text-[11px] font-bold text-[#74778F]">ساعة</span>
                     </div>
@@ -385,10 +384,10 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
               {/* Selected Students & Enrollment Configuration List */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#74778F] text-xs">
+                  <span className="font-black text-[#17163D] text-xs">
                     {t('selectedStudents')} ({selectedStudents.length}):
                   </span>
-                  <span className="text-[10px] text-[#74778F]">
+                  <span className="text-[10px] text-[#74778F] font-bold">
                     {preselectedGroupId ? t('allSelectedStudentsInSameGroup') : t('multiGroupSelectionNote')}
                   </span>
                 </div>
@@ -413,14 +412,14 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   return (
                     <div
                       key={st.id}
-                      className="p-3 bg-white border border-[#E8E7FF] rounded-2xl space-y-2 shadow-xs"
+                      className="classy-card p-3 space-y-2"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <StudentAvatar student={st} size="sm" showFrame={true} className="shrink-0" />
                           <div className="min-w-0">
-                            <p className="font-bold text-[#191A2E] text-xs truncate">{st.name}</p>
-                            <p className="text-[10px] text-[#74778F]">
+                            <p className="font-black text-[#17163D] text-xs truncate">{st.name}</p>
+                            <p className="text-[10px] text-[#74778F] truncate font-medium">
                               {currentEnr
                                 ? getBillingModeLabel(currentEnr.billingType, currentEnr.billingMode)
                                 : t('noEnrollmentWarning')}
@@ -430,13 +429,13 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
                         {/* Financial info per student */}
                         <div className="text-end shrink-0">
-                          <span className="text-[11px] font-black text-[#7657F6]">
+                          <span className="text-xs font-black text-[#7657F6]">
                             {isHourly
                               ? `${sessionPrice} ${t('currency')} (${hourlyDuration} س × ${rate})`
                               : `${sessionPrice} ${t('currency')}`}
                           </span>
                           {sessionCount > 1 && (
-                            <p className="text-[10px] font-bold text-[#74778F]">
+                            <p className="text-[10px] font-black text-[#74778F]">
                               إجمالي: {multiplyMoney(sessionPrice, sessionCount)} {t('currency')}
                             </p>
                           )}
@@ -452,7 +451,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                           <select
                             value={target?.enrollmentId || ''}
                             onChange={(e) => handleEnrollmentChange(st.id, e.target.value)}
-                            className="flex-1 bg-[#F6F7FC] border border-[#E8E7FF] rounded-lg px-2 py-1 text-[11px] text-[#191A2E] font-bold focus:outline-none"
+                            className="classy-select py-1 text-[11px]"
                           >
                             {enrollments.map((e) => {
                               const grp = db.getGroupById(e.groupId);
@@ -479,14 +478,14 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
               </div>
 
               {/* Notes */}
-              <div className="p-3 bg-white border border-[#E8E7FF] rounded-2xl space-y-1 shadow-xs">
-                <label className="block font-bold text-[#74778F] text-[11px]">{t('notes')}</label>
+              <div className="classy-card p-3 space-y-1">
+                <label className="block font-black text-[#17163D] text-[11px]">{t('notes')}</label>
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="ملاحظات اختيارية..."
-                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl p-2 text-xs text-[#191A2E] focus:outline-none"
+                  className="classy-input"
                 />
               </div>
 
@@ -495,41 +494,41 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
           {/* STEP 2: Confirmation Summary Screen */}
           {step === 'confirm' && (
-            <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E] bg-[#F6F7FC]">
+            <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E]">
               
-              <div className="p-4 bg-white border border-[#E8E7FF] rounded-2xl space-y-3 shadow-xs">
+              <div className="classy-card p-4 space-y-3">
                 <div className="flex items-center gap-2 text-[#7657F6]">
                   <Info className="w-5 h-5" />
-                  <h3 className="font-bold text-sm text-[#191A2E]">{t('confirmBulkCreation')}</h3>
+                  <h3 className="font-black text-sm text-[#17163D]">{t('confirmBulkCreation')}</h3>
                 </div>
-                <p className="text-[11px] text-[#74778F] font-semibold">
+                <p className="text-[11px] text-[#74778F] font-medium leading-relaxed">
                   {t('confirmBulkCreationDesc')}
                 </p>
 
                 {/* Summary Stats Grid */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E8E7FF]">
-                  <div className="p-2.5 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
+                  <div className="p-2.5 bg-[#F6F7FC] rounded-2xl border border-[#E8E7FF]">
                     <p className="text-[10px] text-[#74778F] font-bold">{t('summaryStudentsCount')}</p>
                     <p className="text-sm font-black text-[#17163D]">{selectedStudents.length} طلاب</p>
                   </div>
-                  <div className="p-2.5 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
+                  <div className="p-2.5 bg-[#F6F7FC] rounded-2xl border border-[#E8E7FF]">
                     <p className="text-[10px] text-[#74778F] font-bold">{t('summarySessionsPerStudent')}</p>
                     <p className="text-sm font-black text-[#7657F6]">{sessionCount} حصص</p>
                   </div>
-                  <div className="p-2.5 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
+                  <div className="p-2.5 bg-[#F6F7FC] rounded-2xl border border-[#E8E7FF]">
                     <p className="text-[10px] text-[#74778F] font-bold">{t('summaryTotalSessions')}</p>
                     <p className="text-sm font-black text-[#FF647C]">{totalSessionsToCreate} حصة</p>
                   </div>
-                  <div className="p-2.5 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
+                  <div className="p-2.5 bg-[#F6F7FC] rounded-2xl border border-[#E8E7FF]">
                     <p className="text-[10px] text-[#74778F] font-bold">{t('summaryTargetDate')}</p>
-                    <p className="text-xs font-bold text-[#191A2E]">{date}</p>
+                    <p className="text-xs font-black text-[#17163D]">{date}</p>
                   </div>
                 </div>
               </div>
 
               {/* Individual Breakdown List */}
               <div className="space-y-2">
-                <span className="font-bold text-[#74778F] text-xs">{t('billingSummary')}:</span>
+                <span className="font-black text-[#17163D] text-xs">{t('billingSummary')}:</span>
                 {selectedStudents.map((st) => {
                   const tgt = studentTargets[st.id];
                   const enr = db.getEnrollmentById(tgt?.enrollmentId);
@@ -549,23 +548,23 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   return (
                     <div
                       key={st.id}
-                      className="p-2.5 bg-white border border-[#E8E7FF] rounded-xl flex items-center justify-between text-xs"
+                      className="classy-card p-3 flex items-center justify-between text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <StudentAvatar student={st} size="sm" showFrame={false} />
                         <div>
-                          <p className="font-bold text-[#191A2E] text-xs">{st.name}</p>
-                          <p className="text-[10px] text-[#74778F]">
+                          <p className="font-black text-[#17163D] text-xs">{st.name}</p>
+                          <p className="text-[10px] text-[#74778F] font-medium">
                             {grp?.name} • {getBillingModeLabel(enr?.billingType, enr?.billingMode)}
                           </p>
                         </div>
                       </div>
 
                       <div className="text-end">
-                        <span className="font-bold text-[#191A2E] text-xs">
+                        <span className="font-black text-[#17163D] text-xs">
                           +{sessionCount} حصص
                         </span>
-                        <p className="text-[10px] text-[#7657F6] font-bold">
+                        <p className="text-[10px] text-[#7657F6] font-black">
                           {multiplyMoney(effectivePrice, sessionCount)} {t('currency')}
                         </p>
                       </div>
@@ -579,14 +578,14 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
           {/* STEP 3: Result Summary Screen */}
           {step === 'result' && batchResult && (
-            <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#191A2E] bg-[#F6F7FC]">
+            <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#191A2E]">
               
-              <div className="p-5 bg-white border border-[#E8E7FF] rounded-3xl text-center space-y-2.5 shadow-xs">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center border border-emerald-200">
-                  <CheckCheck className="w-6 h-6" />
+              <div className="classy-card p-5 text-center space-y-2.5">
+                <div className="w-12 h-12 rounded-2xl bg-[#ECFDF5] text-emerald-600 mx-auto flex items-center justify-center border border-[#A7F3D0]">
+                  <CheckCheck className="w-6 h-6 stroke-[2.5]" />
                 </div>
-                <h3 className="font-bold text-base text-[#191A2E]">{t('bulkAddSuccess')}</h3>
-                <p className="text-xs text-[#74778F] max-w-xs mx-auto">
+                <h3 className="font-black text-base text-[#17163D]">{t('bulkAddSuccess')}</h3>
+                <p className="text-xs text-[#74778F] max-w-xs mx-auto font-medium leading-relaxed">
                   {t('bulkAddSuccessDesc', {
                     total: batchResult.totalCreated.toString(),
                     students: batchResult.studentCount.toString(),
@@ -597,7 +596,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
               {/* Results Details List */}
               <div className="space-y-2">
-                <span className="font-bold text-[#74778F] text-xs">{t('details')}:</span>
+                <span className="font-black text-[#17163D] text-xs">{t('details')}:</span>
                 {batchResult.results.map((item) => (
                   <div
                     key={item.studentId}
@@ -609,22 +608,22 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   >
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-[#191A2E] text-xs">{item.studentName}</span>
+                        <span className="font-black text-[#17163D] text-xs">{item.studentName}</span>
                         <span className="text-[10px] text-[#74778F]">({item.groupName})</span>
                       </div>
-                      <p className="text-[10px] text-[#74778F]">
+                      <p className="text-[10px] text-[#74778F] font-medium">
                         {getBillingModeLabel(item.billingMode)} • {item.chargedAmountPerSession} {t('currency')} / حصة
                       </p>
                     </div>
 
                     <div className="text-end">
                       {item.success ? (
-                        <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5" />
+                        <span className="text-xs font-black text-emerald-600 flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
                           <span>+{item.sessionsCreated} حصص</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-[#FF647C]">
+                        <span className="text-[10px] font-black text-[#FF647C]">
                           {item.error || 'فشل'}
                         </span>
                       )}
@@ -637,13 +636,13 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
           )}
 
           {/* Footer Actions */}
-          <div className="p-3.5 bg-white border-t border-[#E8E7FF] flex items-center gap-2">
+          <div className="p-4 bg-white border-t border-[#E8E7FF] flex items-center gap-2.5 shrink-0">
             {step === 'form' && (
               <>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-2.5 px-3 rounded-2xl btn-secondary text-[#17163D] text-xs font-bold transition-colors border border-[#E8E7FF] cursor-pointer"
+                  className="flex-1 py-3 px-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] text-xs font-black hover:bg-[#F6F7FC] transition-colors cursor-pointer"
                 >
                   {t('cancel')}
                 </button>
@@ -652,10 +651,10 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   type="button"
                   disabled={!isValidToProceed}
                   onClick={() => setStep('confirm')}
-                  className="flex-2 py-2.5 px-4 rounded-2xl btn-coral disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#FF647C]/30 active:scale-95 cursor-pointer"
+                  className="flex-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] disabled:opacity-50 text-white text-xs font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#7657F6]/30 active:scale-95 cursor-pointer hover:brightness-105"
                 >
                   <span>مراجعة وتأكيد ({totalSessionsToCreate} حصة)</span>
-                  {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                  {isRTL ? <ArrowLeft className="w-4 h-4 stroke-[3]" /> : <ArrowRight className="w-4 h-4 stroke-[3]" />}
                 </button>
               </>
             )}
@@ -666,7 +665,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setStep('form')}
-                  className="flex-1 py-2.5 px-3 rounded-2xl btn-secondary text-[#17163D] text-xs font-bold transition-colors border border-[#E8E7FF] cursor-pointer"
+                  className="flex-1 py-3 px-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] text-xs font-black hover:bg-[#F6F7FC] transition-colors cursor-pointer"
                 >
                   {t('backToEdit')}
                 </button>
@@ -675,13 +674,13 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                   type="button"
                   disabled={isSubmitting}
                   onClick={handleExecuteBulkCreation}
-                  className="flex-2 py-2.5 px-4 rounded-2xl btn-coral disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#FF647C]/30 active:scale-95 cursor-pointer"
+                  className="flex-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] disabled:opacity-50 text-white text-xs font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#7657F6]/30 active:scale-95 cursor-pointer hover:brightness-105"
                 >
                   {isSubmitting ? (
                     <span>{t('creatingSessions')}</span>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle2 className="w-4 h-4 text-[#55C7E8]" />
                       <span>تأكيد إنشاء {totalSessionsToCreate} حصة</span>
                     </>
                   )}
@@ -693,9 +692,9 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2.5 px-4 rounded-2xl btn-primary text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white text-xs font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#7657F6]/30 active:scale-95 cursor-pointer hover:brightness-105"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
                 <span>{t('done')}</span>
               </button>
             )}

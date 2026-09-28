@@ -500,18 +500,23 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                           </div>
                         </div>
 
-                        {/* Status Badge */}
-                        <span
-                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-lg shrink-0 ${
-                            item.status === 'completed'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : item.status === 'cancelled'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {item.status === 'completed' ? 'مكتملة' : item.status === 'cancelled' ? 'ملغاة' : 'مجدولة'}
-                        </span>
+                        {/* Dynamic Semantic Status Badge */}
+                        {item.status === 'completed' ? (
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>مكتملة</span>
+                          </span>
+                        ) : item.status === 'cancelled' ? (
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] inline-flex items-center gap-1 shadow-2xs shrink-0">
+                            <AlertCircle className="w-3 h-3 text-[#FF647C]" />
+                            <span>ملغاة</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            <span>مجدولة</span>
+                          </span>
+                        )}
                       </div>
 
                       {/* Attendance info for completed sessions */}
@@ -678,9 +683,22 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                       <span className="font-bold text-[#0F172A] truncate">{it.isPrivate ? it.studentName : it.groupName}</span>
                       <span className="text-slate-400 text-[11px]">({it.formattedTime || it.startTime || 'وقت مرن'})</span>
                     </div>
-                    <span className="text-[11px] font-bold text-indigo-600 shrink-0">
-                      {it.status === 'completed' ? 'مكتملة' : 'مجدولة'}
-                    </span>
+                    {it.status === 'completed' ? (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>مكتملة</span>
+                      </span>
+                    ) : it.status === 'cancelled' ? (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <AlertCircle className="w-2.5 h-2.5 text-[#FF647C]" />
+                        <span>ملغاة</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <Clock className="w-2.5 h-2.5 text-amber-600" />
+                        <span>مجدولة</span>
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

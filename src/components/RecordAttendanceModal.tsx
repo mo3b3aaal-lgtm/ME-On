@@ -20,6 +20,7 @@ import { Session, Group, Student, Attendance, AttendanceStatus } from '../types'
 import { db } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { useTranslation } from '../utils/i18n';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   session,
   onSaveComplete,
 }) => {
+  const { t, isRTL } = useTranslation();
   const group = session ? db.getGroupById(session.groupId) : undefined;
   const isPrivateSession = group?.type === 'private' || !!session?.studentId;
   let privateStudent: Student | undefined = undefined;
@@ -169,7 +171,6 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       setSelectedReason('الطالب ألغى');
       setCustomReasonText('');
     } else {
-      // Default: require explicit selection
       setSelectedChargeDecision(null);
       setSelectedReason('الطالب ألغى');
       setCustomReasonText('');
@@ -310,7 +311,6 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     db.saveAttendanceBatch(session.id, listToSave);
     setIsSavedSuccess(true);
     
-    // Subtle brief feedback before dismissal
     setTimeout(() => {
       onSaveComplete();
       onClose();
@@ -333,47 +333,50 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#0F172A]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir="rtl"
+        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F8FAFC] border border-slate-200 rounded-t-3xl sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
         
-        {/* Header */}
-        <div className="p-4 flex items-center justify-between border-b border-slate-200 bg-white">
-          <div className="flex items-center gap-2.5">
-            <div className={`p-2.5 rounded-2xl shadow-2xs ${isPrivateSession ? 'bg-rose-50 text-[#FF647C]' : 'bg-indigo-50 text-indigo-600'}`}>
-              <Users className="w-5 h-5" />
+        {/* Signature Classy Header */}
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+          <div className="flex items-center gap-3 relative z-10 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Users className="w-5 h-5 text-[#55C7E8]" />
             </div>
-            <div>
-              <h2 className="text-base font-black text-[#0F172A]">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
                 {isPrivateSession ? 'رصد حضور الدرس الخاص' : 'رصد الحضور واستهلاك الحصص'}
               </h2>
-              <p className="text-[11px] text-slate-500 font-medium">
+              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
                 {isPrivateSession && privateStudent
                   ? `الطالب: ${privateStudent.name}`
-                  : (group?.name || 'مجموعة')} • {session.title || (isPrivateSession ? 'درس خاص' : 'حصة بدون عنوان')} ({session.date})
+                  : (group?.name || 'مجموعة')} • {session.title || 'حصة دراسية'} ({session.date})
               </p>
             </div>
           </div>
+
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full bg-slate-100 text-slate-500 hover:text-[#0F172A] hover:bg-slate-200 transition-colors cursor-pointer"
+            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Quick Batch Actions & Stats Bar */}
-        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap text-xs">
+        <div className="p-3 bg-white border-b border-[#E8E7FF] flex items-center justify-between gap-2 flex-wrap text-xs">
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
               onClick={setAllPresent}
-              className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-emerald-700 font-bold hover:bg-emerald-600 hover:text-white transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] font-black hover:bg-emerald-600 hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>الكل حاضر</span>
             </button>
+
             <button
               type="button"
               onClick={() => {
@@ -382,28 +385,26 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 setBatchCustomReason('');
                 setIsBatchAbsentConfirmOpen(true);
               }}
-              className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-rose-700 font-bold hover:bg-rose-600 hover:text-white transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[#FFF1F3] border border-[#FECDD3] text-[#FF647C] font-black hover:bg-[#FF647C] hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <UserX className="w-3.5 h-3.5" />
               <span>الكل غائب</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] font-black text-slate-600">
-            <span className="text-emerald-700">حاضر: {presentCount}</span>
-            <span>•</span>
-            <span className="text-rose-700">محسوبة: {chargedAbsentCount}</span>
-            <span>•</span>
-            <span className="text-slate-500">غير محسوبة: {freeAbsentCount}</span>
+          <div className="flex items-center gap-2 text-xs font-black">
+            <span className="text-emerald-700 bg-[#ECFDF5] px-2 py-0.5 rounded-lg border border-[#A7F3D0]">حاضر: {presentCount}</span>
+            <span className="text-[#FF647C] bg-[#FFF1F3] px-2 py-0.5 rounded-lg border border-[#FECDD3]">محسوبة: {chargedAbsentCount}</span>
+            <span className="text-[#74778F] bg-[#F6F7FC] px-2 py-0.5 rounded-lg border border-[#E8E7FF]">معفية: {freeAbsentCount}</span>
           </div>
         </div>
 
         {/* Students List */}
         <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-2.5">
           {enrolledStudents.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 space-y-2">
-              <Users className="w-8 h-8 mx-auto opacity-40" />
-              <p className="text-xs">لا يوجد طلاب مسجلين في هذه المجموعة حالياً.</p>
+            <div className="p-8 text-center text-[#74778F] space-y-2 bg-white rounded-2xl border border-[#E8E7FF]">
+              <Users className="w-8 h-8 mx-auto opacity-40 text-[#7657F6]" />
+              <p className="text-xs font-bold">لا يوجد طلاب مسجلين في هذه المجموعة حالياً.</p>
             </div>
           ) : (
             enrolledStudents.map((student, index) => {
@@ -421,32 +422,32 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
               return (
                 <div
                   key={student.id}
-                  style={{ animationDelay: `${index * 45}ms` }}
-                  className={`p-3 rounded-2xl bg-white border transition-all shadow-2xs space-y-2.5 animate-slide-up-fade ${
+                  style={{ animationDelay: `${index * 40}ms` }}
+                  className={`p-3.5 rounded-2xl bg-white border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${
                     isAbsent
                       ? currentRecord.isCharged
-                        ? 'border-rose-300 bg-rose-50/40'
-                        : 'border-slate-200 bg-slate-50'
-                      : 'border-slate-200'
+                        ? 'border-[#FECDD3] bg-[#FFF1F3]/40'
+                        : 'border-[#E8E7FF] bg-[#F6F7FC]'
+                      : 'border-[#E8E7FF]'
                   }`}
                 >
                   {/* Top Row: Name + Credit Badge + Homework Checkbox */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <StudentAvatar
                         student={student}
                         size="sm"
                         showFrame={true}
                         className="shrink-0"
                       />
-                      <div>
-                        <h4 className="font-bold text-[#0F172A] text-xs leading-tight">{student.name}</h4>
+                      <div className="min-w-0">
+                        <h4 className="font-black text-[#17163D] text-xs leading-tight truncate">{student.name}</h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span
-                            className={`text-[10px] font-black px-2 py-0.2 rounded-full ${
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
                               credit <= 0
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-indigo-50 text-indigo-700'
+                                ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+                                : 'bg-[#E8E7FF] text-[#403B9C]'
                             }`}
                           >
                             رصيد: {credit} حصص
@@ -459,10 +460,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleHomework(student.id)}
-                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                      className={`px-3 py-1 rounded-xl text-[11px] font-black border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                         currentRecord.homeworkDone
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-50 text-slate-500 border-slate-200'
+                          ? 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]'
+                          : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF]'
                       }`}
                     >
                       <BookCheck className="w-3.5 h-3.5" />
@@ -477,10 +478,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => markPresent(student.id)}
-                      className={`py-1.5 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-2 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         currentRecord.status === 'present'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                          : 'bg-slate-50 text-[#0F172A] border-slate-200 hover:bg-slate-100'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                       }`}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -491,10 +492,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => markLate(student.id)}
-                      className={`py-1.5 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-2 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         currentRecord.status === 'late'
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                          : 'bg-slate-50 text-[#0F172A] border-slate-200 hover:bg-slate-100'
+                          ? 'bg-[#F59E0B] text-white border-[#F59E0B] shadow-sm'
+                          : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                       }`}
                     >
                       <Clock className="w-3.5 h-3.5" />
@@ -505,12 +506,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => openAbsenceModal(student)}
-                      className={`py-1.5 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      className={`py-2 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         isAbsent
                           ? currentRecord.isCharged
-                            ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                            : 'bg-slate-700 text-white border-slate-700 shadow-2xs'
-                          : 'bg-slate-50 text-rose-600 border-slate-200 hover:bg-rose-50'
+                            ? 'bg-[#FF647C] text-white border-[#FF647C] shadow-sm'
+                            : 'bg-[#17163D] text-white border-[#17163D] shadow-sm'
+                          : 'bg-[#F6F7FC] text-[#FF647C] border-[#E8E7FF] hover:bg-[#FFF1F3]'
                       }`}
                     >
                       <XCircle className="w-3.5 h-3.5" />
@@ -521,33 +522,33 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
                   {/* Zero credit warning for prepaid charged students */}
                   {enr && (enr.billingMode === 'prepaid' || enr.billingType === 'prepaid' || (enr.billingType === 'per_session' && enr.billingMode !== 'postpaid')) && credit <= 0 && currentRecord.isCharged && (
-                    <div className="p-2 bg-rose-50 text-rose-800 border border-rose-200 rounded-xl text-[11px] font-medium flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                      <span>تنبيه: لا يوجد رصيد حصص كافٍ لهذا الطالب (الرصيد: 0). سيتم حفظ الحضور وتسجيل الحصة كمستحقة للدفع بقيمة {enr.customPrice || 100} ج.م دون جعل الرصيد سالباً.</span>
+                    <div className="p-2.5 bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] rounded-xl text-[11px] font-bold flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>تنبيه: لا يوجد رصيد حصص كافٍ (الرصيد: 0). سيتم حفظ الحضور وتسجيل الحصة كمستحقة للدفع بقيمة {enr.customPrice || 100} ج.م.</span>
                     </div>
                   )}
 
                   {/* Absent Detail Sub-badge with edit button */}
                   {isAbsent && (
                     <div
-                      className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-[11px] ${
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-[11px] ${
                         currentRecord.isCharged
-                          ? 'bg-rose-50 border-rose-200 text-rose-800'
-                          : 'bg-slate-100 border-slate-200 text-[#0F172A]'
+                          ? 'bg-[#FFF1F3] border-[#FECDD3] text-[#FF647C]'
+                          : 'bg-[#F6F7FC] border-[#E8E7FF] text-[#17163D]'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0 truncate">
                         {currentRecord.isCharged ? (
                           <>
-                            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                            <span className="font-bold">حصة محسوبة:</span>
-                            <span>تستهلك رصيد حصة أو تُضاف للمستحقات</span>
+                            <span className="w-2 h-2 rounded-full bg-[#FF647C] shrink-0" />
+                            <span className="font-black">حصة محسوبة:</span>
+                            <span className="truncate">تستهلك رصيد حصة أو تُضاف للمستحقات</span>
                           </>
                         ) : (
                           <>
-                            <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-                            <span className="font-bold">غير محسوبة:</span>
-                            <span className="font-medium text-slate-500">
+                            <span className="w-2 h-2 rounded-full bg-[#74778F] shrink-0" />
+                            <span className="font-black">غير محسوبة:</span>
+                            <span className="font-bold text-[#74778F] truncate">
                               السبب: {currentRecord.absenceReason || 'معفي'}
                             </span>
                           </>
@@ -557,9 +558,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       <button
                         type="button"
                         onClick={() => openAbsenceModal(student)}
-                        className="px-2.5 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-[#0F172A] hover:bg-slate-50 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-white border border-[#E8E7FF] text-[10px] font-black text-[#17163D] hover:bg-[#F6F7FC] transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
                       >
-                        <Edit3 className="w-3 h-3 text-indigo-600" />
+                        <Edit3 className="w-3 h-3 text-[#7657F6]" />
                         <span>تعديل</span>
                       </button>
                     </div>
@@ -572,33 +573,33 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         </div>
 
         {/* Footer with Save Action */}
-        <div className="p-4 bg-white border-t border-slate-200 flex items-center gap-2">
+        <div className="p-4 bg-white border-t border-[#E8E7FF] flex items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={isSavedSuccess}
-            className="flex-1 py-3 rounded-2xl border border-slate-200 bg-white text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all disabled:opacity-50 cursor-pointer"
+            className="flex-1 py-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs hover:bg-[#F6F7FC] transition-all disabled:opacity-50 cursor-pointer"
           >
-            إلغاء
+            {t('cancel')}
           </button>
           <button
             type="button"
             onClick={handleSave}
             disabled={isSavedSuccess}
-            className={`flex-1 py-3 rounded-2xl text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex-1 py-3 rounded-2xl text-white font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${
               isSavedSuccess
-                ? 'bg-emerald-700 scale-[0.99] ring-2 ring-emerald-500/50'
-                : 'btn-primary'
+                ? 'bg-emerald-600 ring-2 ring-emerald-500/50'
+                : 'bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] shadow-[#7657F6]/30 hover:brightness-105'
             }`}
           >
             {isSavedSuccess ? (
               <>
                 <CheckCircle2 className="w-4 h-4 text-white animate-in zoom-in-50" />
-                <span>تم حفظ الحضور وتحديث الأرصدة بنجاح!</span>
+                <span>تم حفظ الحضور وتحديث الأرصدة!</span>
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 text-white" />
+                <Save className="w-4 h-4 text-[#55C7E8]" />
                 <span>حفظ الحضور وتحديث الأرصدة</span>
               </>
             )}
@@ -609,20 +610,20 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         {/* INDIVIDUAL STUDENT ABSENCE CONFIRMATION MODAL */}
         {/* ========================================================= */}
         {confirmingStudent && (
-          <div className="absolute inset-0 z-50 bg-[#0F172A]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-3 animate-in fade-in duration-150">
-            <div className="bg-white border border-[#E2E8F0] rounded-3xl p-4 sm:p-5 max-w-md w-full mx-auto space-y-4 shadow-2xl">
+          <div className="absolute inset-0 z-50 bg-[#17163D]/70 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 animate-in fade-in duration-150">
+            <div className="bg-white border border-[#E8E7FF] rounded-[28px] p-4 sm:p-5 max-w-md w-full mx-auto space-y-4 shadow-2xl">
               
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+              <div className="flex items-center justify-between border-b border-[#E8E7FF] pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                  <div className="p-2 rounded-xl bg-[#FFF1F3] text-[#FF647C]">
                     <UserX className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-[#111827]">
+                    <h3 className="font-black text-sm text-[#17163D]">
                       تسجيل غياب الطالب
                     </h3>
-                    <p className="text-xs text-[#172554] font-bold">
+                    <p className="text-xs text-[#7657F6] font-black">
                       {confirmingStudent.name}
                     </p>
                   </div>
@@ -630,18 +631,18 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setConfirmingStudent(null)}
-                  className="p-1 rounded-full text-[#64748B] hover:text-[#111827] hover:bg-[#F1F5F9] cursor-pointer"
+                  className="p-1.5 rounded-full text-[#74778F] hover:text-[#17163D] hover:bg-[#F6F7FC] cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Main Question */}
-              <div className="space-y-1.5">
-                <label className="block font-bold text-xs text-[#111827]">
+              <div className="space-y-1">
+                <label className="block font-black text-xs text-[#17163D]">
                   هل تريد احتساب الحصة على الطالب؟
                 </label>
-                <p className="text-[11px] text-[#64748B]">
+                <p className="text-[11px] text-[#74778F] font-medium">
                   حدد ما إذا كانت الحصة ستُحسب ماليًا وتستهلك رصيد حصص أو تكون معفية.
                 </p>
               </div>
@@ -653,27 +654,27 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedChargeDecision('charged')}
-                  className={`p-3 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
                     selectedChargeDecision === 'charged'
-                      ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/20 shadow-2xs'
-                      : 'bg-[#F7F8FC] border-[#E2E8F0] hover:bg-white'
+                      ? 'bg-[#FFF1F3] border-[#FF647C] ring-2 ring-[#FF647C]/20 shadow-xs'
+                      : 'bg-[#F6F7FC] border-[#E8E7FF] hover:bg-white'
                   }`}
                 >
                   <div
                     className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
                       selectedChargeDecision === 'charged'
-                        ? 'border-rose-500 bg-rose-600 text-white'
-                        : 'border-slate-400 bg-white'
+                        ? 'border-[#FF647C] bg-[#FF647C] text-white'
+                        : 'border-[#D8D5FB] bg-white'
                     }`}
                   >
-                    {selectedChargeDecision === 'charged' && <Check className="w-3 h-3" />}
+                    {selectedChargeDecision === 'charged' && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-[#111827] block">
+                    <span className="font-black text-xs text-[#17163D] block">
                       نعم، تُحسب عليه
                     </span>
-                    <span className="text-[11px] text-[#64748B] mt-0.5 block leading-relaxed">
-                      تستهلك حصة من رصيد الحصص (Session Credit) إن كان لديه رصيد، أو تدخل في الحصص المستحقة حسب نظام المحاسبة.
+                    <span className="text-[11px] text-[#74778F] mt-0.5 block leading-relaxed font-medium">
+                      تستهلك حصة من رصيد الحصص (Session Credit) إن كان لديه رصيد، أو تدخل في الحصص المستحقة.
                     </span>
                   </div>
                 </button>
@@ -682,27 +683,27 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedChargeDecision('free')}
-                  className={`p-3 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
                     selectedChargeDecision === 'free'
-                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-2xs'
-                      : 'bg-[#F7F8FC] border-[#E2E8F0] hover:bg-white'
+                      ? 'bg-[#ECFDF5] border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                      : 'bg-[#F6F7FC] border-[#E8E7FF] hover:bg-white'
                   }`}
                 >
                   <div
                     className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
                       selectedChargeDecision === 'free'
                         ? 'border-emerald-500 bg-emerald-600 text-white'
-                        : 'border-slate-400 bg-white'
+                        : 'border-[#D8D5FB] bg-white'
                     }`}
                   >
-                    {selectedChargeDecision === 'free' && <Check className="w-3 h-3" />}
+                    {selectedChargeDecision === 'free' && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-[#111827] block">
-                      لا، لا تُحسب عليه
+                    <span className="font-black text-xs text-[#17163D] block">
+                      لا، لا تُحسب عليه (غياب معفى)
                     </span>
-                    <span className="text-[11px] text-[#64748B] mt-0.5 block leading-relaxed">
-                      لا تستهلك من رصيد الحصص ولا تضيف أي قيمة للمستحقات المالية (غياب معفي).
+                    <span className="text-[11px] text-[#74778F] mt-0.5 block leading-relaxed font-medium">
+                      لا تستهلك من رصيد الحصص ولا تضيف أي قيمة للمستحقات المالية.
                     </span>
                   </div>
                 </button>
@@ -711,8 +712,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
               {/* Absence Reason Selector (Shown only if decision is 'free') */}
               {selectedChargeDecision === 'free' && (
-                <div className="p-3 bg-[#F7F8FC] border border-[#E2E8F0] rounded-2xl space-y-2 animate-in fade-in duration-150">
-                  <label className="block font-bold text-xs text-[#111827]">
+                <div className="p-3 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl space-y-2 animate-in fade-in duration-150">
+                  <label className="block font-black text-xs text-[#17163D]">
                     يرجى تسجيل سبب عدم احتساب الحصة: *
                   </label>
 
@@ -722,10 +723,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                         key={reason}
                         type="button"
                         onClick={() => setSelectedReason(reason)}
-                        className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all text-center cursor-pointer ${
+                        className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
                           selectedReason === reason
-                            ? 'bg-[#172554] text-white border-[#172554] shadow-2xs'
-                            : 'bg-white text-[#111827] border-[#E2E8F0] hover:bg-[#F1F5F9]'
+                            ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
+                            : 'bg-white text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                         }`}
                       >
                         {reason}
@@ -734,10 +735,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedReason('سبب مخصص')}
-                      className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all text-center cursor-pointer ${
+                      className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
                         selectedReason === 'سبب مخصص'
-                          ? 'bg-[#172554] text-white border-[#172554] shadow-2xs'
-                          : 'bg-white text-[#111827] border-[#E2E8F0] hover:bg-[#F1F5F9]'
+                          ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
+                          : 'bg-white text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                       }`}
                     >
                       سبب مخصص
@@ -752,7 +753,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                         placeholder="اكتب سبب الغياب المعفي بالتفصيل..."
                         value={customReasonText}
                         onChange={(e) => setCustomReasonText(e.target.value)}
-                        className="w-full bg-white border border-[#E2E8F0] rounded-xl p-2 text-xs text-[#111827] focus:outline-none focus:border-[#172554]"
+                        className="classy-input"
                       />
                     </div>
                   )}
@@ -760,19 +761,19 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
               )}
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-2 border-t border-[#E2E8F0]">
+              <div className="flex items-center gap-2 pt-2 border-t border-[#E8E7FF]">
                 <button
                   type="button"
                   onClick={() => setConfirmingStudent(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] font-bold text-xs hover:bg-[#F1F5F9] cursor-pointer"
+                  className="flex-1 py-2.5 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs hover:bg-[#F6F7FC] cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="button"
                   disabled={!selectedChargeDecision || (selectedChargeDecision === 'free' && selectedReason === 'سبب مخصص' && !customReasonText.trim())}
                   onClick={handleConfirmAbsence}
-                  className="flex-1 py-2.5 rounded-xl bg-[#172554] hover:bg-[#1E3A8A] disabled:opacity-50 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                  className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-[#17163D] to-[#403B9C] hover:brightness-105 disabled:opacity-50 text-white font-black text-xs shadow-md transition-all cursor-pointer"
                 >
                   تأكيد الغياب
                 </button>
@@ -786,20 +787,20 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         {/* BATCH ABSENCE CONFIRMATION MODAL */}
         {/* ========================================================= */}
         {isBatchAbsentConfirmOpen && (
-          <div className="absolute inset-0 z-50 bg-[#0F172A]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-3 animate-in fade-in duration-150">
-            <div className="bg-white border border-[#E2E8F0] rounded-3xl p-4 sm:p-5 max-w-md w-full mx-auto space-y-4 shadow-2xl">
+          <div className="absolute inset-0 z-50 bg-[#17163D]/70 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 animate-in fade-in duration-150">
+            <div className="bg-white border border-[#E8E7FF] rounded-[28px] p-4 sm:p-5 max-w-md w-full mx-auto space-y-4 shadow-2xl">
               
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+              <div className="flex items-center justify-between border-b border-[#E8E7FF] pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                  <div className="p-2 rounded-xl bg-[#FFF1F3] text-[#FF647C]">
                     <Users className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-[#111827]">
+                    <h3 className="font-black text-sm text-[#17163D]">
                       تسجيل غياب جميع الطلاب ({enrolledStudents.length})
                     </h3>
-                    <p className="text-xs text-[#64748B]">
+                    <p className="text-xs text-[#74778F] font-medium">
                       تحديد معاملة الغياب الجماعي
                     </p>
                   </div>
@@ -807,15 +808,15 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsBatchAbsentConfirmOpen(false)}
-                  className="p-1 rounded-full text-[#64748B] hover:text-[#111827] hover:bg-[#F1F5F9] cursor-pointer"
+                  className="p-1.5 rounded-full text-[#74778F] hover:text-[#17163D] hover:bg-[#F6F7FC] cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Main Question */}
-              <div className="space-y-1.5">
-                <label className="block font-bold text-xs text-[#111827]">
+              <div className="space-y-1">
+                <label className="block font-black text-xs text-[#17163D]">
                   هل تريد احتساب الحصة على جميع الطلاب؟
                 </label>
               </div>
@@ -825,26 +826,26 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setBatchChargeDecision('charged')}
-                  className={`p-3 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
                     batchChargeDecision === 'charged'
-                      ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500/20'
-                      : 'bg-[#F7F8FC] border-[#E2E8F0]'
+                      ? 'bg-[#FFF1F3] border-[#FF647C] ring-2 ring-[#FF647C]/20'
+                      : 'bg-[#F6F7FC] border-[#E8E7FF]'
                   }`}
                 >
                   <div
                     className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
                       batchChargeDecision === 'charged'
-                        ? 'border-rose-500 bg-rose-600 text-white'
-                        : 'border-slate-400 bg-white'
+                        ? 'border-[#FF647C] bg-[#FF647C] text-white'
+                        : 'border-[#D8D5FB] bg-white'
                     }`}
                   >
-                    {batchChargeDecision === 'charged' && <Check className="w-3 h-3" />}
+                    {batchChargeDecision === 'charged' && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-[#111827] block">
+                    <span className="font-black text-xs text-[#17163D] block">
                       نعم، تُحسب على الكل
                     </span>
-                    <span className="text-[11px] text-[#64748B] mt-0.5 block">
+                    <span className="text-[11px] text-[#74778F] mt-0.5 block font-medium">
                       تستهلك حصة من رصيد كل طالب أو تدخل في مستحقاته.
                     </span>
                   </div>
@@ -853,26 +854,26 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setBatchChargeDecision('free')}
-                  className={`p-3 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border text-right transition-all flex items-start gap-2.5 cursor-pointer ${
                     batchChargeDecision === 'free'
-                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20'
-                      : 'bg-[#F7F8FC] border-[#E2E8F0]'
+                      ? 'bg-[#ECFDF5] border-emerald-500 ring-2 ring-emerald-500/20'
+                      : 'bg-[#F6F7FC] border-[#E8E7FF]'
                   }`}
                 >
                   <div
                     className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
                       batchChargeDecision === 'free'
                         ? 'border-emerald-500 bg-emerald-600 text-white'
-                        : 'border-slate-400 bg-white'
+                        : 'border-[#D8D5FB] bg-white'
                     }`}
                   >
-                    {batchChargeDecision === 'free' && <Check className="w-3 h-3" />}
+                    {batchChargeDecision === 'free' && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <div>
-                    <span className="font-bold text-xs text-[#111827] block">
+                    <span className="font-black text-xs text-[#17163D] block">
                       لا، لا تُحسب على أي طالب (إعفاء جماعي)
                     </span>
-                    <span className="text-[11px] text-[#64748B] mt-0.5 block">
+                    <span className="text-[11px] text-[#74778F] mt-0.5 block font-medium">
                       لا تستهلك أي رصيد ولا تضيف أي مبالغ للمستحقات.
                     </span>
                   </div>
@@ -881,8 +882,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
               {/* Reasons if free */}
               {batchChargeDecision === 'free' && (
-                <div className="p-3 bg-[#F7F8FC] border border-[#E2E8F0] rounded-2xl space-y-2 animate-in fade-in">
-                  <label className="block font-bold text-xs text-[#111827]">
+                <div className="p-3 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl space-y-2 animate-in fade-in">
+                  <label className="block font-black text-xs text-[#17163D]">
                     سبب عدم احتساب الحصة للكل:
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -891,10 +892,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                         key={r}
                         type="button"
                         onClick={() => setBatchReason(r)}
-                        className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all text-center cursor-pointer ${
+                        className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
                           batchReason === r
-                            ? 'bg-[#172554] text-white border-[#172554]'
-                            : 'bg-white text-[#111827] border-[#E2E8F0]'
+                            ? 'bg-[#17163D] text-white border-[#17163D]'
+                            : 'bg-white text-[#191A2E] border-[#E8E7FF]'
                         }`}
                       >
                         {r}
@@ -903,10 +904,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setBatchReason('سبب مخصص')}
-                      className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all text-center cursor-pointer ${
+                      className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
                         batchReason === 'سبب مخصص'
-                          ? 'bg-[#172554] text-white border-[#172554]'
-                          : 'bg-white text-[#111827] border-[#E2E8F0]'
+                          ? 'bg-[#17163D] text-white border-[#17163D]'
+                          : 'bg-white text-[#191A2E] border-[#E8E7FF]'
                       }`}
                     >
                       سبب مخصص
@@ -919,25 +920,25 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       placeholder="اكتب السبب الجماعي المخصص..."
                       value={batchCustomReason}
                       onChange={(e) => setBatchCustomReason(e.target.value)}
-                      className="w-full bg-white border border-[#E2E8F0] rounded-xl p-2 text-xs text-[#111827] focus:outline-none focus:border-[#172554]"
+                      className="classy-input"
                     />
                   )}
                 </div>
               )}
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-2 border-t border-[#E2E8F0]">
+              <div className="flex items-center gap-2 pt-2 border-t border-[#E8E7FF]">
                 <button
                   type="button"
                   onClick={() => setIsBatchAbsentConfirmOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] font-bold text-xs cursor-pointer"
+                  className="flex-1 py-2.5 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmBatchAbsent}
-                  className="flex-1 py-2.5 rounded-xl bg-[#172554] hover:bg-[#1E3A8A] text-white font-bold text-xs cursor-pointer"
+                  className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-[#17163D] to-[#403B9C] hover:brightness-105 text-white font-black text-xs cursor-pointer shadow-md"
                 >
                   تطبيق الغياب للكل
                 </button>

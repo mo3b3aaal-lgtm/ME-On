@@ -1,5 +1,6 @@
 import { Student, Group, Session, Payment, Enrollment, Attendance } from '../types';
 import { db } from './storage';
+import { getAppLanguage } from './i18n';
 
 export interface QuickTip {
   id: string;
@@ -20,11 +21,16 @@ export function generateQuickTips(
   sessions: Session[],
   payments: Payment[],
   enrollments: Enrollment[],
-  allAttendance: Attendance[]
+  allAttendance: Attendance[],
+  lang?: string
 ): QuickTip[] {
+  const currentLang = lang || getAppLanguage();
+  const isEn = currentLang.startsWith('en');
+
   const tips: QuickTip[] = [];
   const todayStr = new Date().toISOString().split('T')[0];
   const activeStudents = students.filter((s) => s.status !== 'archived');
+  const currencyLabel = isEn ? 'EGP' : 'ج.م';
 
   // 1. Check for Overdue Dues Follow-ups
   const overdueStudents: { student: Student; remaining: number }[] = [];
@@ -41,15 +47,24 @@ export function generateQuickTips(
 
   if (overdueStudents.length > 0) {
     const totalDue = overdueStudents.reduce((sum, o) => sum + o.remaining, 0);
+    const title = isEn
+      ? `Follow up Outstanding Balances (${overdueStudents.length} students)`
+      : `متابعة تحصيل المتأخرات (${overdueStudents.length} طلاب)`;
+    const description = isEn
+      ? `There is a total of ${totalDue.toLocaleString()} ${currencyLabel} overdue balance. Send reminders to parents to settle statements.`
+      : `يوجد إجمالي ${totalDue.toLocaleString()} ج.م متأخرات مستحقة. يفضل إرسال تذكيرات سداد لأولياء الأمور لتسوية الحسابات.`;
+    const actionLabel = isEn ? 'Record Payment' : 'تسجيل دفعة';
+    const badge = isEn ? 'Financial Due' : 'متابعة مالية';
+
     tips.push({
       id: 'tip_overdue_followup',
       category: 'follow_up',
-      title: `متابعة تحصيل المتأخرات (${overdueStudents.length} طلاب)`,
-      description: `يوجد إجمالي ${totalDue.toLocaleString()} ج.م متأخرات مستحقة. يفضل إرسال تذكيرات سداد لأولياء الأمور لتسوية الحسابات.`,
-      actionLabel: 'تسجيل دفعة',
+      title,
+      description,
+      actionLabel,
       actionType: 'open_add_payment',
       priority: 'high',
-      badge: 'متابعة مالية',
+      badge,
     });
   }
 
@@ -73,15 +88,24 @@ export function generateQuickTips(
   });
 
   if (expiringPackages.length > 0) {
+    const title = isEn
+      ? `Package Renewals Required (${expiringPackages.length} students)`
+      : `تجديد اشتراكات الباقات (${expiringPackages.length} طلاب)`;
+    const description = isEn
+      ? 'These students have completed all lessons in their current package. Contact them to renew before next session.'
+      : 'استهلك هؤلاء الطلاب كامل حصص باقاتهم الحالية. تواصل معهم لتجديد الباقة قبل الحصة القادمة.';
+    const actionLabel = isEn ? 'View Students' : 'عرض الطلاب';
+    const badge = isEn ? 'Package Renewal' : 'تجديد باقة';
+
     tips.push({
       id: 'tip_package_renewals',
       category: 'follow_up',
-      title: `تجديد اشتراكات الباقات (${expiringPackages.length} طلاب)`,
-      description: `استهلك هؤلاء الطلاب كامل حصص باقاتهم الحالية. تواصل معهم لتجديد الباقة قبل الحصة القادمة.`,
-      actionLabel: 'عرض الطلاب',
+      title,
+      description,
+      actionLabel,
       actionType: 'navigate_students',
       priority: 'high',
-      badge: 'تجديد باقة',
+      badge,
     });
   }
 
@@ -96,15 +120,24 @@ export function generateQuickTips(
   });
 
   if (unrecordedPastSessions.length > 0) {
+    const title = isEn
+      ? `Unmarked Past Lessons (${unrecordedPastSessions.length} lessons)`
+      : `سجلات حضور غير مكتملة (${unrecordedPastSessions.length} حصة)`;
+    const description = isEn
+      ? 'Previous lessons have unrecorded attendance logs, affecting accurate balance deduction and reporting.'
+      : 'توجد حصص سابقة لم يتم تسجيل كشف حضور طلابها، مما يؤثر على دقة الأرصدة والتقارير.';
+    const actionLabel = isEn ? 'Review Timetable' : 'مراجعة الحصص';
+    const badge = isEn ? 'Admin Task' : 'تنظيم إداري';
+
     tips.push({
       id: 'tip_unrecorded_sessions',
       category: 'admin',
-      title: `سجلات حضور غير مكتملة (${unrecordedPastSessions.length} حصة)`,
-      description: `توجد حصص سابقة لم يتم تسجيل كشف حضور طلابها، مما يؤثر على دقة الأرصدة والتقارير.`,
-      actionLabel: 'مراجعة الحصص',
+      title,
+      description,
+      actionLabel,
       actionType: 'open_add_session',
       priority: 'medium',
-      badge: 'تنظيم إداري',
+      badge,
     });
   }
 
@@ -116,15 +149,24 @@ export function generateQuickTips(
   });
 
   if (emptyGroups.length > 0) {
+    const title = isEn
+      ? `Groups with No Students (${emptyGroups.length})`
+      : `مجموعات بدون طلاب (${emptyGroups.length})`;
+    const description = isEn
+      ? `Group "${emptyGroups[0].name}" currently has 0 students. You can enroll students now or adjust the schedule.`
+      : `المجموعة "${emptyGroups[0].name}" لا تحتوي على أي طلاب حالياً. يمكنك تسكين طلاب جدد فيها أو تعديلها.`;
+    const actionLabel = isEn ? 'Add Students' : 'إضافة طلاب';
+    const badge = isEn ? 'Class Management' : 'تنظيم الصفوف';
+
     tips.push({
       id: 'tip_empty_groups',
       category: 'admin',
-      title: `مجموعات بدون طلاب (${emptyGroups.length})`,
-      description: `المجموعة "${emptyGroups[0].name}" لا تحتوي على أي طلاب حالياً. يمكنك تسكين طلاب جدد فيها أو تعديلها.`,
-      actionLabel: 'إضافة طلاب',
+      title,
+      description,
+      actionLabel,
       actionType: 'navigate_groups',
       priority: 'info',
-      badge: 'تنظيم الصفوف',
+      badge,
     });
   }
 
@@ -141,30 +183,46 @@ export function generateQuickTips(
   });
 
   if (starStudents.length > 0) {
+    const title = isEn
+      ? `Celebrate Outstanding Attendance (${starStudents.length} students)`
+      : `تقدير الطلاب المتميزين بالحضور (${starStudents.length} طلاب)`;
+    const description = isEn
+      ? `Students like "${starStudents[0].name}" have a perfect attendance track record. Encourage them to keep up the great work!`
+      : `الطلاب مثل "${starStudents[0].name}" لديهم سجل حضور مثالي بدون أي غياب. شجعهم لمواصلة التفوق!`;
+    const actionLabel = isEn ? 'Student Dossier' : 'ملف الطالب';
+    const badge = isEn ? 'Excellence & Merit' : 'تشجيع وتميز';
+
     tips.push({
       id: 'tip_star_attendance',
       category: 'achievement',
-      title: `تقدير الطلاب المتميزين بالحضور (${starStudents.length} طلاب)`,
-      description: `الطلاب مثل "${starStudents[0].name}" لديهم سجل حضور مثالي بدون أي غياب. شجعهم لمواصلة التفوق!`,
-      actionLabel: 'ملف الطالب',
+      title,
+      description,
+      actionLabel,
       actionType: 'open_student',
       targetStudentId: starStudents[0].id,
       priority: 'info',
-      badge: 'تشجيع وتميز',
+      badge,
     });
   }
 
   // 6. Positive Baseline Tip if all is smooth
   if (tips.length === 0) {
+    const title = isEn ? 'All classes and accounts are up to date!' : 'جميع العمليات منتظمة وفي أفضل حال!';
+    const description = isEn
+      ? 'No overdue balances or pending attendance logs. Great time to prepare upcoming lesson plans.'
+      : 'لا توجد متأخرات أو سجلات معلقة. يمكنك الاستفادة من الوقت الحالي في تحضير خطة الدروس القادمة.';
+    const actionLabel = isEn ? 'Schedule Lesson' : 'جدولة حصة';
+    const badge = isEn ? 'Good Standing' : 'يوم موفق';
+
     tips.push({
       id: 'tip_all_smooth',
       category: 'achievement',
-      title: 'جميع العمليات منتظمة وفي أفضل حال!',
-      description: 'لا توجد متأخرات أو سجلات معلقة. يمكنك الاستفادة من الوقت الحالي في تحضير خطة الدروس القادمة.',
-      actionLabel: 'جدولة حصة',
+      title,
+      description,
+      actionLabel,
       actionType: 'open_add_session',
       priority: 'info',
-      badge: 'يوم موفق',
+      badge,
     });
   }
 

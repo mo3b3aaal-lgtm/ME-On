@@ -29,13 +29,15 @@ const SELECTABLE_FRAMES: AchievementFrame[] = [
 export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> = ({
   selectedFrame,
   onSelectFrame,
-  studentName = 'الطالب',
+  studentName,
   profilePhoto,
   avatarColor = '#7657F6',
   className = '',
 }) => {
   const { language } = useTranslation();
+  const isEn = language.startsWith('en');
   const langKey = language === 'en-GB' || language === 'en-US' ? language : 'ar';
+  const effectiveStudentName = studentName || (isEn ? 'Student' : 'الطالب');
 
   const currentFrameKey = selectedFrame || 'none';
   const activeFrameInfo: FrameInfoItem =
@@ -56,7 +58,7 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
         {/* Large Live Avatar Preview */}
         <div className="shrink-0 flex items-center justify-center p-2">
           <StudentAvatar
-            name={studentName}
+            name={effectiveStudentName}
             avatarColor={avatarColor}
             profilePhoto={profilePhoto}
             achievementFrame={currentFrameKey}
@@ -93,7 +95,7 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
               className="inline-flex items-center gap-1 text-[11px] font-bold text-[#74778F] hover:text-[#FF647C] transition-colors mt-1 cursor-pointer"
             >
               <X className="w-3 h-3" />
-              <span>إزالة الإطار (العودة للافتراضي)</span>
+              <span>{isEn ? 'Remove frame (Reset to default)' : 'إزالة الإطار (العودة للافتراضي)'}</span>
             </button>
           )}
         </div>
@@ -131,7 +133,7 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
               {/* Avatar Live Thumbnail */}
               <div className="pt-1 pb-0.5 flex items-center justify-center">
                 <StudentAvatar
-                  name={studentName}
+                  name={effectiveStudentName}
                   avatarColor={avatarColor}
                   profilePhoto={profilePhoto}
                   achievementFrame={frameId}

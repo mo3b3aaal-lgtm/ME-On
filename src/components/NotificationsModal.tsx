@@ -61,7 +61,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   onOpenAttendanceModal,
   onDataChanged,
 }) => {
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
+
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -117,14 +119,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     const activeIds = allNotifications.filter((n) => n.status === 'active').map((n) => n.id);
     if (activeIds.length > 0) {
       db.markAllNotificationsAsRead(activeIds);
-      showToast('تم تحديد جميع التنبيهات كمقروءة');
+      showToast(isEn ? 'All notifications marked as read' : 'تم تحديد جميع التنبيهات كمقروءة');
       onDataChanged?.();
     }
   };
 
   const handleDismiss = (item: SmartReminderItem) => {
     db.dismissNotification(item.id);
-    showToast('تم إخفاء التنبيه بنجاح');
+    showToast(isEn ? 'Notification dismissed' : 'تم إخفاء التنبيه بنجاح');
     onDataChanged?.();
   };
 
@@ -154,16 +156,30 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     if (!phone) return null;
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     let msg = '';
-    if (item.type === 'package_completed') {
-      msg = `السلام عليكم ورحمة الله، نود إحاطتكم علماً بأن الطالب/ة (${item.studentName}) قد أتم بحمد الله باقة الحصص المحددة (${item.packageSize || 8} حصص). يرجى التكرم بسداد قيمة الاشتراك لتجديد الباقة ومتابعة الحصص القادمة. شكراً لتعاونكم.`;
-    } else if (item.type === 'package_almost_due') {
-      msg = `السلام عليكم ورحمة الله، نود إحاطتكم علماً بأن الطالب/ة (${item.studentName}) متبقي له ${item.lessonsRemaining === 1 ? 'حصة واحدة' : `${item.lessonsRemaining} حصص`} على اكتمال الباقة الحالية. تحياتنا لكم.`;
-    } else if (item.type === 'payment_overdue') {
-      msg = `السلام عليكم ورحمة الله، تذكير ودي بشأن المصروفات الدراسية المستحقة للطالب/ة (${item.studentName}) بمبلغ ${item.amount || 0} ج.م. شكراً لتعاونكم.`;
-    } else if (item.type === 'repeated_absence') {
-      msg = `السلام عليكم ورحمة الله، نود الاطمئنان على الطالب/ة (${item.studentName}) نظراً لتغيبه عن آخر حصتين دراسيتين. نتمنى له دوام التوفيق والسلامة.`;
+    if (isEn) {
+      if (item.type === 'package_completed') {
+        msg = `Hello, this is a reminder that (${item.studentName}) has completed the allocated session package (${item.packageSize || 8} sessions). Please settle the subscription to renew. Thank you.`;
+      } else if (item.type === 'package_almost_due') {
+        msg = `Hello, this is a reminder that (${item.studentName}) has ${item.lessonsRemaining === 1 ? '1 session' : `${item.lessonsRemaining} sessions`} remaining in the current package. Best regards.`;
+      } else if (item.type === 'payment_overdue') {
+        msg = `Hello, this is a friendly reminder regarding the outstanding balance for (${item.studentName}) of ${item.amount || 0} ${t('currency')}. Thank you.`;
+      } else if (item.type === 'repeated_absence') {
+        msg = `Hello, checking in regarding (${item.studentName}) who has missed the last two classes. We hope everything is well.`;
+      } else {
+        msg = `Hello, regarding student (${item.studentName}).`;
+      }
     } else {
-      msg = `السلام عليكم ورحمة الله، تحياتنا بخصوص الطالب/ة (${item.studentName}).`;
+      if (item.type === 'package_completed') {
+        msg = `السلام عليكم ورحمة الله، نود إحاطتكم علماً بأن الطالب/ة (${item.studentName}) قد أتم بحمد الله باقة الحصص المحددة (${item.packageSize || 8} حصص). يرجى التكرم بسداد قيمة الاشتراك لتجديد الباقة ومتابعة الحصص القادمة. شكراً لتعاونكم.`;
+      } else if (item.type === 'package_almost_due') {
+        msg = `السلام عليكم ورحمة الله، نود إحاطتكم علماً بأن الطالب/ة (${item.studentName}) متبقي له ${item.lessonsRemaining === 1 ? 'حصة واحدة' : `${item.lessonsRemaining} حصص`} على اكتمال الباقة الحالية. تحياتنا لكم.`;
+      } else if (item.type === 'payment_overdue') {
+        msg = `السلام عليكم ورحمة الله، تذكير ودي بشأن المصروفات الدراسية المستحقة للطالب/ة (${item.studentName}) بمبلغ ${item.amount || 0} ج.م. شكراً لتعاونكم.`;
+      } else if (item.type === 'repeated_absence') {
+        msg = `السلام عليكم ورحمة الله، نود الاطمئنان على الطالب/ة (${item.studentName}) نظراً لتغيبه عن آخر حصتين دراسيتين. نتمنى له دوام التوفيق والسلامة.`;
+      } else {
+        msg = `السلام عليكم ورحمة الله، تحياتنا بخصوص الطالب/ة (${item.studentName}).`;
+      }
     }
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
   };
@@ -185,22 +201,22 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">مركز التنبيهات والإشعارات</h2>
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">{t('notifications')}</h2>
                 {unreadCount > 0 && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FF647C] text-white shadow-md shadow-[#FF647C]/40 animate-pulse">
-                    {unreadCount} جديد
+                    {unreadCount} {isEn ? 'new' : 'جديد'}
                   </span>
                 )}
               </div>
               <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
-                متابعة استحقاق الباقات، الدفعات، ورصد الحضور والغياب
+                {isEn ? 'Track packages, dues, overdue payments, and attendance' : 'متابعة استحقاق الباقات، الدفعات، ورصد الحضور والغياب'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
-            title="إغلاق"
+            title={t('close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -220,10 +236,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         <div className="p-3 bg-white border-b border-[#E8E7FF] flex items-center justify-between gap-2 shrink-0 flex-wrap">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {[
-              { id: 'active' as TabType, label: 'النشطة', count: activeCount },
+              { id: 'active' as TabType, label: isEn ? 'Active' : 'النشطة', count: activeCount },
               {
                 id: 'packages' as TabType,
-                label: 'الباقات والمستحقات',
+                label: isEn ? 'Packages & Dues' : 'الباقات والمستحقات',
                 count: allNotifications.filter(
                   (n) =>
                     n.status === 'active' &&
@@ -235,7 +251,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               },
               {
                 id: 'attendance' as TabType,
-                label: 'الحضور والغياب',
+                label: isEn ? 'Attendance' : 'الحضور والغياب',
                 count: allNotifications.filter(
                   (n) =>
                     n.status === 'active' &&
@@ -244,7 +260,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               },
               {
                 id: 'resolved' as TabType,
-                label: 'المسددة والمكتملة',
+                label: isEn ? 'Settled & Completed' : 'المسددة والمكتملة',
                 count: allNotifications.filter((n) => n.status === 'resolved' || n.status === 'dismissed').length,
               },
             ].map((tab) => {
@@ -280,7 +296,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               className="text-[11px] font-black text-[#7657F6] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>تحديد الكل كمقروء</span>
+              <span>{isEn ? 'Mark all as read' : 'تحديد الكل كمقروء'}</span>
             </button>
           )}
         </div>
@@ -295,13 +311,13 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               <div className="space-y-1">
                 <h3 className="text-sm font-black text-[#17163D]">
                   {activeTab === 'resolved'
-                    ? 'لا توجد تنبيهات مسددة أو مكتملة بعد'
-                    : 'رائع! لا توجد تنبيهات معلقة حالياً'}
+                    ? (isEn ? 'No settled notifications yet' : 'لا توجد تنبيهات مسددة أو مكتملة بعد')
+                    : (isEn ? 'Great! No pending notifications right now' : 'رائع! لا توجد تنبيهات معلقة حالياً')}
                 </h3>
                 <p className="text-xs text-[#74778F] max-w-sm mx-auto font-medium leading-relaxed">
                   {activeTab === 'resolved'
-                    ? 'عند سداد الباقات والمستحقات، ستظهر سجلات التسوية المكتملة هنا.'
-                    : 'جميع اشتراكات الطلاب وباقات الحصص وحالات الحضور محدثة ومنتظمة.'}
+                    ? (isEn ? 'When packages and payments are settled, completed records will appear here.' : 'عند سداد الباقات والمستحقات، ستظهر سجلات التسوية المكتملة هنا.')
+                    : (isEn ? 'All student enrollments, session packages, and attendance logs are up to date.' : 'جميع اشتراكات الطلاب وباقات الحصص وحالات الحضور محدثة ومنتظمة.')}
                 </p>
               </div>
             </div>
@@ -336,7 +352,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       {isUnread && (
                         <span
                           className="w-2 h-2 rounded-full bg-[#FF647C] shrink-0 animate-pulse"
-                          title="غير مقروء"
+                          title={isEn ? 'Unread' : 'غير مقروء'}
                         />
                       )}
                       <span
@@ -371,7 +387,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       <button
                         onClick={() => handleToggleRead(item)}
                         className="p-1.5 rounded-lg hover:bg-[#E8E7FF]/40 text-[#74778F] transition-all cursor-pointer"
-                        title={item.isRead ? 'تحديد كغير مقروء' : 'تحديد كمقروء'}
+                        title={item.isRead ? (isEn ? 'Mark as unread' : 'تحديد كغير مقروء') : (isEn ? 'Mark as read' : 'تحديد كمقروء')}
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
@@ -379,7 +395,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                         <button
                           onClick={() => handleDismiss(item)}
                           className="p-1.5 rounded-lg hover:bg-[#FFF1F3] text-[#74778F] hover:text-[#FF647C] transition-all cursor-pointer"
-                          title="إخفاء التنبيه"
+                          title={isEn ? 'Dismiss notification' : 'إخفاء التنبيه'}
                         >
                           <Archive className="w-3.5 h-3.5" />
                         </button>
@@ -416,7 +432,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           }}
                           className="px-3 py-1 rounded-xl bg-white border border-[#E8E7FF] text-[11px] font-black text-[#17163D] hover:bg-[#F6F7FC] transition-all cursor-pointer"
                         >
-                          الملف الشخصي
+                          {isEn ? 'Profile' : 'الملف الشخصي'}
                         </button>
                       )}
 
@@ -428,7 +444,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           className="px-3 py-1 rounded-xl bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0] text-[11px] font-black hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-1 cursor-pointer"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
-                          <span>واتساب ولي الأمر</span>
+                          <span>{isEn ? 'WhatsApp Parent' : 'واتساب ولي الأمر'}</span>
                         </a>
                       )}
                     </div>
@@ -440,7 +456,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                         >
                           <DollarSign className="w-3.5 h-3.5 text-[#55C7E8]" />
-                          <span>تسجيل السداد</span>
+                          <span>{t('recordPayment')}</span>
                         </button>
                       )}
 
@@ -450,7 +466,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                         >
                           <CalendarCheck2 className="w-3.5 h-3.5 text-[#55C7E8]" />
-                          <span>رصد الحضور</span>
+                          <span>{isEn ? 'Take Attendance' : 'رصد الحضور'}</span>
                         </button>
                       )}
                     </div>
@@ -464,17 +480,17 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         {/* Footer */}
         <div className="p-3.5 bg-white border-t border-[#E8E7FF] flex items-center justify-between shrink-0">
           <span className="text-[11px] text-[#74778F] font-bold">
-            إجمالي التنبيهات: {allNotifications.length} ({activeCount} نشط)
+            {isEn ? `Total Notifications: ${allNotifications.length} (${activeCount} active)` : `إجمالي التنبيهات: ${allNotifications.length} (${activeCount} نشط)`}
           </span>
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-2xl bg-[#17163D] hover:bg-[#403B9C] text-white text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
           >
-            إغلاق
+            {t('close')}
           </button>
         </div>
       </div>
     </div>
   </ModalPortal>
-);
+  );
 };

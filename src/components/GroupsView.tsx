@@ -35,6 +35,7 @@ import {
   getTimesForDayInGroup,
   formatTimeDisplay,
   getWeekdayIndex,
+  getLocalizedWeekdayName,
 } from '../utils/schedule';
 
 interface GroupsViewProps {
@@ -71,6 +72,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   onDataChanged,
 }) => {
   const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'group' | 'private' | 'today'>('all');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('all');
@@ -221,7 +223,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-[#E8E7FF]/90 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-[#55C7E8]" />
-                  <span>المجموعات والحصص الدراسية</span>
+                  <span>{isEn ? 'Groups & Academic Classes' : 'المجموعات والحصص الدراسية'}</span>
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5 truncate">
@@ -231,7 +233,9 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-[#E8E7FF]/85 font-medium truncate">
-                تنظيم المجموعات الدراسية، متابعة المواعيد، ورصد حضور ومستحقات الطلاب
+                {isEn
+                  ? 'Organize study groups, manage schedules, and track attendance & dues'
+                  : 'تنظيم المجموعات الدراسية، متابعة المواعيد، ورصد حضور ومستحقات الطلاب'}
               </p>
             </div>
           </div>
@@ -252,19 +256,19 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
         {/* Compact Statistics Grid */}
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-4 mt-4 border-t border-white/15 text-center">
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">المجموعات النشطة</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{t('activeGroups')}</span>
             <span className="text-base sm:text-lg font-black text-white">{regularGroups.length}</span>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">طلاب المجموعات</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Group Students' : 'طلاب المجموعات'}</span>
             <span className="text-base sm:text-lg font-black text-[#55C7E8]">{totalEnrolledStudentsCount}</span>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">حصص اليوم</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? "Today's Classes" : 'حصص اليوم'}</span>
             <span className="text-base sm:text-lg font-black text-[#FF647C]">{groupsWithTodayClass.length}</span>
           </div>
           <div className="hidden sm:block bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">الدروس الخاصة</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{t('privateLessons')}</span>
             <span className="text-base sm:text-lg font-black text-[#E8E7FF]">{privateServices.length}</span>
           </div>
         </div>
@@ -283,7 +287,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           />
           <input
             type="text"
-            placeholder="البحث باسم المجموعة، المادة، المرحلة، أو مكان الحصة..."
+            placeholder={isEn ? 'Search by group name, subject, stage, or location...' : 'البحث باسم المجموعة، المادة، المرحلة، أو مكان الحصة...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/70 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all shadow-inner ${
@@ -314,7 +318,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 : 'text-[#74778F] hover:text-[#17163D]'
             }`}
           >
-            <span>الكل</span>
+            <span>{t('all')}</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-[#E8E7FF] text-[#7657F6]'}`}>
               {groups.length}
             </span>
@@ -329,7 +333,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 : 'text-[#74778F] hover:text-[#17163D]'
             }`}
           >
-            <span>مجموعات</span>
+            <span>{isEn ? 'Groups' : 'مجموعات'}</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'group' ? 'bg-white/20 text-white' : 'bg-[#E8E7FF] text-[#7657F6]'}`}>
               {regularGroups.length}
             </span>
@@ -344,7 +348,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 : 'text-[#74778F] hover:text-[#17163D]'
             }`}
           >
-            <span>خاص</span>
+            <span>{isEn ? 'Private' : 'خاص'}</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'private' ? 'bg-white/20 text-white' : 'bg-[#FFF1F3] text-[#FF647C]'}`}>
               {privateServices.length}
             </span>
@@ -359,7 +363,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 : 'text-[#74778F] hover:text-[#FF647C]'
             }`}
           >
-            <span>اليوم</span>
+            <span>{t('today')}</span>
             {groupsWithTodayClass.length > 0 && (
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${typeFilter === 'today' ? 'bg-white/25 text-white' : 'bg-[#FFF1F3] text-[#FF647C]'}`}>
                 {groupsWithTodayClass.length}
@@ -373,7 +377,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-[#74778F] text-[11px] font-bold shrink-0">
               <Filter className="w-3.5 h-3.5 text-[#7657F6]" />
-              <span>تصفية:</span>
+              <span>{isEn ? 'Filter:' : 'تصفية:'}</span>
             </div>
 
             <select
@@ -381,7 +385,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
               onChange={(e) => setSelectedGradeFilter(e.target.value)}
               className="bg-[#F6F7FC] hover:bg-[#E8E7FF]/30 border border-[#E8E7FF] rounded-xl px-3 py-1.5 text-xs text-[#191A2E] font-bold focus:outline-none focus:border-[#7657F6] cursor-pointer transition-colors"
             >
-              <option value="all">كل المراحل الدراسية</option>
+              <option value="all">{isEn ? 'All Stages' : 'كل المراحل الدراسية'}</option>
               {gradeLevels.map((lvl) => (
                 <option key={lvl} value={lvl}>
                   {getLocalizedStageName(lvl)}
@@ -395,7 +399,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 onChange={(e) => setSelectedSubjectFilter(e.target.value)}
                 className="bg-[#F6F7FC] hover:bg-[#E8E7FF]/30 border border-[#E8E7FF] rounded-xl px-3 py-1.5 text-xs text-[#191A2E] font-bold focus:outline-none focus:border-[#7657F6] cursor-pointer transition-colors"
               >
-                <option value="all">كل المواد</option>
+                <option value="all">{isEn ? 'All Subjects' : 'كل المواد'}</option>
                 {subjects.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub}
@@ -411,7 +415,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
               onClick={handleResetFilters}
               className="px-3 py-1.5 rounded-xl bg-[#E8E7FF] text-[#7657F6] font-bold text-xs hover:bg-[#7657F6] hover:text-white transition-all cursor-pointer"
             >
-              إعادة ضبط الفلاتر
+              {t('resetFilters')}
             </button>
           )}
         </div>
@@ -427,10 +431,10 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           </div>
           <div className="max-w-md space-y-1.5">
             <h3 className="font-black text-base sm:text-lg text-[#17163D]">
-              لسه مفيش مجموعات
+              {t('noGroupsFound')}
             </h3>
             <p className="text-xs sm:text-sm text-[#74778F] font-medium leading-relaxed">
-              ابدأ بإضافة أول مجموعة ونظّم حصصك وطلابك بسهولة.
+              {isEn ? 'Start by creating your first group and organize sessions and students easily.' : 'ابدأ بإضافة أول مجموعة ونظّم حصصك وطلابك بسهولة.'}
             </p>
           </div>
           <button
@@ -438,7 +442,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
             className="mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-[#FF647C]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
           >
             <Plus className="w-4.5 h-4.5 stroke-[2.5]" />
-            <span>+ إضافة أول مجموعة الآن</span>
+            <span>+ {t('createGroupBtn')}</span>
           </button>
         </div>
       ) : filteredGroups.length === 0 ? (
@@ -448,10 +452,10 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           </div>
           <div className="space-y-1">
             <h3 className="font-black text-sm sm:text-base text-[#17163D]">
-              لا توجد مجموعات مطابقة لبحثك
+              {isEn ? 'No groups match your search' : 'لا توجد مجموعات مطابقة لبحثك'}
             </h3>
             <p className="text-xs text-[#74778F] font-medium">
-              جرّب تغيير كلمات البحث أو إعادة ضبط خيارات التصفية
+              {isEn ? 'Try changing your search terms or resetting filters' : 'جرّب تغيير كلمات البحث أو إعادة ضبط خيارات التصفية'}
             </p>
           </div>
           {hasActiveFilters && (
@@ -459,7 +463,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
               onClick={handleResetFilters}
               className="px-4 py-2 rounded-xl bg-[#E8E7FF] text-[#7657F6] font-bold text-xs hover:bg-[#7657F6] hover:text-white transition-all cursor-pointer"
             >
-              إعادة ضبط الفلاتر
+              {t('resetFilters')}
             </button>
           )}
         </div>
@@ -480,7 +484,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
             const hasClassToday = groupsWithTodayClass.some((g) => g.id === group.id);
 
             const displayTitle = isPrivate
-              ? (privateStudent ? `درس خاص — ${privateStudent.name}` : 'درس خاص')
+              ? (privateStudent ? `${isEn ? 'Private Lesson — ' : 'درس خاص — '}${privateStudent.name}` : (isEn ? 'Private Lesson' : 'درس خاص'))
               : group.name;
 
             const themeColor = group.accentColor || (isPrivate ? '#FF647C' : '#7657F6');
@@ -488,12 +492,14 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
             // Format billing label
             const billingLabel =
               group.billingType === 'monthly'
-                ? 'شهري'
+                ? (isEn ? 'Monthly' : 'شهري')
                 : group.billingType === 'package'
-                ? `باقة (${group.packageSessionsCount || 8} حصص)`
+                ? (isEn ? `Package (${group.packageSessionsCount || 8} sessions)` : `باقة (${group.packageSessionsCount || 8} حصص)`)
                 : group.billingType === 'hourly'
-                ? 'محاسبة بالساعة'
-                : 'دفع بالحصة';
+                ? (isEn ? 'Hourly Billing' : 'محاسبة بالساعة')
+                : (isEn ? 'Per Session' : 'دفع بالحصة');
+
+            const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
 
             return (
               <div
@@ -529,23 +535,23 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                           todaySession.status === 'completed' ? (
                             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1 shadow-2xs">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>تم رصد اليوم</span>
+                              <span>{isEn ? 'Recorded Today' : 'تم رصد اليوم'}</span>
                             </span>
                           ) : todaySession.status === 'cancelled' ? (
                             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] inline-flex items-center gap-1 shadow-2xs">
                               <AlertCircle className="w-3 h-3 text-[#FF647C]" />
-                              <span>حصة اليوم ملغاة</span>
+                              <span>{isEn ? 'Today Cancelled' : 'حصة اليوم ملغاة'}</span>
                             </span>
                           ) : (
                             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs animate-pulse">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                              <span>حصة اليوم مجدولة</span>
+                              <span>{isEn ? 'Today Scheduled' : 'حصة اليوم مجدولة'}</span>
                             </span>
                           )
                         ) : hasClassToday ? (
                           <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                            <span>موعد اليوم</span>
+                            <span>{isEn ? "Today's Class" : 'موعد اليوم'}</span>
                           </span>
                         ) : null}
 
@@ -556,7 +562,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                               : 'bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]'
                           }`}
                         >
-                          {isPrivate ? 'درس خاص' : 'مجموعة دراسية'}
+                          {isPrivate ? (isEn ? 'Private' : 'درس خاص') : (isEn ? 'Group' : 'مجموعة دراسية')}
                         </span>
                       </div>
 
@@ -591,16 +597,20 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Dashboard-Inspired Session Schedule Timeline Strip (Handles multiple times per day cleanly) */}
+                {/* Dashboard-Inspired Session Schedule Timeline Strip */}
                 <div className="bg-[#F6F7FC] p-3 rounded-2xl border border-[#E8E7FF] space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-[#74778F] flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
-                      <span>مواعيد الحصص الأسبوعية:</span>
+                      <span>{isEn ? 'Weekly Schedule:' : 'مواعيد الحصص الأسبوعية:'}</span>
                     </span>
                     <span className="font-black text-[#191A2E] flex items-center gap-1 text-[11px]">
                       <Users className="w-3.5 h-3.5 text-[#7657F6]" />
-                      <span>{isPrivate ? (privateStudent ? privateStudent.name : 'طالب خاص') : `${enrollments.length} طلاب مسجلين`}</span>
+                      <span>
+                        {isPrivate
+                          ? (privateStudent ? privateStudent.name : (isEn ? 'Private Student' : 'طالب خاص'))
+                          : (isEn ? `${enrollments.length} Enrolled` : `${enrollments.length} طلاب مسجلين`)}
+                      </span>
                     </span>
                   </div>
 
@@ -610,6 +620,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                       {group.scheduleDays.map((day) => {
                         const dayTimes = getTimesForDayInGroup(group, day);
                         const isToday = getWeekdayIndex(day) === getWeekdayIndex(todayArabicDay);
+                        const localizedDay = getLocalizedWeekdayName(day);
 
                         return (
                           <div
@@ -628,21 +639,21 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                                 }`}
                               />
                               <span className={`text-xs font-black ${isToday ? 'text-emerald-950' : 'text-[#17163D]'}`}>
-                                {day}
+                                {localizedDay}
                               </span>
                               {isToday && (
                                 <span className="text-[9px] font-black px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                                  اليوم
+                                  {t('today')}
                                 </span>
                               )}
                               {dayTimes.length > 1 && (
                                 <span className="text-[9px] font-bold text-[#74778F]">
-                                  ({dayTimes.length} فترات)
+                                  {isEn ? `(${dayTimes.length} slots)` : `(${dayTimes.length} فترات)`}
                                 </span>
                               )}
                             </div>
 
-                            {/* Session Times Slot Entries matching Dashboard language */}
+                            {/* Session Times Slot Entries */}
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {dayTimes.length > 0 ? (
                                 dayTimes.map((time, tIdx) => (
@@ -653,7 +664,6 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                                         ? 'bg-emerald-100 text-emerald-950 border-emerald-300 shadow-2xs'
                                         : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] shadow-2xs'
                                     }`}
-                                    title={dayTimes.length > 1 ? `موعد ${tIdx + 1} يوم ${day}` : `موعد حصة يوم ${day}`}
                                   >
                                     <Clock className={`w-3 h-3 ${isToday ? 'text-emerald-700' : 'text-[#7657F6]'}`} />
                                     <span className="font-mono font-black text-[11px]">
@@ -667,7 +677,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                                             : 'bg-[#E8E7FF] text-[#7657F6]'
                                         }`}
                                       >
-                                        فترة {tIdx + 1}
+                                        {isEn ? `Slot ${tIdx + 1}` : `فترة ${tIdx + 1}`}
                                       </span>
                                     )}
                                   </div>
@@ -680,7 +690,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                                   </span>
                                 </div>
                               ) : (
-                                <span className="text-[11px] text-[#74778F]">وقت مرن</span>
+                                <span className="text-[11px] text-[#74778F]">{isEn ? 'Flexible time' : 'وقت مرن'}</span>
                               )}
                             </div>
                           </div>
@@ -689,7 +699,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                     </div>
                   ) : (
                     <div className="p-2.5 rounded-xl bg-white border border-[#E8E7FF] text-center text-xs text-[#74778F] font-medium">
-                      مواعيد مرنة حسب الاتفاق
+                      {isEn ? 'Flexible times by agreement' : 'مواعيد مرنة حسب الاتفاق'}
                     </div>
                   )}
                 </div>
@@ -697,11 +707,11 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 {/* Quick Performance & Financial Health Mini-Bento */}
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="bg-[#F8F9FE] p-2 rounded-xl border border-[#E8E7FF]">
-                    <span className="text-[10px] text-[#74778F] block font-bold">الحصص المنفذة</span>
+                    <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Completed' : 'الحصص المنفذة'}</span>
                     <strong className="text-xs font-black text-[#17163D]">{groupStats.completedSessions}</strong>
                   </div>
                   <div className="bg-[#F8F9FE] p-2 rounded-xl border border-[#E8E7FF]">
-                    <span className="text-[10px] text-[#74778F] block font-bold">نسبة الالتزام</span>
+                    <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Attendance' : 'نسبة الالتزام'}</span>
                     <strong
                       className={`text-xs font-black ${
                         groupStats.attendanceRate >= 85
@@ -715,7 +725,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                     </strong>
                   </div>
                   <div className="bg-[#F8F9FE] p-2 rounded-xl border border-[#E8E7FF]">
-                    <span className="text-[10px] text-[#74778F] block font-bold">المحصل</span>
+                    <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Collected' : 'المحصل'}</span>
                     <strong className="text-xs font-black text-emerald-700">
                       {groupStats.totalRevenue} {t('currency')}
                     </strong>
@@ -733,7 +743,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                           onEditGroup(group);
                         }}
                         className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] hover:text-[#7657F6] border border-[#E8E7FF] transition-all cursor-pointer shadow-2xs active:scale-95"
-                        title="تعديل بيانات المجموعة"
+                        title={isEn ? 'Edit group information' : 'تعديل بيانات المجموعة'}
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -747,10 +757,10 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                           onOpenAddSession(group.id);
                         }}
                         className="px-2.5 py-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#17163D] hover:text-[#7657F6] border border-[#E8E7FF] text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
-                        title="جدولة حصة جديدة لهذه المجموعة"
+                        title={isEn ? 'Schedule session for this group' : 'جدولة حصة جديدة لهذه المجموعة'}
                       >
                         <CalendarCheck2 className="w-3.5 h-3.5 text-[#55C7E8]" />
-                        <span>جدولة حصة</span>
+                        <span>{t('scheduleSessionBtn')}</span>
                       </button>
                     )}
                   </div>
@@ -763,8 +773,8 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                     }}
                     className="px-3.5 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
                   >
-                    <span>تفاصيل المجموعة</span>
-                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>{isEn ? 'Group Details' : 'تفاصيل المجموعة'}</span>
+                    <ChevronIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>

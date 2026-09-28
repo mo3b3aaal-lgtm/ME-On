@@ -33,7 +33,9 @@ export const NetworkDiagnosticsModal: React.FC<NetworkDiagnosticsModalProps> = (
   isOpen,
   onClose,
 }) => {
-  const { isRTL } = useTranslation();
+  const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
+
   const [diagnostics, setDiagnostics] = useState<HealthCheckDiagnosticResult | null>(
     getLatestHealthCheckDiagnostics()
   );
@@ -133,13 +135,13 @@ Stack: ${diagnostics.exceptionStack || 'None'}
             </div>
             <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
-                <span>تشخيص شبكة وسيرفر Classy</span>
+                <span>{isEn ? 'Classy Server & Network Diagnostics' : 'تشخيص شبكة وسيرفر Classy'}</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-[#55C7E8] border border-white/10">
                   Android APK Runtime
                 </span>
               </h2>
               <p className="text-xs text-[#E8E7FF]/70 font-medium truncate">
-                فحص مباشر وحي للاتصال بنظام Cloud Run وقاعدة بيانات Firebase
+                {isEn ? 'Live verification of connectivity to Cloud Run and Firebase database' : 'فحص مباشر وحي للاتصال بنظام Cloud Run وقاعدة بيانات Firebase'}
               </p>
             </div>
           </div>
@@ -147,6 +149,7 @@ Stack: ${diagnostics.exceptionStack || 'None'}
             id="close_diagnostics_modal_button"
             onClick={onClose}
             className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+            title={t('close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -171,17 +174,17 @@ Stack: ${diagnostics.exceptionStack || 'None'}
               <div className="min-w-0">
                 <div className="font-black text-xs sm:text-sm">
                   {isSuccess
-                    ? 'السيرفر وقاعدة البيانات متصلان ويعملان بكفاءة'
+                    ? (isEn ? 'Server & Database Connected & Operational' : 'السيرفر وقاعدة البيانات متصلان ويعملان بكفاءة')
                     : isHttpError
-                    ? `استجابة غير متوقعة (HTTP ${diagnostics?.httpStatusCode})`
-                    : 'تعذر الاتصال بالسيرفر السحابي'}
+                    ? (isEn ? `Unexpected Response (HTTP ${diagnostics?.httpStatusCode})` : `استجابة غير متوقعة (HTTP ${diagnostics?.httpStatusCode})`)
+                    : (isEn ? 'Could not connect to Cloud Server' : 'تعذر الاتصال بالسيرفر السحابي')}
                 </div>
                 <div className="text-[11px] opacity-80 mt-0.5 font-medium truncate">
-                  {diagnostics?.diagnosticSummary || 'جاري الفحص...'}
+                  {diagnostics?.diagnosticSummary || (isEn ? 'Running checks...' : 'جاري الفحص...')}
                 </div>
               </div>
             </div>
-            <div className="text-left font-mono text-xs px-2.5 py-1 rounded-xl bg-black/40 text-emerald-400 font-bold shrink-0">
+            <div className={`${isRTL ? 'text-left' : 'text-right'} font-mono text-xs px-2.5 py-1 rounded-xl bg-black/40 text-emerald-400 font-bold shrink-0`}>
               {diagnostics?.requestDurationMs || 0}ms
             </div>
           </div>
@@ -204,7 +207,7 @@ Stack: ${diagnostics.exceptionStack || 'None'}
                 navigator.onLine
               </span>
               <span className="font-mono font-bold text-white">
-                {diagnostics?.navigatorOnLine ? 'true (متصل)' : 'false (غير متصل)'}
+                {diagnostics?.navigatorOnLine ? (isEn ? 'true (Connected)' : 'true (متصل)') : (isEn ? 'false (Disconnected)' : 'false (غير متصل)')}
               </span>
             </div>
 
@@ -235,7 +238,7 @@ Stack: ${diagnostics.exceptionStack || 'None'}
                 Database Engine
               </span>
               <span className="font-mono text-emerald-300 text-xs truncate block font-bold">
-                {diagnostics?.parsedJson?.database || (diagnostics?.responseOk ? 'Firebase Firestore' : 'Checking...')}
+                {diagnostics?.parsedJson?.database || (diagnostics?.responseOk ? 'Firebase Firestore' : (isEn ? 'Checking...' : 'جاري الفحص...'))}
               </span>
             </div>
 
@@ -250,103 +253,39 @@ Stack: ${diagnostics.exceptionStack || 'None'}
             </div>
           </div>
 
-          {/* Exact Target URL */}
-          <div className="p-3.5 rounded-2xl bg-black/40 border border-[#403B9C]/30 space-y-1.5 font-mono text-xs">
-            <div className="text-[#E8E7FF]/70 text-[11px] font-sans font-bold">
-              العنوان الدائم للطلب (Request Target URL):
-            </div>
-            <div className="text-[#55C7E8] break-all p-2.5 rounded-xl bg-black/30 border border-white/10 select-all">
-              <span className="text-amber-400 font-bold ml-2">GET</span>
-              {diagnostics?.exactHealthCheckUrl || 'Loading...'}
+          {/* Raw Endpoint details */}
+          <div className="p-3.5 rounded-2xl bg-[#25225C]/40 border border-[#403B9C]/40 space-y-2">
+            <span className="text-[11px] font-bold text-[#E8E7FF]/70 block">Target Healthcheck URL:</span>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 font-mono text-[11px] text-[#55C7E8] break-all select-all">
+              {diagnostics?.exactHealthCheckUrl || 'N/A'}
             </div>
           </div>
-
-          {/* Parsed JSON Response */}
-          {diagnostics?.parsedJson && (
-            <div className="p-3.5 rounded-2xl bg-black/40 border border-[#403B9C]/30 space-y-1.5">
-              <div className="text-[#E8E7FF]/70 text-xs font-bold flex items-center justify-between">
-                <span>البيانات المستلمة من السيرفر (Parsed JSON):</span>
-                <span className="text-emerald-400 text-[10px] font-mono">Valid JSON</span>
-              </div>
-              <pre className="p-3 rounded-xl bg-black/50 border border-white/10 font-mono text-xs text-emerald-300 overflow-x-auto max-h-36">
-                {JSON.stringify(diagnostics.parsedJson, null, 2)}
-              </pre>
-            </div>
-          )}
-
-          {/* Raw Response Text if not JSON */}
-          {diagnostics?.rawResponseText && !diagnostics?.parsedJson && (
-            <div className="p-3.5 rounded-2xl bg-black/40 border border-[#403B9C]/30 space-y-1.5">
-              <div className="text-[#E8E7FF]/70 text-xs font-bold">النص الخام للاستجابة (Raw Response Text):</div>
-              <pre className="p-3 rounded-xl bg-black/50 border border-white/10 font-mono text-xs text-amber-300 overflow-x-auto max-h-36">
-                {diagnostics.rawResponseText}
-              </pre>
-            </div>
-          )}
-
-          {/* Exceptions if any */}
-          {diagnostics?.hasException && (
-            <div className="p-3.5 rounded-2xl bg-rose-950/50 border border-rose-800/60 space-y-2">
-              <div className="text-rose-300 text-xs font-black flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-[#FF647C]" />
-                تفاصيل الاستثناء (Exception Details):
-              </div>
-              <div className="font-mono text-xs text-rose-200 bg-rose-900/30 p-2.5 rounded-xl border border-rose-800/40 break-all space-y-1">
-                <div>
-                  <span className="text-[#FF647C] font-bold">Name:</span>{' '}
-                  {diagnostics.exceptionName}
-                </div>
-                <div>
-                  <span className="text-[#FF647C] font-bold">Message:</span>{' '}
-                  {diagnostics.exceptionMessage}
-                </div>
-                {diagnostics.exceptionStack && (
-                  <div className="text-[10px] text-rose-300/70 mt-2 font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
-                    {diagnostics.exceptionStack}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-[#403B9C]/40 bg-[#17163D] flex items-center justify-between gap-2.5">
           <button
-            id="run_health_check_button"
             onClick={handleRunCheck}
             disabled={isRunning}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7657F6] to-[#403B9C] hover:brightness-105 text-white font-black text-xs transition-all shadow-lg shadow-[#7657F6]/30 disabled:opacity-50 cursor-pointer active:scale-95"
+            className="px-4 py-2.5 rounded-2xl bg-[#403B9C] hover:bg-[#7657F6] text-white text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRunning ? 'animate-spin' : ''}`} />
-            <span>{isRunning ? 'جاري الفحص...' : 'إعادة فحص السيرفر'}</span>
+            <span>{isRunning ? (isEn ? 'Checking...' : 'جاري إعادة الفحص...') : (isEn ? 'Recheck' : 'إعادة الفحص')}</span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
-              id="copy_diagnostics_button"
               onClick={handleCopyReport}
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-black transition-all border border-white/15 cursor-pointer"
+              className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>تم النسخ</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-[#55C7E8]" />
-                  <span>نسخ التقرير</span>
-                </>
-              )}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied ? (isEn ? 'Copied' : 'تم النسخ') : (isEn ? 'Copy Log' : 'نسخ التقرير')}</span>
             </button>
-
             <button
-              id="close_diagnostics_button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-[#E8E7FF] text-xs font-black transition-all border border-white/15 cursor-pointer"
+              className="px-5 py-2.5 rounded-2xl bg-white text-[#17163D] text-xs font-black transition-all cursor-pointer hover:bg-slate-100"
             >
-              إغلاق
+              {t('close')}
             </button>
           </div>
         </div>

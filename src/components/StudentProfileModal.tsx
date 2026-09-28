@@ -80,6 +80,7 @@ import {
   formatBehaviorTime,
   getCategoryBadge,
 } from '../utils/behavior';
+import { useTranslation } from '../utils/i18n';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -102,6 +103,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onOpenAddPayment,
   onDataChanged,
 }) => {
+  const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
+
   const [activeSubTab, setActiveSubTab] = useState<
     'overview' | 'groups' | 'private' | 'finances' | 'attendance' | 'behavior' | 'history' | 'credit_logs'
   >('overview');
@@ -114,15 +118,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [behaviorSearchQuery, setBehaviorSearchQuery] = useState<string>('');
   const [behaviorSelectedTag, setBehaviorSelectedTag] = useState<string>('all');
   const [isAddingPrivateService, setIsAddingPrivateService] = useState<boolean>(false);
-  const [newPrivateSubject, setNewPrivateSubject] = useState<string>('درس خاص');
+  const [newPrivateSubject, setNewPrivateSubject] = useState<string>(isEn ? 'Private Lesson' : 'درس خاص');
   const [newPrivatePrice, setNewPrivatePrice] = useState<number>(100);
   const [newPrivateHourlyRate, setNewPrivateHourlyRate] = useState<number>(150);
   const [newPrivateBillingMode, setNewPrivateBillingMode] = useState<BillingMode>('postpaid');
   const [newPrivatePackageSessions, setNewPrivatePackageSessions] = useState<number>(10);
   const [newPrivatePackagePrice, setNewPrivatePackagePrice] = useState<number>(1000);
-  const [newPrivateDays, setNewPrivateDays] = useState<string[]>(['السبت']);
+  const [newPrivateDays, setNewPrivateDays] = useState<string[]>(['Saturday']);
   const [newPrivateTime, setNewPrivateTime] = useState<string>('16:00');
-  const [newPrivateLocation, setNewPrivateLocation] = useState<string>('منزل الطالب');
+  const [newPrivateLocation, setNewPrivateLocation] = useState<string>(isEn ? "Student's Home" : 'منزل الطالب');
 
   // Student persistent teacher notes
   const [notesText, setNotesText] = useState<string>('');
@@ -225,14 +229,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const attendanceRate =
     totalCounted > 0 ? Math.round(((presentCount + lateCount) / totalCounted) * 100) : 100;
 
-  // Payment methods breakdown
-  const paymentMethodsSummary = allPayments.reduce<Record<string, number>>((acc, p) => {
-    const method = p.paymentMethod || 'cash';
-    acc[method] = (acc[method] || 0) + (Number(p.amount) || 0);
-    return acc;
-  }, {});
-
-  // Recent activity stream (Attendance, Payments, Added sessions, Credit logs, Behavior logs)
+  // Recent activity stream
   interface ActivityItem {
     id: string;
     type: 'attendance' | 'payment' | 'credit' | 'session' | 'behavior';
@@ -255,8 +252,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       type: 'behavior',
       date: b.timestamp.split('T')[0],
       title: `${b.emoji ? b.emoji + ' ' : ''}${b.tag}`,
-      subtitle: b.note || (b.groupName ? `في ${b.groupName}` : 'تقييم سلوكي سريع'),
-      badge: `${(b.points ?? 0) > 0 ? '+' : ''}${b.points ?? 0} نقطة`,
+      subtitle: b.note || (b.groupName ? (isEn ? `in ${b.groupName}` : `في ${b.groupName}`) : (isEn ? 'Quick behavior assessment' : 'تقييم سلوكي سريع')),
+      badge: `${(b.points ?? 0) > 0 ? '+' : ''}${b.points ?? 0} ${t('points')}`,
       badgeColor: isPos
         ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
         : isNeg
@@ -279,15 +276,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       id: `act_att_${att.id}`,
       type: 'attendance',
       date: ses?.date || att.recordedAt?.split('T')[0] || '',
-      title: ses?.title || grp?.name || 'حصة دراسية',
+      title: ses?.title || grp?.name || (isEn ? 'Class Session' : 'حصة دراسية'),
       subtitle: isPres
-        ? 'حضور كامل'
+        ? (isEn ? 'Present' : 'حضور كامل')
         : isLate
-        ? 'حضور متأخر'
+        ? (isEn ? 'Late' : 'حضور متأخر')
         : isCharged
-        ? 'غياب محسوب'
-        : `غياب معفى (${att.absenceReason || 'معتذر'})`,
-      badge: isPres ? 'حاضر' : isLate ? 'متأخر' : isCharged ? 'غياب محسوب' : 'غياب معفى',
+        ? (isEn ? 'Charged Absence' : 'غياب محسوب')
+        : (isEn ? `Excused Absence (${att.absenceReason || 'Excused'})` : `غياب معفى (${att.absenceReason || 'معتذر'})`),
+      badge: isPres ? t('present') : isLate ? t('late') : isCharged ? t('absentCharged') : t('absentExcused'),
       badgeColor: isPres
         ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
         : isLate
@@ -305,18 +302,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       id: `act_pay_${p.id}`,
       type: 'payment',
       date: p.date,
-      title: `سداد مبلغ ${p.amount} ج.م`,
+      title: isEn ? `Payment of ${p.amount} ${t('currency')}` : `سداد مبلغ ${p.amount} ج.م`,
       subtitle: `${
-        p.notes || (p.targetMonth ? `عن شهر ${getArabicMonthName(p.targetMonth)}` : 'دفعة حساب')
+        p.notes || (p.targetMonth ? (isEn ? `Month: ${getArabicMonthName(p.targetMonth)}` : `عن شهر ${getArabicMonthName(p.targetMonth)}`) : (isEn ? 'Account Payment' : 'دفعة حساب'))
       }`,
       badge:
         p.paymentMethod === 'vodafone_cash'
-          ? 'فودافون كاش'
+          ? (isEn ? 'Vodafone Cash' : 'فودافون كاش')
           : p.paymentMethod === 'instapay'
-          ? 'إنستاباي'
+          ? (isEn ? 'InstaPay' : 'إنستاباي')
           : p.paymentMethod === 'bank_transfer'
-          ? 'تحويل بنكي'
-          : 'كاش',
+          ? (isEn ? 'Bank Transfer' : 'تحويل بنكي')
+          : (isEn ? 'Cash' : 'كاش'),
       badgeColor: 'bg-emerald-50 text-emerald-800 border border-emerald-300',
       timestamp: new Date(p.createdAt || p.date).getTime(),
     });
@@ -328,9 +325,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       id: `act_crd_${log.id}`,
       type: 'credit',
       date: log.date,
-      title: log.reason || 'تعديل رصيد الحصص',
-      subtitle: `الرصيد بعد العملية: ${log.balanceAfter} حصص`,
-      badge: `${log.sessionsDelta > 0 ? '+' : ''}${log.sessionsDelta} حصة`,
+      title: log.reason || (isEn ? 'Session balance adjustment' : 'تعديل رصيد الحصص'),
+      subtitle: isEn ? `Balance after: ${log.balanceAfter} sessions` : `الرصيد بعد العملية: ${log.balanceAfter} حصص`,
+      badge: `${log.sessionsDelta > 0 ? '+' : ''}${log.sessionsDelta} ${isEn ? 'sessions' : 'حصة'}`,
       badgeColor:
         log.sessionsDelta > 0
           ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
@@ -351,13 +348,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const hasPrivate =
     privateEnrollments.length > 0 || serviceType === 'private_only' || serviceType === 'both';
 
-  const filteredEnrollments = grandFinancials.enrollmentsSummary.filter((e) => {
-    if (serviceFilter === 'all') return true;
-    if (serviceFilter === 'private') return e.groupType === 'private';
-    if (serviceFilter === 'group') return e.groupType !== 'private';
-    return true;
-  });
-
   const handleCreatePrivateService = (e: React.FormEvent) => {
     e.preventDefault();
     if (!student) return;
@@ -365,7 +355,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       const isHourly = newPrivateBillingMode === 'hourly';
       const isPkg = newPrivateBillingMode === 'package';
       db.createPrivateLessonService(student.id, {
-        subject: newPrivateSubject.trim() || 'درس خاص',
+        subject: newPrivateSubject.trim() || (isEn ? 'Private Lesson' : 'درس خاص'),
         sessionPrice: isPkg
           ? newPrivatePackagePrice
           : isHourly
@@ -384,7 +374,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       onDataChanged();
     } catch (err) {
       console.error(err);
-      alert('حدث خطأ أثناء إضافة الخدمة الخاصة');
+      alert(isEn ? 'An error occurred while adding private service' : 'حدث خطأ أثناء إضافة الخدمة الخاصة');
     }
   };
 
@@ -411,36 +401,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       packageSessionsCount: isPkg ? editPackageSessions : undefined,
     });
     setEditingEnrollmentId(null);
-    onDataChanged();
-  };
-
-  const handleUpdateAttendanceStatus = (
-    sessionId: string,
-    status: AttendanceStatus,
-    isCharged: boolean,
-    reason?: string
-  ) => {
-    if (!student) return;
-    const existingAtt = attendanceList.find((a) => a.sessionId === sessionId);
-    const session = allSessions.find((s) => s.id === sessionId);
-    const enr = grandFinancials.enrollmentsSummary.find(
-      (e) => e.groupId === session?.groupId || e.enrollmentId === session?.enrollmentId
-    );
-
-    const rec: Attendance = {
-      id: existingAtt?.id || `att_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      sessionId,
-      studentId: student.id,
-      enrollmentId: session?.enrollmentId || enr?.enrollmentId,
-      status,
-      isCharged,
-      absenceReason: reason,
-      paymentStatus: existingAtt?.paymentStatus,
-      isPaid: existingAtt?.isPaid,
-      paymentOverride: existingAtt?.paymentOverride,
-      recordedAt: new Date().toISOString(),
-    };
-    db.saveAttendanceBatch(sessionId, [rec]);
     onDataChanged();
   };
 
@@ -475,31 +435,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     onDataChanged();
   };
 
-  const handleCancelSession = (session: Session) => {
-    if (confirm(`هل أنت متأكد من إلغاء الحصة (${session.title})؟ لن يتم احتسابها مالياً.`)) {
-      const updated: Session = { ...session, status: 'cancelled' };
-      db.saveSession(updated);
-      handleUpdateAttendanceStatus(session.id, 'excused', false, 'حصة ملغاة');
-    }
-  };
-
-  const handleDeleteSession = (sessionId: string) => {
-    const sessionAtt = db.getAttendance().filter((a) => a.sessionId === sessionId);
-    const hasRecordedAttendance = sessionAtt.length > 0;
-    const warningMsg = hasRecordedAttendance
-      ? `تحذير هام: هذه الحصة مسجل لها كشف حضور لعدد (${sessionAtt.length}) طالب.\n\nحذف الحصة سيؤدي إلى مسح سجلات الحضور وإلغاء أي مستحقات مالية متعلقة بها.\n\nهل أنت متأكد من الحذف النهائي؟`
-      : 'هل أنت متأكد من حذف هذه الحصة نهائياً؟';
-
-    if (confirm(warningMsg)) {
-      db.deleteSession(sessionId);
-      onDataChanged();
-    }
-  };
-
-  const [isSafeDeleteModalOpen, setIsSafeDeleteModalOpen] = useState(false);
-
   const handleRemoveEnrollment = (enrollmentId: string, groupName: string) => {
-    if (confirm(`هل أنت متأكد من إلغاء قيد الطالب من ${groupName}؟`)) {
+    if (confirm(isEn ? `Are you sure you want to unenroll student from ${groupName}?` : `هل أنت متأكد من إلغاء قيد الطالب من ${groupName}؟`)) {
       db.removeEnrollment(enrollmentId);
       onDataChanged();
     }
@@ -524,6 +461,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     onClose();
   };
 
+  const [isSafeDeleteModalOpen, setIsSafeDeleteModalOpen] = useState(false);
   const modalLayer = useModalLayer('student-profile', isOpen && !!student, onClose);
 
   if (!isOpen || !student) return null;
@@ -535,7 +473,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       <div
         style={{ zIndex: modalLayer.zIndex }}
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir="rtl"
+        dir={isRTL ? 'rtl' : 'ltr'}
       >
         <div className="bg-[#F5F6FC] border border-[#E8E7FF] rounded-t-[32px] sm:rounded-[32px] max-w-2xl w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
           {/* =========================================================================
@@ -549,13 +487,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-4 left-4 p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all cursor-pointer z-10"
-              title="إغلاق الملف"
+              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all cursor-pointer z-10`}
+              title={t('close')}
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10 pl-10">
+            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10 ${isRTL ? 'pl-10' : 'pr-10'}`}>
               <div className="flex items-center gap-3.5 min-w-0">
                 <StudentAvatar
                   student={student}
@@ -574,38 +512,38 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     {isArchived && (
                       <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/30 flex items-center gap-1 shadow-2xs">
                         <Archive className="w-3 h-3 text-amber-300" />
-                        <span>طالب مؤرشف</span>
+                        <span>{t('archived')}</span>
                       </span>
                     )}
 
                     {/* Service Badges */}
                     {serviceType === 'both' && (
                       <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
-                        مجموعة + درس خاص
+                        {isEn ? 'Group + Private' : 'مجموعة + درس خاص'}
                       </span>
                     )}
                     {serviceType === 'private_only' && (
                       <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FF647C]/20 text-[#FF647C] border border-[#FF647C]/30">
-                        درس خاص
+                        {isEn ? 'Private Lesson' : 'درس خاص'}
                       </span>
                     )}
                     {serviceType === 'group_only' && (
                       <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/20 text-[#E8E7FF] border border-white/20">
-                        مجموعة فقط
+                        {isEn ? 'Group Only' : 'مجموعة فقط'}
                       </span>
                     )}
                     {serviceType === 'none' && !isArchived && (
                       <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/15">
-                        بدون اشتراك نشط
+                        {isEn ? 'No Active Enrollment' : 'بدون اشتراك نشط'}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-[#E8E7FF]/90 font-medium flex-wrap">
                     <span className="font-bold bg-white/15 px-2.5 py-0.5 rounded-lg border border-white/10">
-                      {getLocalizedStageName(student.gradeLevel) || 'الصف غير محدد'}
+                      {getLocalizedStageName(student.gradeLevel) || (isEn ? 'Grade Not Set' : 'الصف غير محدد')}
                     </span>
-                    {student.school && <span>• مدرسة {student.school}</span>}
+                    {student.school && <span>• {isEn ? `School: ${student.school}` : `مدرسة ${student.school}`}</span>}
                     {student.city && <span>• {student.city}</span>}
                   </div>
                 </div>
@@ -615,9 +553,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {/* Archived Alert Banner */}
             {isArchived && (
               <div className="mt-4 p-3 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-100 flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
-                <div className="text-xs font-medium leading-relaxed text-right w-full sm:w-auto">
-                  <strong className="font-black block text-white">هذا الطالب مؤرشف حالياً</strong>
-                  <span>كافة السجلات والحصص والمدفوعات التاريخية محفوظة بالكامل.</span>
+                <div className={`text-xs font-medium leading-relaxed ${isRTL ? 'text-right' : 'text-left'} w-full sm:w-auto`}>
+                  <strong className="font-black block text-white">{isEn ? 'Student is currently archived' : 'هذا الطالب مؤرشف حالياً'}</strong>
+                  <span>{isEn ? 'All historical records, sessions, and payments are preserved.' : 'كافة السجلات والحصص والمدفوعات التاريخية محفوظة بالكامل.'}</span>
                 </div>
                 <button
                   type="button"
@@ -625,7 +563,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0 active:scale-95"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span>استعادة الطالب للنشاط</span>
+                  <span>{isEn ? 'Restore Student' : 'استعادة الطالب للنشاط'}</span>
                 </button>
               </div>
             )}
@@ -639,7 +577,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95 hover:brightness-105"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>+ حصة خاصة</span>
+                  <span>{isEn ? '+ Private Class' : '+ حصة خاصة'}</span>
                 </button>
               )}
 
@@ -649,7 +587,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 className="py-2 px-3 rounded-xl bg-white text-[#17163D] hover:bg-[#F5F6FC] text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                <span>+ تسجيل دفعة</span>
+                <span>+ {t('recordPayment')}</span>
               </button>
 
               <button
@@ -658,17 +596,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 className="py-2 px-3 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
               >
                 <Zap className="w-3.5 h-3.5 text-[#55C7E8]" />
-                <span>تقييم سلوك</span>
+                <span>{isEn ? 'Behavior Rating' : 'تقييم سلوك'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onEditStudent(student)}
                 className="py-2 px-3 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
-                title="تعديل بيانات الطالب"
+                title={t('editStudent')}
               >
                 <Edit2 className="w-3.5 h-3.5" />
-                <span>تعديل الطالب</span>
+                <span>{t('editStudent')}</span>
               </button>
             </div>
           </div>
@@ -686,7 +624,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <Activity className="w-4 h-4" />
-              <span>لوحة الطالب</span>
+              <span>{isEn ? 'Overview' : 'لوحة الطالب'}</span>
             </button>
 
             <button
@@ -698,7 +636,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>المجموعات ({groupEnrollments.length})</span>
+              <span>{t('groups')} ({groupEnrollments.length})</span>
             </button>
 
             <button
@@ -710,7 +648,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <Sparkles className="w-4 h-4 text-[#FF647C]" />
-              <span>الدرس الخاص {privateEnrollments.length > 0 ? `(${privateEnrollments.length})` : ''}</span>
+              <span>{isEn ? 'Private Lessons' : 'الدرس الخاص'} {privateEnrollments.length > 0 ? `(${privateEnrollments.length})` : ''}</span>
             </button>
 
             <button
@@ -722,7 +660,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <DollarSign className="w-4 h-4" />
-              <span>الحسابات والماليات</span>
+              <span>{isEn ? 'Finances' : 'الحسابات والماليات'}</span>
             </button>
 
             <button
@@ -734,7 +672,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <CalendarCheck2 className="w-4 h-4" />
-              <span>سجل الحضور ({attendanceList.length})</span>
+              <span>{t('attendance')} ({attendanceList.length})</span>
             </button>
 
             <button
@@ -746,7 +684,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <Zap className="w-4 h-4" />
-              <span>السلوك ({studentBehaviorLogs.length})</span>
+              <span>{isEn ? 'Behavior' : 'السلوك'} ({studentBehaviorLogs.length})</span>
             </button>
 
             <button
@@ -758,7 +696,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <History className="w-4 h-4" />
-              <span>سجل المدفوعات</span>
+              <span>{isEn ? 'Payments Log' : 'سجل المدفوعات'}</span>
             </button>
 
             <button
@@ -770,7 +708,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               }`}
             >
               <Coins className="w-4 h-4" />
-              <span>حركات الرصيد ({allCreditLogs.length})</span>
+              <span>{isEn ? 'Credit Logs' : 'حركات الرصيد'} ({allCreditLogs.length})</span>
             </button>
           </div>
 
@@ -787,19 +725,19 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 <div className="grid grid-cols-3 gap-2.5 text-center">
                   <div className="classy-card p-3.5 bg-white space-y-1">
                     <span className="text-[10px] font-bold text-[#74778F] block">
-                      إجمالي الرسوم (Gross)
+                      {isEn ? 'Total Fees (Gross)' : 'إجمالي الرسوم (Gross)'}
                     </span>
                     <strong className="text-base sm:text-lg font-black text-[#17163D] block">
-                      {grandFinancials.grandTotalDue} ج.م
+                      {grandFinancials.grandTotalDue} {t('currency')}
                     </strong>
                   </div>
 
                   <div className="classy-card p-3.5 bg-white space-y-1 border-emerald-200">
                     <span className="text-[10px] font-bold text-emerald-800 block">
-                      إجمالي المدفوع
+                      {t('totalCollected')}
                     </span>
                     <strong className="text-base sm:text-lg font-black text-emerald-700 block">
-                      {grandFinancials.grandTotalPaid} ج.م
+                      {grandFinancials.grandTotalPaid} {t('currency')}
                     </strong>
                   </div>
 
@@ -811,14 +749,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     }`}
                   >
                     <span className="text-[10px] font-bold text-[#74778F] block">
-                      المستحق المتبقي
+                      {t('remainingBalance')}
                     </span>
                     <strong
                       className={`text-base sm:text-lg font-black block ${
                         grandFinancials.grandRemaining > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
                       }`}
                     >
-                      {grandFinancials.grandRemaining} ج.م
+                      {grandFinancials.grandRemaining} {t('currency')}
                     </strong>
                   </div>
                 </div>
@@ -827,7 +765,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 <div className="classy-card p-3.5 bg-white flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-[#7657F6]" />
-                    <span className="font-bold text-xs text-[#17163D]">بيانات التواصل المباشر:</span>
+                    <span className="font-bold text-xs text-[#17163D]">{isEn ? 'Contact Info:' : 'بيانات التواصل المباشر:'}</span>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
@@ -849,7 +787,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1.5 border border-emerald-300 transition-colors"
                       >
                         <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>واتساب {student.parentRelation || 'ولي الأمر'}: {student.parentPhone}</span>
+                        <span>{isEn ? `WhatsApp (${student.parentRelation || 'Parent'}): ${student.parentPhone}` : `واتساب ${student.parentRelation || 'ولي الأمر'}: ${student.parentPhone}`}</span>
                       </a>
                     )}
                   </div>
@@ -862,7 +800,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
                         <CalendarCheck2 className="w-4 h-4 text-[#7657F6]" />
-                        <span>معدل الحضور والالتزام</span>
+                        <span>{isEn ? 'Attendance Rate' : 'معدل الحضور والالتزام'}</span>
                       </span>
                       <span className="text-xs font-black text-emerald-700">
                         {attendanceRate}%
@@ -877,10 +815,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-[#74778F] font-bold pt-1">
-                      <span>حاضر: {presentCount}</span>
-                      <span>متأخر: {lateCount}</span>
-                      <span>غياب محسوب: {absentChargedCount}</span>
-                      <span>معذور: {absentExcusedCount}</span>
+                      <span>{t('present')}: {presentCount}</span>
+                      <span>{t('late')}: {lateCount}</span>
+                      <span>{t('absentCharged')}: {absentChargedCount}</span>
+                      <span>{t('absentExcused')}: {absentExcusedCount}</span>
                     </div>
                   </div>
 
@@ -889,7 +827,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
                         <Zap className="w-4 h-4 text-[#55C7E8]" />
-                        <span>التقييم السلوكي والتفاعل</span>
+                        <span>{isEn ? 'Behavior Rating & Engagement' : 'التقييم السلوكي والتفاعل'}</span>
                       </span>
                       <span
                         className={`text-xs font-black ${
@@ -903,17 +841,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         {behaviorStats.totalPoints > 0
                           ? `+${behaviorStats.totalPoints}`
                           : behaviorStats.totalPoints}{' '}
-                        نقطة
+                        {t('points')}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold pt-1">
                       <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        <span className="text-[10px] block">تميز وتفاعل</span>
+                        <span className="text-[10px] block">{isEn ? 'Positive' : 'تميز وتفاعل'}</span>
                         <strong className="text-sm font-black">{behaviorStats.positiveCount}</strong>
                       </div>
                       <div className="p-2 rounded-xl bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]">
-                        <span className="text-[10px] block">يحتاج متابعة</span>
+                        <span className="text-[10px] block">{isEn ? 'Needs Attention' : 'يحتاج متابعة'}</span>
                         <strong className="text-sm font-black">{behaviorStats.needsImprovementCount}</strong>
                       </div>
                     </div>
@@ -925,12 +863,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
                       <FileText className="w-4 h-4 text-[#7657F6]" />
-                      <span>ملاحظات المعلم الخاصة عن الطالب:</span>
+                      <span>{isEn ? 'Teacher Private Notes:' : 'ملاحظات المعلم الخاصة عن الطالب:'}</span>
                     </span>
                     {isNotesSaved && (
                       <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1 animate-in fade-in">
                         <Check className="w-3 h-3" />
-                        <span>تم الحفظ بنجاح</span>
+                        <span>{isEn ? 'Saved successfully' : 'تم الحفظ بنجاح'}</span>
                       </span>
                     )}
                   </div>
@@ -938,7 +876,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <textarea
                     value={notesText}
                     onChange={(e) => setNotesText(e.target.value)}
-                    placeholder="اكتب ملاحظاتك عن مستوى الطالب، متابعة ولي الأمر، أو خطة المنهج..."
+                    placeholder={isEn ? 'Write notes on student progress, parent follow-ups, or curriculum goals...' : 'اكتب ملاحظاتك عن مستوى الطالب، متابعة ولي الأمر، أو خطة المنهج...'}
                     rows={3}
                     className="w-full p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs text-[#191A2E] font-medium focus:outline-none focus:border-[#7657F6] focus:bg-white transition-all shadow-inner"
                   />
@@ -950,7 +888,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       className="px-4 py-2 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
                     >
                       <Save className="w-3.5 h-3.5" />
-                      <span>حفظ الملاحظات</span>
+                      <span>{isEn ? 'Save Notes' : 'حفظ الملاحظات'}</span>
                     </button>
                   </div>
                 </div>
@@ -960,13 +898,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div className="flex items-center justify-between">
                     <h3 className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
                       <Activity className="w-4 h-4 text-[#7657F6]" />
-                      <span>سجل النشاط والعمليات الأخيرة</span>
+                      <span>{isEn ? 'Recent Activity & Transactions' : 'سجل النشاط والعمليات الأخيرة'}</span>
                     </h3>
                   </div>
 
                   {latestActivities.length === 0 ? (
                     <p className="text-xs text-[#74778F] font-bold text-center py-3">
-                      لا يوجد نشاط مسجل للطالب بعد.
+                      {isEn ? 'No activity recorded yet for this student.' : 'لا يوجد نشاط مسجل للطالب بعد.'}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -998,10 +936,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 <div className="p-3.5 rounded-2xl bg-[#FFF1F3]/50 border border-[#FECDD3] flex items-center justify-between flex-wrap gap-2">
                   <div className="space-y-0.5">
                     <strong className="text-xs font-black text-[#17163D] block">
-                      إدارة حالة الطالب والأرشفة
+                      {isEn ? 'Student Status & Archiving' : 'إدارة حالة الطالب والأرشفة'}
                     </strong>
                     <p className="text-[10px] text-[#74778F]">
-                      أرشفة الطالب تحتفظ بكافة سجلاته وحساباته، بينما الحذف النهائي يزيل بياناته.
+                      {isEn ? 'Archiving preserves all records and accounts, while permanent delete wipes data.' : 'أرشفة الطالب تحتفظ بكافة سجلاته وحساباته، بينما الحذف النهائي يزيل بياناته.'}
                     </p>
                   </div>
 
@@ -1011,7 +949,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     className="px-3.5 py-1.5 rounded-xl bg-white text-[#FF647C] border border-[#FECDD3] hover:bg-[#FFF1F3] text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>أرشفة أو حذف</span>
+                    <span>{isEn ? 'Archive or Delete' : 'أرشفة أو حذف'}</span>
                   </button>
                 </div>
               </div>
@@ -1024,7 +962,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-[#17163D]">
-                    المجموعات الدراسية المسجل بها ({groupEnrollments.length})
+                    {isEn ? `Enrolled Groups (${groupEnrollments.length})` : `المجموعات الدراسية المسجل بها (${groupEnrollments.length})`}
                   </span>
                   <button
                     type="button"
@@ -1032,7 +970,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     className="px-3 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white font-black text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>تسجيل في مجموعة</span>
+                    <span>{isEn ? 'Enroll in Group' : 'تسجيل في مجموعة'}</span>
                   </button>
                 </div>
 
@@ -1040,7 +978,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div className="classy-card p-8 text-center space-y-3 bg-white">
                     <Layers className="w-8 h-8 text-[#74778F] mx-auto opacity-40" />
                     <p className="text-xs font-bold text-[#74778F]">
-                      الطالب مش مضاف لأي مجموعة دراسية حالياً.
+                      {isEn ? 'Student is not enrolled in any study group yet.' : 'الطالب مش مضاف لأي مجموعة دراسية حالياً.'}
                     </p>
                     <button
                       type="button"
@@ -1048,7 +986,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>إضافة الطالب لمجموعة الآن</span>
+                      <span>{isEn ? 'Add Student to Group Now' : 'إضافة الطالب لمجموعة الآن'}</span>
                     </button>
                   </div>
                 ) : (
@@ -1071,7 +1009,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               </span>
                             </div>
                             <p className="text-[11px] text-[#74778F]">
-                              سعر الحصة المقرر: <strong className="text-[#17163D]">{enr.customPrice} ج.م</strong>
+                              {isEn ? 'Class Price:' : 'سعر الحصة المقرر:'} <strong className="text-[#17163D]">{enr.customPrice} {t('currency')}</strong>
                             </p>
                           </div>
 
@@ -1080,7 +1018,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               type="button"
                               onClick={() => handleStartEditEnrollment(enr.enrollmentId)}
                               className="p-1.5 rounded-lg bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] hover:text-[#17163D] border border-[#E8E7FF] transition-colors cursor-pointer"
-                              title="تعديل شروط التسعير والاشتراك"
+                              title={isEn ? 'Edit Pricing' : 'تعديل شروط التسعير والاشتراك'}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -1088,7 +1026,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               type="button"
                               onClick={() => handleRemoveEnrollment(enr.enrollmentId, enr.groupName)}
                               className="p-1.5 rounded-lg bg-[#FFF1F3] hover:bg-[#FFE4E6] text-[#FF647C] border border-[#FECDD3] transition-colors cursor-pointer"
-                              title="إلغاء قيد الطالب من المجموعة"
+                              title={isEn ? 'Unenroll Student' : 'إلغاء قيد الطالب من المجموعة'}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1098,28 +1036,28 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         {/* Inline Billing Editor */}
                         {editingEnrollmentId === enr.enrollmentId && (
                           <div className="p-3 bg-[#F6F7FC] rounded-2xl border border-[#E8E7FF] space-y-2.5 text-xs">
-                            <span className="font-black text-[#17163D] block">تعديل نظام المحاسبة والتسعير:</span>
+                            <span className="font-black text-[#17163D] block">{isEn ? 'Edit Billing & Pricing Mode:' : 'تعديل نظام المحاسبة والتسعير:'}</span>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                                  نظام المحاسبة
+                                  {isEn ? 'Billing Mode' : 'نظام المحاسبة'}
                                 </label>
                                 <select
                                   value={editBillingMode}
                                   onChange={(e) => setEditBillingMode(e.target.value as BillingMode)}
                                   className="w-full p-2 rounded-xl bg-white border border-[#E8E7FF] text-xs font-bold text-[#17163D]"
                                 >
-                                  <option value="prepaid">دفع مسبق بالحصة</option>
-                                  <option value="postpaid">دفع بعد الحصة (آجل)</option>
-                                  <option value="monthly">اشتراك شهري</option>
-                                  <option value="package">باقة حصص</option>
-                                  <option value="hourly">محاسبة بالساعة</option>
+                                  <option value="prepaid">{isEn ? 'Prepaid Per Session' : 'دفع مسبق بالحصة'}</option>
+                                  <option value="postpaid">{isEn ? 'Postpaid (Pay After)' : 'دفع بعد الحصة (آجل)'}</option>
+                                  <option value="monthly">{isEn ? 'Monthly Subscription' : 'اشتراك شهري'}</option>
+                                  <option value="package">{isEn ? 'Session Package' : 'باقة حصص'}</option>
+                                  <option value="hourly">{isEn ? 'Hourly Rate' : 'محاسبة بالساعة'}</option>
                                 </select>
                               </div>
 
                               <div>
                                 <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                                  السعر المخصص (ج.م)
+                                  {isEn ? `Price (${t('currency')})` : `السعر المخصص (${t('currency')})`}
                                 </label>
                                 <input
                                   type="number"
@@ -1136,14 +1074,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 onClick={() => setEditingEnrollmentId(null)}
                                 className="px-3 py-1.5 rounded-xl bg-white border border-[#E8E7FF] text-xs font-bold text-[#74778F]"
                               >
-                                إلغاء
+                                {t('cancel')}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleSaveEnrollmentBilling(enr.enrollmentId)}
                                 className="px-3.5 py-1.5 rounded-xl bg-[#17163D] text-white text-xs font-black shadow-xs"
                               >
-                                حفظ التعديل
+                                {t('save')}
                               </button>
                             </div>
                           </div>
@@ -1152,21 +1090,21 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         {/* Financial Metrics Strip */}
                         <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
                           <div className="p-2 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
-                            <span className="text-[#74778F] block font-bold">الحصص المستهلكة</span>
+                            <span className="text-[#74778F] block font-bold">{isEn ? 'Used' : 'الحصص المستهلكة'}</span>
                             <strong className="text-xs font-black text-[#17163D]">
                               {enr.usedSessionsCount || 0}
                             </strong>
                           </div>
                           <div className="p-2 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
-                            <span className="text-[#74778F] block font-bold">رصيد الحصص</span>
+                            <span className="text-[#74778F] block font-bold">{isEn ? 'Credit' : 'رصيد الحصص'}</span>
                             <strong className="text-xs font-black text-[#7657F6]">
                               {enr.sessionCredit || 0}
                             </strong>
                           </div>
                           <div className="p-2 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
-                            <span className="text-[#74778F] block font-bold">المدفوع</span>
+                            <span className="text-[#74778F] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
                             <strong className="text-xs font-black text-emerald-700">
-                              {enr.totalPaid} ج.م
+                              {enr.totalPaid} {t('currency')}
                             </strong>
                           </div>
                           <div
@@ -1176,8 +1114,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 : 'bg-[#F6F7FC] border-[#E8E7FF] text-emerald-700'
                             }`}
                           >
-                            <span className="block font-bold">المتبقي</span>
-                            <strong className="text-xs font-black">{enr.remaining} ج.م</strong>
+                            <span className="block font-bold">{isEn ? 'Remaining' : 'المتبقي'}</span>
+                            <strong className="text-xs font-black">{enr.remaining} {t('currency')}</strong>
                           </div>
                         </div>
                       </div>
@@ -1194,7 +1132,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-[#17163D]">
-                    الخدمات والدروس الخاصة ({privateEnrollments.length})
+                    {isEn ? `Private Services & Tutoring (${privateEnrollments.length})` : `الخدمات والدروس الخاصة (${privateEnrollments.length})`}
                   </span>
                   <button
                     type="button"
@@ -1202,7 +1140,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs flex items-center gap-1 shadow-md shadow-[#FF647C]/30 transition-all active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>إضافة درس خاص جديد</span>
+                    <span>{isEn ? 'Add New Private Lesson' : 'إضافة درس خاص جديد'}</span>
                   </button>
                 </div>
 
@@ -1214,7 +1152,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   >
                     <div className="flex items-center justify-between border-b border-[#E8E7FF] pb-2">
                       <span className="font-black text-xs text-[#17163D]">
-                        إعداد وتخصيص خدمة درس خاص جديدة:
+                        {isEn ? 'Configure New Private Tutoring Service:' : 'إعداد وتخصيص خدمة درس خاص جديدة:'}
                       </span>
                       <button
                         type="button"
@@ -1228,13 +1166,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                       <div>
                         <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                          المادة / موضوع الدرس
+                          {isEn ? 'Subject / Topic' : 'المادة / موضوع الدرس'}
                         </label>
                         <input
                           type="text"
                           value={newPrivateSubject}
                           onChange={(e) => setNewPrivateSubject(e.target.value)}
-                          placeholder="مثال: لغة إنجليزية - خاص"
+                          placeholder={isEn ? 'e.g. English - Private' : 'مثال: لغة إنجليزية - خاص'}
                           className="w-full p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-bold text-xs text-[#17163D]"
                           required
                         />
@@ -1242,7 +1180,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                       <div>
                         <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                          نظام المحاسبة
+                          {isEn ? 'Billing Mode' : 'نظام المحاسبة'}
                         </label>
                         <select
                           value={newPrivateBillingMode}
@@ -1251,18 +1189,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           }
                           className="w-full p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-bold text-xs text-[#17163D]"
                         >
-                          <option value="postpaid">دفع آجل (بعد الحصة)</option>
-                          <option value="prepaid">دفع مسبق (شحن رصيد)</option>
-                          <option value="monthly">اشتراك شهري</option>
-                          <option value="package">باقة حصص</option>
-                          <option value="hourly">محاسبة بالساعة (Hourly)</option>
+                          <option value="postpaid">{isEn ? 'Postpaid (Pay After Class)' : 'دفع آجل (بعد الحصة)'}</option>
+                          <option value="prepaid">{isEn ? 'Prepaid (Credit Balance)' : 'دفع مسبق (شحن رصيد)'}</option>
+                          <option value="monthly">{isEn ? 'Monthly Subscription' : 'اشتراك شهري'}</option>
+                          <option value="package">{isEn ? 'Session Package' : 'باقة حصص'}</option>
+                          <option value="hourly">{isEn ? 'Hourly Rate' : 'محاسبة بالساعة (Hourly)'}</option>
                         </select>
                       </div>
 
                       {newPrivateBillingMode === 'hourly' ? (
                         <div>
                           <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                            سعر الساعة (ج.م)
+                            {isEn ? `Hourly Rate (${t('currency')})` : `سعر الساعة (${t('currency')})`}
                           </label>
                           <input
                             type="number"
@@ -1276,7 +1214,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         <>
                           <div>
                             <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                              عدد حصص الباقة
+                              {isEn ? 'Package Sessions Count' : 'عدد حصص الباقة'}
                             </label>
                             <input
                               type="number"
@@ -1290,7 +1228,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           </div>
                           <div>
                             <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                              إجمالي سعر الباقة (ج.م)
+                              {isEn ? `Package Total Price (${t('currency')})` : `إجمالي سعر الباقة (${t('currency')})`}
                             </label>
                             <input
                               type="number"
@@ -1304,7 +1242,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       ) : (
                         <div>
                           <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                            سعر الحصة (ج.م)
+                            {isEn ? `Session Price (${t('currency')})` : `سعر الحصة (${t('currency')})`}
                           </label>
                           <input
                             type="number"
@@ -1318,13 +1256,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                       <div>
                         <label className="block text-[10px] text-[#74778F] font-bold mb-1">
-                          مكان الدرس
+                          {isEn ? 'Location' : 'مكان الدرس'}
                         </label>
                         <input
                           type="text"
                           value={newPrivateLocation}
                           onChange={(e) => setNewPrivateLocation(e.target.value)}
-                          placeholder="مثال: منزل الطالب أو السنتر"
+                          placeholder={isEn ? "e.g. Student's Home or Center" : 'مثال: منزل الطالب أو السنتر'}
                           className="w-full p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-bold text-xs text-[#17163D]"
                         />
                       </div>
@@ -1336,13 +1274,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         onClick={() => setIsAddingPrivateService(false)}
                         className="px-4 py-2 rounded-xl bg-[#F6F7FC] text-[#74778F] font-bold text-xs"
                       >
-                        إلغاء
+                        {t('cancel')}
                       </button>
                       <button
                         type="submit"
                         className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs shadow-md shadow-[#FF647C]/30"
                       >
-                        حفظ وإنشاء الدرس الخاص
+                        {isEn ? 'Save Private Lesson' : 'حفظ وإنشاء الدرس الخاص'}
                       </button>
                     </div>
                   </form>
@@ -1352,7 +1290,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div className="classy-card p-8 text-center space-y-3 bg-white">
                     <Sparkles className="w-8 h-8 text-[#FF647C] mx-auto opacity-50" />
                     <p className="text-xs font-bold text-[#74778F]">
-                      مفيش دروس خاصة مسجلة للطالب حتى الآن.
+                      {isEn ? 'No private lessons registered yet for this student.' : 'مفيش دروس خاصة مسجلة للطالب حتى الآن.'}
                     </p>
                     <button
                       type="button"
@@ -1360,7 +1298,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>إضافة أول درس خاص للطالب</span>
+                      <span>{isEn ? 'Add First Private Lesson' : 'إضافة أول درس خاص للطالب'}</span>
                     </button>
                   </div>
                 ) : (
@@ -1381,8 +1319,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             </div>
                             <p className="text-[11px] text-[#74778F]">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
-                                ? `سعر الساعة: ${enr.customPrice} ج.م`
-                                : `سعر الحصة: ${enr.customPrice} ج.م`}
+                                ? (isEn ? `Hourly Rate: ${enr.customPrice} ${t('currency')}` : `سعر الساعة: ${enr.customPrice} ج.م`)
+                                : (isEn ? `Session Price: ${enr.customPrice} ${t('currency')}` : `سعر الحصة: ${enr.customPrice} ج.م`)}
                             </p>
                           </div>
 
@@ -1391,7 +1329,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               type="button"
                               onClick={() => handleStartEditEnrollment(enr.enrollmentId)}
                               className="p-1.5 rounded-lg bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] hover:text-[#17163D] border border-[#E8E7FF] transition-colors cursor-pointer"
-                              title="تعديل شروط التسعير والاشتراك"
+                              title={isEn ? 'Edit Pricing' : 'تعديل شروط التسعير والاشتراك'}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -1399,7 +1337,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               type="button"
                               onClick={() => handleRemoveEnrollment(enr.enrollmentId, enr.groupName)}
                               className="p-1.5 rounded-lg bg-[#FFF1F3] hover:bg-[#FFE4E6] text-[#FF647C] border border-[#FECDD3] transition-colors cursor-pointer"
-                              title="إلغاء خدمة الدرس الخاص"
+                              title={isEn ? 'Delete Private Lesson' : 'إلغاء خدمة الدرس الخاص'}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1411,25 +1349,25 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           <div className="p-2 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
                             <span className="text-[#74778F] block font-bold">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
-                                ? 'الساعات المنفذة'
-                                : 'الحصص المستهلكة'}
+                                ? (isEn ? 'Hours' : 'الساعات المنفذة')
+                                : (isEn ? 'Sessions' : 'الحصص المستهلكة')}
                             </span>
                             <strong className="text-xs font-black text-[#17163D]">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
-                                ? `${enr.totalHours ?? 0} ساعة`
+                                ? (isEn ? `${enr.totalHours ?? 0} hrs` : `${enr.totalHours ?? 0} ساعة`)
                                 : enr.usedSessionsCount || 0}
                             </strong>
                           </div>
                           <div className="p-2 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
-                            <span className="text-[#74778F] block font-bold">رصيد الحصص</span>
+                            <span className="text-[#74778F] block font-bold">{isEn ? 'Credit' : 'رصيد الحصص'}</span>
                             <strong className="text-xs font-black text-[#7657F6]">
                               {enr.sessionCredit || 0}
                             </strong>
                           </div>
                           <div className="p-2 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF]">
-                            <span className="text-[#74778F] block font-bold">المدفوع</span>
+                            <span className="text-[#74778F] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
                             <strong className="text-xs font-black text-emerald-700">
-                              {enr.totalPaid} ج.م
+                              {enr.totalPaid} {t('currency')}
                             </strong>
                           </div>
                           <div
@@ -1439,8 +1377,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 : 'bg-[#F6F7FC] border-[#E8E7FF] text-emerald-700'
                             }`}
                           >
-                            <span className="block font-bold">المتبقي</span>
-                            <strong className="text-xs font-black">{enr.remaining} ج.م</strong>
+                            <span className="block font-bold">{isEn ? 'Remaining' : 'المتبقي'}</span>
+                            <strong className="text-xs font-black">{enr.remaining} {t('currency')}</strong>
                           </div>
                         </div>
                       </div>
@@ -1460,7 +1398,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
                       <Wallet className="w-4 h-4 text-[#7657F6]" />
-                      <span>الحساب المالي الإجمالي للطالب:</span>
+                      <span>{isEn ? 'Grand Financial Summary:' : 'الحساب المالي الإجمالي للطالب:'}</span>
                     </span>
                     <button
                       type="button"
@@ -1468,24 +1406,24 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>تسجيل دفعة</span>
+                      <span>{t('recordPayment')}</span>
                     </button>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF]">
                       <span className="text-[10px] text-[#74778F] font-bold block">
-                        إجمالي الرسوم (Gross)
+                        {isEn ? 'Total Fees (Gross)' : 'إجمالي الرسوم (Gross)'}
                       </span>
                       <strong className="text-sm sm:text-base font-black text-[#17163D] mt-0.5 block">
-                        {grandFinancials.grandTotalDue} ج.م
+                        {grandFinancials.grandTotalDue} {t('currency')}
                       </strong>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
-                      <span className="text-[10px] font-bold block">إجمالي المدفوع</span>
+                      <span className="text-[10px] font-bold block">{t('totalCollected')}</span>
                       <strong className="text-sm sm:text-base font-black mt-0.5 block">
-                        {grandFinancials.grandTotalPaid} ج.م
+                        {grandFinancials.grandTotalPaid} {t('currency')}
                       </strong>
                     </div>
 
@@ -1496,9 +1434,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                       }`}
                     >
-                      <span className="text-[10px] font-bold block">المستحق المتبقي</span>
+                      <span className="text-[10px] font-bold block">{t('remainingBalance')}</span>
                       <strong className="text-sm sm:text-base font-black mt-0.5 block">
-                        {grandFinancials.grandRemaining} ج.م
+                        {grandFinancials.grandRemaining} {t('currency')}
                       </strong>
                     </div>
                   </div>
@@ -1508,19 +1446,19 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 <div className="classy-card p-4 bg-white space-y-3">
                   <h4 className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
                     <Layers className="w-4 h-4 text-[#7657F6]" />
-                    <span>مقارنة الرسوم بين المجموعات والدروس الخاصة:</span>
+                    <span>{isEn ? 'Group vs Private Fees Comparison:' : 'مقارنة الرسوم بين المجموعات والدروس الخاصة:'}</span>
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-[#403B9C]">خدمات المجموعات</span>
+                        <span className="font-black text-xs text-[#403B9C]">{isEn ? 'Group Classes' : 'خدمات المجموعات'}</span>
                         <span className="text-[10px] font-bold text-[#74778F]">
-                          {grandFinancials.groupsFinancials.enrollments.length} مجموعات
+                          {grandFinancials.groupsFinancials.enrollments.length} {t('groups')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-[#E8E7FF]">
-                        <span>المسدد: {grandFinancials.groupsFinancials.totalPaid} ج</span>
+                        <span>{isEn ? 'Paid' : 'المسدد'}: {grandFinancials.groupsFinancials.totalPaid} {t('currency')}</span>
                         <span
                           className={
                             grandFinancials.groupsFinancials.remaining > 0
@@ -1528,20 +1466,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               : 'text-emerald-700'
                           }
                         >
-                          المتبقي: {grandFinancials.groupsFinancials.remaining} ج
+                          {isEn ? 'Due' : 'المتبقي'}: {grandFinancials.groupsFinancials.remaining} {t('currency')}
                         </span>
                       </div>
                     </div>
 
                     <div className="p-3 rounded-2xl bg-[#FFF1F3]/40 border border-[#FECDD3] space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-[#FF647C]">الدروس الخاصة</span>
+                        <span className="font-black text-xs text-[#FF647C]">{isEn ? 'Private Lessons' : 'الدروس الخاصة'}</span>
                         <span className="text-[10px] font-bold text-[#74778F]">
-                          {grandFinancials.privateFinancials.enrollments.length} خدمات خاصة
+                          {grandFinancials.privateFinancials.enrollments.length} {isEn ? 'services' : 'خدمات خاصة'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-[#FECDD3]">
-                        <span>المسدد: {grandFinancials.privateFinancials.totalPaid} ج</span>
+                        <span>{isEn ? 'Paid' : 'المسدد'}: {grandFinancials.privateFinancials.totalPaid} {t('currency')}</span>
                         <span
                           className={
                             grandFinancials.privateFinancials.remaining > 0
@@ -1549,7 +1487,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               : 'text-emerald-700'
                           }
                         >
-                          المتبقي: {grandFinancials.privateFinancials.remaining} ج
+                          {isEn ? 'Due' : 'المتبقي'}: {grandFinancials.privateFinancials.remaining} {t('currency')}
                         </span>
                       </div>
                     </div>
@@ -1565,10 +1503,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-[#17163D]">
-                    سجل الحصص المنفذة والحضور ({attendanceList.length})
+                    {isEn ? `Attendance History (${attendanceList.length})` : `سجل الحصص المنفذة والحضور (${attendanceList.length})`}
                   </span>
                   <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
-                    معدل الالتزام: {attendanceRate}%
+                    {isEn ? `Rate: ${attendanceRate}%` : `معدل الالتزام: ${attendanceRate}%`}
                   </span>
                 </div>
 
@@ -1576,7 +1514,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div className="classy-card p-8 text-center space-y-3 bg-white">
                     <CalendarCheck2 className="w-8 h-8 text-[#74778F] mx-auto opacity-40" />
                     <p className="text-xs font-bold text-[#74778F]">
-                      مفيش سجلات حضور مسجلة للطالب حتى الآن.
+                      {isEn ? 'No attendance records yet for this student.' : 'مفيش سجلات حضور مسجلة للطالب حتى الآن.'}
                     </p>
                   </div>
                 ) : (
@@ -1602,7 +1540,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 }`}
                               />
                               <strong className="font-black text-[#17163D]">
-                                {session?.title || (isPrivate ? 'درس خاص' : 'حصة مجموعة')}
+                                {session?.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Group Class' : 'حصة مجموعة'))}
                               </strong>
                               <span
                                 className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${
@@ -1611,7 +1549,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                     : 'bg-[#E8E7FF] text-[#403B9C]'
                                 }`}
                               >
-                                {isPrivate ? 'خاص' : 'مجموعة'}
+                                {isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
                               </span>
                             </div>
 
@@ -1628,12 +1566,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               }`}
                             >
                               {att.status === 'present'
-                                ? 'حاضر'
+                                ? t('present')
                                 : att.status === 'late'
-                                ? 'متأخر'
+                                ? t('late')
                                 : att.status === 'absent_charged'
-                                ? 'غياب محسوب'
-                                : 'غياب معذور'}
+                                ? t('absentCharged')
+                                : t('absentExcused')}
                             </span>
                           </div>
 
@@ -1655,7 +1593,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                     : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 }`}
                               >
-                                {isUnpaid ? 'غير مسدد (مستحق)' : 'مسدد (خالص)'}
+                                {isUnpaid ? (isEn ? 'Unpaid' : 'غير مسدد (مستحق)') : (isEn ? 'Paid' : 'مسدد (خالص)')}
                               </button>
                             </div>
                           </div>
@@ -1674,7 +1612,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-[#17163D]">
-                    سجل التقييم السلوكي والتفاعل ({studentBehaviorLogs.length})
+                    {isEn ? `Behavior & Engagement Logs (${studentBehaviorLogs.length})` : `سجل التقييم السلوكي والتفاعل (${studentBehaviorLogs.length})`}
                   </span>
                   <button
                     type="button"
@@ -1682,7 +1620,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#17163D] to-[#7657F6] text-white font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>تقييم سلوكي جديد</span>
+                    <span>{isEn ? 'New Behavior Rating' : 'تقييم سلوكي جديد'}</span>
                   </button>
                 </div>
 
@@ -1690,7 +1628,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div className="classy-card p-8 text-center space-y-3 bg-white">
                     <Zap className="w-8 h-8 text-[#74778F] mx-auto opacity-40" />
                     <p className="text-xs font-bold text-[#74778F]">
-                      لا توجد تقييمات سلوكية مرصودة بعد.
+                      {isEn ? 'No behavior ratings logged yet.' : 'لا توجد تقييمات سلوكية مرصودة بعد.'}
                     </p>
                   </div>
                 ) : (
@@ -1722,7 +1660,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 : 'bg-[#F6F7FC] text-[#17163D] border border-[#E8E7FF]'
                             }`}
                           >
-                            {(log.points ?? 0) > 0 ? `+${log.points}` : log.points} نقطة
+                            {(log.points ?? 0) > 0 ? `+${log.points}` : log.points} {t('points')}
                           </span>
                         </div>
                       );
@@ -1739,7 +1677,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-[#17163D]">
-                    سجل الدفعات والمقبوضات ({allPayments.length})
+                    {isEn ? `Payments History (${allPayments.length})` : `سجل الدفعات والمقبوضات (${allPayments.length})`}
                   </span>
                   <button
                     type="button"
@@ -1747,14 +1685,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     className="px-3 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
                   >
                     <Plus className="w-3.5 h-3.5 text-[#55C7E8]" />
-                    <span>تسجيل دفعة</span>
+                    <span>{t('recordPayment')}</span>
                   </button>
                 </div>
 
                 {allPayments.length === 0 ? (
                   <div className="classy-card p-8 text-center space-y-3 bg-white">
                     <Receipt className="w-8 h-8 text-[#74778F] mx-auto opacity-40" />
-                    <p className="text-xs font-bold text-[#74778F]">مفيش دفعات مسجلة للطالب بعد.</p>
+                    <p className="text-xs font-bold text-[#74778F]">{isEn ? 'No payments recorded yet for this student.' : 'مفيش دفعات مسجلة للطالب بعد.'}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1764,23 +1702,23 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         className="classy-card p-3.5 bg-white border-[#E8E7FF] flex items-center justify-between text-xs hover:border-[#7657F6]/40 transition-all"
                       >
                         <div>
-                          <p className="font-black text-[#17163D] text-sm">{p.amount} ج.م</p>
+                          <p className="font-black text-[#17163D] text-sm">{p.amount} {t('currency')}</p>
                           <p className="text-[11px] text-[#74778F] font-medium">
                             {p.date} •{' '}
                             {p.paymentType === 'specific_month'
-                              ? `شهر ${getArabicMonthName(p.targetMonth || 1)}`
-                              : 'سداد حصص'}{' '}
+                              ? (isEn ? `Month: ${getArabicMonthName(p.targetMonth || 1)}` : `شهر ${getArabicMonthName(p.targetMonth || 1)}`)
+                              : (isEn ? 'Class Payment' : 'سداد حصص')}{' '}
                             {p.notes ? `• ${p.notes}` : ''}
                           </p>
                         </div>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F6F7FC] border border-[#E8E7FF] text-[#17163D]">
                           {p.paymentMethod === 'vodafone_cash'
-                            ? 'فودافون كاش'
+                            ? (isEn ? 'Vodafone Cash' : 'فودافون كاش')
                             : p.paymentMethod === 'instapay'
-                            ? 'إنستاباي'
+                            ? (isEn ? 'InstaPay' : 'إنستاباي')
                             : p.paymentMethod === 'bank_transfer'
-                            ? 'تحويل بنكي'
-                            : 'كاش'}
+                            ? (isEn ? 'Bank Transfer' : 'تحويل بنكي')
+                            : (isEn ? 'Cash' : 'كاش')}
                         </span>
                       </div>
                     ))}
@@ -1795,13 +1733,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {activeSubTab === 'credit_logs' && (
               <div className="space-y-3.5">
                 <span className="font-black text-xs text-[#17163D] block">
-                  سجل حركات رصيد الحصص الدفع المسبق ({allCreditLogs.length})
+                  {isEn ? `Prepaid Session Credit Logs (${allCreditLogs.length})` : `سجل حركات رصيد الحصص الدفع المسبق (${allCreditLogs.length})`}
                 </span>
 
                 {allCreditLogs.length === 0 ? (
                   <div className="classy-card p-8 text-center space-y-3 bg-white">
                     <Coins className="w-8 h-8 text-[#74778F] mx-auto opacity-40" />
-                    <p className="text-xs font-bold text-[#74778F]">لا توجد حركات رصيد مسجلة.</p>
+                    <p className="text-xs font-bold text-[#74778F]">{isEn ? 'No credit balance logs recorded.' : 'لا توجد حركات رصيد مسجلة.'}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1812,10 +1750,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       >
                         <div className="space-y-0.5 min-w-0">
                           <strong className="font-black text-[#17163D] block truncate">
-                            {log.reason || 'حركة رصيد'}
+                            {log.reason || (isEn ? 'Credit adjustment' : 'حركة رصيد')}
                           </strong>
                           <p className="text-[11px] text-[#74778F]">
-                            {log.date} • الرصيد بعد العملية: {log.balanceAfter} حصص
+                            {log.date} • {isEn ? `Balance after: ${log.balanceAfter} sessions` : `الرصيد بعد العملية: ${log.balanceAfter} حصص`}
                           </p>
                         </div>
 
@@ -1826,7 +1764,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               : 'bg-amber-50 text-amber-900 border border-amber-300'
                           }`}
                         >
-                          {log.sessionsDelta > 0 ? `+${log.sessionsDelta}` : log.sessionsDelta} حصة
+                          {log.sessionsDelta > 0 ? `+${log.sessionsDelta}` : log.sessionsDelta} {isEn ? 'sessions' : 'حصة'}
                         </span>
                       </div>
                     ))}

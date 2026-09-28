@@ -38,6 +38,7 @@ import {
 import { Student, Group, Session, Payment, ReportPeriodFilter, Enrollment } from '../types';
 import { db, getArabicMonthName } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
+import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
 import { StudentAvatar } from './StudentAvatar';
 
@@ -60,11 +61,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   onOpenAddPayment,
   onOpenStudentProfile,
 }) => {
+  const { t, language, isRTL } = useTranslation();
+  const isEn = language.startsWith('en');
+
   const currentMonth = useMemo(() => new Date().getMonth() + 1, []);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Main Navigation Tabs: 1. اللوحة التنفيذية والمالية | 2. سجل المستحقات والمديونيات | 3. تقارير المجموعات | 4. تقارير الطلاب والدروس الخاصة
+  // Main Navigation Tabs
   const [reportType, setReportType] = useState<
     'teacher_overview' | 'overdue_list' | 'group_report' | 'student_report'
   >('teacher_overview');
@@ -76,7 +80,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
-  // Financial Sub-Tabs: 'overview' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
+  // Financial Sub-Tabs
   const [financialSubTab, setFinancialSubTab] = useState<
     'overview' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
   >('overview');
@@ -177,7 +181,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   // Filter payments by period
   const filteredPayments = useMemo(() => {
-    const today = new Date();
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);
     const d7Str = d7.toISOString().split('T')[0];
@@ -270,11 +273,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Payment Methods Breakdown
   const methodStats = useMemo(() => {
     const stats = {
-      cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#10B981' },
-      vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#FF647C' },
-      instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#55C7E8' },
-      bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#F59E0B' },
-      other: { label: 'أخرى', amount: 0, count: 0, color: '#74778F' },
+      cash: { label: isEn ? 'Cash' : 'كاش (نقداً)', amount: 0, count: 0, color: '#10B981' },
+      vodafone_cash: { label: isEn ? 'Vodafone Cash' : 'فودافون كاش', amount: 0, count: 0, color: '#FF647C' },
+      instapay: { label: isEn ? 'InstaPay' : 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#55C7E8' },
+      bank_transfer: { label: isEn ? 'Bank Transfer' : 'تحويل بنكي', amount: 0, count: 0, color: '#F59E0B' },
+      other: { label: isEn ? 'Other' : 'أخرى', amount: 0, count: 0, color: '#74778F' },
     };
 
     filteredPayments.forEach((p) => {
@@ -290,7 +293,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     });
 
     return stats;
-  }, [filteredPayments]);
+  }, [filteredPayments, isEn]);
 
   // Overdue Students List
   const overdueStudentsList = useMemo(() => {
@@ -351,54 +354,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     return groups.find((g) => g.id === selectedGroupId);
   }, [groups, selectedGroupId]);
 
-  // Top Performing / Attention Students
-  const attentionInsights = useMemo(() => {
-    const activeList = students.filter((s) => s.status !== 'archived');
-    const topDebtors = overdueStudentsList.slice(0, 3);
-    const completedPackages: { student: Student; groupName: string; remaining: number }[] = [];
-
-    activeEnrollments.forEach((enr) => {
-      if (enr.billingMode === 'package' || enr.billingType === 'package') {
-        const student = students.find((s) => s.id === enr.studentId);
-        const group = groups.find((g) => g.id === enr.groupId);
-        if (student && (enr.sessionCredit || 0) <= 1) {
-          completedPackages.push({
-            student,
-            groupName: group?.name || 'باقة حصص',
-            remaining: enr.sessionCredit || 0,
-          });
-        }
-      }
-    });
-
-    return {
-      topDebtors,
-      completedPackages,
-    };
-  }, [students, overdueStudentsList, activeEnrollments, groups]);
-
   const handlePrint = () => {
     window.print();
   };
 
   // Period Display Label for Header
   const currentPeriodLabel = useMemo(() => {
-    if (periodFilter === 'all_time') return 'كافة الفترات (All Time)';
-    if (periodFilter === 'today') return `اليوم (${todayStr})`;
-    if (periodFilter === 'last_7_days') return 'آخر 7 أيام';
-    if (periodFilter === 'this_month') return `شهر ${getArabicMonthName(currentMonth)} ${currentYear}`;
+    if (periodFilter === 'all_time') return isEn ? 'All Time' : 'كافة الفترات (All Time)';
+    if (periodFilter === 'today') return isEn ? `Today (${todayStr})` : `اليوم (${todayStr})`;
+    if (periodFilter === 'last_7_days') return isEn ? 'Last 7 Days' : 'آخر 7 أيام';
+    if (periodFilter === 'this_month') return isEn ? `${getArabicMonthName(currentMonth)} ${currentYear}` : `شهر ${getArabicMonthName(currentMonth)} ${currentYear}`;
     if (periodFilter === 'last_month') {
       const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
       const lastYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-      return `شهر ${getArabicMonthName(lastMonth)} ${lastYear}`;
+      return isEn ? `${getArabicMonthName(lastMonth)} ${lastYear}` : `شهر ${getArabicMonthName(lastMonth)} ${lastYear}`;
     }
     if (periodFilter === 'specific_month') {
-      return `شهر ${getArabicMonthName(selectedSpecificMonth)} ${selectedSpecificYear}`;
+      return isEn ? `${getArabicMonthName(selectedSpecificMonth)} ${selectedSpecificYear}` : `شهر ${getArabicMonthName(selectedSpecificMonth)} ${selectedSpecificYear}`;
     }
     if (periodFilter === 'custom_range') {
-      return `من ${customStartDate || '...'} إلى ${customEndDate || '...'}`;
+      return isEn ? `From ${customStartDate || '...'} to ${customEndDate || '...'}` : `من ${customStartDate || '...'} إلى ${customEndDate || '...'}`;
     }
-    return 'هذا الشهر';
+    return t('thisMonth');
   }, [
     periodFilter,
     todayStr,
@@ -408,12 +385,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     selectedSpecificYear,
     customStartDate,
     customEndDate,
+    isEn,
+    t,
   ]);
 
   return (
     <div
       className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#191A2E] pb-32 bg-[#F5F6FC] relative"
-      dir="rtl"
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Ambient background glows matching Classy visual identity */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#7657F6]/8 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -440,17 +419,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-[#E8E7FF]/90 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-[#55C7E8]" />
-                  <span>مركز التحليلات والكشوف المالية</span>
+                  <span>{isEn ? 'Financial Analytics & Audit Center' : 'مركز التحليلات والكشوف المالية'}</span>
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5 truncate">
-                <span>التقارير</span>
+                <span>{t('reportsTitle')}</span>
                 <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/20 shadow-xs">
                   {currentPeriodLabel}
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-[#E8E7FF]/85 font-medium truncate">
-                تابع أداء طلابك، ونسب الحضور، وإيراداتك ومستحقاتك المالية بدقة متناهية.
+                {isEn ? 'Track your student performance, attendance rates, revenues, and dues accurately.' : 'تابع أداء طلابك، ونسب الحضور، وإيراداتك ومستحقاتك المالية بدقة متناهية.'}
               </p>
             </div>
           </div>
@@ -461,10 +440,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               type="button"
               onClick={handlePrint}
               className="px-4 py-2.5 rounded-2xl bg-white text-[#17163D] font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md hover:bg-[#F5F6FC] transition-all active:scale-95 cursor-pointer"
-              title="طباعة التقرير والكشف المالي"
+              title={isEn ? 'Print Statement' : 'طباعة التقرير والكشف المالي'}
             >
               <Printer className="w-4 h-4 text-[#7657F6]" />
-              <span>طباعة الكشف</span>
+              <span>{isEn ? 'Print Statement' : 'طباعة الكشف'}</span>
             </button>
           </div>
         </div>
@@ -472,29 +451,29 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         {/* Compact Hero KPIs Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 mt-4 border-t border-white/15 text-center">
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">المحصل بالفترة</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Collected in Period' : 'المحصل بالفترة'}</span>
             <span className="text-base sm:text-lg font-black text-emerald-300">
-              {periodRevenue} <span className="text-[10px] text-emerald-200">ج.م</span>
+              {periodRevenue} <span className="text-[10px] text-emerald-200">{t('currency')}</span>
             </span>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">المستحقات المتبقية</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Remaining Dues' : 'المستحقات المتبقية'}</span>
             <span
               className={`text-base sm:text-lg font-black ${
                 teacherSummary.totalRemaining > 0 ? 'text-[#FF647C]' : 'text-emerald-300'
               }`}
             >
-              {teacherSummary.totalRemaining} <span className="text-[10px]">ج.م</span>
+              {teacherSummary.totalRemaining} <span className="text-[10px]">{t('currency')}</span>
             </span>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">الحصص المنفذة</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Completed Sessions' : 'الحصص المنفذة'}</span>
             <span className="text-base sm:text-lg font-black text-[#55C7E8]">
               {attendanceAnalytics.completedSessionsCount}
             </span>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">نسبة الالتزام والحضور</span>
+            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Attendance Rate' : 'نسبة الالتزام والحضور'}</span>
             <span className="text-base sm:text-lg font-black text-white">
               {attendanceAnalytics.commitmentRate}%
             </span>
@@ -516,7 +495,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           }`}
         >
           <BarChart3 className="w-4 h-4" />
-          <span>اللوحة المالية الشاملة</span>
+          <span>{isEn ? 'Executive & Finance' : 'اللوحة المالية الشاملة'}</span>
         </button>
 
         <button
@@ -529,7 +508,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           }`}
         >
           <Receipt className="w-4 h-4" />
-          <span>المستحقات والمديونيات</span>
+          <span>{isEn ? 'Dues & Overdue' : 'المستحقات والمديونيات'}</span>
           <span
             className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
               reportType === 'overdue_list'
@@ -551,7 +530,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span>تقارير المجموعات</span>
+          <span>{isEn ? 'Group Reports' : 'تقارير المجموعات'}</span>
         </button>
 
         <button
@@ -564,7 +543,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           }`}
         >
           <User className="w-4 h-4" />
-          <span>تقارير الطلاب</span>
+          <span>{isEn ? 'Student Dossier' : 'تقارير الطلاب'}</span>
         </button>
       </div>
 
@@ -576,18 +555,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-1.5 text-[#17163D] font-black text-xs">
               <Filter className="w-4 h-4 text-[#7657F6]" />
-              <span>تحديد الفترة الزمنية للتقرير:</span>
+              <span>{isEn ? 'Report Period:' : 'تحديد الفترة الزمنية للتقرير:'}</span>
             </div>
 
             <div className="flex items-center gap-1 flex-wrap">
               {[
-                { key: 'this_month', label: 'هذا الشهر' },
-                { key: 'last_month', label: 'الشهر الماضي' },
-                { key: 'last_7_days', label: 'آخر 7 أيام' },
-                { key: 'today', label: 'اليوم' },
-                { key: 'all_time', label: 'كل الوقت' },
-                { key: 'specific_month', label: 'شهر محدد' },
-                { key: 'custom_range', label: 'فترة مخصصة' },
+                { key: 'this_month', label: isEn ? 'This Month' : 'هذا الشهر' },
+                { key: 'last_month', label: isEn ? 'Last Month' : 'الشهر الماضي' },
+                { key: 'last_7_days', label: isEn ? 'Last 7 Days' : 'آخر 7 أيام' },
+                { key: 'today', label: isEn ? 'Today' : 'اليوم' },
+                { key: 'all_time', label: isEn ? 'All Time' : 'كل الوقت' },
+                { key: 'specific_month', label: isEn ? 'Specific Month' : 'شهر محدد' },
+                { key: 'custom_range', label: isEn ? 'Custom Range' : 'فترة مخصصة' },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -608,7 +587,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           {/* Extended controls for specific month or custom range */}
           {periodFilter === 'specific_month' && (
             <div className="flex items-center gap-2 pt-2 border-t border-[#E8E7FF] flex-wrap">
-              <span className="text-[#74778F] text-xs font-bold">اختر الشهر والسنة:</span>
+              <span className="text-[#74778F] text-xs font-bold">{isEn ? 'Select Month & Year:' : 'اختر الشهر والسنة:'}</span>
               <select
                 value={selectedSpecificMonth}
                 onChange={(e) => setSelectedSpecificMonth(Number(e.target.value))}
@@ -637,7 +616,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           {periodFilter === 'custom_range' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E8E7FF]">
               <div>
-                <span className="text-[#74778F] text-[11px] block font-bold mb-1">من تاريخ:</span>
+                <span className="text-[#74778F] text-[11px] block font-bold mb-1">{isEn ? 'From Date:' : 'من تاريخ:'}</span>
                 <input
                   type="date"
                   value={customStartDate}
@@ -646,7 +625,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 />
               </div>
               <div>
-                <span className="text-[#74778F] text-[11px] block font-bold mb-1">إلى تاريخ:</span>
+                <span className="text-[#74778F] text-[11px] block font-bold mb-1">{isEn ? 'To Date:' : 'إلى تاريخ:'}</span>
                 <input
                   type="date"
                   value={customEndDate}
@@ -677,7 +656,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 }`}
               >
                 <TrendingUp className="w-3.5 h-3.5" />
-                <span>نظرة عامة</span>
+                <span>{isEn ? 'Overview' : 'نظرة عامة'}</span>
               </button>
 
               <button
@@ -690,7 +669,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 }`}
               >
                 <CalendarDays className="w-3.5 h-3.5" />
-                <span>السجل الشهري ({financialHistory.months.length})</span>
+                <span>{isEn ? `Monthly Ledger (${financialHistory.months.length})` : `السجل الشهري (${financialHistory.months.length})`}</span>
               </button>
 
               <button
@@ -703,7 +682,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
-                <span>السجل السنوي ({financialHistory.years.length})</span>
+                <span>{isEn ? `Annual Breakdown (${financialHistory.years.length})` : `السجل السنوي (${financialHistory.years.length})`}</span>
               </button>
 
               <button
@@ -716,7 +695,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>الإجمالي الشامل (All-Time)</span>
+                <span>{isEn ? 'Lifetime (All-Time)' : 'الإجمالي الشامل (All-Time)'}</span>
               </button>
 
               <button
@@ -729,13 +708,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 }`}
               >
                 <Receipt className="w-3.5 h-3.5" />
-                <span>سجل المقبوضات ({filteredPayments.length})</span>
+                <span>{isEn ? `Payments Audit (${filteredPayments.length})` : `سجل المقبوضات (${filteredPayments.length})`}</span>
               </button>
             </div>
 
             {/* Group vs Private Segmented Control */}
             <div className="flex items-center gap-1 bg-[#F6F7FC] p-1 rounded-xl border border-[#E8E7FF]">
-              <span className="text-[10px] text-[#74778F] font-bold px-1.5">الخدمة:</span>
+              <span className="text-[10px] text-[#74778F] font-bold px-1.5">{isEn ? 'Service:' : 'الخدمة:'}</span>
               <button
                 type="button"
                 onClick={() => setServiceTypeFilter('all')}
@@ -745,7 +724,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     : 'text-[#74778F] hover:text-[#17163D]'
                 }`}
               >
-                الكل
+                {t('all')}
               </button>
               <button
                 type="button"
@@ -756,7 +735,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     : 'text-[#74778F] hover:text-[#17163D]'
                 }`}
               >
-                المجموعات
+                {isEn ? 'Groups' : 'مجموعات'}
               </button>
               <button
                 type="button"
@@ -767,860 +746,259 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     : 'text-[#74778F] hover:text-[#17163D]'
                 }`}
               >
-                الدروس الخاصة
+                {isEn ? 'Private' : 'خاص'}
               </button>
             </div>
           </div>
 
-          {/* SUB-TAB 1: FINANCIAL OVERVIEW */}
+          {/* Sub-Tab 1: Overview Dashboard */}
           {financialSubTab === 'overview' && (
             <div className="space-y-4">
-              {/* Main 4 High-Impact Financial Highlight Bento Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* 1. Collected Revenue */}
-                <div className="classy-card p-4 space-y-2 bg-gradient-to-br from-white to-emerald-50/40 border-emerald-200 hover:border-emerald-300 transition-all">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#74778F]">الإيرادات المحصلة</span>
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
-                      <DollarSign className="w-4 h-4" />
+              {/* Financial KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="classy-card p-4.5 bg-gradient-to-br from-white to-emerald-50/50 border border-emerald-200/80 shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[#74778F]">{isEn ? 'Total Expected Value' : 'إجمالي القيمة المستحقة'}</span>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                      <TrendingUp className="w-4 h-4" />
                     </div>
                   </div>
-                  <div>
-                    <span className="text-2xl sm:text-3xl font-black text-emerald-700 tracking-tight block">
-                      {serviceTypeFilter === 'group'
-                        ? financialHistory.group.totalCollected
-                        : serviceTypeFilter === 'private'
-                        ? financialHistory.private.totalCollected
-                        : periodRevenue}{' '}
-                      <span className="text-xs font-bold text-[#74778F]">ج.م</span>
-                    </span>
-                    <span className="text-[11px] text-emerald-800 font-bold block mt-0.5">
-                      مقبوضات مسددة ومسبقة
-                    </span>
+                  <div className="mt-2">
+                    <strong className="text-xl sm:text-2xl font-black text-[#17163D]">
+                      {teacherSummary.totalDue} <span className="text-xs font-bold text-[#74778F]">{t('currency')}</span>
+                    </strong>
+                    <p className="text-[11px] text-[#74778F] font-medium mt-1">
+                      {isEn ? 'Value of completed sessions and subscriptions' : 'قيمة الحصص والاشتراكات المنفذة بالفترة'}
+                    </p>
                   </div>
                 </div>
 
-                {/* 2. Outstanding Dues */}
-                <div className="classy-card p-4 space-y-2 bg-gradient-to-br from-white to-rose-50/40 border-[#FECDD3] hover:border-[#FF647C]/50 transition-all">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#74778F]">المستحقات المعلقة</span>
-                    <div className="w-8 h-8 rounded-xl bg-[#FFF1F3] text-[#FF647C] flex items-center justify-center font-black">
-                      <Receipt className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div>
-                    <span
-                      className={`text-2xl sm:text-3xl font-black tracking-tight block ${
-                        teacherSummary.totalRemaining > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
-                      }`}
-                    >
-                      {serviceTypeFilter === 'group'
-                        ? financialHistory.group.totalRemaining
-                        : serviceTypeFilter === 'private'
-                        ? financialHistory.private.totalRemaining
-                        : teacherSummary.totalRemaining}{' '}
-                      <span className="text-xs font-bold text-[#74778F]">ج.م</span>
-                    </span>
-                    <span className="text-[11px] text-[#74778F] font-bold block mt-0.5">
-                      المتبقي على الطلاب
-                    </span>
-                  </div>
-                </div>
-
-                {/* 3. Gross Value of Services */}
-                <div className="classy-card p-4 space-y-2 bg-white hover:border-[#7657F6]/40 transition-all">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#74778F]">إجمالي الرسوم (Gross)</span>
-                    <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center font-black">
+                <div className="classy-card p-4.5 bg-gradient-to-br from-white to-[#E8E7FF]/40 border border-[#E8E7FF] shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[#74778F]">{isEn ? 'Total Collected' : 'إجمالي المحصل الفعلي'}</span>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-700">
                       <Wallet className="w-4 h-4" />
                     </div>
                   </div>
-                  <div>
-                    <span className="text-2xl sm:text-3xl font-black text-[#17163D] tracking-tight block">
-                      {serviceTypeFilter === 'group'
-                        ? financialHistory.group.totalDue
-                        : serviceTypeFilter === 'private'
-                        ? financialHistory.private.totalDue
-                        : teacherSummary.totalDues}{' '}
-                      <span className="text-xs font-bold text-[#74778F]">ج.م</span>
-                    </span>
-                    <span className="text-[11px] text-[#74778F] font-bold block mt-0.5">
-                      قيمة كافة الحصص المنفذة
-                    </span>
+                  <div className="mt-2">
+                    <strong className="text-xl sm:text-2xl font-black text-emerald-700">
+                      {periodRevenue} <span className="text-xs font-bold text-emerald-800">{t('currency')}</span>
+                    </strong>
+                    <p className="text-[11px] text-[#74778F] font-medium mt-1">
+                      {isEn ? `${filteredPayments.length} recorded payments` : `${filteredPayments.length} دفعة مالية مقيدة`}
+                    </p>
                   </div>
                 </div>
 
-                {/* 4. Conducted Sessions */}
-                <div className="classy-card p-4 space-y-2 bg-white hover:border-[#403B9C]/40 transition-all">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#74778F]">الحصص المنفذة</span>
-                    <div className="w-8 h-8 rounded-xl bg-[#F0FAFD] text-[#55C7E8] border border-[#BAE6FD] flex items-center justify-center font-black">
-                      <CalendarCheck2 className="w-4 h-4" />
+                <div className="classy-card p-4.5 bg-gradient-to-br from-white to-[#FFF1F3]/40 border border-[#FECDD3] shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[#74778F]">{isEn ? 'Remaining Dues' : 'المستحقات المتبقية في ذمة الطلاب'}</span>
+                    <div className="w-8 h-8 rounded-xl bg-[#FF647C]/15 flex items-center justify-center text-[#FF647C]">
+                      <AlertCircle className="w-4 h-4" />
                     </div>
                   </div>
-                  <div>
-                    <span className="text-2xl sm:text-3xl font-black text-[#17163D] tracking-tight block">
-                      {serviceTypeFilter === 'group'
-                        ? financialHistory.group.totalSessions
-                        : serviceTypeFilter === 'private'
-                        ? financialHistory.private.totalSessions
-                        : teacherSummary.totalSessionsConducted}
-                    </span>
-                    <span className="text-[11px] text-[#74778F] font-bold block mt-0.5">
-                      حصة تم رصد حضورها
-                    </span>
+                  <div className="mt-2">
+                    <strong
+                      className={`text-xl sm:text-2xl font-black ${
+                        teacherSummary.totalRemaining > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
+                      }`}
+                    >
+                      {teacherSummary.totalRemaining} <span className="text-xs font-bold">{t('currency')}</span>
+                    </strong>
+                    <p className="text-[11px] text-[#74778F] font-medium mt-1">
+                      {isEn ? `${overdueStudentsList.length} students have dues` : `${overdueStudentsList.length} طالب لديهم مستحقات متأخرة`}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Group vs Private Split Comparison Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {/* Groups Service Summary */}
-                <div className="classy-card p-4 sm:p-5 space-y-3 bg-white border-[#D8D5FB] hover:border-[#7657F6]/50 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-[#E8E7FF] text-[#403B9C] flex items-center justify-center font-bold">
-                        <Layers className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-black text-sm sm:text-base text-[#17163D]">
-                          خدمات المجموعات (Groups)
-                        </h3>
-                        <p className="text-[11px] text-[#74778F] font-medium">
-                          الفصول والمجموعات الدراسية المعتادة
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]">
-                      {financialHistory.group.totalSessions} حصة
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#E8E7FF] text-center">
-                    <div className="p-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                      <span className="text-[10px] text-[#74778F] block font-bold">المحصل</span>
-                      <strong className="text-xs sm:text-sm font-black text-emerald-700">
-                        {financialHistory.group.totalCollected} ج.م
-                      </strong>
-                    </div>
-                    <div className="p-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                      <span className="text-[10px] text-[#74778F] block font-bold">المستحق</span>
-                      <strong className="text-xs sm:text-sm font-black text-[#17163D]">
-                        {financialHistory.group.totalDue} ج.م
-                      </strong>
-                    </div>
-                    <div className="p-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                      <span className="text-[10px] text-[#74778F] block font-bold">المتبقي</span>
-                      <strong
-                        className={`text-xs sm:text-sm font-black ${
-                          financialHistory.group.totalRemaining > 0
-                            ? 'text-[#FF647C]'
-                            : 'text-emerald-700'
-                        }`}
-                      >
-                        {financialHistory.group.totalRemaining} ج.م
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Private Lessons Service Summary */}
-                <div className="classy-card p-4 sm:p-5 space-y-3 bg-white border-[#FECDD3] hover:border-[#FF647C]/50 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-[#FFF1F3] text-[#FF647C] flex items-center justify-center font-bold">
-                        <Zap className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-black text-sm sm:text-base text-[#17163D]">
-                          الدروس الخاصة (Private Lessons)
-                        </h3>
-                        <p className="text-[11px] text-[#74778F] font-medium">
-                          مستقلة تماماً بحسابات فردية ونماذج تسعير مرنة
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]">
-                      {financialHistory.private.totalSessions} حصة
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#E8E7FF] text-center">
-                    <div className="p-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                      <span className="text-[10px] text-[#74778F] block font-bold">المحصل</span>
-                      <strong className="text-xs sm:text-sm font-black text-emerald-700">
-                        {financialHistory.private.totalCollected} ج.م
-                      </strong>
-                    </div>
-                    <div className="p-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                      <span className="text-[10px] text-[#74778F] block font-bold">المستحق</span>
-                      <strong className="text-xs sm:text-sm font-black text-[#17163D]">
-                        {financialHistory.private.totalDue} ج.م
-                      </strong>
-                    </div>
-                    <div className="p-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                      <span className="text-[10px] text-[#74778F] block font-bold">المتبقي</span>
-                      <strong
-                        className={`text-xs sm:text-sm font-black ${
-                          financialHistory.private.totalRemaining > 0
-                            ? 'text-[#FF647C]'
-                            : 'text-emerald-700'
-                        }`}
-                      >
-                        {financialHistory.private.totalRemaining} ج.م
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Attendance & Session Analytics Bento Strip */}
-              <div className="classy-card p-4 sm:p-5 space-y-3 bg-white">
+              {/* Payment Methods Breakdown */}
+              <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CalendarCheck2 className="w-4.5 h-4.5 text-[#7657F6]" />
-                    <h3 className="font-black text-sm sm:text-base text-[#17163D]">
-                      تحليلات الحضور والغياب بالفترة
+                    <PieChart className="w-4 h-4 text-[#7657F6]" />
+                    <h3 className="text-sm sm:text-base font-black text-[#17163D]">
+                      {isEn ? 'Collections by Payment Method' : 'توزيع التحصيل حسب طرق الدفع'}
                     </h3>
                   </div>
                   <span className="text-xs font-bold text-[#74778F]">
-                    إجمالي الرصد: {attendanceAnalytics.totalAttCount} حضور
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
-                  <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200">
-                    <span className="text-[10px] text-emerald-800 block font-bold">حاضر (Present)</span>
-                    <strong className="text-lg font-black text-emerald-700">
-                      {attendanceAnalytics.presentCount}
-                    </strong>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200">
-                    <span className="text-[10px] text-amber-900 block font-bold">متأخر (Late)</span>
-                    <strong className="text-lg font-black text-amber-800">
-                      {attendanceAnalytics.lateCount}
-                    </strong>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-[#FFF1F3] border border-[#FECDD3]">
-                    <span className="text-[10px] text-[#FF647C] block font-bold">غياب محسوب (Charged)</span>
-                    <strong className="text-lg font-black text-[#FF647C]">
-                      {attendanceAnalytics.absentChargedCount}
-                    </strong>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                    <span className="text-[10px] text-[#74778F] block font-bold">غياب معذور (Excused)</span>
-                    <strong className="text-lg font-black text-[#17163D]">
-                      {attendanceAnalytics.absentExcusedCount}
-                    </strong>
-                  </div>
-                </div>
-
-                {/* Progress bar of commitment */}
-                <div className="space-y-1.5 pt-2">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-[#17163D]">معدل الالتزام الكلي:</span>
-                    <span className="text-emerald-700">{attendanceAnalytics.commitmentRate}%</span>
-                  </div>
-                  <div className="w-full bg-[#E8E7FF] h-2.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${attendanceAnalytics.commitmentRate}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Methods Breakdown Section */}
-              <div className="classy-card p-4 sm:p-5 space-y-3 bg-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <PieChart className="w-4.5 h-4.5 text-[#55C7E8]" />
-                    <h3 className="font-black text-sm sm:text-base text-[#17163D]">
-                      توزيع طرق الدفع والتحصيل
-                    </h3>
-                  </div>
-                  <span className="text-xs font-bold text-[#74778F]">
-                    إجمالي المدفوعات: {filteredPayments.length} عملية
+                    {isEn ? 'Total:' : 'الإجمالي:'} {periodRevenue} {t('currency')}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {(
-                    Object.entries(methodStats) as [
-                      string,
-                      { label: string; amount: number; count: number; color: string }
-                    ][]
-                  ).map(([key, stat]) => {
-                    const percentage =
-                      periodRevenue > 0 ? Math.round((stat.amount / periodRevenue) * 100) : 0;
-                    return (
-                      <div
-                        key={key}
-                        className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] space-y-1.5"
-                      >
-                        <div className="flex items-center justify-between text-xs font-bold text-[#74778F]">
-                          <span>{stat.label}</span>
-                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-white border border-[#E8E7FF] text-[#17163D]">
-                            {percentage}%
-                          </span>
-                        </div>
-                        <p className="text-base sm:text-lg font-black text-[#17163D]">
-                          {stat.amount} <span className="text-xs font-bold text-[#74778F]">ج.م</span>
-                        </p>
-                        <p className="text-[10px] text-[#74778F] font-bold">{stat.count} عمليات دفع</p>
-                      </div>
-                    );
-                  })}
+                  {(Object.entries(methodStats) as [string, { label: string; amount: number; count: number; color: string }][]).map(([key, item]) => (
+                    <div
+                      key={key}
+                      className="bg-[#F6F7FC] p-3 rounded-2xl border border-[#E8E7FF] space-y-1 text-center"
+                    >
+                      <span className="text-[11px] font-bold text-[#74778F] block truncate">
+                        {item.label}
+                      </span>
+                      <strong className="text-sm sm:text-base font-black text-[#17163D] block">
+                        {item.amount} {t('currency')}
+                      </strong>
+                      <span className="text-[10px] text-[#74778F] block font-medium">
+                        {item.count} {isEn ? 'payments' : 'دفعات'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Monthly Revenue Trends Bar */}
-              {financialHistory.months.length > 0 && (
-                <div className="classy-card p-4 sm:p-5 space-y-3 bg-white">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="w-4.5 h-4.5 text-[#7657F6]" />
-                    <h3 className="font-black text-sm sm:text-base text-[#17163D]">
-                      اتجاهات التحصيل الشهري (آخر الأشهر المسجلة)
-                    </h3>
-                  </div>
-
-                  <div className="space-y-2">
-                    {financialHistory.months.slice(0, 6).map((m) => {
-                      const maxRevenue = Math.max(
-                        ...financialHistory.months.map((x) => x.totalCollected),
-                        1
-                      );
-                      const barWidth = Math.min(
-                        100,
-                        Math.round((m.totalCollected / maxRevenue) * 100)
-                      );
-
-                      return (
-                        <div
-                          key={m.monthYear}
-                          className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] space-y-1.5 text-xs"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-black text-[#17163D]">
-                              {m.monthName} {m.year}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[11px] text-[#74778F] font-bold">
-                                {m.totalCompletedSessions} حصة منتهية
-                              </span>
-                              <strong className="text-emerald-700 font-black">
-                                {m.totalCollected} ج.م
-                              </strong>
-                            </div>
-                          </div>
-                          <div className="w-full bg-[#E8E7FF] h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-[#17163D] to-[#7657F6] h-full rounded-full transition-all duration-300"
-                              style={{ width: `${barWidth}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* SUB-TAB 2: MONTHLY LEDGER */}
+          {/* Sub-Tab 2: Monthly Ledger */}
           {financialSubTab === 'monthly_ledger' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <div>
-                  <h3 className="font-black text-sm sm:text-base text-[#17163D] flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-[#7657F6]" />
-                    <span>السجل المالي الشهري المفصل ({financialHistory.months.length} أشهر)</span>
+            <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-[#7657F6]" />
+                  <h3 className="text-sm sm:text-base font-black text-[#17163D]">
+                    {isEn ? 'Historical Monthly Ledger' : 'السجل المالي الشهري التاريخي'}
                   </h3>
-                  <p className="text-xs text-[#74778F] font-medium mt-0.5">
-                    يشمل إجمالي الحصص المنفذة، المقبوضات المسددة والمسبقة، والمتبقي
-                  </p>
                 </div>
               </div>
 
               {financialHistory.months.length === 0 ? (
-                <div className="classy-card p-8 text-center space-y-3 bg-white">
-                  <ClassyOwlMascot size="sm" pose="smart" />
-                  <p className="text-xs font-bold text-[#74778F]">لا توجد سجلات مالية شهرية مسجلة بعد.</p>
+                <div className="p-8 text-center text-[#74778F] text-xs">
+                  {isEn ? 'No monthly records found yet' : 'لا توجد سجلات شهرية سابقة بعد'}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {financialHistory.months.map((m) => {
-                    const isExpanded = expandedMonthYear === m.monthYear;
-                    const collectionRate =
-                      m.totalDue > 0
-                        ? Math.min(100, Math.round((m.totalCollected / m.totalDue) * 100))
-                        : 100;
-                    const relevantData =
-                      serviceTypeFilter === 'group'
-                        ? m.group
-                        : serviceTypeFilter === 'private'
-                        ? m.private
-                        : m;
-
-                    return (
-                      <div
-                        key={m.monthYear}
-                        className="classy-card overflow-hidden transition-all bg-white"
-                      >
-                        {/* Month Header Card */}
-                        <div
-                          onClick={() => setExpandedMonthYear(isExpanded ? null : m.monthYear)}
-                          className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#F6F7FC] transition-colors gap-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-2xl bg-[#E8E7FF] border border-[#D8D5FB] flex flex-col items-center justify-center text-[#403B9C] shrink-0 font-black">
-                              <span className="text-[10px] leading-none text-[#74778F]">{m.year}</span>
-                              <span className="text-xs leading-none mt-0.5">{m.month}</span>
-                            </div>
-                            <div className="space-y-0.5">
-                              <h4 className="font-black text-sm sm:text-base text-[#17163D] flex items-center gap-2">
-                                <span>
-                                  {m.monthName} {m.year}
-                                </span>
-                                {m.month === currentMonth && m.year === currentYear && (
-                                  <span className="px-2 py-0.2 rounded-full text-[9px] font-black bg-[#17163D] text-white">
-                                    الشهر الحالي
-                                  </span>
-                                )}
-                              </h4>
-                              <p className="text-xs text-[#74778F] flex items-center gap-2 flex-wrap font-medium">
-                                <span>{m.totalCompletedSessions} حصة منتهية</span>
-                                <span>•</span>
-                                <span>حضور: {m.presentSessionsCount}</span>
-                                {m.lateSessionsCount > 0 && <span>• تأخير: {m.lateSessionsCount}</span>}
-                                {m.absentChargedCount > 0 && (
-                                  <span>• غياب محسوب: {m.absentChargedCount}</span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-left shrink-0">
-                            <div>
-                              <p className="text-sm sm:text-base font-black text-emerald-700">
-                                {relevantData.totalCollected} ج.م
-                              </p>
-                              <p className="text-[10px] text-[#74778F] font-bold">
-                                من {relevantData.totalDue} ج.م ({collectionRate}%)
-                              </p>
-                            </div>
-                            <div className="w-7 h-7 rounded-full bg-[#F6F7FC] flex items-center justify-center text-[#74778F]">
-                              <ChevronDown
-                                className={`w-4 h-4 transition-transform ${
-                                  isExpanded ? 'rotate-180' : ''
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Expandable Details */}
-                        {isExpanded && (
-                          <div className="p-4 bg-[#F6F7FC] border-t border-[#E8E7FF] space-y-3 text-xs">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">
-                                  المحصل الفعلي
-                                </span>
-                                <strong className="text-xs font-black text-emerald-700">
-                                  {relevantData.totalCollected} ج.م
-                                </strong>
-                              </div>
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">
-                                  إجمالي الرسوم (المستحق)
-                                </span>
-                                <strong className="text-xs font-black text-[#17163D]">
-                                  {relevantData.totalDue} ج.م
-                                </strong>
-                              </div>
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">المتبقي</span>
-                                <strong
-                                  className={`text-xs font-black ${
-                                    relevantData.totalRemaining > 0
-                                      ? 'text-[#FF647C]'
-                                      : 'text-emerald-700'
-                                  }`}
-                                >
-                                  {relevantData.totalRemaining} ج.م
-                                </strong>
-                              </div>
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">
-                                  نسبة التحصيل
-                                </span>
-                                <strong className="text-xs font-black text-[#7657F6]">
-                                  {collectionRate}%
-                                </strong>
-                              </div>
-                            </div>
-
-                            {/* Service Comparison in this month */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              <div className="p-3 rounded-xl bg-white border border-[#E8E7FF] flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <Layers className="w-4 h-4 text-[#403B9C]" />
-                                  <span className="font-bold text-xs text-[#17163D]">المجموعات:</span>
-                                  <span className="text-[10px] text-[#74778F] font-bold">
-                                    ({m.group.totalSessions} حصة)
-                                  </span>
-                                </div>
-                                <span className="font-black text-xs text-emerald-700">
-                                  {m.group.totalCollected} ج.م
-                                </span>
-                              </div>
-
-                              <div className="p-3 rounded-xl bg-white border border-[#E8E7FF] flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <Zap className="w-4 h-4 text-[#FF647C]" />
-                                  <span className="font-bold text-xs text-[#17163D]">الدروس الخاصة:</span>
-                                  <span className="text-[10px] text-[#74778F] font-bold">
-                                    ({m.private.totalSessions} حصة)
-                                  </span>
-                                </div>
-                                <span className="font-black text-xs text-emerald-700">
-                                  {m.private.totalCollected} ج.م
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                <div className="space-y-2">
+                  {financialHistory.months.map((m) => (
+                    <div
+                      key={m.monthYear}
+                      className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between gap-2"
+                    >
+                      <div className="font-bold text-xs sm:text-sm text-[#17163D]">
+                        {isEn ? `${getArabicMonthName(m.month)} ${m.year}` : `شهر ${getArabicMonthName(m.month)} ${m.year}`}
                       </div>
-                    );
-                  })}
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-emerald-700 font-black">
+                          {isEn ? 'Collected:' : 'المحصل:'} {m.totalCollected} {t('currency')}
+                        </span>
+                        <span className="text-[#74778F]">
+                          {isEn ? 'Due:' : 'المستحق:'} {m.totalDue} {t('currency')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* SUB-TAB 3: YEARLY SUMMARY */}
+          {/* Sub-Tab 3: Yearly Summary */}
           {financialSubTab === 'yearly_summary' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <div>
-                  <h3 className="font-black text-sm sm:text-base text-[#17163D] flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#7657F6]" />
-                    <span>السجل المالي السنوي ({financialHistory.years.length} سنوات)</span>
+            <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#7657F6]" />
+                  <h3 className="text-sm sm:text-base font-black text-[#17163D]">
+                    {isEn ? 'Annual Summary' : 'الملخص المالي السنوي'}
                   </h3>
-                  <p className="text-xs text-[#74778F] font-medium mt-0.5">
-                    ملخص الإيرادات والمستحقات مجمعة سنوياً مع التفصيل الشهري
-                  </p>
                 </div>
               </div>
 
-              {financialHistory.years.length === 0 ? (
-                <div className="classy-card p-8 text-center space-y-3 bg-white">
-                  <ClassyOwlMascot size="sm" pose="smart" />
-                  <p className="text-xs font-bold text-[#74778F]">لا توجد سجلات سنوية مسجلة بعد.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {financialHistory.years.map((y) => {
-                    const isExpanded = expandedYear === y.year;
-                    const relevantData =
-                      serviceTypeFilter === 'group'
-                        ? y.group
-                        : serviceTypeFilter === 'private'
-                        ? y.private
-                        : y;
-                    const collectionRate =
-                      y.totalDue > 0
-                        ? Math.min(100, Math.round((y.totalCollected / y.totalDue) * 100))
-                        : 100;
-
-                    return (
-                      <div
-                        key={y.year}
-                        className="classy-card overflow-hidden transition-all bg-white"
-                      >
-                        {/* Year Card Header */}
-                        <div
-                          onClick={() => setExpandedYear(isExpanded ? null : y.year)}
-                          className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#F6F7FC] transition-colors gap-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#17163D] to-[#403B9C] text-white font-black text-base flex items-center justify-center shadow-md">
-                              {y.year}
-                            </div>
-                            <div className="space-y-0.5">
-                              <h4 className="font-black text-base text-[#17163D]">عام {y.year}</h4>
-                              <p className="text-xs text-[#74778F] font-medium">
-                                {y.totalCompletedSessions} حصة منتهية • {y.months.length} أشهر نشطة
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-left shrink-0">
-                            <div>
-                              <p className="text-sm sm:text-base font-black text-emerald-700">
-                                {relevantData.totalCollected} ج.م
-                              </p>
-                              <p className="text-[10px] text-[#74778F] font-bold">
-                                من {relevantData.totalDue} ج.م ({collectionRate}%)
-                              </p>
-                            </div>
-                            <div className="w-7 h-7 rounded-full bg-[#F6F7FC] flex items-center justify-center text-[#74778F]">
-                              <ChevronDown
-                                className={`w-4 h-4 transition-transform ${
-                                  isExpanded ? 'rotate-180' : ''
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Year Details & Months Grid */}
-                        {isExpanded && (
-                          <div className="p-4 bg-[#F6F7FC] border-t border-[#E8E7FF] space-y-3 text-xs">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">
-                                  المحصل الإجمالي
-                                </span>
-                                <strong className="text-xs font-black text-emerald-700">
-                                  {relevantData.totalCollected} ج.م
-                                </strong>
-                              </div>
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">
-                                  إجمالي المستحق
-                                </span>
-                                <strong className="text-xs font-black text-[#17163D]">
-                                  {relevantData.totalDue} ج.م
-                                </strong>
-                              </div>
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">المتبقي</span>
-                                <strong
-                                  className={`text-xs font-black ${
-                                    relevantData.totalRemaining > 0
-                                      ? 'text-[#FF647C]'
-                                      : 'text-emerald-700'
-                                  }`}
-                                >
-                                  {relevantData.totalRemaining} ج.م
-                                </strong>
-                              </div>
-                              <div className="p-2.5 bg-white rounded-xl border border-[#E8E7FF]">
-                                <span className="text-[10px] text-[#74778F] block font-bold">
-                                  متوسط التحصيل الشهري
-                                </span>
-                                <strong className="text-xs font-black text-[#7657F6]">
-                                  {y.months.length > 0
-                                    ? Math.round(relevantData.totalCollected / y.months.length)
-                                    : 0}{' '}
-                                  ج.م
-                                </strong>
-                              </div>
-                            </div>
-
-                            {/* Months breakdown */}
-                            <div className="space-y-1.5 pt-2">
-                              <h5 className="font-black text-xs text-[#17163D]">
-                                تفصيل أشهر عام {y.year}:
-                              </h5>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {y.months.map((m) => (
-                                  <div
-                                    key={m.monthYear}
-                                    className="p-3 bg-white rounded-xl border border-[#E8E7FF] flex items-center justify-between"
-                                  >
-                                    <div>
-                                      <span className="font-black text-[#17163D] block text-xs">
-                                        {m.monthName}
-                                      </span>
-                                      <span className="text-[10px] text-[#74778F] font-bold">
-                                        {m.totalCompletedSessions} حصة
-                                      </span>
-                                    </div>
-                                    <div className="text-left">
-                                      <p className="font-black text-emerald-700 text-xs">
-                                        {m.totalCollected} ج.م
-                                      </p>
-                                      <span className="text-[9px] text-[#74778F]">
-                                        من {m.totalDue} ج.م
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* SUB-TAB 4: LIFETIME / ALL-TIME SUMMARY */}
-          {financialSubTab === 'lifetime' && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-black text-sm sm:text-base text-[#17163D] flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#7657F6]" />
-                  <span>الإجمالي الشامل طوال فترة العمل (All-Time Lifetime)</span>
-                </h3>
-                <p className="text-xs text-[#74778F] font-medium mt-0.5">
-                  إجمالي العمليات المالية والحصص منذ بداية استخدام التطبيق
-                </p>
-              </div>
-
-              {/* Lifetime Grand Bento Highlights */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="classy-card p-4 space-y-1.5 bg-white border-emerald-200">
-                  <span className="text-xs font-bold text-[#74778F] block">
-                    إجمالي المقبوضات الشامل
-                  </span>
-                  <p className="text-2xl font-black text-emerald-700">
-                    {financialHistory.totalCollected}{' '}
-                    <span className="text-xs text-[#74778F]">ج.م</span>
-                  </p>
-                  <p className="text-[10px] text-emerald-800 font-bold">
-                    شامل الحصص المسبقة والدفعات
-                  </p>
-                </div>
-
-                <div className="classy-card p-4 space-y-1.5 bg-white">
-                  <span className="text-xs font-bold text-[#74778F] block">
-                    إجمالي المستحقات الكلي
-                  </span>
-                  <p className="text-2xl font-black text-[#17163D]">
-                    {financialHistory.totalDue} <span className="text-xs text-[#74778F]">ج.م</span>
-                  </p>
-                  <p className="text-[10px] text-[#74778F] font-bold">
-                    قيمة كافة الحصص والخدمات
-                  </p>
-                </div>
-
-                <div className="classy-card p-4 space-y-1.5 bg-white border-[#FECDD3]">
-                  <span className="text-xs font-bold text-[#74778F] block">
-                    إجمالي المتبقي غير المسدد
-                  </span>
-                  <p
-                    className={`text-2xl font-black ${
-                      financialHistory.totalRemaining > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
-                    }`}
+              <div className="space-y-2">
+                {financialHistory.years.map((y) => (
+                  <div
+                    key={y.year}
+                    className="p-3.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between gap-2"
                   >
-                    {financialHistory.totalRemaining}{' '}
-                    <span className="text-xs text-[#74778F]">ج.م</span>
-                  </p>
-                  <p className="text-[10px] text-[#74778F] font-bold">ديون معلقة على الطلاب</p>
-                </div>
-
-                <div className="classy-card p-4 space-y-1.5 bg-white">
-                  <span className="text-xs font-bold text-[#74778F] block">إجمالي الحصص المنفذة</span>
-                  <p className="text-2xl font-black text-[#7657F6]">
-                    {financialHistory.totalCompletedSessions}
-                  </p>
-                  <p className="text-[10px] text-[#74778F] font-bold">حصة تم رصد حضورها</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SUB-TAB 5: PAYMENT RECEIPTS LOG */}
-          {financialSubTab === 'payments' && (
-            <div className="classy-card p-4 sm:p-5 space-y-4 bg-white">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h3 className="font-black text-sm sm:text-base text-[#17163D] flex items-center gap-2">
-                    <Receipt className="w-4.5 h-4.5 text-[#7657F6]" />
-                    <span>سجل المقبوضات والمدفوعات ({filteredPayments.length}):</span>
-                  </h3>
-                  <p className="text-xs text-[#74778F] font-medium mt-0.5">
-                    كشف تفصيلي لكافة عمليات التحصيل والدفعات المسجلة
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <select
-                    value={methodFilter}
-                    onChange={(e) => setMethodFilter(e.target.value)}
-                    className="p-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs font-bold text-[#17163D] focus:outline-none focus:border-[#7657F6] cursor-pointer"
-                  >
-                    <option value="all">كل طرق الدفع</option>
-                    <option value="cash">كاش (نقداً)</option>
-                    <option value="vodafone_cash">فودافون كاش</option>
-                    <option value="instapay">إنستاباي</option>
-                    <option value="bank_transfer">تحويل بنكي</option>
-                  </select>
-
-                  <div className="relative w-44 sm:w-56">
-                    <Search className="w-4 h-4 absolute right-3 top-2.5 text-[#74778F]" />
-                    <input
-                      type="text"
-                      value={paymentSearchQuery}
-                      onChange={(e) => setPaymentSearchQuery(e.target.value)}
-                      placeholder="بحث في المدفوعات..."
-                      className="w-full pr-9 pl-8 py-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs font-bold text-[#17163D] focus:outline-none focus:border-[#7657F6]"
-                    />
-                    {paymentSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setPaymentSearchQuery('')}
-                        className="absolute left-2.5 top-2 text-[#74778F] hover:text-[#17163D]"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div className="font-black text-sm text-[#17163D]">{isEn ? `Year ${y.year}` : `سنة ${y.year}`}</div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <span className="text-emerald-700 font-black">
+                        {isEn ? 'Collected:' : 'المحصل:'} {y.totalCollected} {t('currency')}
+                      </span>
+                      <span className="text-[#74778F]">
+                        {isEn ? 'Due:' : 'المستحق:'} {y.totalDue} {t('currency')}
+                      </span>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sub-Tab 4: Lifetime All-Time */}
+          {financialSubTab === 'lifetime' && (
+            <div className="classy-card p-5 bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white rounded-3xl space-y-3">
+              <h3 className="font-black text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#55C7E8]" />
+                <span>{isEn ? 'Lifetime All-Time Totals' : 'إجمالي كافة الفترات الشاملة (Lifetime)'}</span>
+              </h3>
+              <div className="grid grid-cols-2 gap-3 pt-2 text-center">
+                <div className="bg-white/10 rounded-2xl p-3 border border-white/10">
+                  <span className="text-xs text-[#E8E7FF]/80 block font-bold">{isEn ? 'Total All-Time Collected' : 'إجمالي ما تم تحصيله'}</span>
+                  <span className="text-xl font-black text-emerald-300">
+                    {financialHistory.totalCollected} {t('currency')}
+                  </span>
                 </div>
+                <div className="bg-white/10 rounded-2xl p-3 border border-white/10">
+                  <span className="text-xs text-[#E8E7FF]/80 block font-bold">{isEn ? 'Total Expected' : 'إجمالي القيمة المستحقة'}</span>
+                  <span className="text-xl font-black text-white">
+                    {financialHistory.totalDue} {t('currency')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Sub-Tab 5: Payments Audit */}
+          {financialSubTab === 'payments' && (
+            <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-[#7657F6]" />
+                  <h3 className="text-sm sm:text-base font-black text-[#17163D]">
+                    {isEn ? 'Recorded Payments Audit' : 'سجل المقبوضات والدفعات المفصل'}
+                  </h3>
+                </div>
+                <span className="text-xs font-bold text-[#74778F]">
+                  {filteredPayments.length} {isEn ? 'receipts' : 'إيصال'}
+                </span>
+              </div>
+
+              {/* Payment Search Bar */}
+              <div className="relative">
+                <Search className={`w-4 h-4 text-[#74778F] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
+                <input
+                  type="text"
+                  placeholder={isEn ? 'Search receipts by student name or notes...' : 'البحث باسم الطالب أو الملاحظات في الإيصالات...'}
+                  value={paymentSearchQuery}
+                  onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                  className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl py-2 text-xs text-[#191A2E] placeholder-[#74778F]/70 focus:outline-none focus:border-[#7657F6] ${
+                    isRTL ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                  }`}
+                />
               </div>
 
               {filteredPayments.length === 0 ? (
-                <div className="p-8 text-center space-y-2 bg-[#F6F7FC] rounded-2xl border border-[#E8E7FF]">
-                  <Receipt className="w-8 h-8 text-[#74778F] mx-auto opacity-40" />
-                  <p className="text-xs font-bold text-[#74778F]">
-                    لا توجد مدفوعات مسجلة مطابقة لخيارات التصفية الحالية.
-                  </p>
+                <div className="p-8 text-center text-[#74778F] text-xs">
+                  {isEn ? 'No receipts recorded in this period' : 'لا توجد مقبوضات مسجلة في هذه الفترة'}
                 </div>
               ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto android-scrollbar">
+                <div className="space-y-2">
                   {filteredPayments.map((p) => {
-                    const student = students.find((s) => s.id === p.studentId);
+                    const st = students.find((s) => s.id === p.studentId);
                     return (
                       <div
                         key={p.id}
-                        className="p-3.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between text-xs gap-2 hover:border-[#7657F6]/40 transition-all"
+                        className="p-3 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between gap-2 text-xs"
                       >
                         <div className="space-y-0.5 min-w-0">
-                          <span className="font-black text-sm text-[#17163D] block truncate">
-                            {student?.name || 'طالب غير محدد'}
-                          </span>
-                          <p className="text-[11px] text-[#74778F] font-medium">
-                            {p.date} •{' '}
-                            {p.paymentType === 'specific_month'
-                              ? `شهر ${getArabicMonthName(p.targetMonth || 1)}`
-                              : 'سداد حصص'}{' '}
-                            {p.notes ? `• ${p.notes}` : ''}
-                          </p>
-                        </div>
-
-                        <div className="text-left shrink-0">
-                          <p className="font-black text-emerald-700 text-sm">{p.amount} ج.م</p>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white border border-[#E8E7FF] text-[#17163D] inline-block mt-0.5">
-                            {p.paymentMethod === 'vodafone_cash'
-                              ? 'فودافون كاش'
-                              : p.paymentMethod === 'instapay'
-                              ? 'إنستاباي'
-                              : p.paymentMethod === 'bank_transfer'
-                              ? 'تحويل بنكي'
-                              : 'كاش'}
+                          <strong className="font-bold text-[#17163D] block truncate">
+                            {st?.name || (isEn ? 'Unknown Student' : 'طالب غير محدد')}
+                          </strong>
+                          <span className="text-[11px] text-[#74778F] block">
+                            {p.date} • {p.paymentMethod || 'cash'}
                           </span>
                         </div>
+                        <span className="text-emerald-700 font-black text-sm shrink-0">
+                          +{p.amount} {t('currency')}
+                        </span>
                       </div>
                     );
                   })}
@@ -1632,278 +1010,133 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       )}
 
       {/* =========================================================================
-          5. TAB 2: OVERDUE DEBTS & SETTLEMENT LIST
+          5. TAB 2: OVERDUE BALANCES & DUES DIRECTORY
           ========================================================================= */}
       {reportType === 'overdue_list' && (
         <div className="space-y-3.5">
-          <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h3 className="font-black text-sm sm:text-base text-[#17163D] flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-[#FF647C]" />
-                  <span>كشف حساب الطلاب ذوي المستحقات المتأخرة</span>
+          <div className="classy-card p-4 space-y-3 bg-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-[#FF647C]" />
+                <h3 className="text-sm sm:text-base font-black text-[#17163D]">
+                  {isEn ? 'Students with Overdue Balances' : 'كشف الطلاب المستحق عليهم مبالغ مالية'}
                 </h3>
-                <p className="text-xs text-[#74778F] font-medium mt-0.5">
-                  إجمالي الديون المعلقة:{' '}
-                  <strong className="text-[#FF647C] font-black">
-                    {teacherSummary.totalRemaining} ج.م
-                  </strong>{' '}
-                  على {overdueStudentsList.length} طالب
-                </p>
               </div>
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]">
+                {overdueStudentsList.length} {isEn ? 'debtors' : 'طلاب'}
+              </span>
+            </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative w-48 sm:w-60">
-                  <Search className="w-4 h-4 absolute right-3 top-2.5 text-[#74778F]" />
-                  <input
-                    type="text"
-                    value={overdueSearchQuery}
-                    onChange={(e) => setOverdueSearchQuery(e.target.value)}
-                    placeholder="بحث في المتأخرات..."
-                    className="w-full pr-9 pl-8 py-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs font-bold text-[#17163D] focus:outline-none focus:border-[#7657F6]"
-                  />
-                  {overdueSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setOverdueSearchQuery('')}
-                      className="absolute left-2.5 top-2 text-[#74778F] hover:text-[#17163D]"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {onOpenAddPayment && (
-                  <button
-                    onClick={() => onOpenAddPayment()}
-                    className="px-4 py-2 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-[#FF647C]/30 transition-all active:scale-95 cursor-pointer hover:brightness-105"
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    <span>تسجيل دفعة</span>
-                  </button>
-                )}
-              </div>
+            <div className="relative">
+              <Search className={`w-4 h-4 text-[#74778F] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
+              <input
+                type="text"
+                placeholder={isEn ? 'Search debtor students by name or phone...' : 'البحث في كشف المديونيات بالاسم أو الهاتف...'}
+                value={overdueSearchQuery}
+                onChange={(e) => setOverdueSearchQuery(e.target.value)}
+                className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl py-2 text-xs text-[#191A2E] placeholder-[#74778F]/70 focus:outline-none focus:border-[#7657F6] ${
+                  isRTL ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                }`}
+              />
             </div>
           </div>
 
           {overdueStudentsList.length === 0 ? (
-            <div className="classy-card p-8 sm:p-12 text-center space-y-3 flex flex-col items-center bg-white">
-              <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10" />
+            <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center bg-white">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <CheckCircle2 className="w-8 h-8" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-black text-base text-[#17163D]">
-                  لا توجد أي مديونيات متأخرة! 🎉
-                </h4>
-                <p className="text-xs sm:text-sm text-[#74778F]">
-                  جميع الطلاب مسددون لالتزاماتهم واشتراكاتهم بالكامل.
-                </p>
+                <h3 className="font-black text-sm text-[#17163D]">{isEn ? 'All Accounts Settled' : 'لا توجد مديونيات متأخرة'}</h3>
+                <p className="text-xs text-[#74778F]">{isEn ? 'All students have paid their dues in full! 🎉' : 'جميع الطلاب سددوا مستحقاتهم بالكامل! 🎉'}</p>
               </div>
             </div>
           ) : (
             <div className="space-y-2.5">
-              {overdueStudentsList.map((item) => {
-                const phoneForWa = item.student.parentPhone || item.student.phone;
-                return (
-                  <div
-                    key={item.student.id}
-                    className="classy-card classy-card-hover p-4 bg-white border-[#FECDD3] hover:border-[#FF647C]/60 transition-all space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <StudentAvatar student={item.student} size="md" showFrame={true} />
-                        <div className="space-y-0.5">
-                          <h4 className="font-black text-sm sm:text-base text-[#17163D]">
-                            {item.student.name}
-                          </h4>
-                          <p className="text-xs text-[#74778F] font-medium">
-                            {getLocalizedStageName(item.student.gradeLevel)}{' '}
-                            {item.student.parentPhone
-                              ? `• ولي الأمر: ${item.student.parentPhone}`
-                              : ''}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-left shrink-0">
-                        <span className="text-[10px] font-bold text-[#74778F] block">
-                          المستحق المتبقي
-                        </span>
-                        <strong className="text-base sm:text-lg font-black text-[#FF647C]">
-                          {item.grandRemaining} ج.م
-                        </strong>
-                      </div>
-                    </div>
-
-                    {/* Services Breakdown Strip */}
-                    <div className="p-2.5 bg-[#F6F7FC] rounded-xl border border-[#E8E7FF] flex items-center justify-between text-xs flex-wrap gap-2">
-                      <div>
-                        <span className="text-[#74778F] font-bold">إجمالي الرسوم: </span>
-                        <strong className="text-[#17163D]">{item.grandTotalDue} ج.م</strong>
-                        <span className="text-[#74778F] font-bold mr-2"> | المسدد: </span>
-                        <strong className="text-emerald-700">{item.grandTotalPaid} ج.م</strong>
-                      </div>
-
-                      {item.lastPayment && (
-                        <span className="text-[11px] text-[#74778F] font-bold">
-                          آخر سداد: {item.lastPayment.date} ({item.lastPayment.amount} ج.م)
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Quick Action Buttons */}
-                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#E8E7FF]">
-                      {phoneForWa && (
-                        <a
-                          href={`https://wa.me/${phoneForWa.replace(
-                            /[^0-9]/g,
-                            ''
-                          )}?text=${encodeURIComponent(
-                            `السلام عليكم ورحمة الله، تذكير بمستحقات درس ${item.student.name}، المتبقي ${item.grandRemaining} ج.م. شكراً لتعاونكم.`
-                          )}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>تذكير واتساب</span>
-                        </a>
-                      )}
-
-                      {onOpenAddPayment && (
-                        <button
-                          onClick={() => onOpenAddPayment(item.student)}
-                          className="px-3.5 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
-                        >
-                          <DollarSign className="w-3.5 h-3.5 text-[#55C7E8]" />
-                          <span>سداد الآن</span>
-                        </button>
-                      )}
-
-                      {onOpenStudentProfile && (
-                        <button
-                          onClick={() => onOpenStudentProfile(item.student)}
-                          className="px-3 py-1.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs font-bold text-[#74778F] hover:text-[#17163D] hover:bg-[#E8E7FF] transition-colors cursor-pointer"
-                        >
-                          فتح الملف
-                        </button>
-                      )}
+              {overdueStudentsList.map(({ student, grandRemaining, grandTotalDue, grandTotalPaid }) => (
+                <div
+                  key={student.id}
+                  className="classy-card p-3.5 sm:p-4 bg-white border border-[#FECDD3] flex items-center justify-between gap-3 flex-wrap"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <StudentAvatar student={student} size="sm" showBadge={false} />
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-xs sm:text-sm text-[#17163D] truncate">{student.name}</h4>
+                      <span className="text-[11px] text-[#74778F]">{student.phone || student.parentPhone || (isEn ? 'No phone' : 'بدون هاتف')}</span>
                     </div>
                   </div>
-                );
-              })}
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-left">
+                      <strong className="text-sm font-black text-[#FF647C] block">
+                        {grandRemaining} {t('currency')}
+                      </strong>
+                      <span className="text-[10px] text-[#74778F] block">
+                        {isEn ? `Paid ${grandTotalPaid} of ${grandTotalDue}` : `سدد ${grandTotalPaid} من ${grandTotalDue}`}
+                      </span>
+                    </div>
+
+                    {onOpenAddPayment && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenAddPayment(student)}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-bold text-xs active:scale-95 transition-all cursor-pointer"
+                      >
+                        {isEn ? 'Collect' : 'تحصيل'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
 
       {/* =========================================================================
-          6. TAB 3: GROUP REPORT
+          6. TAB 3: GROUP PERFORMANCE DOSSIER
           ========================================================================= */}
       {reportType === 'group_report' && (
-        <div className="space-y-4">
-          {/* Group Selector */}
-          <div className="classy-card p-4 bg-white space-y-2">
-            <label className="font-black text-xs text-[#17163D] block">اختر المجموعة للتقرير:</label>
+        <div className="space-y-3.5">
+          <div className="classy-card p-4 space-y-2 bg-white">
+            <label className="text-xs font-bold text-[#74778F] block">{isEn ? 'Select Group / Service:' : 'اختر المجموعة أو الخدمة للتحليل:'}</label>
             <select
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="w-full p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs sm:text-sm font-bold text-[#17163D] focus:outline-none focus:border-[#7657F6] cursor-pointer"
+              className="w-full p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-bold text-xs text-[#17163D] focus:outline-none focus:border-[#7657F6]"
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.name} ({g.type === 'private' ? 'درس خاص' : 'مجموعة'}) - {g.subject}
+                  {g.name} ({g.subject} • {getLocalizedStageName(g.gradeLevel)})
                 </option>
               ))}
             </select>
           </div>
 
-          {selectedGroupFin && (
-            <div className="space-y-4">
-              {/* Group Metrics Bento Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="classy-card p-3.5 text-center bg-white">
-                  <span className="text-[10px] text-[#74778F] font-bold block">إجمالي الرسوم (Gross)</span>
-                  <p className="text-base sm:text-lg font-black text-[#17163D] mt-0.5">
-                    {selectedGroupFin.totalDue} ج.م
-                  </p>
+          {selectedGroupFin && selectedGroupObj && (
+            <div className="classy-card p-4 sm:p-5 bg-white space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-black text-[#17163D]">{selectedGroupObj.name}</h3>
+                  <span className="text-xs text-[#74778F]">{selectedGroupObj.subject} • {getLocalizedStageName(selectedGroupObj.gradeLevel)}</span>
                 </div>
-                <div className="classy-card p-3.5 text-center bg-white">
-                  <span className="text-[10px] text-[#74778F] font-bold block">إجمالي المدفوع</span>
-                  <p className="text-base sm:text-lg font-black text-emerald-700 mt-0.5">
-                    {selectedGroupFin.totalPaid} ج.م
-                  </p>
-                </div>
-                <div className="classy-card p-3.5 text-center bg-white">
-                  <span className="text-[10px] text-[#74778F] font-bold block">المتبقي المطلوب</span>
-                  <p
-                    className={`text-base sm:text-lg font-black mt-0.5 ${
-                      selectedGroupFin.remaining > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
-                    }`}
-                  >
-                    {selectedGroupFin.remaining} ج.م
-                  </p>
-                </div>
-                <div className="classy-card p-3.5 text-center bg-white">
-                  <span className="text-[10px] text-[#74778F] font-bold block">الحصص المنفذة</span>
-                  <p className="text-base sm:text-lg font-black text-[#7657F6] mt-0.5">
-                    {selectedGroupFin.totalCompletedSessions} حصة
-                  </p>
-                </div>
+                <span className="text-xs font-black px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {selectedGroupFin.totalRevenue} {t('currency')} {isEn ? 'collected' : 'محصل'}
+                </span>
               </div>
 
-              {/* Students Ledger Table in Group */}
-              <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h3 className="font-black text-sm text-[#17163D]">
-                    كشف حساب طلاب المجموعة ({selectedGroupFin.studentsSummary.length} طلاب):
-                  </h3>
-                  <span className="text-xs font-bold text-[#7657F6] bg-[#E8E7FF] px-2.5 py-1 rounded-xl">
-                    إجمالي رصيد الحصص المسبقة: {selectedGroupFin.totalPrepaidCredits} حصة
-                  </span>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-[#E8E7FF]">
+                <div className="p-2 bg-[#F6F7FC] rounded-xl">
+                  <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Total Expected' : 'المستحق'}</span>
+                  <strong className="font-black text-[#17163D]">{selectedGroupFin.totalExpectedRevenue} {t('currency')}</strong>
                 </div>
-
-                <div className="rounded-2xl border border-[#E8E7FF] overflow-x-auto android-scrollbar">
-                  <table className="w-full text-right text-xs">
-                    <thead className="bg-[#F6F7FC] text-[#74778F] font-black border-b border-[#E8E7FF]">
-                      <tr>
-                        <th className="p-3">الطالب</th>
-                        <th className="p-3">الحصص المستهلكة</th>
-                        <th className="p-3">إجمالي الرسوم</th>
-                        <th className="p-3">المسدد</th>
-                        <th className="p-3">المتبقي المطلوب</th>
-                        <th className="p-3">رصيد الحصص</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E8E7FF]">
-                      {selectedGroupFin.studentsSummary.map((item) => (
-                        <tr key={item.student.id} className="bg-white hover:bg-[#F6F7FC] transition-colors">
-                          <td className="p-3 font-bold text-[#17163D]">{item.student.name}</td>
-                          <td className="p-3 text-[#74778F] font-bold">{item.attendedCount} حصة</td>
-                          <td className="p-3 font-black text-[#17163D]">{item.totalDue} ج.م</td>
-                          <td className="p-3 font-black text-emerald-700">{item.totalPaid} ج.م</td>
-                          <td
-                            className={`p-3 font-black ${
-                              item.remaining > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
-                            }`}
-                          >
-                            {item.remaining} ج.م
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                item.sessionCredit > 0
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-                                  : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF]'
-                              }`}
-                            >
-                              {item.sessionCredit} حصص
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="p-2 bg-[#F6F7FC] rounded-xl">
+                  <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Remaining' : 'المتبقي'}</span>
+                  <strong className="font-black text-[#FF647C]">{selectedGroupFin.totalRemainingDues} {t('currency')}</strong>
+                </div>
+                <div className="p-2 bg-[#F6F7FC] rounded-xl">
+                  <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Completed Sessions' : 'الحصص'}</span>
+                  <strong className="font-black text-[#7657F6]">{selectedGroupFin.completedSessionsCount}</strong>
                 </div>
               </div>
             </div>
@@ -1912,261 +1145,66 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       )}
 
       {/* =========================================================================
-          7. TAB 4: STUDENT REPORT
+          7. TAB 4: INDIVIDUAL STUDENT DOSSIER
           ========================================================================= */}
       {reportType === 'student_report' && (
-        <div className="space-y-4">
-          {/* Student Selector with Search */}
-          <div className="classy-card p-4 bg-white space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <label className="font-black text-xs text-[#17163D]">اختر الطالب لعرض التقرير الشامل:</label>
-              <div className="relative w-48 sm:w-64">
-                <Search className="w-4 h-4 absolute right-3 top-2.5 text-[#74778F]" />
-                <input
-                  type="text"
-                  value={studentSearchQuery}
-                  onChange={(e) => setStudentSearchQuery(e.target.value)}
-                  placeholder="بحث عن طالب..."
-                  className="w-full pr-9 pl-8 py-2 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs font-bold text-[#17163D] focus:outline-none focus:border-[#7657F6]"
-                />
-                {studentSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setStudentSearchQuery('')}
-                    className="absolute left-2.5 top-2 text-[#74778F] hover:text-[#17163D]"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
+        <div className="space-y-3.5">
+          <div className="classy-card p-4 space-y-2 bg-white">
+            <label className="text-xs font-bold text-[#74778F] block">{isEn ? 'Select Student:' : 'اختر الطالب لعرض كشف الحساب والتقرير:'}</label>
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs sm:text-sm font-bold text-[#17163D] focus:outline-none focus:border-[#7657F6] cursor-pointer"
+              className="w-full p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-bold text-xs text-[#17163D] focus:outline-none focus:border-[#7657F6]"
             >
-              {students
-                .filter((s) => s.name.toLowerCase().includes(studentSearchQuery.toLowerCase()))
-                .map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.name} ({getLocalizedStageName(st.gradeLevel) || 'غير محدد'}){' '}
-                    {st.status === 'archived' ? '— (طالب مؤرشف)' : ''}
-                  </option>
-                ))}
+              {students.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.name} {st.phone ? `(${st.phone})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
           {selectedStudentGrandFin && selectedStudentObj && (
-            <div className="space-y-4">
-              {/* Grand Student Summary Card */}
-              <div className="classy-card p-4 sm:p-5 bg-white space-y-3.5">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <StudentAvatar student={selectedStudentObj} size="lg" showFrame={true} />
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-black text-base sm:text-lg text-[#17163D]">
-                          {selectedStudentObj.name}
-                        </h3>
-                        {selectedStudentObj.status === 'archived' && (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
-                            طالب مؤرشف
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-[#74778F] font-medium">
-                        {getLocalizedStageName(selectedStudentObj.gradeLevel) || 'الصف غير محدد'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-left shrink-0">
-                    <span className="text-[10px] text-[#74778F] font-bold block">
-                      رصيد الحصص الكلي
-                    </span>
-                    <strong className="text-base sm:text-lg text-[#7657F6] font-black">
-                      {selectedStudentGrandFin.totalSessionCredit} حصص
-                    </strong>
+            <div className="classy-card p-4 sm:p-5 bg-white space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <StudentAvatar student={selectedStudentObj} size="md" />
+                  <div>
+                    <h3 className="text-base font-black text-[#17163D]">{selectedStudentObj.name}</h3>
+                    <span className="text-xs text-[#74778F]">{getLocalizedStageName(selectedStudentObj.gradeLevel)}</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                    <span className="text-[10px] text-[#74778F] font-bold block">
-                      إجمالي الرسوم (Gross)
-                    </span>
-                    <strong className="text-base font-black text-[#17163D] mt-0.5 block">
-                      {selectedStudentGrandFin.grandTotalDue} ج.م
-                    </strong>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                    <span className="text-[10px] text-[#74778F] font-bold block">إجمالي المدفوع</span>
-                    <strong className="text-base font-black text-emerald-700 mt-0.5 block">
-                      {selectedStudentGrandFin.grandTotalPaid} ج.م
-                    </strong>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                    <span className="text-[10px] text-[#74778F] font-bold block">
-                      المستحق المتبقي (Outstanding)
-                    </span>
-                    <strong
-                      className={`text-base font-black mt-0.5 block ${
-                        selectedStudentGrandFin.grandRemaining > 0
-                          ? 'text-[#FF647C]'
-                          : 'text-emerald-700'
-                      }`}
-                    >
-                      {selectedStudentGrandFin.grandRemaining} ج.م
-                    </strong>
-                  </div>
-                </div>
-
-                {selectedStudentGrandFin.totalFinancialCredit > 0 && (
-                  <div className="p-3 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-bold flex items-center justify-between">
-                    <span>الرصيد المالي المتبقي للطالب (Financial Credit):</span>
-                    <strong className="text-sm font-black">
-                      +{selectedStudentGrandFin.totalFinancialCredit} ج.م
-                    </strong>
-                  </div>
+                {onOpenStudentProfile && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenStudentProfile(selectedStudentObj)}
+                    className="px-3 py-1.5 rounded-xl bg-[#17163D] text-white font-bold text-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    {t('profile')}
+                  </button>
                 )}
               </div>
 
-              {/* Individual Services Breakdown (Group & Private) */}
-              <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
-                <h4 className="font-black text-xs sm:text-sm text-[#17163D] flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#7657F6]" />
-                  <span>تفاصيل الاشتراكات والخدمات المستقلة (Group & Private):</span>
-                </h4>
-
-                <div className="space-y-2.5">
-                  {selectedStudentGrandFin.enrollmentsSummary.map((summary) => (
-                    <div
-                      key={summary.enrollmentId}
-                      className={`p-3.5 rounded-2xl border space-y-2.5 ${
-                        summary.groupType === 'private'
-                          ? 'bg-[#FFF1F3]/40 border-[#FECDD3]'
-                          : 'bg-[#F6F7FC] border-[#E8E7FF]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: summary.accentColor }}
-                          />
-                          <strong className="text-xs font-black text-[#17163D]">
-                            {summary.groupName}
-                          </strong>
-                          <span
-                            className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                              summary.groupType === 'private'
-                                ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
-                                : 'bg-[#E8E7FF] text-[#403B9C]'
-                            }`}
-                          >
-                            {summary.groupType === 'private' ? 'درس خاص (Private)' : 'مجموعة'}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-[#74778F] font-bold">
-                          {summary.billingMode === 'hourly' || summary.billingType === 'hourly'
-                            ? 'سعر الساعة:'
-                            : 'سعر الحصة:'}{' '}
-                          <strong className="text-[#17163D] font-black">
-                            {summary.customPrice} ج.م
-                          </strong>
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[11px]">
-                        <div className="p-2 bg-white rounded-xl border border-[#E8E7FF]">
-                          <span className="text-[#74778F] block text-[10px] font-bold">
-                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly'
-                              ? 'الساعات المنفذة'
-                              : 'المستهلك'}
-                          </span>
-                          <strong className="text-xs font-black text-[#17163D]">
-                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly'
-                              ? `${summary.totalHours ?? 0} ساعة`
-                              : `${summary.usedSessionsCount || 0} حصة`}
-                          </strong>
-                        </div>
-                        <div className="p-2 bg-white rounded-xl border border-[#E8E7FF]">
-                          <span className="text-[#74778F] block text-[10px] font-bold">
-                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly'
-                              ? 'إجمالي الرسوم'
-                              : 'رصيد الحصص'}
-                          </span>
-                          <strong className="text-xs font-black text-[#7657F6]">
-                            {summary.billingMode === 'hourly' || summary.billingType === 'hourly'
-                              ? `${summary.totalDue} ج.م`
-                              : `${summary.sessionCredit} حصص`}
-                          </strong>
-                        </div>
-                        <div className="p-2 bg-white rounded-xl border border-[#E8E7FF]">
-                          <span className="text-[#74778F] block text-[10px] font-bold">المدفوع</span>
-                          <strong className="text-xs font-black text-emerald-700">
-                            {summary.totalPaid} ج.م
-                          </strong>
-                        </div>
-                        <div
-                          className={`p-2 rounded-xl border ${
-                            summary.remaining > 0
-                              ? 'bg-[#FFF1F3] border-[#FECDD3] text-[#FF647C]'
-                              : 'bg-white border-[#E8E7FF] text-emerald-700'
-                          }`}
-                        >
-                          <span className="block text-[10px] font-bold">المتبقي</span>
-                          <strong className="text-xs font-black">
-                            {summary.remaining} ج.م
-                          </strong>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-[#E8E7FF]">
+                <div className="p-2 bg-[#F6F7FC] rounded-xl">
+                  <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Grand Total Due' : 'المطلوب'}</span>
+                  <strong className="font-black text-[#17163D]">{selectedStudentGrandFin.grandTotalDue} {t('currency')}</strong>
                 </div>
-              </div>
-
-              {/* Student Payments Ledger */}
-              <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
-                <h4 className="font-black text-xs sm:text-sm text-[#17163D] flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-[#7657F6]" />
-                  <span>سجل مدفوعات الطالب:</span>
-                </h4>
-
-                {selectedStudentGrandFin.allPayments.length === 0 ? (
-                  <p className="text-xs text-[#74778F] font-bold text-center p-4 bg-[#F6F7FC] rounded-2xl">
-                    لا توجد مدفوعات مسجلة لهذا الطالب بعد.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {selectedStudentGrandFin.allPayments.map((p) => (
-                      <div
-                        key={p.id}
-                        className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between text-xs"
-                      >
-                        <div>
-                          <p className="font-black text-[#17163D]">{p.amount} ج.م</p>
-                          <p className="text-[10px] text-[#74778F] font-medium">
-                            {p.date} •{' '}
-                            {p.paymentType === 'specific_month'
-                              ? `شهر ${getArabicMonthName(p.targetMonth || 1)}`
-                              : 'سداد حصص'}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#E8E7FF] text-[#17163D]">
-                          {p.paymentMethod === 'vodafone_cash'
-                            ? 'فودافون كاش'
-                            : p.paymentMethod === 'instapay'
-                            ? 'إنستاباي'
-                            : p.paymentMethod === 'bank_transfer'
-                            ? 'تحويل بنكي'
-                            : 'كاش'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="p-2 bg-[#F6F7FC] rounded-xl">
+                  <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
+                  <strong className="font-black text-emerald-700">{selectedStudentGrandFin.grandTotalPaid} {t('currency')}</strong>
+                </div>
+                <div className="p-2 bg-[#F6F7FC] rounded-xl">
+                  <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Remaining Due' : 'المتبقي'}</span>
+                  <strong
+                    className={`font-black ${
+                      selectedStudentGrandFin.grandRemaining > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
+                    }`}
+                  >
+                    {selectedStudentGrandFin.grandRemaining} {t('currency')}
+                  </strong>
+                </div>
               </div>
             </div>
           )}

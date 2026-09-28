@@ -63,6 +63,7 @@ import { getScheduledClassesForDate, ScheduledClassItem, parseTimeToMinutes } fr
 import { getSmartReminders, SmartReminderItem } from '../utils/reminders';
 import { fetchAttendanceInsights, SmartAttendanceInsightsResult } from '../utils/aiInsights';
 import { generateQuickTips, QuickTip } from '../utils/quickTips';
+import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
 
 interface DashboardViewProps {
@@ -100,6 +101,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToTab,
   onDataChanged,
 }) => {
+  const { t, language, isRTL } = useTranslation();
+  const isEn = language.startsWith('en');
+
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const currentMonth = useMemo(() => new Date().getMonth() + 1, []);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
@@ -150,49 +154,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isOffline = !networkStatus.isOnline || !networkStatus.deviceConnected || syncConfig.status === 'offline_deferred';
   const isSyncing = syncConfig.status === 'syncing' || isManualSyncing;
 
-  // Cached Attendance Summary statistics
-  const cachedAttendanceStats = useMemo(() => {
-    const totalRecords = allAttendance.length;
-    const todayRecords = allAttendance.filter((a) => {
-      const sess = sessions.find((s) => s.id === a.sessionId);
-      return sess?.date === todayStr;
-    });
-
-    const presentCount = allAttendance.filter((a) => a.status === 'present').length;
-    const lateCount = allAttendance.filter((a) => a.status === 'late').length;
-    const absentChargedCount = allAttendance.filter(
-      (a) => a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false)
-    ).length;
-    const absentFreeCount = allAttendance.filter(
-      (a) => a.status === 'absent_free' || a.status === 'excused' || (a.status === 'absent' && a.isCharged === false)
-    ).length;
-
-    const recentLogs = allAttendance.slice(-4).reverse().map((att) => {
-      const st = students.find((s) => s.id === att.studentId);
-      const sess = sessions.find((s) => s.id === att.sessionId);
-      const grp = groups.find((g) => g.id === sess?.groupId);
-      return {
-        id: att.id,
-        studentName: st?.name || 'طالب',
-        groupName: grp?.name || sess?.title || 'حصة',
-        date: sess?.date || todayStr,
-        status: att.status,
-        isCharged: att.isCharged !== false,
-        recordedAt: att.recordedAt,
-      };
-    });
-
-    return {
-      totalRecords,
-      todayRecordsCount: todayRecords.length,
-      presentCount,
-      lateCount,
-      absentChargedCount,
-      absentFreeCount,
-      recentLogs,
-    };
-  }, [allAttendance, sessions, students, groups, todayStr]);
-
   // Attendance rate calculation
   const overallAttendanceRate = useMemo(() => {
     if (allAttendance.length === 0) return 100;
@@ -200,60 +161,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return Math.round((positive / allAttendance.length) * 100);
   }, [allAttendance]);
 
-  // Cached Payments Summary statistics
-  const cachedPaymentStats = useMemo(() => {
-    const totalTransactions = payments.length;
-    const totalCachedAmount = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const todayPayments = payments.filter((p) => p.date === todayStr);
-    const todayCachedAmount = todayPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-    const cashTotal = payments
-      .filter((p) => !p.paymentMethod || p.paymentMethod === 'cash')
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const transferTotal = payments
-      .filter((p) => p.paymentMethod === 'bank_transfer' || p.paymentMethod === 'vodafone_cash' || p.paymentMethod === 'instapay' || p.paymentMethod === 'card')
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-    const recentLogs = payments.slice(-4).reverse().map((pay) => {
-      const st = students.find((s) => s.id === pay.studentId);
-      const grp = groups.find((g) => g.id === pay.groupId);
-      return {
-        id: pay.id,
-        studentName: st?.name || 'طالب',
-        groupName: grp?.name || 'دفعة',
-        amount: Number(pay.amount) || 0,
-        date: pay.date,
-        method: pay.paymentMethod || 'cash',
-        notes: pay.notes,
-      };
-    });
-
-    return {
-      totalTransactions,
-      totalCachedAmount,
-      todayCachedAmount,
-      todayCount: todayPayments.length,
-      cashTotal,
-      transferTotal,
-      recentLogs,
-    };
-  }, [payments, students, groups, todayStr]);
-
   const handleTriggerSync = async () => {
     setIsManualSyncing(true);
     try {
       const res = await performFullSync(undefined, true);
       setSyncConfig(getAutoSyncConfig());
       if (res.isOffline) {
-        showQuickFeedback('تم حفظ البيانات محلياً بأمان - الجهاز غير متصل بالإنترنت حالياً');
+        showQuickFeedback(isEn ? 'Data saved safely locally (Device currently offline)' : 'تم حفظ البيانات محلياً بأمان - الجهاز غير متصل بالإنترنت حالياً');
       } else if (res.success) {
-        showQuickFeedback('تمت المزامنة السحابية بنجاح وتحديث السجلات الدائمة!');
+        showQuickFeedback(isEn ? 'Cloud sync completed successfully!' : 'تمت المزامنة السحابية بنجاح وتحديث السجلات الدائمة!');
         onDataChanged?.();
       } else {
-        showQuickFeedback(res.message || 'تعذر استكمال المزامنة السحابية');
+        showQuickFeedback(res.message || (isEn ? 'Cloud sync incomplete' : 'تعذر استكمال المزامنة السحابية'));
       }
     } catch {
-      showQuickFeedback('حدث خطأ أثناء المزامنة');
+      showQuickFeedback(isEn ? 'Error occurred during sync' : 'حدث خطأ أثناء المزامنة');
     } finally {
       setIsManualSyncing(false);
     }
@@ -269,8 +191,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         groups,
         sessions,
         allAttendance,
-        teacherProfile.subject || 'عام',
-        teacherProfile.name || 'المعلم'
+        teacherProfile.subject || (isEn ? 'General' : 'عام'),
+        teacherProfile.name || (isEn ? 'Teacher' : 'المعلم')
       );
       setInsights(result);
     } catch {
@@ -278,7 +200,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     } finally {
       setIsLoadingInsights(false);
     }
-  }, [students, groups, sessions, allAttendance, teacherProfile.subject, teacherProfile.name]);
+  }, [students, groups, sessions, allAttendance, teacherProfile, isEn]);
 
   useEffect(() => {
     loadInsights();
@@ -286,15 +208,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Scheduled classes for today
   const scheduledToday = useMemo(() => {
-    return getScheduledClassesForDate(new Date(), groups, students, enrollments, true);
-  }, [groups, students, enrollments]);
+    return getScheduledClassesForDate(new Date(), groups, enrollments, students);
+  }, [groups, enrollments, students]);
 
-  // Completed vs Remaining sessions count today
+  // Count of completed sessions today
   const completedTodaySessionsCount = useMemo(() => {
-    return todaySessions.filter((s) => {
-      const att = db.getSessionAttendance(s.id);
-      return att.length > 0 || s.status === 'completed';
-    }).length;
+    return todaySessions.filter((s) => s.status === 'completed').length;
   }, [todaySessions]);
 
   const totalTodayClassesCount = useMemo(() => {
@@ -305,8 +224,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return Math.max(0, totalTodayClassesCount - completedTodaySessionsCount);
   }, [totalTodayClassesCount, completedTodaySessionsCount]);
 
-  // Revenue stats - including prepaid collected session revenue
-  const { totalMonthRevenue, totalTodayRevenue, totalAllTimeRevenue } = useMemo(() => {
+  // Revenue stats
+  const { totalMonthRevenue, totalTodayRevenue } = useMemo(() => {
     const finHistory = db.calculateFinancialHistory();
     const currentMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
     const curMonthRecord = finHistory.months.find((m) => m.monthYear === currentMonthKey);
@@ -343,15 +262,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     });
 
-    return { totalMonthRevenue: mRev, totalTodayRevenue: tRev, totalAllTimeRevenue: finHistory.totalCollected };
+    return { totalMonthRevenue: mRev, totalTodayRevenue: tRev };
   }, [payments, sessions, groups, enrollments, currentMonth, currentYear, todayStr]);
 
-  // Outstanding balances & Low credit calculations across active students
-  const { totalOutstandingDues, overdueStudentsCount, lowCreditStudentsCount } = useMemo(() => {
+  // Outstanding balances
+  const { totalOutstandingDues, overdueStudentsCount } = useMemo(() => {
     const activeStudents = students.filter((s) => s.status !== 'archived');
     let outDues = 0;
     let overdueCount = 0;
-    let completedPackagesCount = 0;
 
     activeStudents.forEach((st) => {
       const fin = db.calculateStudentGrandFinancials(st.id);
@@ -363,33 +281,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         outDues += nonPackageRemaining;
         overdueCount++;
       }
-
-      const hasCompletedPackage = fin.enrollmentsSummary.some((e) => {
-        const isPkg = e.billingMode === 'package' || e.billingType === 'package';
-        if (isPkg) {
-          const pkgCount = Math.max(1, e.packageSessionsCount || 8);
-          const purchased = e.purchasedSessionsCount || 0;
-          const totalCovered = Math.max(pkgCount, purchased > 0 ? Math.ceil(purchased / pkgCount) * pkgCount : pkgCount);
-          return (e.attendedSessionsCount || 0) >= totalCovered;
-        }
-        const isPrepaid = e.billingMode === 'prepaid' || e.billingType === 'prepaid';
-        if (isPrepaid) {
-          return e.sessionCredit <= 0 && (e.attendedSessionsCount || 0) > 0;
-        }
-        return false;
-      });
-
-      if (hasCompletedPackage) {
-        completedPackagesCount++;
-      }
     });
 
     return {
       totalOutstandingDues: outDues,
       overdueStudentsCount: overdueCount,
-      lowCreditStudentsCount: completedPackagesCount,
     };
-  }, [students, payments, sessions]);
+  }, [students]);
 
   // Smart Reminders
   const smartReminders = useMemo(() => {
@@ -447,56 +345,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  // Helper to find existing session for this scheduled occurrence
-  const findSessionForScheduleItem = (item: ScheduledClassItem): Session | undefined => {
-    const itemMins = parseTimeToMinutes(item.rawTime || item.time);
-
-    const timeMatch = todaySessions.find((s) => {
-      const isTarget = s.groupId === item.groupId || (item.enrollmentId && s.enrollmentId === item.enrollmentId);
-      if (!isTarget) return false;
-
-      if (s.startTime && (item.rawTime || item.time)) {
-        const sMins = parseTimeToMinutes(s.startTime);
-        if (sMins !== 99999 && itemMins !== 99999) {
-          return sMins === itemMins;
-        }
-        return s.startTime === item.rawTime || s.startTime === item.time;
-      }
-      return false;
-    });
-
-    if (timeMatch) return timeMatch;
-
-    const groupSessionsToday = todaySessions.filter(
-      (s) => s.groupId === item.groupId || (item.enrollmentId && s.enrollmentId === item.enrollmentId)
+  const findSessionForScheduleItem = (item: ScheduledClassItem) => {
+    return sessions.find(
+      (s) =>
+        s.date === todayStr &&
+        s.groupId === item.groupId &&
+        (!item.studentId || s.studentId === item.studentId) &&
+        s.status !== 'cancelled'
     );
-    if (groupSessionsToday.length === 1 && !item.rawTime && !groupSessionsToday[0].startTime) {
-      return groupSessionsToday[0];
-    }
-
-    return undefined;
   };
 
   const getOrCreateSessionForSchedule = (item: ScheduledClassItem): Session => {
     const existing = findSessionForScheduleItem(item);
     if (existing) return existing;
 
-    const now = new Date();
-    const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const group = groups.find((g) => g.id === item.groupId);
+    const d = new Date(todayStr);
+    const [h, m] = item.time.split(':').map(Number);
+    const endH = (h + 1) % 24;
+    const endTime = `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+
     const newSession: Session = {
-      id: `ses_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      id: `sess_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       groupId: item.groupId,
+      studentId: item.studentId,
       enrollmentId: item.enrollmentId,
-      studentId: item.studentId || undefined,
-      title: item.isPrivate ? `درس خاص - ${item.studentName}` : item.groupName,
+      title: item.isPrivate ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : item.groupName,
       date: todayStr,
-      dayName: dayNames[now.getDay()],
-      month: now.getMonth() + 1,
-      year: now.getFullYear(),
-      startTime: item.rawTime || item.time,
-      status: 'completed',
+      startTime: item.time,
+      endTime,
+      dayName: item.dayName,
+      month: d.getMonth() + 1,
+      year: d.getFullYear(),
+      status: 'scheduled',
+      pricePerStudent: group?.defaultPrice || 100,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
+
     db.saveSession(newSession);
     return newSession;
   };
@@ -523,7 +409,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
 
     db.saveAttendanceBatch(session.id, attendanceRecords);
-    showQuickFeedback(`تم رصد حضور جميع طلاب ${item.isPrivate ? item.studentName : item.groupName} بنجاح`);
+    showQuickFeedback(
+      isEn
+        ? `Marked all present for ${item.isPrivate ? item.studentName : item.groupName}`
+        : `تم رصد حضور جميع طلاب ${item.isPrivate ? item.studentName : item.groupName} بنجاح`
+    );
     onDataChanged?.();
   };
 
@@ -549,64 +439,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
 
     db.saveAttendanceBatch(session.id, [record]);
-    showQuickFeedback('تم تحديث حالة الحضور');
+    showQuickFeedback(isEn ? 'Attendance status updated' : 'تم تحديث حالة الحضور');
     onDataChanged?.();
   };
 
   // Greeting dynamic text based on current hour
   const greetingText = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'صباح الهمة والنشاط ☀️';
-    if (hour < 17) return 'طاب يومك بكل خير 🌿';
-    return 'مساء التميز والإنجاز ✨';
-  }, []);
-
-  // 7-day calendar strip days
-  const calendarDays = useMemo(() => {
-    const days = [];
-    const arabicDayNames = ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
-    for (let i = -2; i <= 4; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      const dStr = d.toISOString().split('T')[0];
-      const daySessionsCount = sessions.filter((s) => s.date === dStr && s.status !== 'cancelled').length;
-      days.push({
-        dateStr: dStr,
-        dayNum: d.getDate(),
-        dayName: arabicDayNames[d.getDay()],
-        isToday: dStr === todayStr,
-        sessionCount: daySessionsCount,
-      });
-    }
-    return days;
-  }, [sessions, todayStr]);
+    if (hour < 12) return isEn ? 'Good morning ☀️' : 'صباح الهمة والنشاط ☀️';
+    if (hour < 17) return isEn ? 'Good afternoon 🌿' : 'طاب يومك بكل خير 🌿';
+    return isEn ? 'Good evening ✨' : 'مساء التميز والإنجاز ✨';
+  }, [isEn]);
 
   const activeStudentsList = useMemo(() => students.filter((s) => s.status !== 'archived'), [students]);
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#191A2E] pb-32 bg-[#F5F6FC] relative" dir="rtl">
-      
+    <div
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#191A2E] pb-32 bg-[#F5F6FC] relative"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       {/* Soft Ambient Light Glow in Background */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#7657F6]/8 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#55C7E8]/8 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#FF647C]/6 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* =========================================================================
-          1. Profile & Signature Executive Hero Header (Midnight -> Royal -> Violet)
+          1. Profile & Signature Executive Hero Header
           ========================================================================= */}
       <div className="rounded-[26px] bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] p-5 sm:p-6 text-white relative overflow-hidden shadow-xl border border-white/10">
-        {/* Soft internal gradient orbs */}
         <div className="absolute -top-16 -right-16 w-60 h-60 bg-[#7657F6]/35 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-[#FF647C]/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          
           {/* Teacher Profile & Greeting */}
           <div className="flex items-center gap-3.5 min-w-0">
-            {/* Avatar with glowing ring */}
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FF647C] via-[#7657F6] to-[#55C7E8] p-0.5 shadow-lg shadow-[#7657F6]/40 shrink-0">
               <div className="w-full h-full rounded-[14px] bg-[#17163D] flex items-center justify-center text-white font-black text-2xl overflow-hidden">
-                {teacherProfile.name ? teacherProfile.name.charAt(0) : 'ك'}
+                {teacherProfile.name ? teacherProfile.name.charAt(0) : 'C'}
               </div>
             </div>
 
@@ -617,25 +486,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
               <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight truncate">
-                {teacherProfile.name ? `أ. ${teacherProfile.name}` : 'أستاذنا الفاضل'}
+                {teacherProfile.name ? `${isEn ? 'Teacher ' : 'أ. '}${teacherProfile.name}` : (isEn ? 'Teacher' : 'أستاذنا الفاضل')}
               </h1>
               <p className="text-xs sm:text-sm text-[#E8E7FF]/85 font-medium truncate">
-                {teacherProfile.subject || 'المادة التعليمية'} • {teacherProfile.centerOrSchool || 'منظومة كلاسي الذكية'}
+                {teacherProfile.subject || (isEn ? 'Subject' : 'المادة التعليمية')} • {teacherProfile.centerOrSchool || (isEn ? 'Classy Education' : 'منظومة كلاسي الذكية')}
               </p>
             </div>
           </div>
 
-          {/* Action Hub & Owl Mascot Integration */}
+          {/* Action Hub & Mascot */}
           <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/15">
-            
-            {/* Classy Owl Mascot in Hero */}
             <div className="hidden md:flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-2xl shadow-xs">
               <div className="w-9 h-9 flex items-center justify-center">
                 <ClassyOwlMascot size="sm" pose="welcome" glow={false} />
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-extrabold text-[#55C7E8] block leading-none">مساعدك الذكي</span>
-                <span className="text-xs font-bold text-white block mt-0.5">جاهز لخدمتك</span>
+                <span className="text-[10px] font-extrabold text-[#55C7E8] block leading-none">{isEn ? 'Smart Assistant' : 'مساعدك الذكي'}</span>
+                <span className="text-xs font-bold text-white block mt-0.5">{isEn ? 'Ready to help' : 'جاهز لخدمتك'}</span>
               </div>
             </div>
 
@@ -643,17 +510,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/15 px-3 py-2 rounded-2xl text-xs font-bold text-white shadow-xs">
               <Calendar className="w-3.5 h-3.5 text-[#55C7E8]" />
               <span>
-                {new Date().toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
+                {new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
               </span>
             </div>
 
-            {/* Cloud Sync & Offline Status */}
+            {/* Cloud Sync Status */}
             {isOffline && (
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}
                 className="relative p-2.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
-                title="العمل بدون إنترنت - انقر للمزامنة عند الاتصال"
+                title={isEn ? 'Working Offline - Click to sync when online' : 'العمل بدون إنترنت - انقر للمزامنة عند الاتصال'}
               >
                 <WifiOff className="w-4.5 h-4.5 text-amber-300" />
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-[#17163D] animate-ping" />
@@ -664,7 +531,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={handleTriggerSync}
               disabled={isSyncing}
               className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
-              title="مزامنة البيانات السحابية"
+              title={isEn ? 'Sync Cloud Data' : 'مزامنة البيانات السحابية'}
             >
               <RefreshCw className={`w-4.5 h-4.5 text-[#55C7E8] ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
@@ -674,7 +541,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 onClick={onOpenNotificationsModal}
                 className="relative p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
-                title="مركز التنبيهات والإشعارات"
+                title={t('smartNotifications')}
               >
                 <Bell className="w-4.5 h-4.5 text-white" />
                 {smartReminders.length > 0 && (
@@ -684,7 +551,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
               </button>
             )}
-
           </div>
         </div>
       </div>
@@ -706,8 +572,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           2. Executive Summary Bento Grid
           ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-        
-        {/* Main Today's Activity & Progress Hero Card (lg:col-span-7) */}
+        {/* Main Today Activity Hero Card */}
         <div className="lg:col-span-7 rounded-[24px] bg-gradient-to-br from-[#17163D] to-[#403B9C] p-5 text-white flex flex-col justify-between relative overflow-hidden shadow-xl border border-white/10">
           <div className="absolute -top-10 -left-10 w-44 h-44 bg-[#7657F6]/30 rounded-full blur-2xl pointer-events-none" />
           <div className="absolute -bottom-10 -right-10 w-44 h-44 bg-[#FF647C]/25 rounded-full blur-2xl pointer-events-none" />
@@ -716,23 +581,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#FF647C] animate-pulse" />
-                <span className="text-xs font-black uppercase tracking-wider text-[#E8E7FF]">نشاط اليوم الدراسي</span>
+                <span className="text-xs font-black uppercase tracking-wider text-[#E8E7FF]">
+                  {isEn ? "Today's Academic Activity" : 'نشاط اليوم الدراسي'}
+                </span>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-black bg-white/15 text-white border border-white/20 shadow-xs">
-                {totalTodayClassesCount} حصص مجدولة
+                {totalTodayClassesCount} {isEn ? 'scheduled' : 'حصص مجدولة'}
               </span>
             </div>
 
             <div className="space-y-1">
               <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
                 {completedTodaySessionsCount === totalTodayClassesCount && totalTodayClassesCount > 0
-                  ? '🎉 اكتملت جميع حصص اليوم بنجاح!'
-                  : `متبقي ${remainingTodaySessionsCount} حصص للرصد والمتابعة`}
+                  ? (isEn ? "🎉 All today's sessions completed successfully!" : '🎉 اكتملت جميع حصص اليوم بنجاح!')
+                  : (isEn ? `${remainingTodaySessionsCount} sessions pending attendance` : `متبقي ${remainingTodaySessionsCount} حصص للرصد والمتابعة`)}
               </h2>
               <div className="flex items-center gap-3 text-xs text-[#E8E7FF]/90 font-medium flex-wrap">
-                <span>تحصيل اليوم: <strong className="text-white font-bold">{totalTodayRevenue} ج.م</strong></span>
+                <span>{isEn ? "Today's Revenue:" : 'تحصيل اليوم:'} <strong className="text-white font-bold">{totalTodayRevenue} {t('currency')}</strong></span>
                 <span>•</span>
-                <span>تم رصد <strong className="text-white font-bold">{completedTodaySessionsCount}</strong> من <strong className="text-white font-bold">{totalTodayClassesCount}</strong></span>
+                <span>{isEn ? 'Recorded ' : 'تم رصد '}<strong className="text-white font-bold">{completedTodaySessionsCount}</strong> {isEn ? 'of ' : 'من '}<strong className="text-white font-bold">{totalTodayClassesCount}</strong></span>
               </div>
             </div>
 
@@ -746,14 +613,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               </div>
               <div className="flex justify-between text-[11px] font-bold text-[#E8E7FF]/85">
-                <span>نسبة الإنجاز: {totalTodayClassesCount > 0 ? Math.round((completedTodaySessionsCount / totalTodayClassesCount) * 100) : 0}%</span>
-                <span>{completedTodaySessionsCount}/{totalTodayClassesCount} تم رصدها</span>
+                <span>{isEn ? 'Progress:' : 'نسبة الإنجاز:'} {totalTodayClassesCount > 0 ? Math.round((completedTodaySessionsCount / totalTodayClassesCount) * 100) : 0}%</span>
+                <span>{completedTodaySessionsCount}/{totalTodayClassesCount} {isEn ? 'completed' : 'تم رصدها'}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 4 High-Value Key Metric Cards (lg:col-span-5, 2x2 grid) */}
+        {/* 4 Metric Cards */}
         <div className="lg:col-span-5 grid grid-cols-2 gap-2.5">
           {/* Metric 1: Active Students */}
           <div
@@ -765,7 +632,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Users className="w-4.5 h-4.5" />
               </div>
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#7657F6] border border-[#D8D5FB]">
-                نشط
+                {isEn ? 'Active' : 'نشط'}
               </span>
             </div>
             <div>
@@ -773,7 +640,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {activeStudentsList.length}
               </span>
               <span className="text-xs font-bold text-[#74778F] block mt-0.5">
-                إجمالي الطلاب النشطين
+                {t('activeStudents')}
               </span>
             </div>
           </div>
@@ -788,7 +655,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <TrendingUp className="w-4.5 h-4.5" />
               </div>
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                التزام
+                {isEn ? 'Rate' : 'التزام'}
               </span>
             </div>
             <div>
@@ -796,7 +663,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {overallAttendanceRate}%
               </span>
               <span className="text-xs font-bold text-[#74778F] block mt-0.5">
-                معدل الحضور العام
+                {t('attendanceRate')}
               </span>
             </div>
           </div>
@@ -811,15 +678,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <DollarSign className="w-4.5 h-4.5 text-[#55C7E8]" />
               </div>
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]">
-                شهر {currentMonth}
+                {isEn ? `Month ${currentMonth}` : `شهر ${currentMonth}`}
               </span>
             </div>
             <div>
               <span className="text-2xl sm:text-3xl font-black text-[#17163D] tracking-tight block truncate">
-                {totalMonthRevenue} <span className="text-xs font-bold text-[#74778F]">ج.م</span>
+                {totalMonthRevenue} <span className="text-xs font-bold text-[#74778F]">{t('currency')}</span>
               </span>
               <span className="text-xs font-bold text-[#74778F] block mt-0.5">
-                تحصيل الشهر
+                {t('monthlyRevenue')}
               </span>
             </div>
           </div>
@@ -838,28 +705,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   ? 'bg-[#FFF1F3] text-[#FF647C] border-[#FECDD3]'
                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
               }`}>
-                {totalOutstandingDues > 0 ? `${overdueStudentsCount} طلاب` : 'خالص'}
+                {totalOutstandingDues > 0 ? (isEn ? `${overdueStudentsCount} dues` : `${overdueStudentsCount} طلاب`) : t('settled')}
               </span>
             </div>
             <div>
               <span className={`text-2xl sm:text-3xl font-black tracking-tight block truncate ${
                 totalOutstandingDues > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
               }`}>
-                {totalOutstandingDues} <span className="text-xs font-bold text-[#74778F]">ج.م</span>
+                {totalOutstandingDues} <span className="text-xs font-bold text-[#74778F]">{t('currency')}</span>
               </span>
               <span className="text-xs font-bold text-[#74778F] block mt-0.5">
-                مستحقات معلقة
+                {t('totalPendingDues')}
               </span>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* =========================================================================
-          3. Compact Unified Quick Actions Bar
+          3. Quick Actions Bar
           ========================================================================= */}
-      <div className="classy-card p-2 sm:p-3">
+      <div className="classy-card p-2 sm:p-3 bg-white">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <button
             onClick={onOpenAddStudent}
@@ -869,7 +735,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <UserPlus className="w-4 h-4" />
             </div>
             <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#7657F6] transition-colors truncate">
-              إضافة طالب
+              {t('addStudent')}
             </span>
           </button>
 
@@ -881,7 +747,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Layers className="w-4 h-4" />
             </div>
             <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#403B9C] transition-colors truncate">
-              إضافة مجموعة
+              {t('createGroupBtn')}
             </span>
           </button>
 
@@ -893,7 +759,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <CalendarCheck2 className="w-4 h-4" />
             </div>
             <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#0284C7] transition-colors truncate">
-              جدولة حصة
+              {t('scheduleSessionBtn')}
             </span>
           </button>
 
@@ -905,7 +771,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <DollarSign className="w-4 h-4" />
             </div>
             <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#FF647C] transition-colors truncate">
-              تسجيل دفعة
+              {t('recordPayment')}
             </span>
           </button>
         </div>
@@ -922,7 +788,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black text-[#17163D]">
-                حصص اليوم الدراسي ({scheduledToday.length})
+                {isEn ? `Today's Sessions (${scheduledToday.length})` : `حصص اليوم الدراسي (${scheduledToday.length})`}
               </h2>
             </div>
           </div>
@@ -930,35 +796,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onNavigateToTab('sessions')}
             className="text-xs font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-1 cursor-pointer"
           >
-            <span>جدول الحصص</span>
+            <span>{t('sessionsTitle')}</span>
             <ArrowUpRight className="w-3.5 h-3.5 text-[#7657F6]" />
           </button>
         </div>
 
         {scheduledToday.length === 0 ? (
-          /* High-Fidelity Empty State with Official Classy Owl Mascot */
-          <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden">
+          <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-white">
             <div className="w-28 h-28 flex items-center justify-center">
               <ClassyOwlMascot size="lg" pose="waving" glow={true} />
             </div>
             <div className="max-w-md space-y-1">
               <h3 className="font-black text-[#17163D] text-sm sm:text-base">
-                لا توجد حصص مجدولة لليوم!
+                {isEn ? 'No sessions scheduled for today!' : 'لا توجد حصص مجدولة لليوم!'}
               </h3>
               <p className="text-xs text-[#74778F] font-medium leading-relaxed">
-                استمتع بيومك الهادئ أو قم بجدولة حصة تدريسية جديدة الآن بضغطة زر.
+                {isEn ? 'Enjoy your calm day or schedule a new teaching session now.' : 'استمتع بيومك الهادئ أو قم بجدولة حصة تدريسية جديدة الآن بضغطة زر.'}
               </p>
             </div>
             <button
               onClick={onOpenAddSession}
-              className="mt-2 px-5 py-2.5 rounded-2xl btn-violet text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+              className="mt-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>إضافة حصة اليوم</span>
+              <span>{isEn ? "Add Today's Session" : 'إضافة حصة اليوم'}</span>
             </button>
           </div>
         ) : (
-          /* Timeline Session Cards */
           <div className="space-y-2.5">
             {scheduledToday.map((item) => {
               const matchingSession = findSessionForScheduleItem(item);
@@ -976,7 +840,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`classy-card overflow-hidden transition-all ${
+                  className={`classy-card overflow-hidden transition-all bg-white ${
                     isRecorded ? 'border-emerald-200/80 bg-gradient-to-r from-emerald-50/30 to-white' : 'hover:border-[#7657F6]/40'
                   }`}
                 >
@@ -988,7 +852,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <span className={`text-[9px] font-extrabold block mt-0.5 px-2 py-0.2 rounded-full ${
                           item.isPrivate ? 'bg-[#FFF1F3] text-[#FF647C]' : 'bg-[#E8E7FF] text-[#403B9C]'
                         }`}>
-                          {item.isPrivate ? 'خاص' : 'مجموعة'}
+                          {item.isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
                         </span>
                       </div>
 
@@ -999,16 +863,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             style={{ backgroundColor: item.accentColor || '#7657F6' }}
                           />
                           <h3 className="font-black text-xs sm:text-sm text-[#191A2E] truncate">
-                            {item.isPrivate ? (item.studentName || 'درس خاص') : item.groupName}
+                            {item.isPrivate ? (item.studentName || (isEn ? 'Private Lesson' : 'درس خاص')) : item.groupName}
                           </h3>
                         </div>
 
                         <div className="flex items-center gap-2 text-[11px] text-[#74778F] flex-wrap font-medium">
-                          <span>{item.isPrivate ? 'درس خاص' : (item.subject || 'عام')}</span>
+                          <span>{item.isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (item.subject || (isEn ? 'General' : 'عام'))}</span>
                           {!item.isPrivate && (
                             <>
                               <span>•</span>
-                              <span>{groupStudents.length} طلاب</span>
+                              <span>{groupStudents.length} {isEn ? 'students' : 'طلاب'}</span>
                             </>
                           )}
                           {item.location && (
@@ -1033,27 +897,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             {presentCount > 0 ? (
                               <>
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>حضر</span>
+                                <span>{isEn ? 'Attended' : 'حضر'}</span>
                               </>
                             ) : (
-                              <span>لم يحضر</span>
+                              <span>{isEn ? 'Absent' : 'لم يحضر'}</span>
                             )}
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>حاضر {presentCount}/{groupStudents.length}</span>
+                            <span>{isEn ? 'Present' : 'حاضر'} {presentCount}/{groupStudents.length}</span>
                           </span>
                         )
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleMarkAllPresent(item)}
-                          className="min-h-[34px] px-3.5 py-1 rounded-xl btn-primary text-white font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
-                          title={item.isPrivate ? "تسجيل حضور الطالب" : "تسجيل حضور جميع الطلاب دفعة واحدة"}
+                          className="min-h-[34px] px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                          title={item.isPrivate ? (isEn ? 'Record attendance' : 'تسجيل حضور الطالب') : (isEn ? 'Mark all present' : 'تسجيل حضور جميع الطلاب دفعة واحدة')}
                         >
                           <UserCheck className="w-3.5 h-3.5" />
-                          <span>{item.isPrivate ? 'حضر' : 'حضور الكل'}</span>
+                          <span>{item.isPrivate ? (isEn ? 'Attended' : 'حضر') : (isEn ? 'All Present' : 'حضور الكل')}</span>
                         </button>
                       )}
 
@@ -1062,7 +926,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         type="button"
                         onClick={() => setExpandedAttendanceCardId(isExpanded ? null : item.id)}
                         className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] border border-[#E8E7FF] text-[#191A2E] transition-colors cursor-pointer"
-                        title="تفاصيل ورصد فردي"
+                        title={isEn ? 'Details & individual marking' : 'تفاصيل ورصد فردي'}
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -1073,8 +937,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {isExpanded && (
                     <div className="p-3 bg-[#F6F7FC] border-t border-[#E8E7FF] space-y-2 animate-in slide-in-from-top-1 duration-150">
                       <div className="flex items-center justify-between text-[11px] font-bold text-[#74778F] mb-1">
-                        <span>قائمة الطلاب ({groupStudents.length})</span>
-                        <span>رصد فردي مباشر</span>
+                        <span>{isEn ? `Students List (${groupStudents.length})` : `قائمة الطلاب (${groupStudents.length})`}</span>
+                        <span>{isEn ? 'Direct Individual Marking' : 'رصد فردي مباشر'}</span>
                       </div>
 
                       <div className="space-y-1.5">
@@ -1101,7 +965,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                       : 'bg-[#F6F7FC] text-[#74778F] hover:bg-emerald-50 hover:text-emerald-700'
                                   }`}
                                 >
-                                  حاضر
+                                  {isEn ? 'Present' : 'حاضر'}
                                 </button>
 
                                 <button
@@ -1113,7 +977,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                       : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#FFF1F3] hover:text-[#FF647C]'
                                   }`}
                                 >
-                                  غياب محسوب
+                                  {isEn ? 'Absent (Paid)' : 'غياب محسوب'}
                                 </button>
 
                                 <button
@@ -1125,7 +989,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                       : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]'
                                   }`}
                                 >
-                                  معتذر
+                                  {isEn ? 'Excused' : 'معتذر'}
                                 </button>
 
                                 <button
@@ -1137,7 +1001,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                       : 'bg-[#F6F7FC] text-[#74778F] hover:bg-amber-50 hover:text-amber-700'
                                   }`}
                                 >
-                                  متأخر
+                                  {isEn ? 'Late' : 'متأخر'}
                                 </button>
                               </div>
                             </div>
@@ -1152,7 +1016,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             onClick={() => onOpenAttendanceModal(matchingSession)}
                             className="text-[11px] font-bold text-[#7657F6] hover:text-[#403B9C] hover:underline flex items-center gap-1 cursor-pointer"
                           >
-                            <span>فتح نافذة الحضور الشاملة</span>
+                            <span>{isEn ? 'Open Full Attendance Modal' : 'فتح نافذة الحضور الشاملة'}</span>
                             <ArrowUpRight className="w-3.5 h-3.5 text-[#7657F6]" />
                           </button>
                         </div>
@@ -1167,12 +1031,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* =========================================================================
-          5. Bento Grid: Financial Summary & Weekly Calendar Strip
+          5. Financial Summary & Quick Tips Section
           ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-        
-        {/* Financial Summary & Monthly Overview Card */}
-        <div className="classy-card p-4 sm:p-5 space-y-3.5 flex flex-col justify-between">
+        {/* Financial Card */}
+        <div className="classy-card p-4 sm:p-5 space-y-3.5 flex flex-col justify-between bg-white">
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2.5 border-b border-[#E8E7FF]">
               <div className="flex items-center gap-2">
@@ -1181,10 +1044,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-xs sm:text-sm font-black text-[#17163D]">
-                    الملخص المالي (شهر {currentMonth})
+                    {isEn ? `Financial Summary (Month ${currentMonth})` : `الملخص المالي (شهر ${currentMonth})`}
                   </h3>
                   <p className="text-[10px] text-[#74778F] font-medium">
-                    متابعة الإيرادات والمستحقات المتبقية
+                    {isEn ? 'Revenues and outstanding dues' : 'متابعة الإيرادات والمستحقات المتبقية'}
                   </p>
                 </div>
               </div>
@@ -1192,477 +1055,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => onNavigateToTab('reports')}
                 className="text-xs font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-0.5 cursor-pointer"
               >
-                <span>التقرير المالي</span>
+                <span>{isEn ? 'Full Report' : 'التقرير المالي'}</span>
                 <ArrowUpRight className="w-3.5 h-3.5 text-[#7657F6]" />
               </button>
             </div>
 
-            {/* 3 Metric Stats */}
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="p-2.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                <span className="text-sm sm:text-base font-black text-emerald-700 block tracking-tight truncate">
-                  {totalMonthRevenue} <span className="text-[10px] text-[#74778F]">ج.م</span>
-                </span>
-                <span className="text-[10px] font-bold text-[#74778F] mt-0.5 block truncate">
-                  محصل الشهر
-                </span>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="bg-[#F6F7FC] p-3 rounded-2xl border border-[#E8E7FF]">
+                <span className="text-[10px] text-[#74778F] font-bold block">{t('monthlyRevenue')}</span>
+                <strong className="text-base sm:text-lg font-black text-[#17163D] block mt-0.5">
+                  {totalMonthRevenue} <span className="text-[10px] text-[#74778F]">{t('currency')}</span>
+                </strong>
               </div>
-
-              <div className="p-2.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF]">
-                <span className="text-sm sm:text-base font-black text-[#17163D] block tracking-tight truncate">
-                  {totalTodayRevenue} <span className="text-[10px] text-[#74778F]">ج.م</span>
-                </span>
-                <span className="text-[10px] font-bold text-[#74778F] mt-0.5 block truncate">
-                  تحصيل اليوم
-                </span>
+              <div className="bg-[#FFF1F3] p-3 rounded-2xl border border-[#FECDD3]">
+                <span className="text-[10px] text-[#FF647C] font-bold block">{t('totalPendingDues')}</span>
+                <strong className="text-base sm:text-lg font-black text-[#FF647C] block mt-0.5">
+                  {totalOutstandingDues} <span className="text-[10px] text-[#FF647C]">{t('currency')}</span>
+                </strong>
               </div>
-
-              <div className="p-2.5 rounded-2xl bg-[#FFF1F3] border border-[#FECDD3]">
-                <span className="text-sm sm:text-base font-black text-[#FF647C] block tracking-tight truncate">
-                  {totalOutstandingDues} <span className="text-[10px] text-[#FF647C]/80">ج.م</span>
-                </span>
-                <span className="text-[10px] font-bold text-[#FF647C] mt-0.5 block truncate">
-                  مستحقات
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Financial Collection Meter */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between text-[11px] font-bold text-[#74778F]">
-              <span>نسبة التحصيل التقديرية</span>
-              <span>
-                {totalMonthRevenue + totalOutstandingDues > 0
-                  ? `${Math.round((totalMonthRevenue / (totalMonthRevenue + totalOutstandingDues)) * 100)}%`
-                  : '100%'}
-              </span>
-            </div>
-            <div className="w-full bg-[#E8E7FF] h-2.5 rounded-full overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-[#7657F6] to-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${
-                    totalMonthRevenue + totalOutstandingDues > 0
-                      ? Math.min(100, (totalMonthRevenue / (totalMonthRevenue + totalOutstandingDues)) * 100)
-                      : 100
-                  }%`,
-                }}
-              />
             </div>
           </div>
         </div>
 
-        {/* Weekly Calendar Strip Widget */}
-        <div className="classy-card p-4 sm:p-5 space-y-3.5 flex flex-col justify-between">
+        {/* Quick Tips & Recommendations */}
+        <div className="classy-card p-4 sm:p-5 space-y-3 bg-white">
           <div className="flex items-center justify-between pb-2.5 border-b border-[#E8E7FF]">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center font-bold shadow-2xs">
-                <Calendar className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                <Lightbulb className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-xs sm:text-sm font-black text-[#17163D]">
-                  الجدول الأسبوعي السريع
-                </h3>
-                <p className="text-[10px] text-[#74778F] font-medium">
-                  استعراض الحصص الموزعة على مدار الأسبوع
-                </p>
+                <h3 className="text-xs sm:text-sm font-black text-[#17163D]">{isEn ? 'Smart Insights & Tips' : 'نصائح وإرشادات ذكية'}</h3>
+                <p className="text-[10px] text-[#74778F] font-medium">{isEn ? 'Proactive recommendations for your classes' : 'توصيات لتحسين المتابعة والتحصيل'}</p>
               </div>
             </div>
-            <button
-              onClick={() => onNavigateToTab('sessions')}
-              className="text-xs font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-1 cursor-pointer"
-            >
-              <span>كل الحصص</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-            {calendarDays.map((day) => {
-              const isSelected = selectedCalendarDate === day.dateStr;
-              return (
-                <button
-                  key={day.dateStr}
-                  onClick={() => setSelectedCalendarDate(day.dateStr)}
-                  className={`py-2.5 px-0.5 sm:px-1 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
-                    day.isToday
-                      ? 'bg-gradient-to-b from-[#17163D] to-[#403B9C] text-white shadow-md shadow-[#17163D]/20 ring-2 ring-[#7657F6]/40'
-                      : isSelected
-                      ? 'bg-[#E8E7FF] text-[#7657F6] border border-[#D8D5FB]'
-                      : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]/50'
-                  }`}
-                >
-                  <span className="text-[9px] sm:text-[10px] font-bold block">{day.dayName}</span>
-                  <span className="text-xs sm:text-sm font-black block mt-0.5">{day.dayNum}</span>
-                  {day.sessionCount > 0 && (
-                    <span className={`w-1.5 h-1.5 rounded-full mt-1 ${day.isToday ? 'bg-[#FF647C]' : 'bg-[#7657F6]'}`} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-      </div>
-
-      {/* =========================================================================
-          6. Bento Grid: Smart AI Attendance Insights & Personalized Quick Tips
-          ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-        
-        {/* Smart AI Attendance Insights Card */}
-        {insights && (
-          <div className="classy-card p-4 sm:p-5 space-y-3 border-[#7657F6]/30 bg-gradient-to-br from-white to-[#E8E7FF]/25 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#E8E7FF]">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#7657F6] to-[#403B9C] text-white flex items-center justify-center shadow-md shadow-[#7657F6]/20">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xs sm:text-sm font-black text-[#17163D]">تحليلات الحضور الذكية</h3>
-                      <span className="px-2 py-0.2 rounded-full text-[9px] font-bold bg-[#E8E7FF] text-[#7657F6]">AI</span>
-                    </div>
-                    <p className="text-[10px] text-[#74778F] font-medium">مؤشر التزام الحضور: {insights.overallHealthScore}%</p>
-                  </div>
+          <div className="space-y-2">
+            {activeQuickTips.slice(0, 3).map((tip) => (
+              <div
+                key={tip.id}
+                onClick={() => handleQuickTipAction(tip)}
+                className="p-3 rounded-2xl bg-[#F6F7FC] hover:bg-[#E8E7FF]/50 border border-[#E8E7FF] flex items-center justify-between gap-2 transition-all cursor-pointer"
+              >
+                <div className="space-y-0.5 min-w-0">
+                  <h4 className="font-bold text-xs text-[#17163D] truncate">{tip.title}</h4>
+                  <p className="text-[11px] text-[#74778F] line-clamp-1">{tip.description}</p>
                 </div>
-
-                <button
-                  onClick={loadInsights}
-                  disabled={isLoadingInsights}
-                  className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] border border-[#E8E7FF] transition-colors cursor-pointer"
-                  title="تحديث التحليل الذكي"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingInsights ? 'animate-spin text-[#7657F6]' : ''}`} />
-                </button>
-              </div>
-
-              <div className="p-3 bg-white rounded-2xl border border-[#E8E7FF] space-y-1 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-xs font-black text-[#17163D]">
-                  <BrainCircuit className="w-4 h-4 text-[#7657F6] shrink-0" />
-                  <span>{insights.headline}</span>
-                </div>
-                <p className="text-[11px] text-[#74778F] font-medium leading-relaxed">{insights.summary}</p>
-              </div>
-
-              {insights.attentionNeededStudents && insights.attentionNeededStudents.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  <span className="text-[11px] font-bold text-[#191A2E] block">طلاب بحاجة لاهتمام وتواصل:</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {insights.attentionNeededStudents.map((st) => {
-                      const studentObj = students.find((s) => s.id === st.studentId);
-                      const isHigh = st.riskLevel === 'high';
-                      return (
-                        <div
-                          key={st.studentId}
-                          className={`p-2.5 rounded-2xl bg-white border flex items-center justify-between gap-2 shadow-2xs ${
-                            isHigh ? 'border-[#FECDD3]' : 'border-amber-200'
-                          }`}
-                        >
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-2 h-2 rounded-full ${isHigh ? 'bg-[#FF647C]' : 'bg-amber-500'}`} />
-                              <h4 className="font-bold text-xs text-[#191A2E] truncate">{st.studentName}</h4>
-                            </div>
-                            <p className="text-[10px] text-[#74778F] truncate">{st.reason}</p>
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            {st.parentPhone && (
-                              <a
-                                href={`https://wa.me/${st.parentPhone.replace(/[^0-9]/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                                title="واتساب"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" />
-                              </a>
-                            )}
-                            {studentObj && (
-                              <button
-                                onClick={() => onOpenStudentProfile(studentObj)}
-                                className="px-2 py-1 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#17163D] text-[10px] font-bold cursor-pointer"
-                              >
-                                الملف
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Personalized Quick Tips Bento Slot */}
-        {activeQuickTips.length > 0 && (
-          <div className="classy-card p-4 sm:p-5 space-y-3 bg-gradient-to-br from-white via-amber-50/20 to-white border-amber-200/60 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#E8E7FF]">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-700 flex items-center justify-center shadow-2xs">
-                    <Lightbulb className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xs sm:text-sm font-black text-[#17163D]">
-                        نصائح ومقترحات المتابعة
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-800">
-                        {activeQuickTips.length} مقترحات
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-[#74778F] font-medium">
-                      إرشادات إدارية وتربوية مبنية على حالة البيانات
-                    </p>
-                  </div>
-                </div>
-
-                {dismissedTipIds.length > 0 && (
-                  <button
-                    onClick={() => setDismissedTipIds([])}
-                    className="text-[11px] font-bold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
-                  >
-                    استعادة
-                  </button>
+                {tip.actionLabel && (
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-white border border-[#E8E7FF] text-[#7657F6] shrink-0">
+                    {tip.actionLabel}
+                  </span>
                 )}
               </div>
-
-              <div className="space-y-2">
-                {activeQuickTips.slice(0, 3).map((tip) => {
-                  const isHigh = tip.priority === 'high';
-                  const isAchievement = tip.category === 'achievement';
-
-                  return (
-                    <div
-                      key={tip.id}
-                      className={`p-3 rounded-2xl bg-white border flex flex-col justify-between gap-2 transition-all shadow-2xs ${
-                        isHigh
-                          ? 'border-amber-200 hover:border-amber-300'
-                          : isAchievement
-                          ? 'border-[#7657F6]/30 hover:border-[#7657F6]'
-                          : 'border-[#E8E7FF] hover:border-[#7657F6]/40'
-                      }`}
-                    >
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span
-                              className={`text-[9px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
-                                isHigh
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : isAchievement
-                                  ? 'bg-[#E8E7FF] text-[#7657F6]'
-                                  : 'bg-[#F6F7FC] text-[#74778F]'
-                              }`}
-                            >
-                              {tip.badge}
-                            </span>
-                            <h4 className="font-bold text-xs text-[#191A2E] truncate">{tip.title}</h4>
-                          </div>
-
-                          <button
-                            onClick={() => setDismissedTipIds((prev) => [...prev, tip.id])}
-                            className="text-[#74778F] hover:text-[#191A2E] p-0.5 rounded-md cursor-pointer transition-colors"
-                            title="إخفاء هذه النصيحة"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        <p className="text-[11px] text-[#74778F] leading-relaxed font-medium">
-                          {tip.description}
-                        </p>
-                      </div>
-
-                      {tip.actionLabel && (
-                        <div className="pt-1.5 border-t border-[#E8E7FF] flex items-center justify-end">
-                          <button
-                            onClick={() => handleQuickTipAction(tip)}
-                            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer shadow-2xs ${
-                              isHigh
-                                ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                                : 'btn-violet text-white'
-                            }`}
-                          >
-                            <span>{tip.actionLabel}</span>
-                            <ArrowUpRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            ))}
           </div>
-        )}
-
-      </div>
-
-      {/* =========================================================================
-          7. Recent Activity Stream Timeline
-          ========================================================================= */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center font-bold">
-              <Activity className="w-4 h-4" />
-            </div>
-            <h2 className="text-xs sm:text-sm font-black text-[#17163D]">
-              سجل النشاطات الأخيرة
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigateToTab('reports')}
-            className="text-xs font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-0.5 cursor-pointer"
-          >
-            <span>كل السجلات</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-[#7657F6]" />
-          </button>
-        </div>
-
-        <div className="classy-card p-3.5 sm:p-4 space-y-2.5">
-          {cachedPaymentStats.recentLogs.length === 0 && cachedAttendanceStats.recentLogs.length === 0 ? (
-            <div className="text-center py-4 space-y-1">
-              <p className="text-xs font-bold text-[#17163D]">لا توجد نشاطات مسجلة بعد</p>
-              <p className="text-[11px] text-[#74778F]">ستظهر هنا تلقائياً سجلات الحضور والمدفوعات فور تسجيلها</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {/* Payment logs */}
-              {cachedPaymentStats.recentLogs.slice(0, 2).map((p) => (
-                <div
-                  key={`pay_${p.id}`}
-                  className="p-2.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                      <DollarSign className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-[#191A2E] truncate">
-                        تحصيل دفعة من {p.studentName}
-                      </h4>
-                      <p className="text-[10px] text-[#74778F] font-medium">
-                        {p.groupName} • {p.date}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-emerald-700 shrink-0">
-                    +{p.amount} ج.م
-                  </span>
-                </div>
-              ))}
-
-              {/* Attendance logs */}
-              {cachedAttendanceStats.recentLogs.slice(0, 2).map((a) => (
-                <div
-                  key={`att_${a.id}`}
-                  className="p-2.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center shrink-0">
-                      <UserCheck className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-[#191A2E] truncate">
-                        تسجيل حضور {a.studentName}
-                      </h4>
-                      <p className="text-[10px] text-[#74778F] font-medium">
-                        {a.groupName} • {a.date}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
-                    {a.status === 'present' ? 'حاضر' : a.status === 'late' ? 'متأخر' : 'غياب'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
-
-      {/* =========================================================================
-          8. Active Groups Bento Grid Section
-          ========================================================================= */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center font-bold">
-              <Layers className="w-4 h-4" />
-            </div>
-            <h2 className="text-xs sm:text-sm font-black text-[#17163D]">
-              المجموعات النشطة ({regularGroups.length})
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigateToTab('groups')}
-            className="text-xs font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-0.5 cursor-pointer"
-          >
-            <span>عرض الكل</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {regularGroups.length === 0 ? (
-          <div className="classy-card p-6 text-center space-y-1">
-            <p className="font-black text-[#17163D] text-xs">لا توجد مجموعات بعد</p>
-            <p className="text-[11px] text-[#74778F]">ابدأ بإنشاء مجموعتك الأولى لتنظيم الطلاب وحصصهم</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {regularGroups.slice(0, 4).map((group) => {
-              const count = db.getGroupEnrollments(group.id).length;
-              return (
-                <div
-                  key={group.id}
-                  onClick={() => onOpenGroupProfile(group)}
-                  className="classy-card classy-card-hover p-3.5 transition-all cursor-pointer flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className="w-3 h-3 rounded-full shrink-0 shadow-2xs"
-                      style={{ backgroundColor: group.accentColor || '#7657F6' }}
-                    />
-                    <div className="min-w-0 space-y-0.5">
-                      <h4 className="font-bold text-xs text-[#191A2E] truncate">{group.name}</h4>
-                      <p className="text-[10px] text-[#74778F] truncate font-medium">
-                        {group.subject} • {getLocalizedStageName(group.gradeLevel)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-left shrink-0 pl-1">
-                    <span className="text-xs font-black text-[#7657F6] bg-[#E8E7FF] px-2.5 py-0.5 rounded-full border border-[#D8D5FB]">
-                      {count} طالب
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Floating Quick Action Button (FAB) */}
-      <div className="fixed bottom-22 left-6 z-20">
-        <button
-          onClick={onOpenAddSession}
-          className="w-13 h-13 rounded-full btn-coral text-white flex items-center justify-center shadow-xl shadow-[#FF647C]/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          title="جدولة حصة سريعة"
-        >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
-        </button>
-      </div>
-
     </div>
   );
 };

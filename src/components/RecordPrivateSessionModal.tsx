@@ -18,7 +18,17 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   student,
   onSaveComplete,
 }) => {
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
+
+  const PREDEFINED_REASONS = [
+    isEn ? 'Student Cancelled' : 'الطالب ألغى',
+    isEn ? 'Teacher Cancelled' : 'المدرس ألغى',
+    isEn ? 'Illness / Medical' : 'مرض',
+    isEn ? 'Emergency' : 'ظرف طارئ',
+    isEn ? 'Other Reason' : 'سبب آخر',
+  ];
+
   const todayStr = new Date().toISOString().split('T')[0];
   const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -41,7 +51,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const [sessionCount, setSessionCount] = useState<number>(1);
   const [hours, setHours] = useState<number>(1.5);
   const [attendanceType, setAttendanceType] = useState<'present' | 'absent_charged' | 'absent_free' | 'cancelled'>('present');
-  const [absenceReason, setAbsenceReason] = useState<string>('الطالب ألغى');
+  const [absenceReason, setAbsenceReason] = useState<string>(PREDEFINED_REASONS[0]);
   const [customReason, setCustomReason] = useState<string>('');
   const [title, setTitle] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -118,13 +128,12 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     setIsSubmitting(true);
 
     try {
-      // Find or create private service group if none exists
       let targetGroupId = activeGroup?.id;
       let targetEnrollmentId = activeEnrollment?.id;
 
       if (!targetGroupId || !targetEnrollmentId) {
         const created = db.createPrivateLessonService(student.id, {
-          subject: 'مادة الدرس الخاص',
+          subject: isEn ? 'Private Subject' : 'مادة الدرس الخاص',
           sessionPrice: 100,
           billingType: 'prepaid',
           billingMode: 'prepaid',
@@ -134,7 +143,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
       }
 
       const finalReason = attendanceType === 'absent_free' || attendanceType === 'cancelled'
-        ? (absenceReason === 'سبب آخر' ? (customReason.trim() || 'سبب آخر') : absenceReason)
+        ? (absenceReason === (isEn ? 'Other Reason' : 'سبب آخر') ? (customReason.trim() || (isEn ? 'Other Reason' : 'سبب آخر')) : absenceReason)
         : undefined;
 
       db.recordPrivateSessionsForStudent({
@@ -158,7 +167,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
       onClose();
     } catch (err) {
       console.error('Error recording private sessions:', err);
-      alert('حدث خطأ أثناء تسجيل الحصص. يرجى المحاولة مرة أخرى.');
+      alert(isEn ? 'An error occurred while saving. Please try again.' : 'حدث خطأ أثناء تسجيل الحصص. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
@@ -185,10 +194,10 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             </div>
             <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
-                تسجيل حصة Private
+                {isEn ? 'Record Private Class' : 'تسجيل حصة Private'}
               </h2>
               <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
-                الطالب: <strong className="text-white font-black">{student.name}</strong>
+                {isEn ? 'Student:' : 'الطالب:'} <strong className="text-white font-black">{student.name}</strong>
               </p>
             </div>
           </div>
@@ -197,6 +206,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             type="button"
             onClick={onClose}
             className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+            title={t('close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -210,7 +220,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             <div className="classy-card p-3.5 space-y-1.5">
               <label className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-[#7657F6]" />
-                <span>اختر المادة / الاشتراك الخاص:</span>
+                <span>{isEn ? 'Select Private Service / Subject:' : 'اختر المادة / الاشتراك الخاص:'}</span>
               </label>
               <select
                 value={selectedEnrollmentId}
@@ -221,7 +231,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   const grp = allGroups.find((g) => g.id === enr.groupId);
                   return (
                     <option key={enr.id} value={enr.id}>
-                      {grp?.name || 'درس خاص'} ({enr.billingMode === 'hourly' ? 'بالساعة' : enr.billingMode === 'package' ? 'باقة' : enr.billingMode === 'postpaid' ? 'آجل' : 'مسبق'})
+                      {grp?.name || (isEn ? 'Private Lesson' : 'درس خاص')} ({enr.billingMode === 'hourly' ? (isEn ? 'Hourly' : 'بالساعة') : enr.billingMode === 'package' ? (isEn ? 'Package' : 'باقة') : enr.billingMode === 'postpaid' ? (isEn ? 'Postpaid' : 'آجل') : (isEn ? 'Prepaid' : 'مسبق')})
                     </option>
                   );
                 })}
@@ -234,7 +244,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             <div className="classy-card p-3 space-y-1">
               <label className="font-black text-xs text-[#17163D] flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-[#7657F6]" />
-                <span>التاريخ:</span>
+                <span>{isEn ? 'Date:' : 'التاريخ:'}</span>
               </label>
               <input
                 type="date"
@@ -248,7 +258,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             <div className="classy-card p-3 space-y-1">
               <label className="font-black text-xs text-[#17163D] flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
-                <span>وقت البدء:</span>
+                <span>{isEn ? 'Start Time:' : 'وقت البدء:'}</span>
               </label>
               <input
                 type="time"
@@ -266,11 +276,10 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               <div className="flex items-center justify-between">
                 <label className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
                   <Timer className="w-4 h-4 text-[#7657F6]" />
-                  <span>مدة الحصة بالساعات:</span>
+                  <span>{isEn ? 'Duration in Hours:' : 'مدة الحصة بالساعات:'}</span>
                 </label>
                 <span className="text-xs font-black text-[#7657F6]">
-                  {hours} {hours === 1 ? 'ساعة' : hours === 2 ? 'ساعتان' : 'ساعة'}
-                  {Math.round((hours % 1) * 60) > 0 ? ` (${Math.floor(hours)} س و ${Math.round((hours % 1) * 60)} د)` : ''}
+                  {hours} {isEn ? 'hours' : (hours === 1 ? 'ساعة' : hours === 2 ? 'ساعتان' : 'ساعة')}
                 </span>
               </div>
 
@@ -302,13 +311,13 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
               {/* Quick presets for hours */}
               <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                <span className="text-[11px] text-[#74778F] font-bold">خيارات سريعة:</span>
+                <span className="text-[11px] text-[#74778F] font-bold">{isEn ? 'Quick presets:' : 'خيارات سريعة:'}</span>
                 {[
-                  { val: 1, label: '1 س' },
-                  { val: 1.5, label: '1.5 س (1:30)' },
-                  { val: 2, label: '2 س' },
-                  { val: 2.5, label: '2.5 س (2:30)' },
-                  { val: 3, label: '3 س' },
+                  { val: 1, label: isEn ? '1 hr' : '1 س' },
+                  { val: 1.5, label: isEn ? '1.5 hrs' : '1.5 س (1:30)' },
+                  { val: 2, label: isEn ? '2 hrs' : '2 س' },
+                  { val: 2.5, label: isEn ? '2.5 hrs' : '2.5 س (2:30)' },
+                  { val: 3, label: isEn ? '3 hrs' : '3 س' },
                 ].map((preset) => (
                   <button
                     key={preset.val}
@@ -330,9 +339,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               <div className="flex items-center justify-between">
                 <label className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
                   <Hash className="w-4 h-4 text-[#7657F6]" />
-                  <span>عدد الحصص المسجلة:</span>
+                  <span>{isEn ? 'Session Count:' : 'عدد الحصص المسجلة:'}</span>
                 </label>
-                <span className="text-[11px] font-bold text-[#74778F]">حصة واحدة أو أكثر</span>
+                <span className="text-[11px] font-bold text-[#74778F]">{isEn ? '1 or more sessions' : 'حصة واحدة أو أكثر'}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -363,7 +372,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
               {/* Quick Presets for Sessions */}
               <div className="flex items-center gap-1.5 pt-1">
-                <span className="text-[11px] text-[#74778F] font-bold">اختيار سريع:</span>
+                <span className="text-[11px] text-[#74778F] font-bold">{isEn ? 'Quick Select:' : 'اختيار سريع:'}</span>
                 {[1, 2, 3, 4].map((cnt) => (
                   <button
                     key={cnt}
@@ -375,7 +384,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                         : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]'
                     }`}
                   >
-                    {cnt} {cnt === 1 ? 'حصة' : 'حصص'}
+                    {cnt} {isEn ? (cnt === 1 ? 'class' : 'classes') : (cnt === 1 ? 'حصة' : 'حصص')}
                   </button>
                 ))}
               </div>
@@ -385,11 +394,11 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
           {/* Attendance Status Selection */}
           <div className="classy-card p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-black text-[#17163D] text-xs">حالة الحضور والاحتساب:</span>
+              <span className="font-black text-[#17163D] text-xs">{isEn ? 'Attendance Status:' : 'حالة الحضور والاحتساب:'}</span>
               <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
                 isCharged ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]' : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF]'
               }`}>
-                {isCharged ? 'محسوبة (تستهلك رصيد)' : 'غير محسوبة (معفية)'}
+                {isCharged ? (isEn ? 'Charged (Consumes Credit)' : 'محسوبة (تستهلك رصيد)') : (isEn ? 'Exempt (Free)' : 'غير محسوبة (معفية)')}
               </span>
             </div>
 
@@ -403,9 +412,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                     : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                 }`}
               >
-                <span>✓ حاضر (مستهلكة)</span>
+                <span>{isEn ? '✓ Present' : '✓ حاضر (مستهلكة)'}</span>
                 <span className={`text-[10px] ${attendanceType === 'present' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  حضور فعلي
+                  {isEn ? 'Attended' : 'حضور فعلي'}
                 </span>
               </button>
 
@@ -418,9 +427,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                     : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#FFF1F3]'
                 }`}
               >
-                <span>⚠️ غائب (محسوبة)</span>
+                <span>{isEn ? '⚠️ Absent (Charged)' : '⚠️ غائب (محسوبة)'}</span>
                 <span className={`text-[10px] ${attendanceType === 'absent_charged' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  غياب بدون عذر
+                  {isEn ? 'Unexcused absence' : 'غياب بدون عذر'}
                 </span>
               </button>
 
@@ -433,9 +442,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                     : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                 }`}
               >
-                <span>ℹ️ غائب (غير محسوبة)</span>
+                <span>{isEn ? 'ℹ️ Absent (Free)' : 'ℹ️ غائب (غير محسوبة)'}</span>
                 <span className={`text-[10px] ${attendanceType === 'absent_free' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  غياب بعذر معفى
+                  {isEn ? 'Excused absence' : 'غياب بعذر معفى'}
                 </span>
               </button>
 
@@ -448,9 +457,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                     : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
                 }`}
               >
-                <span>🚫 حصة ملغاة</span>
+                <span>{isEn ? '🚫 Cancelled' : '🚫 حصة ملغاة'}</span>
                 <span className={`text-[10px] ${attendanceType === 'cancelled' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  إلغاء مسبق
+                  {isEn ? 'Pre-cancelled' : 'إلغاء مسبق'}
                 </span>
               </button>
             </div>
@@ -459,10 +468,10 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             {(attendanceType === 'absent_free' || attendanceType === 'cancelled') && (
               <div className="pt-2 border-t border-[#E8E7FF] space-y-2 animate-in fade-in duration-150">
                 <label className="text-[11px] font-black text-[#17163D] block">
-                  سبب {attendanceType === 'cancelled' ? 'الإلغاء' : 'الغياب المعفى'}:
+                  {isEn ? 'Reason:' : `سبب ${attendanceType === 'cancelled' ? 'الإلغاء' : 'الغياب المعفى'}:`}
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {['الطالب ألغى', 'المدرس ألغى', 'مرض', 'ظرف طارئ', 'سبب آخر'].map((rsn) => (
+                  {PREDEFINED_REASONS.map((rsn) => (
                     <button
                       key={rsn}
                       type="button"
@@ -477,10 +486,10 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                     </button>
                   ))}
                 </div>
-                {absenceReason === 'سبب آخر' && (
+                {absenceReason === (isEn ? 'Other Reason' : 'سبب آخر') && (
                   <input
                     type="text"
-                    placeholder="اكتب سبب الإلغاء أو الغياب..."
+                    placeholder={isEn ? 'Write detailed reason...' : 'اكتب سبب الإلغاء أو الغياب...'}
                     value={customReason}
                     onChange={(e) => setCustomReason(e.target.value)}
                     className="classy-input mt-1"
@@ -495,83 +504,83 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             {isHourly ? (
               <>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">نظام المحاسبة:</span>
+                  <span className="text-[#74778F] font-bold">{isEn ? 'Billing Mode:' : 'نظام المحاسبة:'}</span>
                   <span className="font-black text-[#7657F6] px-2.5 py-0.5 rounded-full bg-[#E8E7FF]">
-                    محاسبة بالساعة (Hourly)
+                    {isEn ? 'Hourly Billing' : 'محاسبة بالساعة (Hourly)'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">سعر الساعة:</span>
-                  <strong className="text-[#191A2E] font-black">{hourlyRate} ج.م / ساعة</strong>
+                  <span className="text-[#74778F] font-bold">{isEn ? 'Hourly Rate:' : 'سعر الساعة:'}</span>
+                  <strong className="text-[#191A2E] font-black">{hourlyRate} {t('currency')} / hr</strong>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">مدة الحصة:</span>
-                  <strong className="text-[#191A2E] font-black">{hours} ساعة</strong>
+                  <span className="text-[#74778F] font-bold">{isEn ? 'Duration:' : 'مدة الحصة:'}</span>
+                  <strong className="text-[#191A2E] font-black">{hours} {isEn ? 'hours' : 'ساعة'}</strong>
                 </div>
 
                 <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
                   <div>
-                    <span className="font-black text-xs text-[#17163D] block">إجمالي قيمة الحصة:</span>
-                    <span className="text-[10px] text-[#74778F] font-medium">{hours} ساعة × {hourlyRate} ج.م</span>
+                    <span className="font-black text-xs text-[#17163D] block">{isEn ? 'Total Class Value:' : 'إجمالي قيمة الحصة:'}</span>
+                    <span className="text-[10px] text-[#74778F] font-medium">{hours} hrs × {hourlyRate} {t('currency')}</span>
                   </div>
-                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} ج.م</span>
+                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} {t('currency')}</span>
                 </div>
               </>
             ) : isPackage ? (
               <>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">نظام المحاسبة:</span>
+                  <span className="text-[#74778F] font-bold">{isEn ? 'Billing Mode:' : 'نظام المحاسبة:'}</span>
                   <span className="font-black text-[#7657F6] px-2.5 py-0.5 rounded-full bg-[#E8E7FF]">
-                    باقة حصص (Package)
+                    {isEn ? 'Session Package' : 'باقة حصص (Package)'}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 p-2.5 bg-[#F6F7FC] rounded-2xl text-xs border border-[#E8E7FF]">
                   <div>
-                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">إجمالي الباقة:</span>
-                    <strong className="text-[#191A2E] font-black text-xs">{packageTotalPrice} ج.م</strong>
+                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">{isEn ? 'Package Total:' : 'إجمالي الباقة:'}</span>
+                    <strong className="text-[#191A2E] font-black text-xs">{packageTotalPrice} {t('currency')}</strong>
                   </div>
                   <div>
-                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">عدد حصص الباقة:</span>
-                    <strong className="text-[#191A2E] font-black text-xs">{packageSessionsCount} حصص</strong>
+                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">{isEn ? 'Package Sessions:' : 'عدد حصص الباقة:'}</span>
+                    <strong className="text-[#191A2E] font-black text-xs">{packageSessionsCount} {isEn ? 'sessions' : 'حصص'}</strong>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-[#74778F] font-bold">سعر الحصة الفعلي:</span>
-                  <strong className="text-[#191A2E] font-black text-sm text-emerald-600">{effectiveSessionPrice} ج.م</strong>
+                  <span className="text-[#74778F] font-bold">{isEn ? 'Effective Per Session:' : 'سعر الحصة الفعلي:'}</span>
+                  <strong className="text-[#191A2E] font-black text-sm text-emerald-600">{effectiveSessionPrice} {t('currency')}</strong>
                 </div>
 
                 <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
                   <div>
-                    <span className="font-black text-xs text-[#17163D] block">إجمالي قيمة الحصص:</span>
-                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} ج.م</span>
+                    <span className="font-black text-xs text-[#17163D] block">{isEn ? 'Total Sessions Value:' : 'إجمالي قيمة الحصص:'}</span>
+                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} {t('currency')}</span>
                   </div>
-                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} ج.م</span>
+                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} {t('currency')}</span>
                 </div>
               </>
             ) : (
               <>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">نظام المحاسبة:</span>
+                  <span className="text-[#74778F] font-bold">{isEn ? 'Billing Mode:' : 'نظام المحاسبة:'}</span>
                   <span className="font-black text-[#17163D] px-2 py-0.5 rounded-lg bg-[#F6F7FC]">
-                    {isPostpaid ? 'دفع آجل (Postpaid)' : 'دفع مسبق (Prepaid)'}
+                    {isPostpaid ? (isEn ? 'Postpaid' : 'دفع آجل (Postpaid)') : (isEn ? 'Prepaid' : 'دفع مسبق (Prepaid)')}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">سعر الحصة:</span>
-                  <strong className="text-[#191A2E] font-black">{effectiveSessionPrice} ج.م</strong>
+                  <span className="text-[#74778F] font-bold">{isEn ? 'Session Price:' : 'سعر الحصة:'}</span>
+                  <strong className="text-[#191A2E] font-black">{effectiveSessionPrice} {t('currency')}</strong>
                 </div>
 
                 <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
                   <div>
-                    <span className="font-black text-xs text-[#17163D] block">إجمالي القيمة:</span>
-                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} ج.م</span>
+                    <span className="font-black text-xs text-[#17163D] block">{isEn ? 'Total Value:' : 'إجمالي القيمة:'}</span>
+                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} {t('currency')}</span>
                   </div>
-                  <span className="text-sm font-black text-[#7657F6]">{totalSessionValue} ج.م</span>
+                  <span className="text-sm font-black text-[#7657F6]">{totalSessionValue} {t('currency')}</span>
                 </div>
               </>
             )}
@@ -581,11 +590,11 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
           <div className="classy-card p-3.5 space-y-1.5">
             <label className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
               <AlignRight className="w-3.5 h-3.5 text-[#7657F6]" />
-              <span>عنوان أو موضوع الحصة (اختياري):</span>
+              <span>{isEn ? 'Topic / Class Title (Optional):' : 'عنوان أو موضوع الحصة (اختياري):'}</span>
             </label>
             <input
               type="text"
-              placeholder="مثال: مراجعة الوحدة الأولى / حل تدريبات"
+              placeholder={isEn ? 'e.g. Chapter 1 Revision' : 'مثال: مراجعة الوحدة الأولى / حل تدريبات'}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="classy-input"
@@ -595,11 +604,11 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
           {/* Optional Notes */}
           <div className="classy-card p-3.5 space-y-1.5">
             <label className="font-black text-xs text-[#17163D]">
-              ملاحظات الحصة (اختياري):
+              {isEn ? 'Class Notes (Optional):' : 'ملاحظات الحصة (اختياري):'}
             </label>
             <textarea
               rows={2}
-              placeholder="أي ملاحظات خاصة بأداء الطالب أو الحصة..."
+              placeholder={isEn ? 'Any notes regarding student performance...' : 'أي ملاحظات خاصة بأداء الطالب أو الحصة...'}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="classy-textarea"
@@ -621,7 +630,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#7657F6]/30 active:scale-95 transition-all disabled:opacity-50 cursor-pointer hover:brightness-105"
             >
               <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
-              <span>{isHourly ? `تأكيد تسجيل (${hours} س) Private` : `تأكيد تسجيل (${sessionCount}) حصة Private`}</span>
+              <span>{isHourly ? (isEn ? `Confirm (${hours} hrs) Private` : `تأكيد تسجيل (${hours} س) Private`) : (isEn ? `Confirm (${sessionCount}) Private Class` : `تأكيد تسجيل (${sessionCount}) حصة Private`)}</span>
             </button>
           </div>
 

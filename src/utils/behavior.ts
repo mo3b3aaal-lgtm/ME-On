@@ -1,11 +1,12 @@
 import { PredefinedBehaviorTag, BehaviorCategory, StudentBehaviorLog } from '../types';
+import { getAppLanguage } from './i18n';
 
 export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   // Positive Tags
   {
     id: 'excellent_participation',
     name: 'مشاركة وتفاعل ممتاز',
-    nameEn: 'Excellent participation',
+    nameEn: 'Excellent participation and engagement',
     category: 'positive',
     emoji: '🌟',
     points: 10,
@@ -16,7 +17,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'outstanding_homework',
     name: 'حل واجب متقن ومثالي',
-    nameEn: 'Outstanding homework',
+    nameEn: 'Outstanding homework completion',
     category: 'positive',
     emoji: '📚',
     points: 10,
@@ -27,7 +28,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'great_focus',
     name: 'تركيز وانتباه عالي',
-    nameEn: 'Great focus & attention',
+    nameEn: 'Strong focus and attention',
     category: 'positive',
     emoji: '🎯',
     points: 5,
@@ -38,7 +39,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'creative_answer',
     name: 'إجابة إبداعية / سؤال تحدي',
-    nameEn: 'Creative / Challenge question',
+    nameEn: 'Creative answer / challenging question',
     category: 'positive',
     emoji: '💡',
     points: 15,
@@ -49,7 +50,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'exemplary_manners',
     name: 'أدب وسلوك راقي ومثالي',
-    nameEn: 'Exemplary manners',
+    nameEn: 'Exemplary manners and conduct',
     category: 'positive',
     emoji: '🤝',
     points: 10,
@@ -60,7 +61,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'noticeable_improvement',
     name: 'تحسن ملحوظ في الأداء',
-    nameEn: 'Noticeable improvement',
+    nameEn: 'Noticeable improvement in performance',
     category: 'positive',
     emoji: '🚀',
     points: 10,
@@ -71,7 +72,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'helping_classmates',
     name: 'مساعدة الزملاء وروح الفريق',
-    nameEn: 'Helping classmates',
+    nameEn: 'Helps classmates and demonstrates teamwork',
     category: 'positive',
     emoji: '❤️',
     points: 5,
@@ -84,7 +85,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'needs_improvement',
     name: 'يحتاج تحسين التركيز',
-    nameEn: 'Needs improvement in focus',
+    nameEn: 'Needs better focus and attention',
     category: 'needs_improvement',
     emoji: '⚠️',
     points: -5,
@@ -95,7 +96,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'late_to_class',
     name: 'تأخر عن موعد الحصة',
-    nameEn: 'Late to class',
+    nameEn: 'Arrived late to the session',
     category: 'needs_improvement',
     emoji: '⏰',
     points: -5,
@@ -106,7 +107,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'incomplete_homework',
     name: 'عدم إتمام الواجب المطلوب',
-    nameEn: 'Incomplete homework',
+    nameEn: 'Incomplete required homework',
     category: 'needs_improvement',
     emoji: '❌',
     points: -10,
@@ -117,7 +118,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'missing_tools',
     name: 'عدم إحضار الكشكول أو الأدوات',
-    nameEn: 'Missing notebook / tools',
+    nameEn: 'Missing notebook or required tools',
     category: 'needs_improvement',
     emoji: '📝',
     points: -5,
@@ -128,7 +129,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'disruptive_behavior',
     name: 'تشتيت الزملاء أو مقاطعة',
-    nameEn: 'Disrupting class',
+    nameEn: 'Disrupting classmates or interrupting',
     category: 'needs_improvement',
     emoji: '🔇',
     points: -5,
@@ -139,7 +140,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'needs_parent_followup',
     name: 'يحتاج متابعة وتواصل مع ولي الأمر',
-    nameEn: 'Needs parent follow-up',
+    nameEn: 'Requires follow-up with parent/guardian',
     category: 'needs_improvement',
     emoji: '📞',
     points: 0,
@@ -152,7 +153,7 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   {
     id: 'lesson_inquiry',
     name: 'استفسار مهم عن درس',
-    nameEn: 'Question about lesson',
+    nameEn: 'Important lesson inquiry',
     category: 'neutral',
     emoji: '❓',
     points: 0,
@@ -184,45 +185,65 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
   },
 ];
 
-export function getCategoryBadge(category: BehaviorCategory): {
+export function getLocalizedBehaviorTagName(tagIdOrName: string, lang?: string): string {
+  const currentLang = lang || getAppLanguage();
+  const isEn = currentLang.startsWith('en');
+
+  const found = PREDEFINED_BEHAVIOR_TAGS.find(
+    (t) => t.id === tagIdOrName || t.name === tagIdOrName || t.nameEn === tagIdOrName
+  );
+
+  if (found) {
+    return isEn ? (found.nameEn || found.name) : found.name;
+  }
+  return tagIdOrName;
+}
+
+export function getCategoryBadge(category: BehaviorCategory, lang?: string): {
   label: string;
   badgeClass: string;
   dotClass: string;
 } {
+  const currentLang = lang || getAppLanguage();
+  const isEn = currentLang.startsWith('en');
+
   switch (category) {
     case 'positive':
       return {
-        label: 'تميز وإيجابي',
+        label: isEn ? 'Merit & Positive' : 'تميز وإيجابي',
         badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         dotClass: 'bg-emerald-500',
       };
     case 'needs_improvement':
       return {
-        label: 'يحتاج تحسين',
+        label: isEn ? 'Needs Improvement' : 'يحتاج تحسين',
         badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
         dotClass: 'bg-rose-500',
       };
     case 'neutral':
     default:
       return {
-        label: 'ملاحظة عامة',
+        label: isEn ? 'General Remark' : 'ملاحظة عامة',
         badgeClass: 'bg-slate-50 text-slate-700 border-slate-200',
         dotClass: 'bg-slate-400',
       };
   }
 }
 
-export function formatBehaviorTime(timestamp: string): {
+export function formatBehaviorTime(timestamp: string, lang?: string): {
   relativeTime: string;
   formattedDate: string;
   formattedTime: string;
   isToday: boolean;
 } {
+  const currentLang = lang || getAppLanguage();
+  const isEn = currentLang.startsWith('en');
+
   try {
     const d = new Date(timestamp);
     if (isNaN(d.getTime())) {
       return {
-        relativeTime: 'الآن',
+        relativeTime: isEn ? 'Just now' : 'الآن',
         formattedDate: '',
         formattedTime: '',
         isToday: true,
@@ -236,13 +257,15 @@ export function formatBehaviorTime(timestamp: string): {
     yesterday.setDate(yesterday.getDate() - 1);
     const isYesterday = d.toDateString() === yesterday.toDateString();
 
-    const formattedTime = d.toLocaleTimeString('ar-EG', {
+    const locale = isEn ? (currentLang === 'en-GB' ? 'en-GB' : 'en-US') : 'ar-EG';
+
+    const formattedTime = d.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
     });
 
-    const formattedDate = d.toLocaleDateString('ar-EG', {
+    const formattedDate = d.toLocaleDateString(locale, {
       weekday: 'short',
       year: 'numeric',
       month: 'short',
@@ -251,9 +274,9 @@ export function formatBehaviorTime(timestamp: string): {
 
     let relativeTime = `${formattedDate} • ${formattedTime}`;
     if (isToday) {
-      relativeTime = `اليوم، ${formattedTime}`;
+      relativeTime = isEn ? `Today, ${formattedTime}` : `اليوم، ${formattedTime}`;
     } else if (isYesterday) {
-      relativeTime = `أمس، ${formattedTime}`;
+      relativeTime = isEn ? `Yesterday, ${formattedTime}` : `أمس، ${formattedTime}`;
     }
 
     return {

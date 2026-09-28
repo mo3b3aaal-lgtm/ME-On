@@ -1,4 +1,5 @@
 import { Student, Group, Session, Attendance } from '../types';
+import { getAppLanguage } from './i18n';
 
 export interface AttentionNeededStudent {
   studentId: string;
@@ -75,9 +76,16 @@ export async function fetchAttendanceInsights(
   groups: Group[],
   sessions: Session[],
   attendance: Attendance[],
-  teacherSubject: string = 'عام',
-  teacherName: string = 'المعلم'
+  teacherSubject?: string,
+  teacherName?: string,
+  lang?: string
 ): Promise<SmartAttendanceInsightsResult> {
+  const currentLang = lang || getAppLanguage();
+  const isEn = currentLang.startsWith('en');
+
+  const defaultSubject = teacherSubject || (isEn ? 'General' : 'عام');
+  const defaultTeacher = teacherName || (isEn ? 'Teacher' : 'المعلم');
+
   const attendanceSummary = computeAttendanceSummaryForStudents(students, sessions, attendance);
 
   // Fallback generation logic for offline or fast responses
@@ -93,13 +101,20 @@ export async function fetchAttendanceInsights(
       const recentAbsences = st.recentStatuses.slice(0, 2).filter((s) => s.includes('absent')).length;
       if (recentAbsences >= 2 || (st.totalSessions >= 3 && st.rate < 75)) {
         const studentObj = students.find((s) => s.id === st.studentId);
+        const reason = isEn
+          ? (recentAbsences >= 2 ? 'Consecutive absence for last 2 lessons' : `Low attendance rate (${st.rate}%)`)
+          : (recentAbsences >= 2 ? 'غياب متتالي لآخر حصتين' : `نسبة الحضور منخفضة (${st.rate}%)`);
+        const recommendation = isEn
+          ? 'Contact guardian to check in and arrange lesson catch-up material'
+          : 'التواصل مع ولي الأمر للاطمئنان ومتابعة تعويض المحتوى الدراسي';
+
         atRisk.push({
           studentId: st.studentId,
           studentName: st.studentName,
           riskLevel: recentAbsences >= 2 ? 'high' : 'medium',
           attendanceRate: st.rate,
-          reason: recentAbsences >= 2 ? 'غياب متتالي لآخر حصتين' : `نسبة الحضور منخفضة (${st.rate}%)`,
-          recommendation: 'التواصل مع ولي الأمر للاطمئنان ومتابعة تعويض المحتوى الدراسي',
+          reason,
+          recommendation,
           parentPhone: studentObj?.parentPhone || studentObj?.phone || '',
         });
       }
@@ -107,15 +122,28 @@ export async function fetchAttendanceInsights(
 
     const score = totalRecorded > 0 ? Math.round((totalPresent / totalRecorded) * 100) : 100;
 
+    const headline = isEn
+      ? (atRisk.length > 0
+          ? `${atRisk.length} ${atRisk.length === 1 ? 'student requires' : 'students require'} follow-up and engagement`
+          : 'Stable commitment and excellent attendance across all groups')
+      : (atRisk.length > 0
+          ? `رصد ${atRisk.length} طلاب بحاجة لاهتمام ومتابعة إضافية`
+          : 'معدل التزام مستقر وحضور ممتاز في كافة المجموعات');
+
+    const summary = isEn
+      ? `Overall attendance rate is ${score}%. Consistent attendance ensures optimal learning progression.`
+      : `معدل الحضور العام ${score}%. الحفاظ على استمرارية الحضور يعزز التحصيل الدراسي.`;
+
+    const positiveNotes = isEn
+      ? 'Most students are regularly attending scheduled lessons on time'
+      : 'معظم الطلاب ملتزمون بالمواعيد والحصص دون انقطاع';
+
     return {
       overallHealthScore: score,
-      headline:
-        atRisk.length > 0
-          ? `رصد ${atRisk.length} طلاب بحاجة لاهتمام ومتابعة إضافية`
-          : 'معدل التزام مستقر وحضور ممتاز في كافة المجموعات',
-      summary: `معدل الحضور العام ${score}%. الحفاظ على استمرارية الحضور يعزز التحصيل الدراسي.`,
+      headline,
+      summary,
       attentionNeededStudents: atRisk.slice(0, 4),
-      positiveNotes: 'معظم الطلاب ملتزمون بالمواعيد والحصص دون انقطاع',
+      positiveNotes,
       generatedAt: new Date().toISOString(),
     };
   };
@@ -134,8 +162,9 @@ export async function fetchAttendanceInsights(
           parentPhone: s.parentPhone,
         })),
         attendanceSummary,
-        teacherSubject,
-        teacherName,
+        teacherSubject: defaultSubject,
+        teacherName: defaultTeacher,
+        language: isEn ? 'en' : 'ar',
       }),
     });
 

@@ -31,6 +31,7 @@ import { AddPaymentModal } from './components/AddPaymentModal';
 import { NotificationsModal } from './components/NotificationsModal';
 
 export default function App() {
+  const { t, isRTL } = useTranslation();
   const { popTopModal } = useModalContext();
 
   // Animated Splash Screen
@@ -143,7 +144,7 @@ export default function App() {
         backListener = await CapacitorApp.addListener('backButton', () => {
           const handled = handleBackAction();
           if (!handled) {
-            if (window.confirm('هل تريد الخروج من التطبيق؟')) {
+            if (window.confirm(t('confirmExitApp'))) {
               CapacitorApp.exitApp();
             }
           }
@@ -239,8 +240,6 @@ export default function App() {
     setEnrollTargetGroup(group);
     setIsEnrollModalOpen(true);
   };
-
-  const { isRTL, language } = useTranslation();
 
   return (
     <div className="min-h-screen bg-[#0B0F19] md:bg-[#080B12] flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#0F172A]" dir={isRTL ? 'rtl' : 'ltr'}>

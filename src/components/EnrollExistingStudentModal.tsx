@@ -42,6 +42,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   onEnrollmentComplete,
 }) => {
   const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
   const isGroupMode = Boolean(targetGroup);
 
   // Tab: Group enrollment VS New Independent Private Service
@@ -58,16 +59,16 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   );
 
   // Private direct configuration
-  const [privSubject, setPrivSubject] = useState('رياضيات');
+  const [privSubject, setPrivSubject] = useState(isEn ? 'Mathematics' : 'رياضيات');
   const [privPrice, setPrivPrice] = useState<number>(150);
   const [privHourlyRate, setPrivHourlyRate] = useState<number>(150);
   const [privBillingMode, setPrivBillingMode] = useState<BillingMode>('prepaid');
   const [privPackageSessions, setPrivPackageSessions] = useState<number>(10);
   const [privPackagePrice, setPrivPackagePrice] = useState<number>(900);
-  const [privDays, setPrivDays] = useState<string[]>(['السبت']);
+  const [privDays, setPrivDays] = useState<string[]>(['Saturday']);
   const [privTime, setPrivTime] = useState('16:00');
-  const [privTimes, setPrivTimes] = useState<Record<string, string[]>>({ 'السبت': ['16:00'] });
-  const [privLocation, setPrivLocation] = useState('منزل الطالب / أونلاين');
+  const [privTimes, setPrivTimes] = useState<Record<string, string[]>>({ 'Saturday': ['16:00'] });
+  const [privLocation, setPrivLocation] = useState(isEn ? 'Student Home / Online' : 'منزل الطالب / أونلاين');
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
   const selectedGroup = allGroups.find((g) => g.id === selectedGroupId) || targetGroup;
@@ -484,13 +485,13 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 <label className="block text-[11px] font-black text-[#17163D]">{t('scheduleDays')}:</label>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[
-                    { key: 'السبت', label: t('daySat') },
-                    { key: 'الأحد', label: t('daySun') },
-                    { key: 'الاثنين', label: t('dayMon') },
-                    { key: 'الثلاثاء', label: t('dayTue') },
-                    { key: 'الأربعاء', label: t('dayWed') },
-                    { key: 'الخميس', label: t('dayThu') },
-                    { key: 'الجمعة', label: t('dayFri') },
+                    { key: 'Saturday', label: t('daySat') },
+                    { key: 'Sunday', label: t('daySun') },
+                    { key: 'Monday', label: t('dayMon') },
+                    { key: 'Tuesday', label: t('dayTue') },
+                    { key: 'Wednesday', label: t('dayWed') },
+                    { key: 'Thursday', label: t('dayThu') },
+                    { key: 'Friday', label: t('dayFri') },
                   ].map(({ key, label }) => {
                     const isDayChecked = privDays.includes(key);
                     return (

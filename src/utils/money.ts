@@ -93,3 +93,11 @@ export function formatMoney(val: number): string {
   }
   return rounded.toFixed(2).replace(/\.?0+$/, '');
 }
+
+/**
+ * Formats money with localized currency suffix
+ */
+export function formatCurrency(val: number, isRTL: boolean = true): string {
+  const formatted = formatMoney(val);
+  return isRTL ? `${formatted} ج.م` : `${formatted} EGP`;
+}

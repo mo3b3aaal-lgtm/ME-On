@@ -1,4 +1,5 @@
 import { Group, Student, Enrollment, Session, SessionStatus } from '../types';
+import { getAppLanguage } from './i18n';
 
 export interface ScheduledClassItem {
   id: string;
@@ -19,7 +20,7 @@ export interface ScheduledClassItem {
   accentColor: string;
 }
 
-const DAY_MAP_ARABIC: Record<number, string> = {
+export const DAY_MAP_ARABIC: Record<number, string> = {
   0: 'الأحد',
   1: 'الاثنين',
   2: 'الثلاثاء',
@@ -27,6 +28,16 @@ const DAY_MAP_ARABIC: Record<number, string> = {
   4: 'الخميس',
   5: 'الجمعة',
   6: 'السبت',
+};
+
+export const DAY_MAP_ENGLISH: Record<number, string> = {
+  0: 'Sunday',
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday',
 };
 
 const DAY_NORMALIZATION_MAP: Record<string, number> = {
@@ -74,13 +85,41 @@ export function getWeekdayIndex(dayName: string): number | null {
 }
 
 /**
- * Get Arabic day name from a Date or ISO string
+ * Get localized day name from a Date or ISO string
+ */
+export function getLocalizedDayForDate(date: Date | string, isRTL: boolean = true): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return isRTL ? 'السبت' : 'Saturday';
+  const dayIndex = d.getDay();
+  return isRTL ? (DAY_MAP_ARABIC[dayIndex] || 'السبت') : (DAY_MAP_ENGLISH[dayIndex] || 'Saturday');
+}
+
+/**
+ * Get Arabic day name from a Date or ISO string (backward compatibility)
  */
 export function getArabicDayForDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return 'السبت';
-  const dayIndex = d.getDay();
-  return DAY_MAP_ARABIC[dayIndex] || 'السبت';
+  return getLocalizedDayForDate(date, true);
+}
+
+/**
+ * Localize day name (e.g. 'السبت' -> 'Saturday' or vice versa)
+ */
+export function formatDayNameLocalized(dayName: string, isRTL: boolean = true): string {
+  const idx = getWeekdayIndex(dayName);
+  if (idx !== null) {
+    return isRTL ? DAY_MAP_ARABIC[idx] : DAY_MAP_ENGLISH[idx];
+  }
+  return dayName;
+}
+
+/**
+ * Get localized weekday name by index or string name
+ */
+export function getLocalizedWeekdayName(idxOrDay: number | string, isRTL: boolean = true): string {
+  if (typeof idxOrDay === 'number') {
+    return isRTL ? DAY_MAP_ARABIC[idxOrDay] || '' : DAY_MAP_ENGLISH[idxOrDay] || '';
+  }
+  return formatDayNameLocalized(idxOrDay, isRTL);
 }
 
 /**
@@ -163,7 +202,7 @@ export function normalizeScheduleTimesList(val: any): string[] {
 
   // Deduplicate and filter empty
   const uniqueTimes = Array.from(new Set(rawList.map((t) => t.trim())));
-  
+
   // Sort chronologically
   uniqueTimes.sort((a, b) => {
     const minsA = parseTimeToMinutes(a);
@@ -236,7 +275,7 @@ export function getTimesForDayInEnrollment(
 }
 
 /**
- * Format a comprehensive schedule summary (e.g. "السبت (04:00 م، 07:00 م)، الاثنين (05:00 م)")
+ * Format a comprehensive schedule summary (e.g. "السبت (04:00 م، 07:00 م)، الاثنين (05:00 م)" or "Saturday (04:00 PM, 07:00 PM)")
  */
 export function formatScheduleSummary(
   scheduleDays?: string[],
@@ -266,12 +305,14 @@ export function formatScheduleSummary(
       times = [scheduleTime.trim()];
     }
 
+    const localizedDayName = formatDayNameLocalized(day, isRTL);
+
     if (times.length === 0) {
-      return day;
+      return localizedDayName;
     }
 
     const formattedTimes = times.map((t) => formatTimeDisplay(t, isRTL)).join(isRTL ? '، ' : ', ');
-    return `${day} (${formattedTimes})`;
+    return `${localizedDayName} (${formattedTimes})`;
   });
 
   return parts.join(isRTL ? '، ' : ', ');
@@ -292,7 +333,8 @@ export function getScheduledClassesForDate(
   if (isNaN(d.getTime())) return [];
 
   const targetDayIdx = d.getDay();
-  const arabicDayName = DAY_MAP_ARABIC[targetDayIdx];
+  const localizedDayName = isRTL ? DAY_MAP_ARABIC[targetDayIdx] : DAY_MAP_ENGLISH[targetDayIdx];
+  const queryDayName = DAY_MAP_ARABIC[targetDayIdx]; // For lookup against stored groups
   const activeStudentsMap = new Map<string, Student>();
   students.forEach((s) => {
     if (s.status !== 'archived') {
@@ -332,7 +374,7 @@ export function getScheduledClassesForDate(
           const stu = activeStudentsMap.get(enr.studentId);
           if (!stu) continue;
 
-          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, arabicDayName);
+          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, queryDayName);
           const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [''];
 
           effectiveTimes.forEach((rawTime, timeIdx) => {
@@ -346,12 +388,12 @@ export function getScheduledClassesForDate(
               studentName: stu.name,
               student: stu,
               groupId: group.id,
-              groupName: 'درس خاص',
+              groupName: isRTL ? 'درس خاص' : 'Private Lesson',
               group: group,
               enrollmentId: enr.id,
               isPrivate: true,
-              subject: group.subject || 'درس خاص',
-              dayName: arabicDayName,
+              subject: group.subject || (isRTL ? 'درس خاص' : 'Private Lesson'),
+              dayName: localizedDayName,
               time: formattedTime,
               rawTime,
               sortMinutes,
@@ -363,7 +405,7 @@ export function getScheduledClassesForDate(
       }
     } else {
       // Real Group: Scheduled as ONE group class session
-      const groupTimes = getTimesForDayInGroup(group, arabicDayName);
+      const groupTimes = getTimesForDayInGroup(group, queryDayName);
       const effectiveGroupTimes = groupTimes.length > 0 ? groupTimes : [''];
 
       effectiveGroupTimes.forEach((rawTime, timeIdx) => {
@@ -379,8 +421,8 @@ export function getScheduledClassesForDate(
           groupName: group.name,
           group: group,
           isPrivate: false,
-          subject: group.subject || 'مجموعة دراسية',
-          dayName: arabicDayName,
+          subject: group.subject || (isRTL ? 'مجموعة دراسية' : 'Tuition Group'),
+          dayName: localizedDayName,
           time: formattedTime,
           rawTime,
           sortMinutes,
@@ -445,7 +487,8 @@ export function getUpcomingClassesForStudent(
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + offset);
     const dayIdx = targetDate.getDay();
-    const arabicDayName = DAY_MAP_ARABIC[dayIdx];
+    const localizedDayName = isRTL ? DAY_MAP_ARABIC[dayIdx] : DAY_MAP_ENGLISH[dayIdx];
+    const queryDayName = DAY_MAP_ARABIC[dayIdx];
     const dateStr = targetDate.toISOString().split('T')[0];
 
     const dayRelative =
@@ -453,7 +496,7 @@ export function getUpcomingClassesForStudent(
         ? (isRTL ? 'اليوم' : 'Today')
         : offset === 1
         ? (isRTL ? 'غداً' : 'Tomorrow')
-        : arabicDayName;
+        : localizedDayName;
 
     for (const enr of studentEnrollments) {
       const group = groupsMap.get(enr.groupId);
@@ -465,7 +508,7 @@ export function getUpcomingClassesForStudent(
 
       if (!meetsOnDay) continue;
 
-      const rawTimes = getTimesForDayInEnrollment(enr, group, arabicDayName);
+      const rawTimes = getTimesForDayInEnrollment(enr, group, queryDayName);
       const isPrivate = group.type === 'private';
 
       for (let tIdx = 0; tIdx < rawTimes.length; tIdx++) {
@@ -476,14 +519,14 @@ export function getUpcomingClassesForStudent(
         upcoming.push({
           id: `up_${enr.id}_${dateStr}_${tIdx}_${cleanKey}`,
           dateStr,
-          dayName: arabicDayName,
+          dayName: localizedDayName,
           dayRelative,
           time: formattedTime,
           rawTime,
           groupId: group.id,
           groupName: group.name,
           isPrivate,
-          subject: group.subject || (isPrivate ? 'درس خاص' : 'مجموعة'),
+          subject: group.subject || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (isRTL ? 'مجموعة' : 'Group')),
           location: group.roomOrLocation,
           accentColor: group.accentColor || (isPrivate ? '#FF647C' : '#7657F6'),
         });
@@ -534,6 +577,10 @@ export const CALENDAR_WEEKDAY_HEADERS_ARABIC = ['السبت', 'الأحد', 'ا�
 export const CALENDAR_WEEKDAY_SHORT_ARABIC = ['سبت', 'أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
 export const CALENDAR_WEEKDAY_INITIALS_ARABIC = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
 
+export const CALENDAR_WEEKDAY_HEADERS_ENGLISH = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+export const CALENDAR_WEEKDAY_SHORT_ENGLISH = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+export const CALENDAR_WEEKDAY_INITIALS_ENGLISH = ['S', 'S', 'M', 'T', 'W', 'T', 'F'];
+
 export interface DayClassSummary {
   dateStr: string;
   totalCount: number;
@@ -570,8 +617,6 @@ export function formatDateKey(year: number, monthIndex: number, day: number): st
 
 /**
  * Calculates fast class statistics for every date in a given year.
- * Integrates both explicit Session entities from DB and recurring group/private weekly schedules.
- * Historical dates (past) only show actual recorded sessions, while today/future integrate active recurring schedules.
  */
 export function getYearClassStatsMap(
   year: number,
@@ -587,7 +632,6 @@ export function getYearClassStatsMap(
   const sessionsByDate = new Map<string, Session[]>();
   for (const s of sessions) {
     if (!s.date) continue;
-    // Check if session belongs to target year
     if (s.date.startsWith(`${year}-`) || s.year === year) {
       const list = sessionsByDate.get(s.date) || [];
       list.push(s);
@@ -610,7 +654,6 @@ export function getYearClassStatsMap(
     }
   });
 
-  // Calculate recurring slots per weekday (0..6)
   interface RecurringSlotRef {
     groupId: string;
     studentId?: string;
@@ -670,7 +713,6 @@ export function getYearClassStatsMap(
       let scheduledCount = 0;
       let cancelledCount = 0;
 
-      // Track represented group-time combinations on this date
       const representedGroupTimes = new Set<string>();
 
       for (const s of explicitSessions) {
@@ -687,7 +729,6 @@ export function getYearClassStatsMap(
 
       let totalCount = explicitSessions.length;
 
-      // ONLY for Today or Future dates, integrate uninstantiated recurring slots
       if (!isPast) {
         const slots = recurringSlotsByWeekday.get(dayOfWeek) || [];
         for (const slot of slots) {
@@ -695,10 +736,9 @@ export function getYearClassStatsMap(
           const studentTimeKey = slot.studentId ? `${slot.groupId}_${slot.studentId}_${slot.time || 'flex'}` : '';
 
           if (representedGroupTimes.has(timeKey) || (studentTimeKey && representedGroupTimes.has(studentTimeKey))) {
-            continue; // Already has an explicit session recorded or scheduled for this slot
+            continue;
           }
 
-          // Uninstantiated recurring class
           scheduledCount++;
           totalCount++;
         }
@@ -722,7 +762,6 @@ export function getYearClassStatsMap(
 
 /**
  * Generate a complete 6-row or 5-row calendar grid for a specific month.
- * Starts with Saturday (col 0) through Friday (col 6).
  */
 export function generateMonthGrid(
   year: number,
@@ -734,19 +773,11 @@ export function generateMonthGrid(
 
   const firstDayDate = new Date(year, monthIndex, 1);
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const firstDayOfWeek = firstDayDate.getDay(); // 0 (Sun) .. 6 (Sat)
+  const firstDayOfWeek = firstDayDate.getDay();
 
-  // Map JS getDay() (0=Sun..6=Sat) to Saturday-first column (0=Sat..6=Fri)
-  // Saturday (6) -> 0
-  // Sunday (0) -> 1
-  // Monday (1) -> 2
-  // Tuesday (2) -> 3
-  // Wednesday (3) -> 4
-  // Thursday (4) -> 5
-  // Friday (5) -> 6
   const startColIndex = (firstDayOfWeek + 1) % 7;
 
-  // Days from previous month to fill first row
+  // Days from previous month
   const prevMonthDays = new Date(year, monthIndex, 0).getDate();
   for (let i = startColIndex - 1; i >= 0; i--) {
     const dayNum = prevMonthDays - i;
@@ -798,7 +829,7 @@ export function generateMonthGrid(
     });
   }
 
-  // Trailing days from next month to complete the grid (up to multiple of 7, usually 35 or 42 cells)
+  // Trailing days from next month
   const remainingCells = (7 - (cells.length % 7)) % 7;
   for (let dayNum = 1; dayNum <= remainingCells; dayNum++) {
     const nextMonthIdx = monthIndex === 11 ? 0 : monthIndex + 1;
@@ -852,7 +883,6 @@ export interface DetailedDateAgendaItem {
   pricePerStudent?: number;
   hourlyRate?: number;
   billingMode?: string;
-  // Attendance metrics if recorded
   hasRecordedAttendance: boolean;
   presentCount: number;
   absentChargedCount: number;
@@ -887,8 +917,6 @@ export interface DetailedDateAgenda {
 
 /**
  * Build the full detailed agenda for any exact date (past, present, or future).
- * Chronologically sorts all sessions, integrates multiple time slots, group & private sessions,
- * and attendance breakdowns.
  */
 export function getDetailedAgendaForDate(
   dateStr: string,
@@ -900,7 +928,8 @@ export function getDetailedAgendaForDate(
 ): DetailedDateAgenda {
   const dateObj = new Date(dateStr);
   const dayOfWeek = !isNaN(dateObj.getTime()) ? dateObj.getDay() : 6;
-  const dayName = DAY_MAP_ARABIC[dayOfWeek] || 'السبت';
+  const dayName = isRTL ? (DAY_MAP_ARABIC[dayOfWeek] || 'السبت') : (DAY_MAP_ENGLISH[dayOfWeek] || 'Saturday');
+  const lookupDayName = DAY_MAP_ARABIC[dayOfWeek] || 'السبت';
   
   const todayStr = new Date().toISOString().split('T')[0];
   const isToday = dateStr === todayStr;
@@ -922,11 +951,9 @@ export function getDetailedAgendaForDate(
     }
   });
 
-  // 1. Fetch explicit sessions for this date
   const explicitSessions = sessions.filter((s) => s.date === dateStr);
   const items: DetailedDateAgendaItem[] = [];
 
-  // Track group + time combinations already represented by an explicit session
   const representedGroupTimes = new Set<string>();
 
   for (const session of explicitSessions) {
@@ -934,7 +961,6 @@ export function getDetailedAgendaForDate(
     const isPrivate = group?.type === 'private' || !!session.studentId;
     const groupEnrs = enrollmentsByGroup.get(session.groupId) || [];
     
-    // Check attendance in localStorage
     let attendanceList: any[] = [];
     try {
       const rawAtt = localStorage.getItem('tm_attendance_v2');
@@ -958,7 +984,7 @@ export function getDetailedAgendaForDate(
       const stu = studentsMap.get(a.studentId);
       return {
         studentId: a.studentId,
-        studentName: stu?.name || 'طالب',
+        studentName: stu?.name || (isRTL ? 'طالب' : 'Student'),
         status: a.status,
         isCharged: a.isCharged,
         absenceReason: a.absenceReason,
@@ -983,11 +1009,11 @@ export function getDetailedAgendaForDate(
       source: 'session_record',
       session,
       groupId: session.groupId,
-      groupName: group?.name || session.title || 'مجموعة',
+      groupName: group?.name || session.title || (isRTL ? 'مجموعة' : 'Group'),
       studentId: session.studentId,
       studentName: singleStudentName,
       isPrivate,
-      subject: group?.subject || 'مادة دراسية',
+      subject: group?.subject || (isRTL ? 'مادة دراسية' : 'Subject'),
       stageOrGrade: group?.gradeLevel,
       location: group?.roomOrLocation,
       dateStr,
@@ -1011,7 +1037,7 @@ export function getDetailedAgendaForDate(
     });
   }
 
-  // 2. If for this date (today or future) there are recurring scheduled groups/private lessons not yet instantiated as session records
+  // 2. Uninstantiated recurring slots for today/future
   if (!isPast) {
     for (const group of groups) {
       if (!group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
@@ -1026,7 +1052,7 @@ export function getDetailedAgendaForDate(
           const student = studentsMap.get(enr.studentId);
           if (!student || student.status === 'archived') continue;
 
-          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, dayName);
+          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, lookupDayName);
           const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [''];
 
           for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
@@ -1034,7 +1060,6 @@ export function getDetailedAgendaForDate(
             const timeKey = `${group.id}_${rawTime || 'flex'}`;
             const studentTimeKey = `${group.id}_${student.id}_${rawTime || 'flex'}`;
             
-            // If already recorded as explicit session, skip duplicate
             if (representedGroupTimes.has(timeKey) || representedGroupTimes.has(studentTimeKey)) continue;
 
             const sortMinutes = parseTimeToMinutes(rawTime);
@@ -1048,7 +1073,7 @@ export function getDetailedAgendaForDate(
               studentId: student.id,
               studentName: student.name,
               isPrivate,
-              subject: group.subject || (isPrivate ? 'درس خاص' : 'مجموعة'),
+              subject: group.subject || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (isRTL ? 'مجموعة' : 'Group')),
               stageOrGrade: group.gradeLevel,
               location: group.roomOrLocation,
               dateStr,
@@ -1070,8 +1095,7 @@ export function getDetailedAgendaForDate(
           }
         }
       } else {
-        // Group with no students enrolled yet
-        const groupTimes = getTimesForDayInGroup(group, dayName);
+        const groupTimes = getTimesForDayInGroup(group, lookupDayName);
         const effectiveTimes = groupTimes.length > 0 ? groupTimes : [''];
 
         for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
@@ -1112,7 +1136,6 @@ export function getDetailedAgendaForDate(
     }
   }
 
-  // Chronologically sort by start time, then group/student name
   items.sort((a, b) => {
     if (a.sortMinutes !== b.sortMinutes) {
       return a.sortMinutes - b.sortMinutes;
@@ -1120,7 +1143,6 @@ export function getDetailedAgendaForDate(
     return (a.studentName || a.groupName).localeCompare(b.studentName || b.groupName);
   });
 
-  // Calculate summary KPI numbers
   let presentStudents = 0;
   let absentStudents = 0;
   let scheduledClasses = 0;
@@ -1139,7 +1161,6 @@ export function getDetailedAgendaForDate(
     }
   }
 
-  // Format date for display
   let formattedDisplayDate = dateStr;
   try {
     const parts = dateStr.split('-');
@@ -1147,7 +1168,11 @@ export function getDetailedAgendaForDate(
       const y = parseInt(parts[0], 10);
       const mIdx = parseInt(parts[1], 10) - 1;
       const d = parseInt(parts[2], 10);
-      formattedDisplayDate = `${dayName}، ${d} ${MONTH_NAMES_ARABIC[mIdx] || ''} ${y}`;
+      if (isRTL) {
+        formattedDisplayDate = `${dayName}، ${d} ${MONTH_NAMES_ARABIC[mIdx] || ''} ${y}`;
+      } else {
+        formattedDisplayDate = `${dayName}, ${MONTH_NAMES_ENGLISH[mIdx] || ''} ${d}, ${y}`;
+      }
     }
   } catch {
     formattedDisplayDate = `${dayName} ${dateStr}`;

@@ -10,17 +10,13 @@ import {
 } from '../types';
 import { db } from './storage';
 import { getScheduledClassesForDate } from './schedule';
+import { getAppLanguage } from './i18n';
 
 export { type SmartReminderItem, type SmartReminderItem as AppNotification } from '../types';
 
 /**
- * دالة توليد التنبيهات والإشعارات الذكية:
- * 1. احتساب دقيق لعدد حصص الباقة ودورات التجديد (Cycle-Aware Package Billing).
- * 2. عدم إظهار تنبيه السداد إلا عند وصول الطالب للحد المطلوب المحدد بالباقة (مثلاً 8/8).
- * 3. دعم التنبيه المبكر الاختياري (Almost Due) وفق إعدادات المعلم (مثلاً عند 7/8).
- * 4. إخفاء التنبيه تلقائياً بمجرد تسجيل السداد للدورة/الباقة المستحقة (Payment Clears Notification).
- * 5. منع تكرار التنبيهات عبر معرّفات فريدة وثابتة (Deterministic Stable IDs).
- * 6. دعم التصفية حسب الحالة (نشطة / مسددة / مقروءة).
+ * Smart Reminder & Notification Generator:
+ * Generates natural Arabic / English notifications according to active language
  */
 export function getSmartReminders(
   students: Student[],
@@ -29,8 +25,13 @@ export function getSmartReminders(
   enrollments: Enrollment[],
   attendanceList: Attendance[],
   includeResolved: boolean = false,
-  customSettings?: NotificationSettings
+  customSettings?: NotificationSettings,
+  lang?: string
 ): SmartReminderItem[] {
+  const currentLang = lang || getAppLanguage();
+  const isEn = currentLang.startsWith('en');
+  const isRTL = !isEn;
+
   const reminders: SmartReminderItem[] = [];
   const todayStr = new Date().toISOString().split('T')[0];
   const activeStudents = students.filter((s) => s.status !== 'archived');
@@ -41,7 +42,7 @@ export function getSmartReminders(
 
   // 1. Unrecorded Attendance for Today's Scheduled Classes
   if (settings.enableAttendanceReminders) {
-    const scheduledToday = getScheduledClassesForDate(new Date(), groups, activeStudents, enrollments, true);
+    const scheduledToday = getScheduledClassesForDate(new Date(), groups, activeStudents, enrollments, isRTL);
     const todaySessions = sessions.filter((s) => s.date === todayStr);
 
     for (const item of scheduledToday) {
@@ -56,15 +57,25 @@ export function getSmartReminders(
         const isDismissed = state?.isDismissed;
 
         if (!isDismissed || includeResolved) {
+          const title = isEn
+            ? `Take Attendance: ${item.isPrivate ? item.studentName : item.groupName}`
+            : `رصد حضور: ${item.isPrivate ? item.studentName : item.groupName}`;
+
+          const description = isEn
+            ? `Today's ${item.time} lesson has not been marked yet`
+            : `حصة اليوم الساعة ${item.time} لم يُسجل حضورها بعد`;
+
+          const badge = isEn ? 'Pending Attendance' : 'حضور معلق';
+
           reminders.push({
             id,
             type: 'unrecorded_attendance',
             priority: 'high',
             status: isDismissed ? 'dismissed' : 'active',
             isRead: !!state?.isRead,
-            title: `رصد حضور: ${item.isPrivate ? item.studentName : item.groupName}`,
-            description: `حصة اليوم الساعة ${item.time} لم يُسجل حضورها بعد`,
-            badge: 'حضور معلق',
+            title,
+            description,
+            badge,
             groupId: item.groupId,
             groupName: item.groupName,
             studentId: item.studentId,
@@ -95,15 +106,24 @@ export function getSmartReminders(
         const isDismissed = state?.isDismissed;
 
         if (!isDismissed || includeResolved) {
+          const currencyLabel = isEn ? 'EGP' : 'ج.م';
+          const title = isEn ? `Payment Due: ${student.name}` : `مستحقات سداد: ${student.name}`;
+          const description = isEn
+            ? `Outstanding balance of ${nonPackageRemaining.toLocaleString()} ${currencyLabel} requires settlement.`
+            : `متبقي على الطالب ${nonPackageRemaining.toLocaleString()} ${currencyLabel} لم تُسدد`;
+          const badge = isEn
+            ? `${nonPackageRemaining.toLocaleString()} ${currencyLabel} Due`
+            : `${nonPackageRemaining.toLocaleString()} ج.م مستحقة`;
+
           reminders.push({
             id,
             type: 'payment_overdue',
             priority: nonPackageRemaining > 500 ? 'high' : 'medium',
             status: isDismissed ? 'dismissed' : 'active',
             isRead: !!state?.isRead,
-            title: `مستحقات سداد: ${student.name}`,
-            description: `متبقي على الطالب ${nonPackageRemaining} ج.م لم تُسدد`,
-            badge: `${nonPackageRemaining} ج.م مستحقة`,
+            title,
+            description,
+            badge,
             studentId: student.id,
             studentName: student.name,
             studentPhone: student.phone,
@@ -143,7 +163,6 @@ export function getSmartReminders(
           grp?.billingType === 'prepaid');
 
       if (isPkg) {
-        // Dynamic package size from student's enrollment or group configuration
         const packageSize = Math.max(
           1,
           rawEnrollment?.packageSessionsCount ||
@@ -152,13 +171,11 @@ export function getSmartReminders(
             8
         );
 
-        // Count only actually attended/completed sessions (Present, Late, Absent-Charged)
         const attendedCount = enr.attendedSessionsCount || 0;
         const totalPaid = enr.totalPaid || 0;
         const packagePrice = enr.packagePrice || grp?.defaultPrice || enr.customPrice || 0;
         const unitRate = packagePrice > 0 ? packagePrice / packageSize : (enr.customPrice || 100);
 
-        // How many cycles are covered by total payments
         const coveredCycles =
           packagePrice > 0
             ? Math.floor((totalPaid + 0.001) / packagePrice)
@@ -166,10 +183,8 @@ export function getSmartReminders(
             ? Math.floor((totalPaid + 0.001) / (unitRate * packageSize))
             : 0;
 
-        // How many full package cycles has the student reached?
         const completedCycles = Math.floor(attendedCount / packageSize);
 
-        // Process all completed cycles (e.g. Cycle 1 at lesson 8, Cycle 2 at lesson 16, etc.)
         for (let cycle = 1; cycle <= completedCycles; cycle++) {
           const targetLimit = cycle * packageSize;
           const isCyclePaid = coveredCycles >= cycle || (cycle === completedCycles && enr.remaining <= 0);
@@ -177,28 +192,41 @@ export function getSmartReminders(
           const state = states[id];
           const isDismissed = state?.isDismissed;
 
-          // If paid, it's resolved; if unpaid and not dismissed, it's active
           const status = isCyclePaid ? 'resolved' : isDismissed ? 'dismissed' : 'active';
 
           if (status === 'active' || includeResolved) {
+            const title = isEn
+              ? `Package Completed — Payment Due: ${student.name}`
+              : `انتهت الباقة — مستحق سداد: ${student.name}`;
+
+            const description = isEn
+              ? `Student has completed ${targetLimit} ${targetLimit === 1 ? 'lesson' : 'lessons'} (${packageSize} lessons package). Term renewal is due.`
+              : `أكمل الطالب ${targetLimit} ${targetLimit === 1 ? 'حصة' : 'حصص'} (${packageSize} حصص في الباقة). حان وقت سداد المستحقات.`;
+
+            const badge = isEn
+              ? isCyclePaid ? 'Package Settled' : `Package Completed (${packageSize}/${packageSize})`
+              : isCyclePaid ? 'تم سداد الباقة' : `باقة مكتملة (${packageSize}/${packageSize})`;
+
+            const defaultGroupName = enr.groupType === 'private'
+              ? (isEn ? `Private Lesson - ${student.name}` : `درس خاص - ${student.name}`)
+              : enr.groupName;
+
             reminders.push({
               id,
               type: 'package_completed',
               priority: 'high',
               status,
               isRead: !!state?.isRead,
-              title: `انتهت الباقة — مستحق سداد: ${student.name}`,
-              description: `أكمل الطالب ${targetLimit} ${
-                targetLimit === 1 ? 'حصة' : 'حصص'
-              } (${packageSize} حصص في الباقة). حان وقت سداد المستحقات.`,
-              badge: isCyclePaid ? 'تم سداد الباقة' : `باقة مكتملة (${packageSize}/${packageSize})`,
+              title,
+              description,
+              badge,
               studentId: student.id,
               studentName: student.name,
               studentPhone: student.phone,
               parentPhone: student.parentPhone,
               parentRelation: student.parentRelation,
               groupId: enr.groupId,
-              groupName: enr.groupType === 'private' ? `درس خاص - ${student.name}` : enr.groupName,
+              groupName: defaultGroupName,
               enrollmentId: enr.enrollmentId,
               packageSize,
               cycleIndex: cycle,
@@ -208,7 +236,6 @@ export function getSmartReminders(
           }
         }
 
-        // Check in-progress cycle for optional Early Warning (Almost Due)
         const inProgressCycle = completedCycles + 1;
         const cycleAttended = attendedCount - completedCycles * packageSize;
         const lessonsRemaining = packageSize - cycleAttended;
@@ -226,24 +253,38 @@ export function getSmartReminders(
           const isDismissed = state?.isDismissed;
 
           if (!isDismissed || includeResolved) {
+            const title = isEn
+              ? `Package Near Completion: ${student.name}`
+              : `اقتراب اكتمال الباقة: ${student.name}`;
+
+            const description = isEn
+              ? `Student has ${lessonsRemaining} ${lessonsRemaining === 1 ? 'lesson' : 'lessons'} remaining before renewal (${cycleAttended}/${packageSize} lessons).`
+              : `متبقي للطالب ${lessonsRemaining === 1 ? 'حصة واحدة' : `${lessonsRemaining} حصص`} قبل استحقاق السداد (${cycleAttended}/${packageSize} حصص).`;
+
+            const badge = isEn
+              ? `${lessonsRemaining} ${lessonsRemaining === 1 ? 'Lesson' : 'Lessons'} Left`
+              : `متبقي ${lessonsRemaining} ${lessonsRemaining === 1 ? 'حصة' : 'حصص'}`;
+
+            const defaultGroupName = enr.groupType === 'private'
+              ? (isEn ? `Private Lesson - ${student.name}` : `درس خاص - ${student.name}`)
+              : enr.groupName;
+
             reminders.push({
               id,
               type: 'package_almost_due',
               priority: 'medium',
               status: isDismissed ? 'dismissed' : 'active',
               isRead: !!state?.isRead,
-              title: `اقتراب اكتمال الباقة: ${student.name}`,
-              description: `متبقي للطالب ${
-                lessonsRemaining === 1 ? 'حصة واحدة' : `${lessonsRemaining} حصص`
-              } قبل استحقاق السداد (${cycleAttended}/${packageSize} حصص).`,
-              badge: `متبقي ${lessonsRemaining} ${lessonsRemaining === 1 ? 'حصة' : 'حصص'}`,
+              title,
+              description,
+              badge,
               studentId: student.id,
               studentName: student.name,
               studentPhone: student.phone,
               parentPhone: student.parentPhone,
               parentRelation: student.parentRelation,
               groupId: enr.groupId,
-              groupName: enr.groupType === 'private' ? `درس خاص - ${student.name}` : enr.groupName,
+              groupName: defaultGroupName,
               enrollmentId: enr.enrollmentId,
               packageSize,
               cycleIndex: inProgressCycle,
@@ -254,22 +295,31 @@ export function getSmartReminders(
           }
         }
       } else if (isPrepaid) {
-        // Prepaid: notify when credits are exhausted
         if (enr.sessionCredit <= 0 && enr.attendedSessionsCount > 0 && enr.remaining > 0) {
           const id = `notif_prepaid_fin_${enr.enrollmentId}`;
           const state = states[id];
           const isDismissed = state?.isDismissed;
 
           if (!isDismissed || includeResolved) {
+            const title = isEn
+              ? `Credits Exhausted: ${student.name}`
+              : `نفاد رصيد الحصص: ${student.name}`;
+
+            const description = isEn
+              ? `Prepaid lesson credits have expired in (${enr.groupName})`
+              : `نفد رصيد الحصص المدفوعة مسبقاً في (${enr.groupName})`;
+
+            const badge = isEn ? 'Credits Exhausted' : 'رصيد منتهي';
+
             reminders.push({
               id,
               type: 'low_credit',
               priority: 'medium',
               status: isDismissed ? 'dismissed' : 'active',
               isRead: !!state?.isRead,
-              title: `نفاد رصيد الحصص: ${student.name}`,
-              description: `نفد رصيد الحصص المدفوعة مسبقاً في (${enr.groupName})`,
-              badge: 'رصيد منتهي',
+              title,
+              description,
+              badge,
               studentId: student.id,
               studentName: student.name,
               studentPhone: student.phone,
@@ -285,7 +335,7 @@ export function getSmartReminders(
       }
     }
 
-    // 3. Repeated Absences check (2 or more consecutive absences)
+    // 3. Repeated Absences check
     if (settings.enableAbsenceReminders) {
       const stuAtt = db.getStudentAttendance(student.id);
       if (stuAtt.length >= 2) {
@@ -299,15 +349,25 @@ export function getSmartReminders(
           const isDismissed = state?.isDismissed;
 
           if (!isDismissed || includeResolved) {
+            const title = isEn
+              ? `Repeated Absence: ${student.name}`
+              : `غياب متكرر: ${student.name}`;
+
+            const description = isEn
+              ? 'Student was absent from the last 2 consecutive lessons — recommended to follow up with guardian.'
+              : 'تغيب الطالب عن آخر حصتين متتاليتين - ينصح بالتواصل مع ولي الأمر';
+
+            const badge = isEn ? 'Consecutive Absence' : 'غياب متتالي';
+
             reminders.push({
               id,
               type: 'repeated_absence',
               priority: 'medium',
               status: isDismissed ? 'dismissed' : 'active',
               isRead: !!state?.isRead,
-              title: `غياب متكرر: ${student.name}`,
-              description: `تغيب الطالب عن آخر حصتين متتاليتين - ينصح بالتواصل مع ولي الأمر`,
-              badge: 'غياب متتالي',
+              title,
+              description,
+              badge,
               studentId: student.id,
               studentName: student.name,
               studentPhone: student.phone,
@@ -321,12 +381,10 @@ export function getSmartReminders(
     }
   }
 
-  // Filter out resolved or dismissed notifications if not explicitly requested
   const filtered = includeResolved
     ? reminders
     : reminders.filter((r) => r.status === 'active');
 
-  // Sorting: Active unread high priority -> Active read high priority -> Active medium -> Low -> Resolved
   const priorityScore = (item: SmartReminderItem) => {
     let score = 0;
     if (item.status === 'resolved') score += 100;

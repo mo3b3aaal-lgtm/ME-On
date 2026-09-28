@@ -122,11 +122,27 @@ const ARABIC_MONTH_NAMES = [
   'ديسمبر',
 ];
 
+const ENGLISH_MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export function getArabicMonthName(monthIndex1to12: number): string {
+  const isEn = getAppLanguage().startsWith('en');
   if (monthIndex1to12 >= 1 && monthIndex1to12 <= 12) {
-    return ARABIC_MONTH_NAMES[monthIndex1to12 - 1];
+    return isEn ? ENGLISH_MONTH_NAMES[monthIndex1to12 - 1] : ARABIC_MONTH_NAMES[monthIndex1to12 - 1];
   }
-  return `شهر ${monthIndex1to12}`;
+  return isEn ? `Month ${monthIndex1to12}` : `شهر ${monthIndex1to12}`;
 }
 
 const ARABIC_DAY_NAMES = [
@@ -139,10 +155,21 @@ const ARABIC_DAY_NAMES = [
   'السبت',
 ];
 
+const ENGLISH_DAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
 export function getArabicDayName(dateString: string): string {
+  const isEn = getAppLanguage().startsWith('en');
   const d = new Date(dateString);
-  if (isNaN(d.getTime())) return 'السبت';
-  return ARABIC_DAY_NAMES[d.getDay()] || 'السبت';
+  if (isNaN(d.getTime())) return isEn ? 'Saturday' : 'السبت';
+  return isEn ? (ENGLISH_DAY_NAMES[d.getDay()] || 'Saturday') : (ARABIC_DAY_NAMES[d.getDay()] || 'السبت');
 }
 
 export function getBillingModeLabel(billingType?: string, billingMode?: string): string {
@@ -1299,22 +1326,24 @@ export function initAutoSyncScheduler(): void {
 initAutoSyncScheduler();
 
 /**
- * دالة تنسيق وقت المزامنة القادمة بشكل عربي واضح
+ * دالة تنسيق وقت المزامنة القادمة بشكل واضح
  */
 export function formatNextSyncTimeArabic(isoString?: string | null, frequency?: AutoSyncFrequency): string {
+  const isEn = getAppLanguage().startsWith('en');
   if (frequency === 'off' || !isoString) {
-    return 'المزامنة التلقائية متوقفة (إيقاف)';
+    return isEn ? 'Auto sync disabled (Off)' : 'المزامنة التلقائية متوقفة (إيقاف)';
   }
   try {
     const targetDate = new Date(isoString);
-    if (isNaN(targetDate.getTime())) return 'المزامنة التلقائية متوقفة';
+    if (isNaN(targetDate.getTime())) return isEn ? 'Auto sync disabled' : 'المزامنة التلقائية متوقفة';
 
     const now = new Date();
     const diffMs = targetDate.getTime() - now.getTime();
-    const timeStr = targetDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const locale = isEn ? 'en-US' : 'ar-EG';
+    const timeStr = targetDate.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
     if (diffMs <= 0) {
-      return `مستحقة الآن (${timeStr})`;
+      return isEn ? `Due now (${timeStr})` : `مستحقة الآن (${timeStr})`;
     }
 
     const diffMin = Math.round(diffMs / (60 * 1000));
@@ -1327,20 +1356,22 @@ export function formatNextSyncTimeArabic(isoString?: string | null, frequency?: 
     const isTomorrow = targetDate.toDateString() === tomorrow.toDateString();
 
     if (diffMin < 60) {
-      return `اليوم، ${timeStr} (خلال ${diffMin} دقيقة)`;
+      return isEn ? `Today, ${timeStr} (in ${diffMin} min)` : `اليوم، ${timeStr} (خلال ${diffMin} دقيقة)`;
     }
 
     if (isToday) {
-      return `اليوم، ${timeStr} (خلال ${diffHours} ساعة)`;
+      return isEn ? `Today, ${timeStr} (in ${diffHours} hr)` : `اليوم، ${timeStr} (خلال ${diffHours} ساعة)`;
     }
 
     if (isTomorrow) {
-      return `غداً، ${timeStr}`;
+      return isEn ? `Tomorrow, ${timeStr}` : `غداً، ${timeStr}`;
     }
 
-    return `${targetDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}، ${timeStr} (خلال ${diffDays} يوم)`;
+    return isEn
+      ? `${targetDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}, ${timeStr} (in ${diffDays} days)`
+      : `${targetDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}، ${timeStr} (خلال ${diffDays} يوم)`;
   } catch {
-    return 'مجدولة';
+    return isEn ? 'Scheduled' : 'مجدولة';
   }
 }
 
@@ -1352,16 +1383,21 @@ export function formatSyncStatusArabic(
   isOnline = true,
   statusReason?: NetworkStatusReason
 ): { label: string; badgeClass: string; iconType: 'success' | 'syncing' | 'offline' | 'error' | 'idle' } {
+  const isEn = getAppLanguage().startsWith('en');
   if (!isOnline || status === 'offline_deferred') {
     if (statusReason === 'api_unreachable') {
       return {
-        label: 'مؤجل - تعذر الوصول للسيرفر السحابي (البيانات محفوظة محلياً)',
+        label: isEn
+          ? 'Deferred - Cannot reach Cloud Server (Data saved safely locally)'
+          : 'مؤجل - تعذر الوصول للسيرفر السحابي (البيانات محفوظة محلياً)',
         badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
         iconType: 'offline',
       };
     }
     return {
-      label: 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
+      label: isEn
+        ? 'Deferred - No Internet connection (Data saved safely locally)'
+        : 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
       badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
       iconType: 'offline',
     };
@@ -1370,26 +1406,26 @@ export function formatSyncStatusArabic(
   switch (status) {
     case 'syncing':
       return {
-        label: 'جاري مزامنة البيانات مع السحابة...',
+        label: isEn ? 'Syncing data with cloud...' : 'جاري مزامنة البيانات مع السحابة...',
         badgeClass: 'bg-[#55C7E8]/15 text-[#0284C7] border border-[#55C7E8]/30',
         iconType: 'syncing',
       };
     case 'success':
     case 'idle':
       return {
-        label: 'متزامن وجاهز (جميع البيانات مؤمنة بالسحابة)',
+        label: isEn ? 'Synced & Ready (All data secured on Cloud)' : 'متزامن وجاهز (جميع البيانات مؤمنة بالسحابة)',
         badgeClass: 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30',
         iconType: 'success',
       };
     case 'error':
       return {
-        label: 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
+        label: isEn ? 'Last sync failed (Data preserved locally)' : 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
         badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
         iconType: 'error',
       };
     default:
       return {
-        label: 'متزامن وجاهز',
+        label: isEn ? 'Synced & Ready' : 'متزامن وجاهز',
         badgeClass: 'bg-[#7657F6]/15 text-[#7657F6] border border-[#7657F6]/30',
         iconType: 'idle',
       };
@@ -1397,13 +1433,14 @@ export function formatSyncStatusArabic(
 }
 
 /**
- * دالة تنسيق وقت آخر مزامنة بشكل عربي أنيق وواضح
+ * دالة تنسيق وقت آخر مزامنة بشكل أنيق وواضح
  */
 export function formatSyncTimeArabic(isoString?: string | null): string {
-  if (!isoString) return 'لم تتم المزامنة بعد';
+  const isEn = getAppLanguage().startsWith('en');
+  if (!isoString) return isEn ? 'Never synced yet' : 'لم تتم المزامنة بعد';
   try {
     const date = new Date(isoString);
-    if (isNaN(date.getTime())) return 'لم تتم المزامنة بعد';
+    if (isNaN(date.getTime())) return isEn ? 'Never synced yet' : 'لم تتم المزامنة بعد';
 
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -1411,22 +1448,25 @@ export function formatSyncTimeArabic(isoString?: string | null): string {
     const diffMin = Math.floor(diffSec / 60);
 
     if (diffSec < 45) {
-      return 'الآن (منذ لحظات)';
+      return isEn ? 'Just now' : 'الآن (منذ لحظات)';
     }
     if (diffMin < 60) {
-      return `منذ ${diffMin} دقيقة`;
+      return isEn ? `${diffMin} min ago` : `منذ ${diffMin} دقيقة`;
     }
 
     const isToday = date.toDateString() === now.toDateString();
-    const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const locale = isEn ? 'en-US' : 'ar-EG';
+    const timeStr = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
     if (isToday) {
-      return `اليوم، ${timeStr}`;
+      return isEn ? `Today, ${timeStr}` : `اليوم، ${timeStr}`;
     }
 
-    return `${date.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}، ${timeStr}`;
+    return isEn
+      ? `${date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}, ${timeStr}`
+      : `${date.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })}، ${timeStr}`;
   } catch {
-    return 'منذ قليل';
+    return isEn ? 'Just now' : 'منذ قليل';
   }
 }
 
@@ -4954,6 +4994,24 @@ export const db = {
     } catch (err: any) {
       return { success: false, error: err.message || 'حدث خطأ في الاتصال أثناء استعادة كلمة المرور.' };
     }
+  },
+
+  changePassword: (
+    userId: string,
+    oldPass: string,
+    newPass: string
+  ): { success: boolean; message: string } => {
+    const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    const user = accounts.find((a) => a.id === userId);
+    if (!user) {
+      return { success: false, message: 'User not found' };
+    }
+    if (user.password && user.password !== oldPass) {
+      return { success: false, message: 'Current password incorrect' };
+    }
+    user.password = newPass;
+    db.saveAccounts(accounts);
+    return { success: true, message: 'Password changed successfully' };
   },
 
   clearUserData: async (

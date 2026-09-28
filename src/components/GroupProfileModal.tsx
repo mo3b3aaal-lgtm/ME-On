@@ -25,6 +25,7 @@ import {
   Activity,
   AlertCircle,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Group, Student, Session, Enrollment } from '../types';
 import { db, getBillingModeLabel } from '../utils/storage';
@@ -37,6 +38,7 @@ import {
   formatTimeDisplay,
   getArabicDayForDate,
   getWeekdayIndex,
+  getLocalizedWeekdayName,
 } from '../utils/schedule';
 
 interface GroupProfileModalProps {
@@ -67,6 +69,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   onDataChanged,
 }) => {
   const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
   const [activeSubTab, setActiveSubTab] = useState<'students' | 'sessions' | 'stats'>('students');
 
   // Load data
@@ -119,12 +122,14 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   // Format billing mode label
   const billingLabel =
     group.billingType === 'monthly'
-      ? 'اشتراك شهري'
+      ? (isEn ? 'Monthly Subscription' : 'اشتراك شهري')
       : group.billingType === 'package'
-      ? `باقة (${group.packageSessionsCount || 8} حصص)`
+      ? (isEn ? `Package (${group.packageSessionsCount || 8} sessions)` : `باقة (${group.packageSessionsCount || 8} حصص)`)
       : group.billingType === 'hourly'
-      ? 'محاسبة بالساعة'
-      : 'دفع بالحصة';
+      ? (isEn ? 'Hourly Billing' : 'محاسبة بالساعة')
+      : (isEn ? 'Per Session' : 'دفع بالحصة');
+
+  const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
 
   return (
     <ModalPortal>
@@ -134,7 +139,6 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         <div className="bg-white border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-          
           {/* =========================================================================
               1. Hero Header Section
               ========================================================================= */}
@@ -162,7 +166,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-lg font-black text-white tracking-tight truncate">{group.name}</h2>
                   <span className="text-[10px] font-black bg-white/20 text-white px-2.5 py-0.5 rounded-full border border-white/20 shadow-xs">
-                    {isPrivate ? 'درس خاص' : 'مجموعة دراسية'}
+                    {isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Study Group' : 'مجموعة دراسية')}
                   </span>
                 </div>
                 <p className="text-xs text-[#E8E7FF]/90 font-medium truncate">
@@ -176,21 +180,21 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
             <div className="grid grid-cols-4 gap-2 mt-4 text-center relative z-10">
               <div className="p-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur-xs">
                 <p className="text-sm sm:text-base font-black text-white">{enrolledStudents.length}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#E8E7FF]/80">الطلاب</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#E8E7FF]/80">{isEn ? 'Students' : 'الطلاب'}</p>
               </div>
 
               <div className="p-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur-xs">
                 <p className="text-sm sm:text-base font-black text-[#55C7E8]">{stats.completedSessions}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#E8E7FF]/80">الحصص</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#E8E7FF]/80">{isEn ? 'Sessions' : 'الحصص'}</p>
               </div>
 
               <div className="p-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur-xs">
                 <p className="text-sm sm:text-base font-black text-emerald-300">{stats.attendanceRate}%</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#E8E7FF]/80">الالتزام</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#E8E7FF]/80">{isEn ? 'Attendance' : 'الالتزام'}</p>
               </div>
 
               <div className="p-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#FF647C]">{group.defaultPrice} ج.م</p>
+                <p className="text-sm sm:text-base font-black text-[#FF647C]">{group.defaultPrice} {t('currency')}</p>
                 <p className="text-[9px] sm:text-[10px] font-bold text-[#E8E7FF]/80 truncate">{billingLabel}</p>
               </div>
             </div>
@@ -211,7 +215,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>الطلاب ({enrolledStudents.length})</span>
+                <span>{isEn ? `Students (${enrolledStudents.length})` : `الطلاب (${enrolledStudents.length})`}</span>
               </button>
 
               <button
@@ -224,7 +228,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
-                <span>الحصص ({groupSessions.length})</span>
+                <span>{isEn ? `Sessions (${groupSessions.length})` : `الحصص (${groupSessions.length})`}</span>
               </button>
 
               <button
@@ -237,7 +241,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 }`}
               >
                 <Activity className="w-3.5 h-3.5" />
-                <span>الأداء والماليات</span>
+                <span>{isEn ? 'Stats & Finance' : 'الأداء والماليات'}</span>
               </button>
             </div>
           </div>
@@ -245,14 +249,13 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           {/* =========================================================================
               3. Content Area
               ========================================================================= */}
-          <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E] bg-[#F6F7FC]">
-            
+          <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#191A2E] bg-[#F5F6FC]">
             {/* TAB 1: Enrolled Students */}
             {activeSubTab === 'students' && (
               <div className="space-y-3">
                 {/* Actions Bar */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-bold text-[#74778F]">قائمة طلاب المجموعة</span>
+                  <span className="font-bold text-[#74778F]">{isEn ? 'Group Students' : 'قائمة طلاب المجموعة'}</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {enrolledStudents.length > 0 && onOpenBulkAddSession && (
                       <button
@@ -261,7 +264,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                         className="px-2.5 py-1.5 rounded-xl bg-[#E8E7FF] hover:bg-[#D3D0FB] text-[#7657F6] font-bold text-[11px] flex items-center gap-1 border border-[#D8D5FB] transition-all active:scale-95 cursor-pointer shadow-2xs"
                       >
                         <CalendarCheck2 className="w-3.5 h-3.5" />
-                        <span>جدولة جماعية ({enrolledStudents.length})</span>
+                        <span>{isEn ? `Bulk Schedule (${enrolledStudents.length})` : `جدولة جماعية (${enrolledStudents.length})`}</span>
                       </button>
                     )}
                     <button
@@ -270,7 +273,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                       className="px-2.5 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      <span>إضافة طالب مسجل</span>
+                      <span>{isEn ? 'Add Enrolled' : 'إضافة طالب مسجل'}</span>
                     </button>
                     <button
                       type="button"
@@ -278,7 +281,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                       className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#E8E7FF] text-[#17163D] font-bold text-[11px] flex items-center gap-1 border border-[#E8E7FF] transition-all active:scale-95 cursor-pointer shadow-2xs"
                     >
                       <Plus className="w-3.5 h-3.5 text-[#7657F6]" />
-                      <span>طالب جديد</span>
+                      <span>{isEn ? 'New Student' : 'طالب جديد'}</span>
                     </button>
                   </div>
                 </div>
@@ -286,9 +289,9 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 {enrolledStudents.length === 0 ? (
                   <div className="p-6 bg-white rounded-2xl border border-[#E8E7FF] text-center space-y-2.5 shadow-xs">
                     <Users className="w-8 h-8 mx-auto text-[#74778F] opacity-40" />
-                    <p className="font-black text-[#17163D] text-sm">لا يوجد طلاب مسجلون في هذه المجموعة بعد</p>
+                    <p className="font-black text-[#17163D] text-sm">{isEn ? 'No students enrolled in this group yet' : 'لا يوجد طلاب مسجلون في هذه المجموعة بعد'}</p>
                     <p className="text-[11px] text-[#74778F] max-w-xs mx-auto">
-                      يمكنك إضافة طلاب مسجلين مسبقاً من قاعدة بياناتك أو إنشاء ملف طالب جديد مباشرة.
+                      {isEn ? 'Add existing students from your directory or register a new student directly.' : 'يمكنك إضافة طلاب مسجلين مسبقاً من قاعدة بياناتك أو إنشاء ملف طالب جديد مباشرة.'}
                     </p>
                     <div className="pt-2 flex items-center justify-center gap-2 flex-wrap">
                       <button
@@ -297,7 +300,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                         className="px-3.5 py-2 rounded-xl bg-[#17163D] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                       >
                         <UserPlus className="w-4 h-4" />
-                        <span>إضافة طالب من النظام</span>
+                        <span>{isEn ? 'Add Existing Student' : 'إضافة طالب من النظام'}</span>
                       </button>
                       <button
                         type="button"
@@ -305,7 +308,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                         className="px-3.5 py-2 rounded-xl bg-white text-[#17163D] font-bold text-xs inline-flex items-center gap-1.5 border border-[#E8E7FF] transition-all cursor-pointer"
                       >
                         <Plus className="w-4 h-4 text-[#7657F6]" />
-                        <span>تسجيل طالب جديد</span>
+                        <span>{isEn ? 'Register New Student' : 'تسجيل طالب جديد'}</span>
                       </button>
                     </div>
                   </div>
@@ -342,43 +345,24 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            {/* Phone / WhatsApp Quick links */}
                             {st.phone && (
                               <a
                                 href={`https://wa.me/${st.phone.replace(/[^0-9]/g, '')}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 transition-colors"
-                                title="مراسلة واتساب"
+                                className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                                title="WhatsApp"
                               >
                                 <MessageCircle className="w-3.5 h-3.5" />
                               </a>
                             )}
 
-                            {/* Financial status badge */}
-                            <span
-                              className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${
-                                stFin.balance < 0
-                                  ? 'bg-[#FFF1F3] text-[#FF647C] border-[#FECDD3]'
-                                  : stFin.balance > 0
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : 'bg-[#F6F7FC] text-[#403B9C] border-[#E8E7FF]'
-                              }`}
-                            >
-                              {stFin.balance < 0
-                                ? `${Math.abs(stFin.balance)} ج.م مديونية`
-                                : stFin.balance > 0
-                                ? `+${stFin.balance} ج.م رصيد`
-                                : 'خالص'}
-                            </span>
-
-                            {/* Remove student button */}
                             <button
                               type="button"
                               onClick={() => handleRemoveStudentFromGroup(st.id, st.name)}
-                              className="p-1.5 text-[#74778F] hover:text-[#FF647C] hover:bg-[#FFF1F3] rounded-lg transition-colors cursor-pointer"
-                              title="إزالة الطالب من المجموعة"
+                              className="p-1.5 rounded-xl text-[#FF647C] hover:bg-[#FFF1F3] border border-transparent hover:border-[#FECDD3] transition-colors"
+                              title={isEn ? 'Remove from group' : 'إلغاء قيد الطالب'}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -391,179 +375,50 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
               </div>
             )}
 
-            {/* TAB 2: Schedule & Sessions */}
+            {/* TAB 2: Sessions */}
             {activeSubTab === 'sessions' && (
               <div className="space-y-3">
-                {/* Weekly Schedule Overview Card */}
-                <div className="p-3.5 rounded-2xl bg-white border border-[#E8E7FF] space-y-2.5 shadow-xs">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-black text-[#17163D] flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-[#7657F6]" />
-                      <span>جدول المواعيد الأسبوعي:</span>
-                    </span>
-                    {group.roomOrLocation && (
-                      <span className="text-[11px] text-[#74778F] flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-[#FF647C]" />
-                        <span>{group.roomOrLocation}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {group.scheduleDays && group.scheduleDays.length > 0 ? (
-                    <div className="space-y-1.5 pt-0.5">
-                      {group.scheduleDays.map((day) => {
-                        const dayTimes = getTimesForDayInGroup(group, day);
-                        const isToday = getWeekdayIndex(day) === getWeekdayIndex(todayArabicDay);
-
-                        return (
-                          <div
-                            key={day}
-                            className={`p-2.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs ${
-                              isToday
-                                ? 'bg-gradient-to-r from-emerald-50/90 to-white border-emerald-300 ring-1 ring-emerald-300/40'
-                                : 'bg-[#F6F7FC] border-[#E8E7FF]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span
-                                className={`w-2 h-2 rounded-full shrink-0 ${
-                                  isToday ? 'bg-emerald-500 animate-pulse' : 'bg-[#7657F6]'
-                                }`}
-                              />
-                              <span className={`text-xs font-black ${isToday ? 'text-emerald-950' : 'text-[#17163D]'}`}>
-                                {day}
-                              </span>
-                              {isToday && (
-                                <span className="text-[9px] font-black px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                                  اليوم
-                                </span>
-                              )}
-                              {dayTimes.length > 1 && (
-                                <span className="text-[9px] font-bold text-[#74778F]">
-                                  ({dayTimes.length} فترات)
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {dayTimes.length > 0 ? (
-                                dayTimes.map((time, tIdx) => (
-                                  <div
-                                    key={tIdx}
-                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all ${
-                                      isToday
-                                        ? 'bg-emerald-100 text-emerald-950 border-emerald-300 shadow-2xs'
-                                        : 'bg-white text-[#191A2E] border-[#E8E7FF] shadow-2xs'
-                                    }`}
-                                  >
-                                    <Clock className={`w-3 h-3 ${isToday ? 'text-emerald-700' : 'text-[#7657F6]'}`} />
-                                    <span className="font-mono font-black text-[11px]">
-                                      {formatTimeDisplay(time, isRTL)}
-                                    </span>
-                                    {dayTimes.length > 1 && (
-                                      <span
-                                        className={`text-[9px] px-1.5 py-0.2 rounded-md font-extrabold ${
-                                          isToday
-                                            ? 'bg-emerald-200/90 text-emerald-950'
-                                            : 'bg-[#E8E7FF] text-[#7657F6]'
-                                        }`}
-                                      >
-                                        فترة {tIdx + 1}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="font-mono text-[11px]">{formatTimeDisplay(group.scheduleTime, isRTL)}</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-[#74778F]">مواعيد مرنة حسب الاتفاق</p>
-                  )}
-                </div>
-
-                {/* Sessions Header & List */}
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#74778F]">سجل الحصص المنفذة والمجدولة</span>
+                  <span className="font-bold text-[#74778F]">{isEn ? 'Group Sessions' : 'حصص المجموعة'}</span>
                   <button
                     type="button"
                     onClick={() => onAddSessionForGroup(group)}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>جدولة حصة جديدة</span>
+                    <span>{t('scheduleSessionBtn')}</span>
                   </button>
                 </div>
 
                 {groupSessions.length === 0 ? (
                   <div className="p-6 bg-white rounded-2xl border border-[#E8E7FF] text-center space-y-2 shadow-xs">
-                    <CalendarCheck2 className="w-8 h-8 mx-auto text-[#74778F] opacity-40" />
-                    <p className="font-black text-[#17163D] text-sm">لا توجد حصص مسجلة لهذه المجموعة بعد</p>
-                    <p className="text-[11px] text-[#74778F]">
-                      ابدأ بإضافة أول حصة لتسجيل الحضور وتحصيل الاشتراكات تلقائياً.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => onAddSessionForGroup(group)}
-                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-bold text-xs inline-flex items-center gap-1.5 mt-1 cursor-pointer shadow-md shadow-[#FF647C]/30"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>جدولة أول حصة</span>
-                    </button>
+                    <Calendar className="w-8 h-8 mx-auto text-[#74778F] opacity-40" />
+                    <p className="font-bold text-[#17163D] text-xs">{isEn ? 'No sessions recorded for this group yet' : 'لا توجد حصص مسجلة لهذه المجموعة بعد'}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {groupSessions.map((ses) => (
+                    {groupSessions.map((session) => (
                       <div
-                        key={ses.id}
-                        className="p-3 rounded-2xl bg-white border border-[#E8E7FF] flex items-center justify-between shadow-xs hover:border-[#7657F6]/40 transition-all gap-2"
+                        key={session.id}
+                        className="p-3 bg-white rounded-2xl border border-[#E8E7FF] flex items-center justify-between gap-2 shadow-xs hover:border-[#7657F6]/40 transition-all"
                       >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-black text-[#17163D] text-xs truncate">{ses.title || 'حصة دراسية'}</p>
-                            
-                            {/* Semantic Status Badge */}
-                            {ses.status === 'completed' ? (
-                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1 shadow-2xs">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>مكتملة</span>
-                              </span>
-                            ) : ses.status === 'cancelled' ? (
-                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] inline-flex items-center gap-1 shadow-2xs">
-                                <AlertCircle className="w-3 h-3 text-[#FF647C]" />
-                                <span>ملغاة</span>
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
-                                <Clock className="w-3 h-3 text-amber-600" />
-                                <span>مجدولة</span>
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-[10px] text-[#74778F]">
-                            {ses.dayName} • {ses.date} {ses.startTime ? `• ${formatTimeDisplay(ses.startTime, isRTL)}` : ''}
-                          </p>
+                        <div className="space-y-0.5 min-w-0">
+                          <strong className="font-black text-xs text-[#17163D] block truncate">
+                            {session.title}
+                          </strong>
+                          <span className="text-[11px] text-[#74778F] block">
+                            {getLocalizedWeekdayName(session.dayName)} {session.date} • {formatTimeDisplay(session.startTime, isRTL)}
+                          </span>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => onOpenAttendanceModal(ses)}
-                            className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition-all ${
-                              ses.status === 'completed'
-                                ? 'bg-[#17163D] hover:bg-[#403B9C] text-white'
-                                : 'bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white shadow-md shadow-[#FF647C]/20'
-                            }`}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#55C7E8]" />
-                            <span>{ses.status === 'completed' ? 'تعديل الحضور' : 'رصد الحضور'}</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onOpenAttendanceModal(session)}
+                          className="px-3 py-1.5 rounded-xl bg-[#17163D] text-white font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#55C7E8]" />
+                          <span>{session.status === 'completed' ? (isEn ? 'Attendance' : 'الحضور') : (isEn ? 'Take Attendance' : 'رصد')}</span>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -571,113 +426,43 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
               </div>
             )}
 
-            {/* TAB 3: Performance & Financial Statistics */}
+            {/* TAB 3: Stats */}
             {activeSubTab === 'stats' && (
               <div className="space-y-3">
-                {/* Financial Summary Bento */}
-                <div className="p-4 rounded-2xl bg-white border border-[#E8E7FF] space-y-3.5 shadow-xs">
-                  <h3 className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
-                    <Wallet className="w-4 h-4 text-[#7657F6]" />
-                    <span>الموقف المالي والإيرادات</span>
-                  </h3>
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="p-3 bg-[#F8F9FE] rounded-2xl border border-[#E8E7FF]">
-                      <p className="text-sm sm:text-base font-black text-[#17163D]">{stats.totalDue} ج.م</p>
-                      <p className="text-[10px] text-[#74778F] font-bold mt-0.5">إجمالي المطلوب</p>
-                    </div>
-
-                    <div className="p-3 bg-emerald-50/60 rounded-2xl border border-emerald-200">
-                      <p className="text-sm sm:text-base font-black text-emerald-700">{stats.totalRevenue} ج.م</p>
-                      <p className="text-[10px] text-emerald-800 font-bold mt-0.5">تم التحصيل</p>
-                    </div>
-
-                    <div className="p-3 bg-[#FFF1F3] rounded-2xl border border-[#FECDD3]">
-                      <p className="text-sm sm:text-base font-black text-[#FF647C]">{stats.remaining} ج.م</p>
-                      <p className="text-[10px] text-[#FF647C] font-bold mt-0.5">المتبقي</p>
-                    </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="bg-white p-3.5 rounded-2xl border border-[#E8E7FF] text-center space-y-1">
+                    <span className="text-[10px] text-[#74778F] font-bold block">{isEn ? 'Total Expected Revenue' : 'إجمالي القيمة المستحقة'}</span>
+                    <strong className="text-base font-black text-[#17163D] block">{stats.totalDue} {t('currency')}</strong>
                   </div>
-
-                  {/* Collection Progress Bar */}
-                  <div className="space-y-1 pt-1">
-                    <div className="flex justify-between text-[11px] font-bold text-[#74778F]">
-                      <span>نسبة التحصيل</span>
-                      <span className="text-[#17163D] font-black">
-                        {stats.totalDue > 0 ? Math.round((stats.totalRevenue / stats.totalDue) * 100) : 100}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#E8E7FF] h-2.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-[#7657F6] to-emerald-500 h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${stats.totalDue > 0 ? Math.min(100, Math.round((stats.totalRevenue / stats.totalDue) * 100)) : 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Attendance Performance Card */}
-                <div className="p-4 rounded-2xl bg-white border border-[#E8E7FF] space-y-3 shadow-xs">
-                  <h3 className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
-                    <Activity className="w-4 h-4 text-emerald-600" />
-                    <span>معدل الحضور والالتزام</span>
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-2 text-center">
-                    <div className="p-3 bg-[#F8F9FE] rounded-2xl border border-[#E8E7FF]">
-                      <p className="text-base sm:text-lg font-black text-emerald-600">{stats.attendanceRate}%</p>
-                      <p className="text-[10px] text-[#74778F] font-bold mt-0.5">متوسط نسبة الحضور</p>
-                    </div>
-
-                    <div className="p-3 bg-[#F8F9FE] rounded-2xl border border-[#E8E7FF]">
-                      <p className="text-base sm:text-lg font-black text-[#7657F6]">{stats.completedSessions}</p>
-                      <p className="text-[10px] text-[#74778F] font-bold mt-0.5">الحصص المكتملة</p>
-                    </div>
+                  <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 text-center space-y-1">
+                    <span className="text-[10px] text-emerald-800 font-bold block">{isEn ? 'Total Collected' : 'إجمالي المحصل'}</span>
+                    <strong className="text-base font-black text-emerald-700 block">{stats.totalRevenue} {t('currency')}</strong>
                   </div>
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* =========================================================================
-              4. Modal Actions Footer
-              ========================================================================= */}
-          <div className="p-3.5 bg-white border-t border-[#E8E7FF] flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onEditGroup(group);
-                onClose();
-              }}
-              className="flex-1 py-2.5 px-3 rounded-2xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#17163D] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-[#E8E7FF] cursor-pointer"
-            >
-              <Edit2 className="w-3.5 h-3.5 text-[#7657F6]" />
-              <span>{t('editGroupAction')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                onAddSessionForGroup(group);
-              }}
-              className="flex-1 py-2.5 px-3 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#FF647C]/30 cursor-pointer active:scale-95"
-            >
-              <CalendarCheck2 className="w-3.5 h-3.5" />
-              <span>{t('scheduleSessionAction')}</span>
-            </button>
-
+          {/* Footer Actions */}
+          <div className="p-3 bg-white border-t border-[#E8E7FF] flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={handleDeleteGroup}
-              className="p-2.5 rounded-2xl bg-[#FFF1F3] hover:bg-[#FFE4E6] text-[#FF647C] border border-[#FECDD3] cursor-pointer transition-colors"
-              title={t('deleteGroupAction')}
+              className="p-2 rounded-xl text-[#FF647C] hover:bg-[#FFF1F3] border border-transparent hover:border-[#FECDD3] transition-colors"
+              title={isEn ? 'Delete group' : 'حذف المجموعة'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
-          </div>
 
+            <button
+              type="button"
+              onClick={() => onEditGroup(group)}
+              className="px-4 py-2 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              <span>{isEn ? 'Edit Group Info' : 'تعديل بيانات المجموعة'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </ModalPortal>

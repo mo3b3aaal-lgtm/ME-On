@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ShieldAlert,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   History,
   FileSpreadsheet,
@@ -31,7 +32,9 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
   onConfirmArchive,
   onConfirmPermanentDelete,
 }) => {
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
+
   const [selectedMode, setSelectedMode] = useState<'archive' | 'permanent' | null>(null);
   const [step, setStep] = useState<'select' | 'confirm'>('select');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -93,10 +96,14 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
 
               <div className="min-w-0">
                 <h2 className="text-base sm:text-lg font-black tracking-tight truncate">
-                  {step === 'select' ? 'إدارة وحذف الطالب' : (selectedMode === 'archive' ? 'تأكيد أرشفة الطالب' : 'تحذير: حذف نهائي وشامل')}
+                  {step === 'select'
+                    ? (isEn ? 'Manage & Delete Student' : 'إدارة وحذف الطالب')
+                    : (selectedMode === 'archive'
+                        ? (isEn ? 'Confirm Student Archiving' : 'تأكيد أرشفة الطالب')
+                        : (isEn ? 'Warning: Permanent Deletion' : 'تحذير: حذف نهائي وشامل'))}
                 </h2>
                 <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
-                  الطالب: <span className="font-black text-white">{student.name}</span>
+                  {isEn ? 'Student:' : 'الطالب:'} <span className="font-black text-white">{student.name}</span>
                 </p>
               </div>
             </div>
@@ -106,6 +113,7 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
               onClick={handleClose}
               disabled={isProcessing}
               className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+              title={t('close')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -118,10 +126,10 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
               <>
                 <div className="text-center space-y-1 pb-1">
                   <h3 className="text-sm font-black text-[#17163D]">
-                    ماذا تريد أن تفعل بالسجلات الخاصة بهذا الطالب؟
+                    {isEn ? 'What would you like to do with this student records?' : 'ماذا تريد أن تفعل بالسجلات الخاصة بهذا الطالب؟'}
                   </h3>
                   <p className="text-xs text-[#74778F] font-medium leading-relaxed">
-                    اختر الطريقة المناسبة لإدارة ملف الطالب وحساباته المالية في Classy.
+                    {isEn ? 'Choose the appropriate option for managing student history and finances in Classy.' : 'اختر الطريقة المناسبة لإدارة ملف الطالب وحساباته المالية في Classy.'}
                   </p>
                 </div>
 
@@ -137,28 +145,30 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                       </div>
                       <div>
                         <h4 className="text-xs sm:text-sm font-black text-[#17163D]">
-                          حذف الطالب مع الاحتفاظ بسجلاته التاريخية
+                          {isEn ? 'Archive Student & Preserve Historical Records' : 'حذف الطالب مع الاحتفاظ بسجلاته التاريخية'}
                         </h4>
                         <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#7657F6] bg-[#E8E7FF] px-2 py-0.5 rounded-lg mt-0.5">
                           <Sparkles className="w-3 h-3" />
-                          <span>الخيار الآمن والموصى به محاسبياً</span>
+                          <span>{isEn ? 'Recommended Accounting Option' : 'الخيار الآمن والموصى به محاسبياً'}</span>
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <p className="text-xs text-[#74778F] font-medium leading-relaxed">
-                    يتم إخفاء الطالب من قائمة الطلاب النشطين واشتراكات المجموعات، مع <strong>الاحتفاظ الكامل</strong> بكافة الحصص السابقة، سجل الحضور، المدفوعات، والكشوفات المحاسبية.
+                    {isEn
+                      ? 'Student is hidden from active lists and class enrollments, preserving all past sessions, attendance logs, payments, and financial reports.'
+                      : 'يتم إخفاء الطالب من قائمة الطلاب النشطين واشتراكات المجموعات، مع الاحتفاظ الكامل بكافة الحصص السابقة، سجل الحضور، المدفوعات، والكشوفات المحاسبية.'}
                   </p>
 
                   <div className="flex items-center gap-3 text-[11px] font-black text-[#403B9C] pt-2 border-t border-[#E8E7FF]">
                     <span className="flex items-center gap-1">
                       <History className="w-3.5 h-3.5 text-[#7657F6]" />
-                      <span>الحصص والغياب محفوظة</span>
+                      <span>{isEn ? 'Sessions & Attendance Preserved' : 'الحصص والغياب محفوظة'}</span>
                     </span>
                     <span className="flex items-center gap-1">
                       <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>التقارير المالية سليمة</span>
+                      <span>{isEn ? 'Financial Reports Intact' : 'التقارير المالية سليمة'}</span>
                     </span>
                   </div>
                 </div>
@@ -174,16 +184,18 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-black text-[#FF647C]">
-                        حذف الطالب وجميع سجلاته نهائياً
+                        {isEn ? 'Permanently Delete Student and All Records' : 'حذف الطالب وجميع سجلاته نهائياً'}
                       </h4>
                       <span className="inline-block text-[10px] font-black text-[#FF647C] bg-[#FFF1F3] px-2 py-0.5 rounded-lg mt-0.5">
-                        حذف دائم وشامل
+                        {isEn ? 'Permanent & Irreversible' : 'حذف دائم وشامل'}
                       </span>
                     </div>
                   </div>
 
                   <p className="text-xs text-[#74778F] font-medium leading-relaxed">
-                    حذف الطالب وجميع حصصه الخاصة، سجلات الحضور، والمدفوعات المرتبطة به بشكل نهائي. لن يمكن استعادة هذه السجلات أو إدراجها في التقارير.
+                    {isEn
+                      ? 'Permanently deletes student profile, private sessions, attendance logs, and payments. These records cannot be recovered or shown in reports.'
+                      : 'حذف الطالب وجميع حصصه الخاصة، سجلات الحضور، والمدفوعات المرتبطة به بشكل نهائي. لن يمكن استعادة هذه السجلات أو إدراجها في التقارير.'}
                   </p>
                 </div>
               </>
@@ -193,14 +205,14 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                 <div className="classy-card p-4 bg-[#E8E7FF]/40 border border-[#D8D5FB] text-[#17163D] space-y-2.5">
                   <div className="flex items-center gap-2 text-[#7657F6] font-black text-xs">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>ماذا سيحدث عند إتمام هذا الإجراء؟</span>
+                    <span>{isEn ? 'What happens with this action?' : 'ماذا سيحدث عند إتمام هذا الإجراء؟'}</span>
                   </div>
-                  <ul className="text-xs space-y-2 text-[#191A2E] font-medium list-disc list-inside leading-relaxed pr-1">
-                    <li>سيتم نقل الطالب <strong className="text-[#7657F6] font-black">{student.name}</strong> إلى قسم <strong>الطلاب المؤرشفين</strong>.</li>
-                    <li>لن يظهر الطالب في قوائم أخذ الحضور أو تسجيل الحصص الجديدة.</li>
-                    <li>تظل جميع الحصص وسجلات الحضور والغياب محفوظة بالكامل.</li>
-                    <li>تظل جميع المدفوعات والإيرادات المسددة مدرجة في التقارير المحاسبية.</li>
-                    <li>يمكنك <strong>استعادة وتنشيط الطالب</strong> في أي وقت لاحقاً بنقرة واحدة.</li>
+                  <ul className={`text-xs space-y-2 text-[#191A2E] font-medium list-disc list-inside leading-relaxed ${isRTL ? 'pr-1' : 'pl-1'}`}>
+                    <li>{isEn ? <>Student <strong className="text-[#7657F6] font-black">{student.name}</strong> will be moved to the <strong>Archived Students</strong> list.</> : <>سيتم نقل الطالب <strong className="text-[#7657F6] font-black">{student.name}</strong> إلى قسم <strong>الطلاب المؤرشفين</strong>.</>}</li>
+                    <li>{isEn ? 'Student will not appear in daily attendance sheets or new class lists.' : 'لن يظهر الطالب في قوائم أخذ الحضور أو تسجيل الحصص الجديدة.'}</li>
+                    <li>{isEn ? 'All classes, attendance, and absence history remain fully preserved.' : 'تظل جميع الحصص وسجلات الحضور والغياب محفوظة بالكامل.'}</li>
+                    <li>{isEn ? 'All recorded payments remain calculated in financial reports.' : 'تظل جميع المدفوعات والإيرادات المسددة مدرجة في التقارير المحاسبية.'}</li>
+                    <li>{isEn ? 'You can restore and reactivate the student anytime with 1 click.' : 'يمكنك استعادة وتنشيط الطالب في أي وقت لاحقاً بنقرة واحدة.'}</li>
                   </ul>
                 </div>
               </div>
@@ -210,19 +222,21 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                 <div className="classy-card p-4 bg-[#FFF1F3] border border-[#FECDD3] text-[#9F1239] space-y-2.5">
                   <div className="flex items-center gap-2 text-[#FF647C] font-black text-xs">
                     <AlertTriangle className="w-4 h-4" />
-                    <span>تأكيد الحذف النهائي الشامل</span>
+                    <span>{isEn ? 'Confirm Permanent Deletion' : 'تأكيد الحذف النهائي الشامل'}</span>
                   </div>
                   <p className="text-xs font-medium leading-relaxed text-[#9F1239]">
-                    سيتم مسح الطالب <strong className="text-[#9F1239] font-black">{student.name}</strong> وجميع السجلات والبيانات المرتبطة به نهائياً من قاعدة البيانات، بما في ذلك:
+                    {isEn
+                      ? <>Student <strong className="text-[#9F1239] font-black">{student.name}</strong> and all linked data will be wiped permanently from database, including:</>
+                      : <>سيتم مسح الطالب <strong className="text-[#9F1239] font-black">{student.name}</strong> وجميع السجلات والبيانات المرتبطة به نهائياً من قاعدة البيانات، بما في ذلك:</>}
                   </p>
-                  <ul className="text-xs space-y-1 text-[#9F1239] font-black list-disc list-inside pr-1">
-                    <li>كافة الحصص والدروس الخاصة السابقة</li>
-                    <li>سجلات الحضور والغياب والملاحظات</li>
-                    <li>سجل المدفوعات والإيصالات المالية</li>
-                    <li>سجلات السلوك والتقييمات</li>
+                  <ul className={`text-xs space-y-1 text-[#9F1239] font-black list-disc list-inside ${isRTL ? 'pr-1' : 'pl-1'}`}>
+                    <li>{isEn ? 'All past private and group classes' : 'كافة الحصص والدروس الخاصة السابقة'}</li>
+                    <li>{isEn ? 'Attendance, absence, and notes records' : 'سجلات الحضور والغياب والملاحظات'}</li>
+                    <li>{isEn ? 'Payment history and financial receipts' : 'سجل المدفوعات والإيصالات المالية'}</li>
+                    <li>{isEn ? 'Behavior ratings and progress logs' : 'سجلات السلوك والتقييمات'}</li>
                   </ul>
                   <p className="text-xs font-black text-[#FF647C] pt-2 border-t border-[#FECDD3]">
-                    ⚠️ هذا الإجراء قطعي ولا يمكن التراجع عنه.
+                    {isEn ? '⚠️ This action is permanent and cannot be undone.' : '⚠️ هذا الإجراء قطعي ولا يمكن التراجع عنه.'}
                   </p>
                 </div>
               </div>
@@ -248,8 +262,8 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                   disabled={isProcessing}
                   className="py-3 px-4 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-[#74778F] hover:text-[#17163D] font-black text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <ArrowRight className="w-3.5 h-3.5" />
-                  <span>تغيير الخيار</span>
+                  {isRTL ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
+                  <span>{isEn ? 'Change Choice' : 'تغيير الخيار'}</span>
                 </button>
 
                 {selectedMode === 'archive' ? (
@@ -260,7 +274,7 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                     className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#7657F6]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
                   >
                     <Archive className="w-4 h-4 text-[#55C7E8]" />
-                    <span>{isProcessing ? 'جاري الأرشفة...' : 'حذف مع الاحتفاظ بالسجلات'}</span>
+                    <span>{isProcessing ? (isEn ? 'Archiving...' : 'جاري الأرشفة...') : (isEn ? 'Archive & Keep Records' : 'حذف مع الاحتفاظ بالسجلات')}</span>
                   </button>
                 ) : (
                   <button
@@ -270,7 +284,7 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                     className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#FF647C] via-[#E11D48] to-[#9F1239] text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#FF647C]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>{isProcessing ? 'جاري الحذف...' : 'تأكيد الحذف النهائي'}</span>
+                    <span>{isProcessing ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Confirm Permanent Delete' : 'تأكيد الحذف النهائي')}</span>
                   </button>
                 )}
               </>

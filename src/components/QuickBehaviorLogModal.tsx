@@ -36,7 +36,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
   availableGroups = [],
   onSuccess,
 }) => {
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
   const modalLayer = useModalLayer('quick-behavior-log-modal', isOpen, onClose);
 
   // Filter state for predefined tags
@@ -105,7 +106,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
     e.preventDefault();
     if (isSubmitting || isSavedSuccess) return;
 
-    const tagName = isCustomMode ? customTagName.trim() : (selectedTag?.name || 'ملاحظة سلوكية');
+    const tagName = isCustomMode ? customTagName.trim() : (isEn ? (selectedTag?.nameEn || selectedTag?.name || 'Behavior Note') : (selectedTag?.name || 'ملاحظة سلوكية'));
     if (!tagName) return;
 
     setIsSubmitting(true);
@@ -174,7 +175,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               </div>
               <div className="min-w-0">
                 <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2 truncate">
-                  <span>تسجيل سلوك وتفاعل سريع</span>
+                  <span>{isEn ? 'Record Behavior & Participation' : 'تسجيل سلوك وتفاعل سريع'}</span>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
                     Quick Log
                   </span>
@@ -195,6 +196,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               onClick={onClose}
               type="button"
               className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+              title={t('close')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -214,7 +216,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 />
                 <div className="min-w-0">
                   <h4 className="text-xs font-black text-[#17163D] leading-tight truncate">{student.name}</h4>
-                  <p className="text-[10px] text-[#74778F] mt-0.5">رصد فوري لتقييم الحصة والأداء</p>
+                  <p className="text-[10px] text-[#74778F] mt-0.5">{isEn ? 'Quick feedback and class evaluation' : 'رصد فوري لتقييم الحصة والأداء'}</p>
                 </div>
               </div>
 
@@ -222,7 +224,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#E8E7FF]/50 border border-[#D8D5FB] shrink-0">
                 <Award className="w-3.5 h-3.5 text-[#7657F6]" />
                 <span className="text-xs font-black text-[#17163D]">
-                  {points > 0 ? `+${points}` : points} نقطة
+                  {points > 0 ? `+${points}` : points} {t('points')}
                 </span>
               </div>
             </div>
@@ -230,7 +232,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             {/* Category Filter Tabs */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-[#17163D]">اختر نوع التقييم / الوسم:</label>
+                <label className="text-xs font-black text-[#17163D]">{isEn ? 'Select Assessment / Tag:' : 'اختر نوع التقييم / الوسم:'}</label>
                 <button
                   type="button"
                   onClick={handleEnableCustomTag}
@@ -241,7 +243,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   }`}
                 >
                   <Plus className="w-3 h-3" />
-                  <span>وسم مخصص</span>
+                  <span>{isEn ? 'Custom Tag' : 'وسم مخصص'}</span>
                 </button>
               </div>
 
@@ -255,7 +257,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       : 'bg-white text-[#74778F] border border-[#E8E7FF] hover:bg-[#F6F7FC]'
                   }`}
                 >
-                  الكل
+                  {isEn ? 'All' : 'الكل'}
                 </button>
                 <button
                   type="button"
@@ -267,7 +269,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   }`}
                 >
                   <span>🌟</span>
-                  <span>تميز وتفاعل</span>
+                  <span>{isEn ? 'Positive' : 'تميز وتفاعل'}</span>
                 </button>
                 <button
                   type="button"
@@ -279,7 +281,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   }`}
                 >
                   <span>⚠️</span>
-                  <span>يحتاج تحسين</span>
+                  <span>{isEn ? 'Needs Work' : 'يحتاج تحسين'}</span>
                 </button>
                 <button
                   type="button"
@@ -291,7 +293,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   }`}
                 >
                   <span>📝</span>
-                  <span>ملاحظات عامة</span>
+                  <span>{isEn ? 'General Notes' : 'ملاحظات عامة'}</span>
                 </button>
               </div>
             </div>
@@ -302,7 +304,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#7657F6]" />
-                    كتابة وسم مخصص
+                    {isEn ? 'Write Custom Tag' : 'كتابة وسم مخصص'}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -314,7 +316,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                           : 'bg-white text-emerald-700 border border-emerald-200'
                       }`}
                     >
-                      إيجابي
+                      {isEn ? 'Positive' : 'إيجابي'}
                     </button>
                     <button
                       type="button"
@@ -322,10 +324,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
                         category === 'needs_improvement'
                           ? 'bg-[#FF647C] text-white'
-                          : 'bg-white text-[#FF647C] border border-[#FECDD3]'
+                          : 'bg-white text-emerald-700 border border-[#FECDD3]'
                       }`}
                     >
-                      يحتاج تحسين
+                      {isEn ? 'Needs Attention' : 'يحتاج تحسين'}
                     </button>
                     <button
                       type="button"
@@ -336,7 +338,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                           : 'bg-white text-[#191A2E] border border-[#E8E7FF]'
                       }`}
                     >
-                      عام
+                      {isEn ? 'General' : 'عام'}
                     </button>
                   </div>
                 </div>
@@ -345,7 +347,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   type="text"
                   value={customTagName}
                   onChange={(e) => setCustomTagName(e.target.value)}
-                  placeholder="مثال: تميز في حفظ جدول الضرب، حل مسألة صعبة..."
+                  placeholder={isEn ? 'e.g. Mastered times table, solved complex problem...' : 'مثال: تميز في حفظ جدول الضرب، حل مسألة صعبة...'}
                   className="classy-input font-bold"
                   autoFocus
                 />
@@ -356,12 +358,14 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             <div className="grid grid-cols-2 gap-2">
               {filteredTags.map((tag) => {
                 const isSelected = !isCustomMode && selectedTag?.id === tag.id;
+                const displayTitle = isEn ? (tag.nameEn || tag.name) : tag.name;
+                const displaySubtitle = isEn ? tag.name : tag.nameEn;
                 return (
                   <button
                     key={tag.id}
                     type="button"
                     onClick={() => handleSelectPredefinedTag(tag)}
-                    className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between gap-2 cursor-pointer text-xs ${
+                    className={`p-3 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex flex-col justify-between gap-2 cursor-pointer text-xs ${
                       isSelected
                         ? 'border-[#7657F6] bg-[#E8E7FF]/40 ring-2 ring-[#7657F6]/25 shadow-xs'
                         : 'border-[#E8E7FF] bg-white hover:border-[#D8D5FB] hover:bg-[#F6F7FC]'
@@ -388,9 +392,9 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       )}
                     </div>
                     <div>
-                      <h4 className="font-black text-[#17163D] text-xs leading-tight line-clamp-1">{tag.name}</h4>
-                      {tag.nameEn && (
-                        <p className="text-[10px] text-[#74778F] mt-0.5 line-clamp-1 font-medium">{tag.nameEn}</p>
+                      <h4 className="font-black text-[#17163D] text-xs leading-tight line-clamp-1">{displayTitle}</h4>
+                      {displaySubtitle && (
+                        <p className="text-[10px] text-[#74778F] mt-0.5 line-clamp-1 font-medium">{displaySubtitle}</p>
                       )}
                     </div>
                   </button>
@@ -403,7 +407,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-black text-[#17163D]">
                   <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
-                  <span>توقيت التسجيل (Timestamp):</span>
+                  <span>{isEn ? 'Timestamp:' : 'توقيت التسجيل (Timestamp):'}</span>
                 </div>
 
                 <div className="flex items-center gap-1 text-xs">
@@ -416,7 +420,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                         : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]'
                     }`}
                   >
-                    الآن (تلقائي)
+                    {isEn ? 'Now (Auto)' : 'الآن (تلقائي)'}
                   </button>
                   <button
                     type="button"
@@ -427,7 +431,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                         : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]'
                     }`}
                   >
-                    تحديد وقت سابق
+                    {isEn ? 'Custom Date/Time' : 'تحديد وقت سابق'}
                   </button>
                 </div>
               </div>
@@ -435,7 +439,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               {isCustomTimestamp ? (
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
-                    <label className="text-[10px] font-bold text-[#74778F] mb-1 block">التاريخ:</label>
+                    <label className="text-[10px] font-bold text-[#74778F] mb-1 block">{isEn ? 'Date:' : 'التاريخ:'}</label>
                     <input
                       type="date"
                       value={customDate}
@@ -444,7 +448,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-[#74778F] mb-1 block">الوقت:</label>
+                    <label className="text-[10px] font-bold text-[#74778F] mb-1 block">{isEn ? 'Time:' : 'الوقت:'}</label>
                     <input
                       type="time"
                       value={customTime}
@@ -455,9 +459,9 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 </div>
               ) : (
                 <div className="p-2.5 bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl flex items-center justify-between text-[11px] text-[#74778F]">
-                  <span>سيتم حفظ التقييم بتوقيت اللحظة الحالية بدقة.</span>
+                  <span>{isEn ? 'Evaluation will be recorded at current time.' : 'سيتم حفظ التقييم بتوقيت اللحظة الحالية بدقة.'}</span>
                   <span className="font-black text-[#17163D]">
-                    {new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {new Date().toLocaleTimeString(isEn ? 'en-US' : 'ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                   </span>
                 </div>
               )}
@@ -470,17 +474,17 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 <div className="classy-card p-3 space-y-1.5">
                   <label className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-[#7657F6]" />
-                    <span>المجموعة / الحصة المرتبطة:</span>
+                    <span>{isEn ? 'Linked Class / Group:' : 'المجموعة / الحصة المرتبطة:'}</span>
                   </label>
                   <select
                     value={selectedGroupId}
                     onChange={(e) => setSelectedGroupId(e.target.value)}
                     className="classy-select"
                   >
-                    <option value="">عام (بدون مجموعة محددة)</option>
+                    <option value="">{isEn ? 'General (No specific group)' : 'عام (بدون مجموعة محددة)'}</option>
                     {studentGroups.map((g) => (
                       <option key={g.id} value={g.id}>
-                        {g.name} ({g.type === 'private' ? 'درس خاص' : 'مجموعة'})
+                        {g.name} ({g.type === 'private' ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Group' : 'مجموعة')})
                       </option>
                     ))}
                   </select>
@@ -491,7 +495,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               <div className="classy-card p-3 space-y-1.5">
                 <label className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
                   <Award className="w-3.5 h-3.5 text-[#7657F6]" />
-                  <span>النقاط / التأثير:</span>
+                  <span>{isEn ? 'Points Impact:' : 'النقاط / التأثير:'}</span>
                 </label>
                 <div className="flex items-center gap-1">
                   {[-10, -5, 0, 5, 10, 15].map((val) => (
@@ -516,12 +520,12 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             <div className="classy-card p-3 space-y-1.5">
               <label className="text-xs font-black text-[#17163D] flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-[#7657F6]" />
-                <span>ملاحظة أو تفاصيل إضافية (اختياري):</span>
+                <span>{isEn ? 'Additional Note (Optional):' : 'ملاحظة أو تفاصيل إضافية (اختياري):'}</span>
               </label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="أضف أي تفاصيل سريعة تخص هذا التقييم، تفاعل الطالب، أو سبب التنبيه..."
+                placeholder={isEn ? 'Add quick feedback notes or follow-up reason...' : 'أضف أي تفاصيل سريعة تخص هذا التقييم، تفاعل الطالب، أو سبب التنبيه...'}
                 rows={2}
                 className="classy-textarea"
               />
@@ -553,12 +557,12 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               {isSavedSuccess ? (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>تم حفظ التقييم بنجاح!</span>
+                  <span>{isEn ? 'Rating Saved Successfully!' : 'تم حفظ التقييم بنجاح!'}</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4 text-[#55C7E8]" />
-                  <span>حفظ تقييم السلوك</span>
+                  <span>{isEn ? 'Save Behavior Rating' : 'حفظ تقييم السلوك'}</span>
                 </>
               )}
             </button>

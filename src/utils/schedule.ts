@@ -1,24 +1,84 @@
 import { Group, Student, Enrollment, Session, SessionStatus } from '../types';
 import { getAppLanguage } from './i18n';
 
-export interface ScheduledClassItem {
-  id: string;
-  studentId: string;
-  studentName: string;
-  student?: Student;
-  groupId: string;
-  groupName: string;
-  group?: Group;
-  enrollmentId?: string;
-  isPrivate: boolean;
-  subject: string;
-  dayName: string;
-  time: string; // Formatted display e.g. "5:00 PM" / "05:00 م"
-  rawTime: string; // e.g. "17:00"
-  sortMinutes: number; // For chronological sorting
-  location?: string;
-  accentColor: string;
-}
+// ==========================================
+// 1. CANONICAL WEEKDAYS ARCHITECTURE
+// ==========================================
+
+export type CanonicalWeekday =
+  | 'saturday'
+  | 'sunday'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday';
+
+export const CANONICAL_WEEKDAYS: CanonicalWeekday[] = [
+  'saturday',
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+];
+
+/**
+ * Maps Canonical Weekdays to standard JavaScript Day Index (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+ */
+export const CANONICAL_TO_DAY_INDEX: Record<CanonicalWeekday, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
+/**
+ * Maps standard JavaScript Day Index (0 = Sunday, 6 = Saturday) to Canonical Weekday
+ */
+export const DAY_INDEX_TO_CANONICAL: Record<number, CanonicalWeekday> = {
+  0: 'sunday',
+  1: 'monday',
+  2: 'tuesday',
+  3: 'wednesday',
+  4: 'thursday',
+  5: 'friday',
+  6: 'saturday',
+};
+
+export const WEEKDAY_DISPLAY_NAMES_ARABIC: Record<CanonicalWeekday, string> = {
+  saturday: 'السبت',
+  sunday: 'الأحد',
+  monday: 'الاثنين',
+  tuesday: 'الثلاثاء',
+  wednesday: 'الأربعاء',
+  thursday: 'الخميس',
+  friday: 'الجمعة',
+};
+
+export const WEEKDAY_DISPLAY_NAMES_ENGLISH: Record<CanonicalWeekday, string> = {
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+};
+
+export const WEEKDAY_SHORT_ENGLISH: Record<CanonicalWeekday, string> = {
+  saturday: 'Sat',
+  sunday: 'Sun',
+  monday: 'Mon',
+  tuesday: 'Tue',
+  wednesday: 'Wed',
+  thursday: 'Thu',
+  friday: 'Fri',
+};
 
 export const DAY_MAP_ARABIC: Record<number, string> = {
   0: 'الأحد',
@@ -40,58 +100,229 @@ export const DAY_MAP_ENGLISH: Record<number, string> = {
   6: 'Saturday',
 };
 
-const DAY_NORMALIZATION_MAP: Record<string, number> = {
-  'الأحد': 0,
-  'الاحد': 0,
-  'sunday': 0,
-  'sun': 0,
-  'الاثنين': 1,
-  'الإثنين': 1,
-  'monday': 1,
-  'mon': 1,
-  'الثلاثاء': 2,
-  'tuesday': 2,
-  'tue': 2,
-  'الأربعاء': 3,
-  'الاربعاء': 3,
-  'wednesday': 3,
-  'wed': 3,
-  'الخميس': 4,
-  'thursday': 4,
-  'thu': 4,
-  'الجمعة': 5,
-  'friday': 5,
-  'fri': 5,
-  'السبت': 6,
-  'saturday': 6,
-  'sat': 6,
-};
+// ==========================================
+// 2. NORMALIZATION LAYER
+// ==========================================
 
 /**
- * Normalizes day name to weekday index (0 for Sunday .. 6 for Saturday)
+ * Normalizes any weekday input (Arabic, English, short forms, uppercase, lowercase, numeric index)
+ * into a single unified CanonicalWeekday key: 'saturday' | 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday'
  */
-export function getWeekdayIndex(dayName: string): number | null {
-  if (!dayName) return null;
-  const clean = dayName.trim().toLowerCase();
-  if (clean in DAY_NORMALIZATION_MAP) {
-    return DAY_NORMALIZATION_MAP[clean];
+export function normalizeWeekdayKey(input?: string | number | null): CanonicalWeekday | null {
+  if (input === null || input === undefined) return null;
+  if (typeof input === 'number') {
+    return DAY_INDEX_TO_CANONICAL[input] || null;
   }
-  for (const [key, idx] of Object.entries(DAY_NORMALIZATION_MAP)) {
-    if (clean.includes(key) || key.includes(clean)) {
-      return idx;
+
+  const clean = String(input).trim().toLowerCase();
+  if (clean in CANONICAL_TO_DAY_INDEX) {
+    return clean as CanonicalWeekday;
+  }
+
+  // Exact mappings
+  switch (clean) {
+    case 'saturday':
+    case 'sat':
+    case 'السبت':
+    case 'سبت':
+      return 'saturday';
+
+    case 'sunday':
+    case 'sun':
+    case 'الأحد':
+    case 'الاحد':
+    case 'أحد':
+    case 'احد':
+      return 'sunday';
+
+    case 'monday':
+    case 'mon':
+    case 'الاثنين':
+    case 'الإثنين':
+    case 'اثنين':
+    case 'إثنين':
+      return 'monday';
+
+    case 'tuesday':
+    case 'tue':
+    case 'tues':
+    case 'الثلاثاء':
+    case 'ثلاثاء':
+      return 'tuesday';
+
+    case 'wednesday':
+    case 'wed':
+    case 'الأربعاء':
+    case 'الاربعاء':
+    case 'أربعاء':
+    case 'اربعاء':
+      return 'wednesday';
+
+    case 'thursday':
+    case 'thu':
+    case 'thur':
+    case 'thurs':
+    case 'الخميس':
+    case 'خميس':
+      return 'thursday';
+
+    case 'friday':
+    case 'fri':
+    case 'الجمعة':
+    case 'جمعة':
+      return 'friday';
+
+    default:
+      break;
+  }
+
+  // Substring matching for resilience
+  if (clean.includes('سبت') || clean.includes('sat')) return 'saturday';
+  if (clean.includes('أحد') || clean.includes('احد') || clean.includes('sun')) return 'sunday';
+  if (clean.includes('ثنين') || clean.includes('mon')) return 'monday';
+  if (clean.includes('ثلاث') || clean.includes('tue')) return 'tuesday';
+  if (clean.includes('ربع') || clean.includes('wed')) return 'wednesday';
+  if (clean.includes('خميس') || clean.includes('thu')) return 'thursday';
+  if (clean.includes('جمع') || clean.includes('fri')) return 'friday';
+
+  return null;
+}
+
+/**
+ * Returns the JavaScript weekday index (0..6) from any weekday representation
+ */
+export function getWeekdayIndex(input?: string | number | null): number | null {
+  const canon = normalizeWeekdayKey(input);
+  return canon ? CANONICAL_TO_DAY_INDEX[canon] : null;
+}
+
+/**
+ * Normalizes an array of scheduleDays into deduplicated CanonicalWeekday keys
+ */
+export function normalizeScheduleDays(days?: string[] | null): CanonicalWeekday[] {
+  if (!days || !Array.isArray(days)) return [];
+  const result: CanonicalWeekday[] = [];
+  for (const d of days) {
+    const canon = normalizeWeekdayKey(d);
+    if (canon && !result.includes(canon)) {
+      result.push(canon);
     }
   }
-  return null;
+  return result;
+}
+
+/**
+ * Normalizes an arbitrary time representation (string or string[]) into a deduplicated, chronologically sorted array of time strings
+ */
+export function normalizeScheduleTimesList(val: any): string[] {
+  if (!val) return [];
+  let rawList: string[] = [];
+  if (Array.isArray(val)) {
+    rawList = val.filter((t) => typeof t === 'string' && t.trim().length > 0);
+  } else if (typeof val === 'string' && val.trim().length > 0) {
+    rawList = [val.trim()];
+  }
+
+  const uniqueTimes = Array.from(new Set(rawList.map((t) => t.trim())));
+
+  uniqueTimes.sort((a, b) => {
+    const minsA = parseTimeToMinutes(a);
+    const minsB = parseTimeToMinutes(b);
+    return minsA - minsB;
+  });
+
+  return uniqueTimes;
+}
+
+/**
+ * Normalizes a scheduleTimes dictionary so all keys are CanonicalWeekday and values are string[]
+ */
+export function normalizeScheduleTimes(
+  scheduleTimes?: Record<string, string | string[] | undefined> | null,
+  defaultScheduleTime?: string,
+  scheduleDays?: string[]
+): Record<CanonicalWeekday, string[]> {
+  const result: Record<CanonicalWeekday, string[]> = {
+    saturday: [],
+    sunday: [],
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+  };
+
+  if (scheduleTimes && typeof scheduleTimes === 'object') {
+    for (const [key, val] of Object.entries(scheduleTimes)) {
+      const canon = normalizeWeekdayKey(key);
+      if (canon && val) {
+        const list = normalizeScheduleTimesList(val);
+        if (list.length > 0) {
+          result[canon] = Array.from(new Set([...result[canon], ...list]));
+        }
+      }
+    }
+  }
+
+  // Fallback to default schedule time if a selected day has empty times
+  if (scheduleDays && Array.isArray(scheduleDays) && defaultScheduleTime && defaultScheduleTime.trim()) {
+    const normDays = normalizeScheduleDays(scheduleDays);
+    const defTimes = normalizeScheduleTimesList(defaultScheduleTime);
+    if (defTimes.length > 0) {
+      normDays.forEach((d) => {
+        if (result[d].length === 0) {
+          result[d] = [...defTimes];
+        }
+      });
+    }
+  }
+
+  return result;
+}
+
+// ==========================================
+// 3. DISPLAY LOCALIZATION HELPERS
+// ==========================================
+
+export function isRTLMode(isRTLOrLang?: boolean | string): boolean {
+  if (typeof isRTLOrLang === 'boolean') return isRTLOrLang;
+  if (typeof isRTLOrLang === 'string') {
+    return isRTLOrLang.startsWith('ar');
+  }
+  return getAppLanguage().startsWith('ar');
+}
+
+/**
+ * Get localized display name for any weekday input
+ */
+export function getLocalizedWeekdayName(
+  dayInput: CanonicalWeekday | string | number,
+  isRTLOrLang?: boolean | string
+): string {
+  const canon = normalizeWeekdayKey(dayInput);
+  const isRTL = isRTLMode(isRTLOrLang);
+  if (!canon) {
+    return typeof dayInput === 'string' ? dayInput : '';
+  }
+  return isRTL ? WEEKDAY_DISPLAY_NAMES_ARABIC[canon] : WEEKDAY_DISPLAY_NAMES_ENGLISH[canon];
+}
+
+/**
+ * Localize day name (backward compatibility)
+ */
+export function formatDayNameLocalized(dayName: string, isRTLOrLang?: boolean | string): string {
+  return getLocalizedWeekdayName(dayName, isRTLOrLang);
 }
 
 /**
  * Get localized day name from a Date or ISO string
  */
-export function getLocalizedDayForDate(date: Date | string, isRTL: boolean = true): string {
+export function getLocalizedDayForDate(date: Date | string, isRTLOrLang?: boolean | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return isRTL ? 'السبت' : 'Saturday';
+  if (isNaN(d.getTime())) return getLocalizedWeekdayName('saturday', isRTLOrLang);
   const dayIndex = d.getDay();
-  return isRTL ? (DAY_MAP_ARABIC[dayIndex] || 'السبت') : (DAY_MAP_ENGLISH[dayIndex] || 'Saturday');
+  const canon = DAY_INDEX_TO_CANONICAL[dayIndex] || 'saturday';
+  return getLocalizedWeekdayName(canon, isRTLOrLang);
 }
 
 /**
@@ -101,35 +332,128 @@ export function getArabicDayForDate(date: Date | string): string {
   return getLocalizedDayForDate(date, true);
 }
 
-/**
- * Localize day name (e.g. 'السبت' -> 'Saturday' or vice versa)
- */
-export function formatDayNameLocalized(dayName: string, isRTL: boolean = true): string {
-  const idx = getWeekdayIndex(dayName);
-  if (idx !== null) {
-    return isRTL ? DAY_MAP_ARABIC[idx] : DAY_MAP_ENGLISH[idx];
+// ==========================================
+// 4. SUBJECT & LOCATION LOCALIZATION
+// ==========================================
+
+export const COMMON_SUBJECT_MAP: Record<string, { ar: string; en: string }> = {
+  'رياضيات': { ar: 'رياضيات', en: 'Mathematics' },
+  'math': { ar: 'رياضيات', en: 'Mathematics' },
+  'mathematics': { ar: 'رياضيات', en: 'Mathematics' },
+  'رياضيات / math': { ar: 'رياضيات', en: 'Mathematics' },
+  'ماث': { ar: 'رياضيات', en: 'Mathematics' },
+  'لغة إنجليزية': { ar: 'اللغة الإنجليزية', en: 'English' },
+  'اللغة الإنجليزية': { ar: 'اللغة الإنجليزية', en: 'English' },
+  'انجليزي': { ar: 'اللغة الإنجليزية', en: 'English' },
+  'إنجليزي': { ar: 'اللغة الإنجليزية', en: 'English' },
+  'english': { ar: 'اللغة الإنجليزية', en: 'English' },
+  'لغة عربية': { ar: 'اللغة العربية', en: 'Arabic' },
+  'اللغة العربية': { ar: 'اللغة العربية', en: 'Arabic' },
+  'عربي': { ar: 'اللغة العربية', en: 'Arabic' },
+  'arabic': { ar: 'اللغة العربية', en: 'Arabic' },
+  'علوم': { ar: 'علوم', en: 'Science' },
+  'العلوم': { ar: 'علوم', en: 'Science' },
+  'science': { ar: 'علوم', en: 'Science' },
+  'دراسات': { ar: 'الدراسات الاجتماعية', en: 'Social Studies' },
+  'الدراسات الاجتماعية': { ar: 'الدراسات الاجتماعية', en: 'Social Studies' },
+  'social studies': { ar: 'الدراسات الاجتماعية', en: 'Social Studies' },
+  'فيزياء': { ar: 'فيزياء', en: 'Physics' },
+  'physics': { ar: 'فيزياء', en: 'Physics' },
+  'كيمياء': { ar: 'كيمياء', en: 'Chemistry' },
+  'chemistry': { ar: 'كيمياء', en: 'Chemistry' },
+  'أحياء': { ar: 'أحياء', en: 'Biology' },
+  'احياء': { ar: 'أحياء', en: 'Biology' },
+  'biology': { ar: 'أحياء', en: 'Biology' },
+  'حاسب': { ar: 'حاسب آلي', en: 'Computer Science' },
+  'حاسب آلي': { ar: 'حاسب آلي', en: 'Computer Science' },
+  'كمبيوتر': { ar: 'حاسب آلي', en: 'Computer Science' },
+  'computer science': { ar: 'حاسب آلي', en: 'Computer Science' },
+  'ict': { ar: 'تكنولوجيا المعلومات (ICT)', en: 'Information Technology (ICT)' },
+  'تاريخ': { ar: 'تاريخ', en: 'History' },
+  'history': { ar: 'تاريخ', en: 'History' },
+  'جغرافيا': { ar: 'جغرافيا', en: 'Geography' },
+  'geography': { ar: 'جغرافيا', en: 'Geography' },
+  'فلسفة': { ar: 'فلسفة ومنطق', en: 'Philosophy' },
+  'philosophy': { ar: 'فلسفة', en: 'Philosophy' },
+  'علم نفس': { ar: 'علم نفس واجتماع', en: 'Psychology' },
+  'psychology': { ar: 'علم نفس', en: 'Psychology' },
+  'فرنساوي': { ar: 'اللغة الفرنسية', en: 'French' },
+  'لغة فرنسية': { ar: 'اللغة الفرنسية', en: 'French' },
+  'french': { ar: 'اللغة الفرنسية', en: 'French' },
+  'ألماني': { ar: 'اللغة الألمانية', en: 'German' },
+  'german': { ar: 'اللغة الألمانية', en: 'German' },
+  'عام': { ar: 'عام', en: 'General' },
+  'general': { ar: 'عام', en: 'General' },
+  'درس خاص': { ar: 'درس خاص', en: 'Private Lesson' },
+  'private lesson': { ar: 'درس خاص', en: 'Private Lesson' },
+  'مجموعة': { ar: 'مجموعة', en: 'Group' },
+  'group': { ar: 'مجموعة', en: 'Group' },
+  'مجموعة دراسية': { ar: 'مجموعة دراسية', en: 'Tuition Group' },
+  'tuition group': { ar: 'مجموعة دراسية', en: 'Tuition Group' },
+};
+
+export function getLocalizedSubjectName(subject?: string, isRTLOrLang?: boolean | string): string {
+  if (!subject || !subject.trim()) return '';
+  const clean = subject.trim().toLowerCase();
+  const isRTL = isRTLMode(isRTLOrLang);
+
+  if (COMMON_SUBJECT_MAP[clean]) {
+    return isRTL ? COMMON_SUBJECT_MAP[clean].ar : COMMON_SUBJECT_MAP[clean].en;
   }
-  return dayName;
+  for (const [key, mapping] of Object.entries(COMMON_SUBJECT_MAP)) {
+    if (clean === key || clean.startsWith(key) || key.startsWith(clean)) {
+      return isRTL ? mapping.ar : mapping.en;
+    }
+  }
+  return subject;
 }
 
-/**
- * Get localized weekday name by index or string name
- */
-export function getLocalizedWeekdayName(idxOrDay: number | string, isRTL: boolean = true): string {
-  if (typeof idxOrDay === 'number') {
-    return isRTL ? DAY_MAP_ARABIC[idxOrDay] || '' : DAY_MAP_ENGLISH[idxOrDay] || '';
+export const COMMON_LOCATION_MAP: Record<string, { ar: string; en: string }> = {
+  'منزل الطالب / أونلاين': { ar: 'منزل الطالب / أونلاين', en: "Student's Home / Online" },
+  'منزل الطالب/أونلاين': { ar: 'منزل الطالب / أونلاين', en: "Student's Home / Online" },
+  "student's home / online": { ar: 'منزل الطالب / أونلاين', en: "Student's Home / Online" },
+  "student home / online": { ar: 'منزل الطالب / أونلاين', en: "Student's Home / Online" },
+  'منزل الطالب': { ar: 'منزل الطالب', en: "Student's Home" },
+  "student's home": { ar: 'منزل الطالب', en: "Student's Home" },
+  'أونلاين': { ar: 'أونلاين', en: 'Online' },
+  'اونلاين': { ar: 'أونلاين', en: 'Online' },
+  'online': { ar: 'أونلاين', en: 'Online' },
+  'المركز': { ar: 'السنتر / المركز', en: 'Centre' },
+  'السنتر': { ar: 'السنتر', en: 'Centre' },
+  'centre': { ar: 'السنتر', en: 'Centre' },
+  'center': { ar: 'السنتر', en: 'Centre' },
+  'المدرسة': { ar: 'المدرسة', en: 'School' },
+  'school': { ar: 'المدرسة', en: 'School' },
+  'في المنزل': { ar: 'في المنزل', en: 'At Home' },
+  'at home': { ar: 'في المنزل', en: 'At Home' },
+  'مقر الأكاديمية': { ar: 'مقر الأكاديمية', en: 'Academy HQ' },
+};
+
+export function getLocalizedLocationName(location?: string, isRTLOrLang?: boolean | string): string {
+  if (!location || !location.trim()) return '';
+  const clean = location.trim().toLowerCase();
+  const isRTL = isRTLMode(isRTLOrLang);
+
+  if (COMMON_LOCATION_MAP[clean]) {
+    return isRTL ? COMMON_LOCATION_MAP[clean].ar : COMMON_LOCATION_MAP[clean].en;
   }
-  return formatDayNameLocalized(idxOrDay, isRTL);
+  for (const [key, mapping] of Object.entries(COMMON_LOCATION_MAP)) {
+    if (clean === key || clean.includes(key)) {
+      return isRTL ? mapping.ar : mapping.en;
+    }
+  }
+  return location;
 }
 
-/**
- * Parse time string (e.g. "17:00", "5:00 PM", "05:00 م", "7:30 AM") to minutes from midnight
- */
+// ==========================================
+// 5. TIME PARSING & FORMATTING
+// ==========================================
+
 export function parseTimeToMinutes(timeStr?: string): number {
   if (!timeStr || !timeStr.trim()) return 99999;
   const str = timeStr.trim();
 
-  // Check 24-hour format "HH:MM"
+  // 24-hour format "HH:MM"
   const match24 = str.match(/^(\d{1,2}):(\d{2})$/);
   if (match24) {
     const hours = parseInt(match24[1], 10);
@@ -137,7 +461,7 @@ export function parseTimeToMinutes(timeStr?: string): number {
     return hours * 60 + mins;
   }
 
-  // Check 12-hour format "H:MM AM/PM" or Arabic "H:MM ص/م"
+  // 12-hour format
   const isPM = /pm|م/i.test(str);
   const isAM = /am|ص/i.test(str);
   const match12 = str.match(/(\d{1,2}):(\d{2})/);
@@ -150,7 +474,6 @@ export function parseTimeToMinutes(timeStr?: string): number {
     return hours * 60 + mins;
   }
 
-  // Try extracting just hours
   const matchSingle = str.match(/(\d{1,2})/);
   if (matchSingle) {
     let hours = parseInt(matchSingle[1], 10);
@@ -162,10 +485,8 @@ export function parseTimeToMinutes(timeStr?: string): number {
   return 99999;
 }
 
-/**
- * Format a 24-hour "HH:MM" or arbitrary time string into a clean, localized display format
- */
-export function formatTimeDisplay(timeStr?: string, isRTL: boolean = true): string {
+export function formatTimeDisplay(timeStr?: string, isRTLOrLang?: boolean | string): string {
+  const isRTL = isRTLMode(isRTLOrLang);
   if (!timeStr || !timeStr.trim()) {
     return isRTL ? 'وقت مرن' : 'Flexible Time';
   }
@@ -188,79 +509,76 @@ export function formatTimeDisplay(timeStr?: string, isRTL: boolean = true): stri
   }
 }
 
+// ==========================================
+// 6. SCHEDULE LOOKUP FOR GROUPS & ENROLLMENTS
+// ==========================================
+
 /**
- * Normalize an arbitrary time representation (string or string[]) into a deduplicated, chronologically sorted array of time strings
+ * Given a Group and any day input, find all scheduled times for that day
  */
-export function normalizeScheduleTimesList(val: any): string[] {
-  if (!val) return [];
-  let rawList: string[] = [];
-  if (Array.isArray(val)) {
-    rawList = val.filter((t) => typeof t === 'string' && t.trim().length > 0);
-  } else if (typeof val === 'string' && val.trim().length > 0) {
-    rawList = [val.trim()];
+export function getTimesForDayInGroup(
+  group: Group,
+  dayInput: CanonicalWeekday | string | number
+): string[] {
+  const targetCanon = normalizeWeekdayKey(dayInput);
+  if (!targetCanon) {
+    return group.scheduleTime && group.scheduleTime.trim() ? [group.scheduleTime.trim()] : [];
   }
 
-  // Deduplicate and filter empty
-  const uniqueTimes = Array.from(new Set(rawList.map((t) => t.trim())));
-
-  // Sort chronologically
-  uniqueTimes.sort((a, b) => {
-    const minsA = parseTimeToMinutes(a);
-    const minsB = parseTimeToMinutes(b);
-    return minsA - minsB;
-  });
-
-  return uniqueTimes;
-}
-
-/**
- * Given a Group and a day name, find all scheduled times for that day (chronologically sorted)
- */
-export function getTimesForDayInGroup(group: Group, dayName: string): string[] {
   if (group.scheduleTimes && typeof group.scheduleTimes === 'object') {
-    // 1. Direct match
-    if (group.scheduleTimes[dayName]) {
-      const times = normalizeScheduleTimesList(group.scheduleTimes[dayName]);
+    // 1. Direct match with canonical key
+    if ((group.scheduleTimes as any)[targetCanon]) {
+      const times = normalizeScheduleTimesList((group.scheduleTimes as any)[targetCanon]);
       if (times.length > 0) return times;
     }
-    // 2. Normalized match
-    const targetIdx = getWeekdayIndex(dayName);
+    // 2. Normalized match over all keys in case legacy format exists
     for (const [key, val] of Object.entries(group.scheduleTimes)) {
-      if (val && getWeekdayIndex(key) === targetIdx) {
+      if (val && normalizeWeekdayKey(key) === targetCanon) {
         const times = normalizeScheduleTimesList(val);
         if (times.length > 0) return times;
       }
     }
   }
+
+  // 3. Fallback to single scheduleTime if group meets on this day
+  if (group.scheduleDays && Array.isArray(group.scheduleDays)) {
+    const meets = normalizeScheduleDays(group.scheduleDays).includes(targetCanon);
+    if (meets && group.scheduleTime && group.scheduleTime.trim()) {
+      return [group.scheduleTime.trim()];
+    }
+  }
+
   return group.scheduleTime && group.scheduleTime.trim() ? [group.scheduleTime.trim()] : [];
 }
 
-/**
- * Given a Group and a day name, find the primary scheduled time for that day (backward compatibility)
- */
-export function getTimeForDayInGroup(group: Group, dayName: string): string {
-  const times = getTimesForDayInGroup(group, dayName);
+export function getTimeForDayInGroup(
+  group: Group,
+  dayInput: CanonicalWeekday | string | number
+): string {
+  const times = getTimesForDayInGroup(group, dayInput);
   return times[0] || group.scheduleTime || '';
 }
 
 /**
- * Given an Enrollment, Group, and day name, find all scheduled times for that student's enrollment on that day
+ * Given an Enrollment, Group, and day input, find all scheduled times for that student's enrollment
  */
 export function getTimesForDayInEnrollment(
   enr: Enrollment,
   group: Group,
-  dayName: string
+  dayInput: CanonicalWeekday | string | number
 ): string[] {
+  const targetCanon = normalizeWeekdayKey(dayInput);
+  if (!targetCanon) {
+    return getTimesForDayInGroup(group, dayInput);
+  }
+
   if (enr.scheduleTimes && typeof enr.scheduleTimes === 'object') {
-    // 1. Direct match
-    if (enr.scheduleTimes[dayName]) {
-      const times = normalizeScheduleTimesList(enr.scheduleTimes[dayName]);
+    if ((enr.scheduleTimes as any)[targetCanon]) {
+      const times = normalizeScheduleTimesList((enr.scheduleTimes as any)[targetCanon]);
       if (times.length > 0) return times;
     }
-    // 2. Normalized match
-    const targetIdx = getWeekdayIndex(dayName);
     for (const [key, val] of Object.entries(enr.scheduleTimes)) {
-      if (val && getWeekdayIndex(key) === targetIdx) {
+      if (val && normalizeWeekdayKey(key) === targetCanon) {
         const times = normalizeScheduleTimesList(val);
         if (times.length > 0) return times;
       }
@@ -271,32 +589,39 @@ export function getTimesForDayInEnrollment(
     return [enr.scheduleTime.trim()];
   }
 
-  return getTimesForDayInGroup(group, dayName);
+  return getTimesForDayInGroup(group, targetCanon);
 }
 
 /**
- * Format a comprehensive schedule summary (e.g. "السبت (04:00 م، 07:00 م)، الاثنين (05:00 م)" or "Saturday (04:00 PM, 07:00 PM)")
+ * Format a comprehensive schedule summary
  */
 export function formatScheduleSummary(
   scheduleDays?: string[],
   scheduleTimes?: Record<string, string | string[]>,
   scheduleTime?: string,
-  isRTL: boolean = true
+  isRTLOrLang?: boolean | string
 ): string {
+  const isRTL = isRTLMode(isRTLOrLang);
   if (!scheduleDays || scheduleDays.length === 0) {
     return isRTL ? 'مرنة' : 'Flexible';
   }
 
-  const parts = scheduleDays.map((day) => {
+  const normalizedDays = normalizeScheduleDays(scheduleDays);
+  if (normalizedDays.length === 0) {
+    return isRTL ? 'مرنة' : 'Flexible';
+  }
+
+  const parts = normalizedDays.map((canonDay) => {
     let times: string[] = [];
-    if (scheduleTimes && scheduleTimes[day]) {
-      times = normalizeScheduleTimesList(scheduleTimes[day]);
-    } else if (scheduleTimes) {
-      const targetIdx = getWeekdayIndex(day);
-      for (const [k, v] of Object.entries(scheduleTimes)) {
-        if (v && getWeekdayIndex(k) === targetIdx) {
-          times = normalizeScheduleTimesList(v);
-          break;
+    if (scheduleTimes && typeof scheduleTimes === 'object') {
+      if ((scheduleTimes as any)[canonDay]) {
+        times = normalizeScheduleTimesList((scheduleTimes as any)[canonDay]);
+      } else {
+        for (const [k, v] of Object.entries(scheduleTimes)) {
+          if (v && normalizeWeekdayKey(k) === canonDay) {
+            times = normalizeScheduleTimesList(v);
+            break;
+          }
         }
       }
     }
@@ -305,7 +630,7 @@ export function formatScheduleSummary(
       times = [scheduleTime.trim()];
     }
 
-    const localizedDayName = formatDayNameLocalized(day, isRTL);
+    const localizedDayName = getLocalizedWeekdayName(canonDay, isRTL);
 
     if (times.length === 0) {
       return localizedDayName;
@@ -318,23 +643,75 @@ export function formatScheduleSummary(
   return parts.join(isRTL ? '، ' : ', ');
 }
 
+// ==========================================
+// 7. SCHEDULE OCCURRENCE COMPUTATION
+// ==========================================
+
+export interface ScheduledClassItem {
+  id: string;
+  studentId: string;
+  studentName: string;
+  student?: Student;
+  groupId: string;
+  groupName: string;
+  group?: Group;
+  enrollmentId?: string;
+  isPrivate: boolean;
+  subject: string;
+  dayName: string;
+  time: string; // Formatted display e.g. "4:00 PM" / "04:00 م"
+  rawTime: string; // e.g. "16:00"
+  sortMinutes: number; // For chronological sorting
+  location?: string;
+  accentColor: string;
+}
+
 /**
- * Find all scheduled student classes for a given date, sorted chronologically.
- * Supports multiple classes for the same student on the same day.
+ * Finds all scheduled classes for a given date, supporting both regular groups and private tutoring.
+ * Robust against parameter ordering (students vs enrollments).
  */
 export function getScheduledClassesForDate(
   dateInput: Date | string,
   groups: Group[],
-  students: Student[],
-  enrollments: Enrollment[],
-  isRTL: boolean = true
+  arg3: Student[] | Enrollment[],
+  arg4: Student[] | Enrollment[],
+  isRTLOrLang?: boolean | string
 ): ScheduledClassItem[] {
   const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (isNaN(d.getTime())) return [];
 
-  const targetDayIdx = d.getDay();
-  const localizedDayName = isRTL ? DAY_MAP_ARABIC[targetDayIdx] : DAY_MAP_ENGLISH[targetDayIdx];
-  const queryDayName = DAY_MAP_ARABIC[targetDayIdx]; // For lookup against stored groups
+  const isRTL = isRTLMode(isRTLOrLang);
+
+  // Disambiguate arg3 and arg4
+  let students: Student[] = [];
+  let enrollments: Enrollment[] = [];
+
+  const isEnrollmentArr = (arr: any[]): arr is Enrollment[] => {
+    return arr.length > 0 && ('studentId' in arr[0] && 'groupId' in arr[0] && 'serviceType' in arr[0]);
+  };
+
+  if (Array.isArray(arg3) && Array.isArray(arg4)) {
+    if (isEnrollmentArr(arg3)) {
+      enrollments = arg3 as unknown as Enrollment[];
+      students = arg4 as unknown as Student[];
+    } else if (isEnrollmentArr(arg4)) {
+      enrollments = arg4 as unknown as Enrollment[];
+      students = arg3 as unknown as Student[];
+    } else {
+      if (arg3.length > 0 && 'serviceType' in arg3[0]) {
+        enrollments = arg3 as unknown as Enrollment[];
+        students = arg4 as unknown as Student[];
+      } else {
+        students = arg3 as unknown as Student[];
+        enrollments = arg4 as unknown as Enrollment[];
+      }
+    }
+  }
+
+  const targetDayIdx = d.getDay(); // 0 = Sunday, 6 = Saturday
+  const canonicalTodayKey = DAY_INDEX_TO_CANONICAL[targetDayIdx];
+  const localizedDayName = getLocalizedWeekdayName(canonicalTodayKey, isRTL);
+
   const activeStudentsMap = new Map<string, Student>();
   students.forEach((s) => {
     if (s.status !== 'archived') {
@@ -354,13 +731,10 @@ export function getScheduledClassesForDate(
   const scheduledItems: ScheduledClassItem[] = [];
 
   for (const group of groups) {
-    if (!group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
+    if (!group.scheduleDays || !Array.isArray(group.scheduleDays) || group.scheduleDays.length === 0) continue;
 
-    // Check if group meets on this day
-    const meetsToday = group.scheduleDays.some((dayStr) => {
-      const idx = getWeekdayIndex(dayStr);
-      return idx === targetDayIdx;
-    });
+    const normalizedDays = normalizeScheduleDays(group.scheduleDays);
+    const meetsToday = normalizedDays.includes(canonicalTodayKey);
 
     if (!meetsToday) continue;
 
@@ -368,19 +742,29 @@ export function getScheduledClassesForDate(
     const groupEnrollments = studentEnrollmentsByGroup.get(group.id) || [];
 
     if (isPrivate) {
-      // Private lesson: Each private enrollment represents a private student
+      // Private lesson: each private enrollment represents a scheduled private lesson
       if (groupEnrollments.length > 0) {
         for (const enr of groupEnrollments) {
           const stu = activeStudentsMap.get(enr.studentId);
           if (!stu) continue;
 
-          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, queryDayName);
-          const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [''];
+          // Check custom enrollment schedule days if defined
+          if (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0) {
+            const enrDays = normalizeScheduleDays(enr.scheduleDays);
+            if (!enrDays.includes(canonicalTodayKey)) {
+              continue;
+            }
+          }
+
+          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, canonicalTodayKey);
+          const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [group.scheduleTime || '16:00'];
 
           effectiveTimes.forEach((rawTime, timeIdx) => {
             const sortMinutes = parseTimeToMinutes(rawTime);
             const formattedTime = formatTimeDisplay(rawTime, isRTL);
             const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+            const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+            const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
 
             scheduledItems.push({
               id: `sched_priv_${group.id}_${stu.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
@@ -392,26 +776,28 @@ export function getScheduledClassesForDate(
               group: group,
               enrollmentId: enr.id,
               isPrivate: true,
-              subject: group.subject || (isRTL ? 'درس خاص' : 'Private Lesson'),
+              subject: subj,
               dayName: localizedDayName,
               time: formattedTime,
               rawTime,
               sortMinutes,
-              location: group.roomOrLocation,
+              location: loc,
               accentColor: group.accentColor || '#FF647C',
             });
           });
         }
       }
     } else {
-      // Real Group: Scheduled as ONE group class session
-      const groupTimes = getTimesForDayInGroup(group, queryDayName);
-      const effectiveGroupTimes = groupTimes.length > 0 ? groupTimes : [''];
+      // Regular Study Group
+      const groupTimes = getTimesForDayInGroup(group, canonicalTodayKey);
+      const effectiveGroupTimes = groupTimes.length > 0 ? groupTimes : [group.scheduleTime || '16:00'];
 
       effectiveGroupTimes.forEach((rawTime, timeIdx) => {
         const sortMinutes = parseTimeToMinutes(rawTime);
         const formattedTime = formatTimeDisplay(rawTime, isRTL);
         const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+        const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+        const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
 
         scheduledItems.push({
           id: `sched_grp_${group.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
@@ -421,19 +807,19 @@ export function getScheduledClassesForDate(
           groupName: group.name,
           group: group,
           isPrivate: false,
-          subject: group.subject || (isRTL ? 'مجموعة دراسية' : 'Tuition Group'),
+          subject: subj,
           dayName: localizedDayName,
           time: formattedTime,
           rawTime,
           sortMinutes,
-          location: group.roomOrLocation,
+          location: loc,
           accentColor: group.accentColor || '#7657F6',
         });
       });
     }
   }
 
-  // Sort chronologically by time, then by student name
+  // Sort chronologically by time, then name
   scheduledItems.sort((a, b) => {
     if (a.sortMinutes !== b.sortMinutes) {
       return a.sortMinutes - b.sortMinutes;
@@ -467,9 +853,11 @@ export function getUpcomingClassesForStudent(
   groups: Group[],
   enrollments: Enrollment[],
   limit: number = 5,
-  isRTL: boolean = true
+  isRTLOrLang?: boolean | string
 ): UpcomingStudentClass[] {
   if (!studentId) return [];
+
+  const isRTL = isRTLMode(isRTLOrLang);
 
   const studentEnrollments = enrollments.filter(
     (e) => e.studentId === studentId && e.status !== 'stopped'
@@ -482,13 +870,12 @@ export function getUpcomingClassesForStudent(
   const upcoming: UpcomingStudentClass[] = [];
   const today = new Date();
 
-  // Scan next 14 days
   for (let offset = 0; offset < 14; offset++) {
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + offset);
     const dayIdx = targetDate.getDay();
-    const localizedDayName = isRTL ? DAY_MAP_ARABIC[dayIdx] : DAY_MAP_ENGLISH[dayIdx];
-    const queryDayName = DAY_MAP_ARABIC[dayIdx];
+    const canonKey = DAY_INDEX_TO_CANONICAL[dayIdx] || 'saturday';
+    const localizedDayName = getLocalizedWeekdayName(canonKey, isRTL);
     const dateStr = targetDate.toISOString().split('T')[0];
 
     const dayRelative =
@@ -502,19 +889,25 @@ export function getUpcomingClassesForStudent(
       const group = groupsMap.get(enr.groupId);
       if (!group || !group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
 
-      const meetsOnDay = group.scheduleDays.some((dayStr) => {
-        return getWeekdayIndex(dayStr) === dayIdx;
-      });
+      const groupNormalizedDays = normalizeScheduleDays(group.scheduleDays);
+      let meetsOnDay = groupNormalizedDays.includes(canonKey);
+
+      if (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0) {
+        meetsOnDay = normalizeScheduleDays(enr.scheduleDays).includes(canonKey);
+      }
 
       if (!meetsOnDay) continue;
 
-      const rawTimes = getTimesForDayInEnrollment(enr, group, queryDayName);
+      const rawTimes = getTimesForDayInEnrollment(enr, group, canonKey);
       const isPrivate = group.type === 'private';
+      const effectiveTimes = rawTimes.length > 0 ? rawTimes : [group.scheduleTime || '16:00'];
 
-      for (let tIdx = 0; tIdx < rawTimes.length; tIdx++) {
-        const rawTime = rawTimes[tIdx];
+      for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
+        const rawTime = effectiveTimes[tIdx];
         const formattedTime = formatTimeDisplay(rawTime, isRTL);
         const cleanKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+        const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+        const subj = getLocalizedSubjectName(group.subject, isRTL) || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (isRTL ? 'مجموعة' : 'Group'));
 
         upcoming.push({
           id: `up_${enr.id}_${dateStr}_${tIdx}_${cleanKey}`,
@@ -524,10 +917,10 @@ export function getUpcomingClassesForStudent(
           time: formattedTime,
           rawTime,
           groupId: group.id,
-          groupName: group.name,
+          groupName: isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : group.name,
           isPrivate,
-          subject: group.subject || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (isRTL ? 'مجموعة' : 'Group')),
-          location: group.roomOrLocation,
+          subject: subj,
+          location: loc,
           accentColor: group.accentColor || (isPrivate ? '#FF647C' : '#7657F6'),
         });
       }
@@ -540,7 +933,7 @@ export function getUpcomingClassesForStudent(
 }
 
 // ==========================================
-// MULTI-YEAR CALENDAR DOMAIN & ENGINE
+// 8. MULTI-YEAR CALENDAR DOMAIN & ENGINE
 // ==========================================
 
 export const MONTH_NAMES_ARABIC = [
@@ -606,18 +999,12 @@ export interface CalendarDayCell {
   hasClasses: boolean;
 }
 
-/**
- * Format Year, Month (0-11), and Day (1-31) into 'YYYY-MM-DD'
- */
 export function formatDateKey(year: number, monthIndex: number, day: number): string {
   const m = String(monthIndex + 1).padStart(2, '0');
   const d = String(day).padStart(2, '0');
   return `${year}-${m}-${d}`;
 }
 
-/**
- * Calculates fast class statistics for every date in a given year.
- */
 export function getYearClassStatsMap(
   year: number,
   sessions: Session[],
@@ -628,7 +1015,6 @@ export function getYearClassStatsMap(
   const statsMap = new Map<string, DayClassSummary>();
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // 1. Index explicit sessions for the year
   const sessionsByDate = new Map<string, Session[]>();
   for (const s of sessions) {
     if (!s.date) continue;
@@ -639,7 +1025,6 @@ export function getYearClassStatsMap(
     }
   }
 
-  // 2. Pre-calculate active groups meeting days and recurring slots
   const activeStudentsMap = new Map<string, Student>();
   students.forEach((st) => {
     if (st.status !== 'archived') activeStudentsMap.set(st.id, st);
@@ -659,23 +1044,22 @@ export function getYearClassStatsMap(
     studentId?: string;
     time: string;
   }
-  const recurringSlotsByWeekday = new Map<number, RecurringSlotRef[]>();
+  const recurringSlotsByWeekday = new Map<CanonicalWeekday, RecurringSlotRef[]>();
 
-  for (let weekday = 0; weekday < 7; weekday++) {
-    const dayName = DAY_MAP_ARABIC[weekday];
+  for (const canonDay of CANONICAL_WEEKDAYS) {
     const slots: RecurringSlotRef[] = [];
 
     for (const group of groups) {
       if (!group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
-      const meets = group.scheduleDays.some((d) => getWeekdayIndex(d) === weekday);
+      const meets = normalizeScheduleDays(group.scheduleDays).includes(canonDay);
       if (!meets) continue;
 
       const groupEnrs = activeEnrollmentsByGroup.get(group.id) || [];
       if (groupEnrs.length > 0) {
         for (const enr of groupEnrs) {
           if (!activeStudentsMap.has(enr.studentId)) continue;
-          const times = getTimesForDayInEnrollment(enr, group, dayName);
-          const effectiveTimes = times.length > 0 ? times : [''];
+          const times = getTimesForDayInEnrollment(enr, group, canonDay);
+          const effectiveTimes = times.length > 0 ? times : [group.scheduleTime || '16:00'];
           for (const t of effectiveTimes) {
             slots.push({
               groupId: group.id,
@@ -685,8 +1069,8 @@ export function getYearClassStatsMap(
           }
         }
       } else {
-        const times = getTimesForDayInGroup(group, dayName);
-        const effectiveTimes = times.length > 0 ? times : [''];
+        const times = getTimesForDayInGroup(group, canonDay);
+        const effectiveTimes = times.length > 0 ? times : [group.scheduleTime || '16:00'];
         for (const t of effectiveTimes) {
           slots.push({
             groupId: group.id,
@@ -695,16 +1079,16 @@ export function getYearClassStatsMap(
         }
       }
     }
-    recurringSlotsByWeekday.set(weekday, slots);
+    recurringSlotsByWeekday.set(canonDay, slots);
   }
 
-  // 3. Populate stats for every day in the target year
   for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
     const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = formatDateKey(year, monthIdx, day);
       const dateObj = new Date(year, monthIdx, day);
       const dayOfWeek = dateObj.getDay();
+      const canonDay = DAY_INDEX_TO_CANONICAL[dayOfWeek] || 'saturday';
       const isPast = dateStr < todayStr;
 
       const explicitSessions = sessionsByDate.get(dateStr) || [];
@@ -730,7 +1114,7 @@ export function getYearClassStatsMap(
       let totalCount = explicitSessions.length;
 
       if (!isPast) {
-        const slots = recurringSlotsByWeekday.get(dayOfWeek) || [];
+        const slots = recurringSlotsByWeekday.get(canonDay) || [];
         for (const slot of slots) {
           const timeKey = `${slot.groupId}_${slot.time || 'flex'}`;
           const studentTimeKey = slot.studentId ? `${slot.groupId}_${slot.studentId}_${slot.time || 'flex'}` : '';
@@ -760,9 +1144,6 @@ export function getYearClassStatsMap(
   return statsMap;
 }
 
-/**
- * Generate a complete 6-row or 5-row calendar grid for a specific month.
- */
 export function generateMonthGrid(
   year: number,
   monthIndex: number,
@@ -915,21 +1296,19 @@ export interface DetailedDateAgenda {
   items: DetailedDateAgendaItem[];
 }
 
-/**
- * Build the full detailed agenda for any exact date (past, present, or future).
- */
 export function getDetailedAgendaForDate(
   dateStr: string,
   sessions: Session[],
   groups: Group[],
   enrollments: Enrollment[],
   students: Student[],
-  isRTL: boolean = true
+  isRTLOrLang?: boolean | string
 ): DetailedDateAgenda {
+  const isRTL = isRTLMode(isRTLOrLang);
   const dateObj = new Date(dateStr);
   const dayOfWeek = !isNaN(dateObj.getTime()) ? dateObj.getDay() : 6;
-  const dayName = isRTL ? (DAY_MAP_ARABIC[dayOfWeek] || 'السبت') : (DAY_MAP_ENGLISH[dayOfWeek] || 'Saturday');
-  const lookupDayName = DAY_MAP_ARABIC[dayOfWeek] || 'السبت';
+  const canonDay = DAY_INDEX_TO_CANONICAL[dayOfWeek] || 'saturday';
+  const dayName = getLocalizedWeekdayName(canonDay, isRTL);
   
   const todayStr = new Date().toISOString().split('T')[0];
   const isToday = dateStr === todayStr;
@@ -1000,6 +1379,8 @@ export function getDetailedAgendaForDate(
 
     const sortMinutes = parseTimeToMinutes(session.startTime);
     const formattedTime = formatTimeDisplay(session.startTime, isRTL);
+    const loc = getLocalizedLocationName(group?.roomOrLocation, isRTL);
+    const subj = getLocalizedSubjectName(group?.subject, isRTL) || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (isRTL ? 'مجموعة دراسية' : 'Tuition Group'));
 
     const timeKey = `${session.groupId}_${session.startTime || 'flex'}`;
     representedGroupTimes.add(timeKey);
@@ -1009,13 +1390,13 @@ export function getDetailedAgendaForDate(
       source: 'session_record',
       session,
       groupId: session.groupId,
-      groupName: group?.name || session.title || (isRTL ? 'مجموعة' : 'Group'),
+      groupName: isPrivate ? (singleStudentName || session.title || (isRTL ? 'درس خاص' : 'Private Lesson')) : (group?.name || session.title || (isRTL ? 'مجموعة' : 'Group')),
       studentId: session.studentId,
       studentName: singleStudentName,
       isPrivate,
-      subject: group?.subject || (isRTL ? 'مادة دراسية' : 'Subject'),
+      subject: subj,
       stageOrGrade: group?.gradeLevel,
-      location: group?.roomOrLocation,
+      location: loc,
       dateStr,
       dayName,
       startTime: session.startTime,
@@ -1024,7 +1405,7 @@ export function getDetailedAgendaForDate(
       sortMinutes,
       status: session.status,
       notes: session.notes,
-      accentColor: group?.accentColor || (isPrivate ? '#B88438' : '#607B5E'),
+      accentColor: group?.accentColor || (isPrivate ? '#FF647C' : '#7657F6'),
       pricePerStudent: session.pricePerStudent || group?.defaultPrice,
       hourlyRate: session.hourlyRate || group?.hourlyRate,
       billingMode: group?.billingMode || group?.billingType,
@@ -1037,11 +1418,11 @@ export function getDetailedAgendaForDate(
     });
   }
 
-  // 2. Uninstantiated recurring slots for today/future
+  // Recurring slots
   if (!isPast) {
     for (const group of groups) {
       if (!group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
-      const meetsOnDay = group.scheduleDays.some((d) => getWeekdayIndex(d) === dayOfWeek);
+      const meetsOnDay = normalizeScheduleDays(group.scheduleDays).includes(canonDay);
       if (!meetsOnDay) continue;
 
       const isPrivate = group.type === 'private';
@@ -1052,8 +1433,12 @@ export function getDetailedAgendaForDate(
           const student = studentsMap.get(enr.studentId);
           if (!student || student.status === 'archived') continue;
 
-          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, lookupDayName);
-          const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [''];
+          if (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0) {
+            if (!normalizeScheduleDays(enr.scheduleDays).includes(canonDay)) continue;
+          }
+
+          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, canonDay);
+          const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [group.scheduleTime || '16:00'];
 
           for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
             const rawTime = effectiveTimes[tIdx];
@@ -1064,25 +1449,27 @@ export function getDetailedAgendaForDate(
 
             const sortMinutes = parseTimeToMinutes(rawTime);
             const formattedTime = formatTimeDisplay(rawTime, isRTL);
+            const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+            const subj = getLocalizedSubjectName(group.subject, isRTL) || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (isRTL ? 'مجموعة' : 'Group'));
 
             items.push({
               id: `rec_item_${group.id}_${enr.id}_${tIdx}`,
               source: 'recurring_schedule',
               groupId: group.id,
-              groupName: group.name,
+              groupName: isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : group.name,
               studentId: student.id,
               studentName: student.name,
               isPrivate,
-              subject: group.subject || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (isRTL ? 'مجموعة' : 'Group')),
+              subject: subj,
               stageOrGrade: group.gradeLevel,
-              location: group.roomOrLocation,
+              location: loc,
               dateStr,
               dayName,
               startTime: rawTime,
               formattedTime,
               sortMinutes,
               status: 'scheduled',
-              accentColor: group.accentColor || (isPrivate ? '#B88438' : '#607B5E'),
+              accentColor: group.accentColor || (isPrivate ? '#FF647C' : '#7657F6'),
               pricePerStudent: enr.customPrice || group.defaultPrice,
               hourlyRate: enr.hourlyRate || group.hourlyRate,
               billingMode: enr.billingMode || group.billingMode,
@@ -1095,8 +1482,8 @@ export function getDetailedAgendaForDate(
           }
         }
       } else {
-        const groupTimes = getTimesForDayInGroup(group, lookupDayName);
-        const effectiveTimes = groupTimes.length > 0 ? groupTimes : [''];
+        const groupTimes = getTimesForDayInGroup(group, canonDay);
+        const effectiveTimes = groupTimes.length > 0 ? groupTimes : [group.scheduleTime || '16:00'];
 
         for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
           const rawTime = effectiveTimes[tIdx];
@@ -1105,6 +1492,8 @@ export function getDetailedAgendaForDate(
 
           const sortMinutes = parseTimeToMinutes(rawTime);
           const formattedTime = formatTimeDisplay(rawTime, isRTL);
+          const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+          const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
 
           items.push({
             id: `rec_grp_${group.id}_${tIdx}`,
@@ -1112,16 +1501,16 @@ export function getDetailedAgendaForDate(
             groupId: group.id,
             groupName: group.name,
             isPrivate,
-            subject: group.subject,
+            subject: subj,
             stageOrGrade: group.gradeLevel,
-            location: group.roomOrLocation,
+            location: loc,
             dateStr,
             dayName,
             startTime: rawTime,
             formattedTime,
             sortMinutes,
             status: 'scheduled',
-            accentColor: group.accentColor || (isPrivate ? '#B88438' : '#607B5E'),
+            accentColor: group.accentColor || '#7657F6',
             pricePerStudent: group.defaultPrice,
             hourlyRate: group.hourlyRate,
             billingMode: group.billingMode,

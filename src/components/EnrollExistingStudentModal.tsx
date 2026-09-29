@@ -20,7 +20,15 @@ import { db, calculateCustomEnrollmentPrice, getBillingModeLabel } from '../util
 import { useTranslation } from '../utils/i18n';
 import { getLocalizedStageName } from '../utils/stages';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
-import { normalizeScheduleTimesList } from '../utils/schedule';
+import {
+  CanonicalWeekday,
+  normalizeScheduleDays,
+  normalizeScheduleTimes,
+  normalizeScheduleTimesList,
+  getLocalizedWeekdayName,
+  getLocalizedSubjectName,
+  getLocalizedLocationName,
+} from '../utils/schedule';
 
 interface EnrollExistingStudentModalProps {
   isOpen: boolean;
@@ -65,10 +73,18 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   const [privBillingMode, setPrivBillingMode] = useState<BillingMode>('prepaid');
   const [privPackageSessions, setPrivPackageSessions] = useState<number>(10);
   const [privPackagePrice, setPrivPackagePrice] = useState<number>(900);
-  const [privDays, setPrivDays] = useState<string[]>(['Saturday']);
+  const [privDays, setPrivDays] = useState<CanonicalWeekday[]>(['saturday']);
   const [privTime, setPrivTime] = useState('16:00');
-  const [privTimes, setPrivTimes] = useState<Record<string, string[]>>({ 'Saturday': ['16:00'] });
-  const [privLocation, setPrivLocation] = useState(isEn ? 'Student Home / Online' : 'منزل الطالب / أونلاين');
+  const [privTimes, setPrivTimes] = useState<Record<CanonicalWeekday, string[]>>({
+    saturday: ['16:00'],
+    sunday: [],
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+  });
+  const [privLocation, setPrivLocation] = useState(isEn ? "Student's Home / Online" : 'منزل الطالب / أونلاين');
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
   const selectedGroup = allGroups.find((g) => g.id === selectedGroupId) || targetGroup;
@@ -116,7 +132,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     }
   };
 
-  const togglePrivDay = (day: string) => {
+  const togglePrivDay = (day: CanonicalWeekday) => {
     if (privDays.includes(day)) {
       if (privDays.length > 1) setPrivDays(privDays.filter((d) => d !== day));
     } else {
@@ -127,7 +143,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     }
   };
 
-  const handlePrivDayTimeChange = (day: string, timeIdx: number, timeVal: string) => {
+  const handlePrivDayTimeChange = (day: CanonicalWeekday, timeIdx: number, timeVal: string) => {
     setPrivTimes((prev) => {
       const currentList = prev[day] ? [...prev[day]] : ['16:00'];
       currentList[timeIdx] = timeVal;
@@ -135,7 +151,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     });
   };
 
-  const handleAddPrivDayTime = (day: string) => {
+  const handleAddPrivDayTime = (day: CanonicalWeekday) => {
     setPrivTimes((prev) => {
       const currentList = prev[day] ? [...prev[day]] : ['16:00'];
       const lastTime = currentList[currentList.length - 1] || '16:00';
@@ -146,7 +162,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     });
   };
 
-  const handleRemovePrivDayTime = (day: string, timeIdx: number) => {
+  const handleRemovePrivDayTime = (day: CanonicalWeekday, timeIdx: number) => {
     setPrivTimes((prev) => {
       const currentList = prev[day] ? [...prev[day]] : ['16:00'];
       if (currentList.length <= 1) return prev;
@@ -484,16 +500,17 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
               <div className="space-y-2 pt-1 border-t border-[#E8E7FF]">
                 <label className="block text-[11px] font-black text-[#17163D]">{t('scheduleDays')}:</label>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {[
-                    { key: 'Saturday', label: t('daySat') },
-                    { key: 'Sunday', label: t('daySun') },
-                    { key: 'Monday', label: t('dayMon') },
-                    { key: 'Tuesday', label: t('dayTue') },
-                    { key: 'Wednesday', label: t('dayWed') },
-                    { key: 'Thursday', label: t('dayThu') },
-                    { key: 'Friday', label: t('dayFri') },
-                  ].map(({ key, label }) => {
+                  {([
+                    { key: 'saturday', labelKey: 'daySat' },
+                    { key: 'sunday', labelKey: 'daySun' },
+                    { key: 'monday', labelKey: 'dayMon' },
+                    { key: 'tuesday', labelKey: 'dayTue' },
+                    { key: 'wednesday', labelKey: 'dayWed' },
+                    { key: 'thursday', labelKey: 'dayThu' },
+                    { key: 'friday', labelKey: 'dayFri' },
+                  ] as { key: CanonicalWeekday; labelKey: string }[]).map(({ key, labelKey }) => {
                     const isDayChecked = privDays.includes(key);
+                    const localizedName = getLocalizedWeekdayName(key, isRTL);
                     return (
                       <button
                         key={key}
@@ -505,7 +522,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                             : 'bg-white text-[#74778F] border-[#E8E7FF]'
                         }`}
                       >
-                        {label}
+                        {localizedName}
                       </button>
                     );
                   })}
@@ -513,21 +530,22 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
 
                 {privDays.length > 0 && (
                   <div className="space-y-2 pt-1">
-                    {privDays.map((day) => {
-                      const dayTimes = privTimes[day] && privTimes[day].length > 0 ? privTimes[day] : ['16:00'];
+                    {privDays.map((dayKey) => {
+                      const dayTimes = privTimes[dayKey] && privTimes[dayKey].length > 0 ? privTimes[dayKey] : ['16:00'];
+                      const localizedDay = getLocalizedWeekdayName(dayKey, isRTL);
                       return (
                         <div
-                          key={day}
+                          key={dayKey}
                           className="p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] space-y-2"
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-[11px] font-black text-[#17163D] flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-[#7657F6]"></span>
-                              {day}
+                              {localizedDay}
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleAddPrivDayTime(day)}
+                              onClick={() => handleAddPrivDayTime(dayKey)}
                               className="text-[10px] font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#E8E7FF] hover:bg-[#D8D5FB] transition-colors cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
@@ -538,20 +556,20 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {dayTimes.map((tVal, tIdx) => (
                               <div
-                                key={`${day}_${tIdx}`}
+                                key={`${dayKey}_${tIdx}`}
                                 className="flex items-center gap-1 bg-white border border-[#E8E7FF] rounded-lg px-2.5 py-1 shadow-2xs"
                               >
                                 <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
                                 <input
                                   type="time"
                                   value={tVal}
-                                  onChange={(e) => handlePrivDayTimeChange(day, tIdx, e.target.value)}
+                                  onChange={(e) => handlePrivDayTimeChange(dayKey, tIdx, e.target.value)}
                                   className="bg-transparent text-xs font-black text-[#191A2E] focus:outline-none cursor-pointer"
                                 />
                                 {dayTimes.length > 1 && (
                                   <button
                                     type="button"
-                                    onClick={() => handleRemovePrivDayTime(day, tIdx)}
+                                    onClick={() => handleRemovePrivDayTime(dayKey, tIdx)}
                                     className="p-0.5 rounded text-[#74778F] hover:text-[#FF647C] transition-colors ml-0.5 cursor-pointer"
                                     title={isRTL ? 'حذف هذا الموعد' : 'Remove time'}
                                   >

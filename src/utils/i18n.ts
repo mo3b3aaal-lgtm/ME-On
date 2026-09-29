@@ -561,6 +561,14 @@ export const translations = {
     completedSessions: 'الحصص المكتملة',
     upcomingSessions: 'الحصص القادمة',
     languageSettings: 'إعدادات اللغة',
+    studentSchedule: 'مواعيد الطالب',
+    addScheduleSlot: 'إضافة موعد',
+    groupSchedules: 'مواعيد المجموعات',
+    privateLessonSchedule: 'الدرس الخاص',
+    noStudentSchedulePrompt: 'لا توجد مواعيد مسجلة حالياً لهذا الطالب',
+    studentScheduleManagement: 'إدارة مواعيد الطالب وحصصه الأسبوعية',
+    weeklyClassesCount: 'حصص أسبوعياً',
+    removeSlot: 'حذف',
   },
 
   'en-GB': {
@@ -1104,6 +1112,14 @@ export const translations = {
     completedSessions: 'Completed Sessions',
     upcomingSessions: 'Upcoming Sessions',
     languageSettings: 'Language Settings',
+    studentSchedule: 'Student Schedule',
+    addScheduleSlot: 'Add Schedule',
+    groupSchedules: 'Group Schedules',
+    privateLessonSchedule: 'Private Lesson',
+    noStudentSchedulePrompt: 'No recurring schedule recorded for this student',
+    studentScheduleManagement: 'Student Weekly Schedule Management',
+    weeklyClassesCount: 'classes per week',
+    removeSlot: 'Remove',
   },
 
   'en-US': {
@@ -1647,6 +1663,14 @@ export const translations = {
     completedSessions: 'Completed Sessions',
     upcomingSessions: 'Upcoming Sessions',
     languageSettings: 'Language Settings',
+    studentSchedule: 'Student Schedule',
+    addScheduleSlot: 'Add Schedule',
+    groupSchedules: 'Group Schedules',
+    privateLessonSchedule: 'Private Lesson',
+    noStudentSchedulePrompt: 'No recurring schedule recorded for this student',
+    studentScheduleManagement: 'Student Weekly Schedule Management',
+    weeklyClassesCount: 'classes per week',
+    removeSlot: 'Remove',
   },
 } as const;
 

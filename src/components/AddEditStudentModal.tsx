@@ -17,7 +17,7 @@ import {
   Award,
   Plus,
 } from 'lucide-react';
-import { Student, Group, BillingMode, BillingType, AchievementFrame } from '../types';
+import { Student, Group, BillingMode, BillingType, AchievementFrame, Enrollment } from '../types';
 import { db } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
 import { StudentAvatar } from './StudentAvatar';
@@ -25,7 +25,14 @@ import { AchievementFrameSelector } from './AchievementFrameSelector';
 import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
-import { normalizeScheduleTimesList } from '../utils/schedule';
+import {
+  CANONICAL_WEEKDAY_KEYS,
+  normalizeWeekdayKey,
+  normalizeScheduleDays,
+  normalizeScheduleTimes,
+  getLocalizedWeekdayName,
+  getStudentEffectiveSchedule,
+} from '../utils/schedule';
 
 interface AddEditStudentModalProps {
   isOpen: boolean;
@@ -35,6 +42,12 @@ interface AddEditStudentModalProps {
   allGroups: Group[];
   onSaveComplete: (savedStudent: Student) => void;
   zIndex?: number;
+}
+
+interface ScheduleSlotItem {
+  id: string;
+  day: string; // canonical key, e.g. 'monday', 'saturday'
+  time: string; // e.g. '16:00'
 }
 
 const AVATAR_COLORS = [
@@ -83,6 +96,11 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const [subscriptionMode, setSubscriptionMode] = useState<'none' | 'group' | 'private' | 'both'>('group');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
+  // Student Recurring Schedule Slots
+  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlotItem[]>([
+    { id: 'slot_init_1', day: 'saturday', time: '16:00' },
+  ]);
+
   // Private lesson configuration
   const [privateSubject, setPrivateSubject] = useState('رياضيات');
   const [privatePrice, setPrivatePrice] = useState<number>(150);
@@ -90,9 +108,6 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const [privateBillingMode, setPrivateBillingMode] = useState<BillingMode>('prepaid');
   const [privatePackageSessions, setPrivatePackageSessions] = useState<number>(10);
   const [privatePackagePrice, setPrivatePackagePrice] = useState<number>(900);
-  const [privateDays, setPrivateDays] = useState<string[]>(['السبت']);
-  const [privateTime, setPrivateTime] = useState('16:00');
-  const [privateTimes, setPrivateTimes] = useState<Record<string, string[]>>({ 'السبت': ['16:00'] });
   const [privateLocation, setPrivateLocation] = useState('منزل الطالب / أونلاين');
 
   useEffect(() => {
@@ -120,7 +135,70 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         const g = allGroups.find((grp) => grp.id === e.groupId);
         return g && g.type !== 'private' && e.serviceType !== 'private';
       });
+      const privEnrs = enrollments.filter((e) => e.serviceType === 'private');
+
       setSelectedGroupIds(groupEnrs.map((e) => e.groupId));
+
+      // Determine subscription mode
+      if (groupEnrs.length > 0 && privEnrs.length > 0) {
+        setSubscriptionMode('both');
+      } else if (privEnrs.length > 0) {
+        setSubscriptionMode('private');
+      } else if (groupEnrs.length > 0) {
+        setSubscriptionMode('group');
+      } else {
+        setSubscriptionMode('none');
+      }
+
+      // Load private lesson options if any
+      if (privEnrs.length > 0) {
+        const pEnr = privEnrs[0];
+        const pGrp = allGroups.find((g) => g.id === pEnr.groupId);
+        if (pGrp) {
+          setPrivateSubject(pGrp.subject || 'رياضيات');
+          setPrivatePrice(pEnr.customPrice || pGrp.defaultPrice || 150);
+          setPrivateHourlyRate(pEnr.hourlyRate || pGrp.hourlyRate || 150);
+          setPrivateBillingMode((pEnr.billingMode || pGrp.billingMode || 'prepaid') as BillingMode);
+          setPrivatePackageSessions(pEnr.packageSessionsCount || pGrp.packageSessionsCount || 10);
+          setPrivatePackagePrice(pEnr.packagePrice || pGrp.defaultPrice || 900);
+          setPrivateLocation(pGrp.roomOrLocation || 'منزل الطالب / أونلاين');
+        }
+      }
+
+      // Load existing schedule slots using effective schedule resolver
+      const effective = getStudentEffectiveSchedule(editingStudent, allGroups, enrollments, isRTL);
+      const loadedSlots: ScheduleSlotItem[] = [];
+
+      effective.allDaysGrouped.forEach((dayGrp) => {
+        dayGrp.items.forEach((itm) => {
+          loadedSlots.push({
+            id: `slot_${Math.random().toString(36).substr(2, 6)}_${itm.dayKey}_${itm.rawTime}`,
+            day: itm.dayKey,
+            time: itm.rawTime || '16:00',
+          });
+        });
+      });
+
+      if (loadedSlots.length > 0) {
+        setScheduleSlots(loadedSlots);
+      } else if (editingStudent.scheduleDays && editingStudent.scheduleDays.length > 0) {
+        const normDays = normalizeScheduleDays(editingStudent.scheduleDays);
+        const normTimes = normalizeScheduleTimes(editingStudent.scheduleTimes);
+        const fallbackSlots: ScheduleSlotItem[] = [];
+        normDays.forEach((d) => {
+          const times = normTimes[d]?.length ? normTimes[d] : [editingStudent.scheduleTime || '16:00'];
+          times.forEach((tStr) => {
+            fallbackSlots.push({
+              id: `slot_${Math.random().toString(36).substr(2, 6)}_${d}_${tStr}`,
+              day: d,
+              time: tStr,
+            });
+          });
+        });
+        setScheduleSlots(fallbackSlots.length > 0 ? fallbackSlots : [{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
+      } else {
+        setScheduleSlots([{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
+      }
     } else {
       setName('');
       setPhone('');
@@ -138,12 +216,32 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       if (defaultGroupId) {
         setSubscriptionMode('group');
         setSelectedGroupIds([defaultGroupId]);
+        const defGrp = allGroups.find((g) => g.id === defaultGroupId);
+        if (defGrp && defGrp.scheduleDays && defGrp.scheduleDays.length > 0) {
+          const normDays = normalizeScheduleDays(defGrp.scheduleDays);
+          const normTimes = normalizeScheduleTimes(defGrp.scheduleTimes);
+          const initSlots: ScheduleSlotItem[] = [];
+          normDays.forEach((d) => {
+            const times = normTimes[d]?.length ? normTimes[d] : [defGrp.scheduleTime || '16:00'];
+            times.forEach((tVal) => {
+              initSlots.push({
+                id: `slot_init_${d}_${tVal}`,
+                day: d,
+                time: tVal,
+              });
+            });
+          });
+          setScheduleSlots(initSlots.length > 0 ? initSlots : [{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
+        } else {
+          setScheduleSlots([{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
+        }
       } else {
         setSubscriptionMode('group');
         setSelectedGroupIds([]);
+        setScheduleSlots([{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
       }
     }
-  }, [editingStudent, defaultGroupId, allGroups, isOpen]);
+  }, [editingStudent, defaultGroupId, allGroups, isOpen, isRTL]);
 
   // Handle stage change
   const handleStageChange = (stageId: string) => {
@@ -181,9 +279,64 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
     );
   };
 
+  const handleAddScheduleSlot = () => {
+    setScheduleSlots((prev) => [
+      ...prev,
+      {
+        id: `slot_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        day: 'saturday',
+        time: '16:00',
+      },
+    ]);
+  };
+
+  const handleRemoveScheduleSlot = (slotId: string) => {
+    setScheduleSlots((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((s) => s.id !== slotId);
+    });
+  };
+
+  const handleSlotDayChange = (slotId: string, day: string) => {
+    const canon = normalizeWeekdayKey(day);
+    setScheduleSlots((prev) =>
+      prev.map((s) => (s.id === slotId ? { ...s, day: canon } : s))
+    );
+  };
+
+  const handleSlotTimeChange = (slotId: string, time: string) => {
+    setScheduleSlots((prev) =>
+      prev.map((s) => (s.id === slotId ? { ...s, time } : s))
+    );
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    // Process schedule slots into canonical days and times map
+    const validDaysSet = new Set<string>();
+    const validTimesMap: Record<string, string[]> = {
+      saturday: [],
+      sunday: [],
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+    };
+
+    scheduleSlots.forEach((slot) => {
+      const canon = normalizeWeekdayKey(slot.day);
+      if (canon && slot.time) {
+        validDaysSet.add(canon);
+        if (!validTimesMap[canon].includes(slot.time)) {
+          validTimesMap[canon].push(slot.time);
+        }
+      }
+    });
+
+    const canonicalDays = CANONICAL_WEEKDAY_KEYS.filter((d) => validDaysSet.has(d));
 
     const studentData: Student = {
       id: editingStudent ? editingStudent.id : `std_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -198,6 +351,14 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       avatarColor,
       profilePhoto,
       achievementFrame,
+      scheduleDays: canonicalDays,
+      scheduleTimes: validTimesMap,
+      scheduleTime: canonicalDays.length > 0 && validTimesMap[canonicalDays[0]]?.[0] ? validTimesMap[canonicalDays[0]][0] : '16:00',
+      privateDays: (subscriptionMode === 'private' || subscriptionMode === 'both') ? canonicalDays : undefined,
+      privateTimes: (subscriptionMode === 'private' || subscriptionMode === 'both') ? validTimesMap : undefined,
+      privateTime: canonicalDays.length > 0 && validTimesMap[canonicalDays[0]]?.[0] ? validTimesMap[canonicalDays[0]][0] : '16:00',
+      privateLocation: privateLocation,
+      subject: privateSubject || undefined,
       status: editingStudent?.status || 'active',
       createdAt: editingStudent ? editingStudent.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -218,6 +379,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             billingType,
             billingMode: group?.billingMode || (billingType as any),
             customPrice: defaultPrice,
+            scheduleDays: canonicalDays.length > 0 ? canonicalDays : undefined,
+            scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
             status: 'active',
           });
         });
@@ -234,9 +397,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           billingMode: privateBillingMode,
           packageSessionsCount: privateBillingMode === 'package' ? privatePackageSessions : undefined,
           packagePrice: privateBillingMode === 'package' ? privatePackagePrice : undefined,
-          scheduleDays: privateDays.length > 0 ? privateDays : ['السبت'],
-          scheduleTime: privateTime || '16:00',
-          scheduleTimes: privateTimes,
+          scheduleDays: canonicalDays.length > 0 ? canonicalDays : ['saturday'],
+          scheduleTime: canonicalDays.length > 0 && validTimesMap[canonicalDays[0]]?.[0] ? validTimesMap[canonicalDays[0]][0] : '16:00',
+          scheduleTimes: validTimesMap,
           roomOrLocation: privateLocation,
         });
       }
@@ -260,6 +423,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             billingType,
             billingMode: group?.billingMode || (billingType as any),
             customPrice: defaultPrice,
+            scheduleDays: canonicalDays.length > 0 ? canonicalDays : undefined,
+            scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
             status: 'active',
           });
         }
@@ -271,60 +436,39 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           db.removeEnrollment(enr.id);
         }
       });
+
+      // Update remaining active enrollments with the updated student schedule
+      const updatedEnrollments = db.getStudentEnrollments(studentData.id);
+      updatedEnrollments.forEach((enr) => {
+        if (canonicalDays.length > 0) {
+          db.updateEnrollment({
+            ...enr,
+            scheduleDays: canonicalDays,
+            scheduleTimes: validTimesMap,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      });
+
+      // Sync private lesson group if student has private enrollment
+      const privEnr = updatedEnrollments.find((e) => e.serviceType === 'private');
+      if (privEnr) {
+        const privGroup = allGroups.find((g) => g.id === privEnr.groupId);
+        if (privGroup) {
+          db.saveGroup({
+            ...privGroup,
+            subject: privateSubject || privGroup.subject,
+            roomOrLocation: privateLocation,
+            scheduleDays: canonicalDays.length > 0 ? canonicalDays : privGroup.scheduleDays,
+            scheduleTimes: canonicalDays.length > 0 ? validTimesMap : privGroup.scheduleTimes,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
     }
 
     onSaveComplete(studentData);
     onClose();
-  };
-
-  const togglePrivateDay = (day: string) => {
-    setPrivateDays((prev) => {
-      const isAlready = prev.includes(day);
-      if (isAlready) {
-        if (prev.length === 1) return prev;
-        const nextDays = prev.filter((d) => d !== day);
-        setPrivateTimes((pt) => {
-          const copy = { ...pt };
-          delete copy[day];
-          return copy;
-        });
-        return nextDays;
-      } else {
-        const nextDays = [...prev, day];
-        setPrivateTimes((pt) => ({
-          ...pt,
-          [day]: pt[day] && pt[day].length > 0 ? pt[day] : [privateTime || '16:00'],
-        }));
-        return nextDays;
-      }
-    });
-  };
-
-  const handlePrivateDayTimeChange = (day: string, timeIdx: number, val: string) => {
-    setPrivateTimes((prev) => {
-      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      currentList[timeIdx] = val;
-      if (timeIdx === 0 && day === privateDays[0]) {
-        setPrivateTime(val);
-      }
-      return { ...prev, [day]: currentList };
-    });
-  };
-
-  const handleAddPrivateDayTime = (day: string) => {
-    setPrivateTimes((prev) => {
-      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      return { ...prev, [day]: [...currentList, '17:00'] };
-    });
-  };
-
-  const handleRemovePrivateDayTime = (day: string, timeIdx: number) => {
-    setPrivateTimes((prev) => {
-      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      if (currentList.length <= 1) return prev;
-      const updated = currentList.filter((_, idx) => idx !== timeIdx);
-      return { ...prev, [day]: updated };
-    });
   };
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
@@ -790,6 +934,75 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 )}
               </div>
             )}
+          </div>
+
+          {/* Student Schedule Management Card */}
+          <div className="classy-card p-4 space-y-3.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <label className="text-xs sm:text-sm font-black text-[#17163D] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#7657F6]" />
+                <span>{t('studentSchedule')}</span>
+              </label>
+              <span className="text-[11px] text-[#74778F] font-bold">
+                {scheduleSlots.length} {t('weeklyClassesCount')}
+              </span>
+            </div>
+
+            {/* Schedule Slot Rows */}
+            <div className="space-y-2">
+              {scheduleSlots.map((slot) => (
+                <div
+                  key={slot.id}
+                  className="p-2.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center gap-2"
+                >
+                  {/* Day Selector */}
+                  <div className="flex-1">
+                    <select
+                      value={slot.day}
+                      onChange={(e) => handleSlotDayChange(slot.id, e.target.value)}
+                      className="w-full bg-white border border-[#E8E7FF] rounded-xl px-2.5 py-2 text-xs font-black text-[#191A2E] focus:outline-none focus:border-[#7657F6] cursor-pointer"
+                    >
+                      {CANONICAL_WEEKDAY_KEYS.map((dayKey) => (
+                        <option key={dayKey} value={dayKey}>
+                          {getLocalizedWeekdayName(dayKey, isRTL)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Time Input */}
+                  <div className="flex-1">
+                    <input
+                      type="time"
+                      value={slot.time}
+                      onChange={(e) => handleSlotTimeChange(slot.id, e.target.value)}
+                      className="w-full bg-white border border-[#E8E7FF] rounded-xl px-2.5 py-2 text-xs font-black text-[#191A2E] focus:outline-none focus:border-[#7657F6] text-center"
+                    />
+                  </div>
+
+                  {/* Remove Slot Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveScheduleSlot(slot.id)}
+                    disabled={scheduleSlots.length <= 1}
+                    className="p-2 rounded-xl bg-[#FFF1F3] hover:bg-[#FFE4E6] text-[#FF647C] border border-[#FECDD3] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                    title={t('removeSlot')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Schedule Button */}
+            <button
+              type="button"
+              onClick={handleAddScheduleSlot}
+              className="w-full py-2.5 px-3 rounded-xl border border-dashed border-[#7657F6]/40 bg-[#E8E7FF]/20 hover:bg-[#E8E7FF]/40 text-[#7657F6] font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('addScheduleSlot')}</span>
+            </button>
           </div>
 
           {/* Notes Card */}

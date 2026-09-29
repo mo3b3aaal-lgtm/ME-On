@@ -107,6 +107,16 @@ export interface Student {
   avatarColor: string;
   profilePhoto?: string; // Lightweight base64 image data URL (< 30KB)
   achievementFrame?: AchievementFrame; // إطار التميز (none, gold, silver, platinum, crown, star, champion)
+  scheduleDays?: string[]; // أيام الحصص المخصصة للطالب
+  scheduleTime?: string; // وقت الحصة
+  scheduleTimes?: Record<string, string | string[]>; // مواعيد الطالب المحددة لكل يوم
+  privateDays?: string[]; // أيام الدرس الخاص
+  privateTime?: string; // وقت الدرس الخاص
+  privateTimes?: Record<string, string | string[]>; // مواعيد الدرس الخاص المحددة لكل يوم
+  privateLocation?: string; // مكان الدرس الخاص
+  subject?: string; // المادة الدراسية
+  serviceType?: string; // نوع الخدمة
+  city?: string;
   archivedAt?: string; // تاريخ الأرشفة عند الحذف الآمن مع الاحتفاظ بالسجلات
   archivedReason?: string; // سبب الأرشفة
   createdAt: string;

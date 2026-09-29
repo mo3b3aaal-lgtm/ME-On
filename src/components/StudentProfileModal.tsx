@@ -73,7 +73,12 @@ import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
 import { QuickBehaviorLogModal } from './QuickBehaviorLogModal';
 import { SafeDeleteStudentModal } from './SafeDeleteStudentModal';
 import { getLocalizedStageName } from '../utils/stages';
-import { getUpcomingClassesForStudent, UpcomingStudentClass, formatTimeDisplay } from '../utils/schedule';
+import {
+  getUpcomingClassesForStudent,
+  UpcomingStudentClass,
+  formatTimeDisplay,
+  getStudentEffectiveSchedule,
+} from '../utils/schedule';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import {
   calculateStudentBehaviorStats,
@@ -204,9 +209,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const behaviorStats = calculateStudentBehaviorStats(studentBehaviorLogs);
   const serviceType = student ? db.getStudentServiceType(student.id) : 'none';
 
+  // Effective recurring schedule for student
+  const effectiveSchedule = student
+    ? getStudentEffectiveSchedule(student, allGroups, enrollments, isRTL)
+    : null;
+
   // Upcoming scheduled classes for student
   const upcomingClasses = student
-    ? getUpcomingClassesForStudent(student.id, allGroups, enrollments, 5, true)
+    ? getUpcomingClassesForStudent(student.id, allGroups, enrollments, 5, isRTL)
     : [];
   const nextClass = upcomingClasses[0] || null;
 
@@ -791,6 +801,190 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       </a>
                     )}
                   </div>
+                </div>
+
+                {/* =========================================================================
+                    DEDICATED STUDENT SCHEDULE CARD (مواعيد الطالب)
+                    ========================================================================= */}
+                <div className="classy-card p-4 bg-white space-y-3.5 shadow-sm border-[#E8E7FF]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center shrink-0">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-black text-xs sm:text-sm text-[#17163D] flex items-center gap-1.5">
+                          <span>{t('studentSchedule')}</span>
+                        </h3>
+                        <p className="text-[11px] text-[#74778F] font-medium">
+                          {isEn ? 'Effective recurring weekly timetable' : 'جدول ومواعيد الحصص الأسبوعية الفعلية'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {effectiveSchedule && effectiveSchedule.totalOccurrencesCount > 0 && (
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E8E7FF] text-[#7657F6] border border-[#7657F6]/20">
+                          {effectiveSchedule.totalOccurrencesCount} {t('weeklyClassesCount')}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onEditStudent(student)}
+                        className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] hover:text-[#17163D] border border-[#E8E7FF] transition-colors cursor-pointer"
+                        title={isEn ? 'Edit Schedule' : 'تعديل المواعيد'}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Schedule Content */}
+                  {!effectiveSchedule || effectiveSchedule.allDaysGrouped.length === 0 ? (
+                    <div className="p-4 bg-[#F6F7FC] rounded-2xl border border-dashed border-[#E8E7FF] text-center space-y-2">
+                      <Clock className="w-6 h-6 text-[#74778F]/40 mx-auto" />
+                      <p className="text-xs font-bold text-[#74778F]">
+                        {t('noStudentSchedulePrompt')}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onEditStudent(student)}
+                        className="px-3 py-1.5 rounded-xl bg-[#7657F6] text-white font-black text-xs inline-flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{t('addScheduleSlot')}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Days & Times list grouped by day */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {effectiveSchedule.allDaysGrouped.map((dayGroup) => (
+                          <div
+                            key={dayGroup.dayKey}
+                            className="p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] space-y-2 hover:border-[#7657F6]/30 transition-all"
+                          >
+                            <div className="flex items-center justify-between border-b border-[#E8E7FF]/70 pb-1.5">
+                              <span className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[#7657F6]" />
+                                <span>{dayGroup.dayName}</span>
+                              </span>
+                              <span className="text-[10px] font-bold text-[#74778F]">
+                                {dayGroup.items.length} {isEn ? (dayGroup.items.length > 1 ? 'times' : 'time') : (dayGroup.items.length > 1 ? 'مواعيد' : 'موعد')}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {dayGroup.items.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="p-2 rounded-xl bg-white border border-[#E8E7FF] flex items-center justify-between gap-2 shadow-2xs"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="px-2 py-0.5 rounded-lg bg-[#17163D] text-white font-black text-xs tracking-wide shrink-0">
+                                      {item.time}
+                                    </span>
+                                    <div className="min-w-0 truncate">
+                                      <strong className="text-xs font-black text-[#17163D] block truncate">
+                                        {item.sourceTitle}
+                                      </strong>
+                                      <span className="text-[10px] text-[#74778F] font-bold block truncate">
+                                        {item.subject} {item.location ? `• ${item.location}` : ''}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${
+                                      item.sourceType === 'private'
+                                        ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+                                        : 'bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]'
+                                    }`}
+                                  >
+                                    {item.sourceType === 'private'
+                                      ? (isEn ? 'Private' : 'خاص')
+                                      : (isEn ? 'Group' : 'مجموعة')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Breakdown by Service Type (Group vs Private) */}
+                      <div className="pt-2 border-t border-[#E8E7FF] space-y-2">
+                        {effectiveSchedule.groupSchedules.length > 0 && (
+                          <div className="space-y-1.5">
+                            <span className="text-[11px] font-black text-[#74778F] block">
+                              {t('groupSchedules')}:
+                            </span>
+                            <div className="space-y-1">
+                              {effectiveSchedule.groupSchedules.map((grp) => (
+                                <div
+                                  key={grp.groupId}
+                                  className="p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between text-xs flex-wrap gap-2"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className="w-2.5 h-2.5 rounded-full"
+                                      style={{ backgroundColor: grp.accentColor }}
+                                    />
+                                    <strong className="font-black text-[#17163D]">{grp.groupName}</strong>
+                                    <span className="text-[11px] text-[#74778F]">({grp.subject})</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {grp.items.map((itm) => (
+                                      <span
+                                        key={itm.id}
+                                        className="px-2 py-0.5 rounded-lg bg-white border border-[#E8E7FF] font-bold text-[11px] text-[#17163D]"
+                                      >
+                                        {itm.dayName} — {itm.time}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {effectiveSchedule.privateSchedules.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <span className="text-[11px] font-black text-[#FF647C] block">
+                              {t('privateLessonSchedule')}:
+                            </span>
+                            <div className="space-y-1">
+                              {effectiveSchedule.privateSchedules.map((priv, pIdx) => (
+                                <div
+                                  key={pIdx}
+                                  className="p-2.5 rounded-xl bg-[#FFF1F3]/40 border border-[#FECDD3] flex items-center justify-between text-xs flex-wrap gap-2"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Sparkles className="w-3.5 h-3.5 text-[#FF647C]" />
+                                    <strong className="font-black text-[#17163D]">{priv.subject}</strong>
+                                    {priv.location && (
+                                      <span className="text-[11px] text-[#74778F]">({priv.location})</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {priv.items.map((itm) => (
+                                      <span
+                                        key={itm.id}
+                                        className="px-2 py-0.5 rounded-lg bg-white border border-[#FECDD3] font-bold text-[11px] text-[#FF647C]"
+                                      >
+                                        {itm.dayName} — {itm.time}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Attendance & Behavioral Quick Bento Strip */}

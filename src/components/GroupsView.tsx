@@ -84,19 +84,55 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   const regularGroups = useMemo(() => groups.filter((g) => g.type !== 'private'), [groups]);
   const privateServices = useMemo(() => groups.filter((g) => g.type === 'private'), [groups]);
 
+  // Pre-index group enrollments, private students, and statistics in a single memoized pass
+  const groupDataMap = useMemo(() => {
+    const allEnrs = db.getEnrollments();
+    const studentsMap = new Map<string, Student>(allStudents.map((s) => [s.id, s]));
+
+    const map = new Map<
+      string,
+      {
+        enrollments: typeof allEnrs;
+        privateStudent: Student | null;
+        stats: {
+          studentCount: number;
+          totalSessions: number;
+          completedSessions: number;
+          attendanceRate: number;
+          totalRevenue: number;
+          totalDue: number;
+          remaining: number;
+        };
+      }
+    >();
+
+    groups.forEach((group) => {
+      const enrs = allEnrs.filter((e) => e.groupId === group.id && e.status !== 'stopped');
+      const isPrivate = group.type === 'private';
+      const privStu = isPrivate && enrs[0] ? studentsMap.get(enrs[0].studentId) || null : null;
+      const stats = db.calculateGroupStats(group.id);
+
+      map.set(group.id, {
+        enrollments: enrs,
+        privateStudent: privStu,
+        stats,
+      });
+    });
+
+    return map;
+  }, [groups, allStudents, sessions, payments]);
+
   // Compute all enrollments across regular groups
   const totalEnrolledStudentsCount = useMemo(() => {
     const studentIds = new Set<string>();
     regularGroups.forEach((g) => {
-      const enrs = db.getGroupEnrollments(g.id);
-      enrs.forEach((e) => {
-        if (e.status !== 'stopped') {
-          studentIds.add(e.studentId);
-        }
+      const gData = groupDataMap.get(g.id);
+      gData?.enrollments.forEach((e) => {
+        studentIds.add(e.studentId);
       });
     });
     return studentIds.size;
-  }, [regularGroups, groups]);
+  }, [regularGroups, groupDataMap]);
 
   // Compute groups that have sessions scheduled or recurring today
   const groupsWithTodayClass = useMemo(() => {
@@ -130,10 +166,8 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   const filteredGroups = useMemo(() => {
     return groups.filter((group) => {
       const isPrivate = group.type === 'private';
-      const enrollments = db.getGroupEnrollments(group.id);
-      const privateStudent = isPrivate && enrollments[0]
-        ? allStudents.find((s) => s.id === enrollments[0].studentId)
-        : null;
+      const gData = groupDataMap.get(group.id);
+      const privateStudent = gData?.privateStudent || null;
 
       const displayName = isPrivate && privateStudent ? privateStudent.name : group.name;
 
@@ -172,7 +206,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
     });
   }, [
     groups,
-    allStudents,
+    groupDataMap,
     searchQuery,
     typeFilter,
     selectedGradeFilter,
@@ -470,13 +504,19 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {filteredGroups.map((group) => {
-            const enrollments = db.getGroupEnrollments(group.id);
+            const gData = groupDataMap.get(group.id);
+            const enrollments = gData?.enrollments || [];
             const isPrivate = group.type === 'private';
-            const privateStudent = isPrivate && enrollments[0]
-              ? allStudents.find((s) => s.id === enrollments[0].studentId)
-              : null;
-
-            const groupStats = db.calculateGroupStats(group.id);
+            const privateStudent = gData?.privateStudent || null;
+            const groupStats = gData?.stats || {
+              studentCount: 0,
+              totalSessions: 0,
+              completedSessions: 0,
+              attendanceRate: 100,
+              totalRevenue: 0,
+              totalDue: 0,
+              remaining: 0,
+            };
             const groupSessions = sessions.filter((s) => s.groupId === group.id && s.status !== 'cancelled');
 
             // Check if group has a class today

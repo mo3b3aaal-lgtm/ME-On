@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Layers,
@@ -72,24 +72,30 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   const isEn = language.startsWith('en');
   const [activeSubTab, setActiveSubTab] = useState<'students' | 'sessions' | 'stats'>('students');
 
-  // Load data
-  const enrollments = group ? db.getGroupEnrollments(group.id) : [];
-  const enrolledStudents = group ? db.getGroupStudents(group.id) : [];
-  const groupSessions = group
-    ? db.getSessions().filter((s) => s.groupId === group.id && s.status !== 'cancelled')
-    : [];
+  // Load data (Memoized for instantaneous modal responsiveness)
+  const groupId = group?.id;
+  const enrollments = useMemo(() => (groupId ? db.getGroupEnrollments(groupId) : []), [groupId]);
+  const enrolledStudents = useMemo(() => (groupId ? db.getGroupStudents(groupId) : []), [groupId]);
+  const groupSessions = useMemo(
+    () => (groupId ? db.getSessions().filter((s) => s.groupId === groupId && s.status !== 'cancelled') : []),
+    [groupId]
+  );
 
-  const stats = group
-    ? db.calculateGroupStats(group.id)
-    : {
-        studentCount: 0,
-        totalSessions: 0,
-        completedSessions: 0,
-        attendanceRate: 100,
-        totalRevenue: 0,
-        totalDue: 0,
-        remaining: 0,
-      };
+  const stats = useMemo(
+    () =>
+      groupId
+        ? db.calculateGroupStats(groupId)
+        : {
+            studentCount: 0,
+            totalSessions: 0,
+            completedSessions: 0,
+            attendanceRate: 100,
+            totalRevenue: 0,
+            totalDue: 0,
+            remaining: 0,
+          },
+    [groupId]
+  );
 
   const isPrivate = group?.type === 'private';
   const themeColor = group?.accentColor || (isPrivate ? '#FF647C' : '#7657F6');

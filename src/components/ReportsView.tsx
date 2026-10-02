@@ -34,13 +34,15 @@ import {
   AlertTriangle,
   RefreshCw,
   Share2,
+  Activity,
 } from 'lucide-react';
-import { Student, Group, Session, Payment, ReportPeriodFilter, Enrollment } from '../types';
+import { Student, Group, Session, Payment, ReportPeriodFilter, Enrollment, Attendance } from '../types';
 import { db, getArabicMonthName } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
 import { StudentAvatar } from './StudentAvatar';
+import { AttendanceTrendsChart } from './AttendanceTrendsChart';
 
 interface ReportsViewProps {
   students: Student[];
@@ -80,9 +82,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
-  // Financial Sub-Tabs
+  // Financial & Attendance Sub-Tabs
   const [financialSubTab, setFinancialSubTab] = useState<
-    'overview' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
+    'overview' | 'attendance_trends' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
   >('overview');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'group' | 'private'>('all');
   const [expandedMonthYear, setExpandedMonthYear] = useState<string | null>(null);
@@ -98,6 +100,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [studentFilterType, setStudentFilterType] = useState<'all' | 'active' | 'archived'>('all');
 
   const activeEnrollments = useMemo(() => enrollments || db.getEnrollments(), [enrollments]);
+  const allAttendanceRecords = useMemo(() => db.getAttendance(), [sessions]);
 
   // 1. Overall Teacher Calculations from db
   const teacherSummary = useMemo(() => {
@@ -111,7 +114,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   // Attendance & Sessions Analytics for current period
   const attendanceAnalytics = useMemo(() => {
-    const allAtt = db.getAttendance();
+    const allAtt = allAttendanceRecords;
     const periodSessions = sessions.filter((s) => {
       if (periodFilter === 'all_time') return true;
       if (periodFilter === 'today') return s.date === todayStr;
@@ -661,6 +664,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
               <button
                 type="button"
+                onClick={() => setFinancialSubTab('attendance_trends')}
+                className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  financialSubTab === 'attendance_trends'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'text-[#74778F] hover:bg-[#F6F7FC] hover:text-[#17163D]'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5 text-[#55C7E8]" />
+                <span>{isEn ? 'Attendance Trends' : 'منحنيات الحضور'}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setFinancialSubTab('monthly_ledger')}
                 className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                   financialSubTab === 'monthly_ledger'
@@ -843,6 +859,74 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       </span>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Interactive Attendance Trends Over Time Visualization */}
+              <AttendanceTrendsChart
+                sessions={sessions}
+                allAttendance={allAttendanceRecords}
+                students={students}
+                groups={groups}
+                periodFilter={periodFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+              />
+            </div>
+          )}
+
+          {/* Sub-Tab 1.5: Dedicated Attendance Trends & Analytics View */}
+          {financialSubTab === 'attendance_trends' && (
+            <div className="space-y-4">
+              <AttendanceTrendsChart
+                sessions={sessions}
+                allAttendance={allAttendanceRecords}
+                students={students}
+                groups={groups}
+                periodFilter={periodFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+              />
+
+              {/* Attendance Commitment Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="classy-card p-4.5 bg-gradient-to-br from-white to-emerald-50/50 border border-emerald-200/80 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-[#74778F] text-xs font-bold">
+                    <span>{isEn ? 'Recorded Presences' : 'حالات الحضور المسجلة'}</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <strong className="text-xl font-black text-emerald-700 block">
+                    {attendanceAnalytics.presentCount + attendanceAnalytics.lateCount} <span className="text-xs text-[#74778F] font-medium">{isEn ? 'records' : 'حضور'}</span>
+                  </strong>
+                  <p className="text-[11px] text-[#74778F] font-medium">
+                    {isEn ? `${attendanceAnalytics.lateCount} marked as late arrivals` : `${attendanceAnalytics.lateCount} حالة حضور بتأخير`}
+                  </p>
+                </div>
+
+                <div className="classy-card p-4.5 bg-gradient-to-br from-white to-[#FFF1F3]/40 border border-[#FECDD3] shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-[#74778F] text-xs font-bold">
+                    <span>{isEn ? 'Charged Absences' : 'الغياب المحسوب (المخصوم)'}</span>
+                    <AlertCircle className="w-4 h-4 text-[#FF647C]" />
+                  </div>
+                  <strong className="text-xl font-black text-[#FF647C] block">
+                    {attendanceAnalytics.absentChargedCount} <span className="text-xs text-[#74778F] font-medium">{isEn ? 'charged' : 'غياب'}</span>
+                  </strong>
+                  <p className="text-[11px] text-[#74778F] font-medium">
+                    {isEn ? 'Absence charged against student package or session fee' : 'غياب تم احتسابه وخصمه من باقة أو اشتراك الطالب'}
+                  </p>
+                </div>
+
+                <div className="classy-card p-4.5 bg-gradient-to-br from-white to-amber-50/50 border border-amber-200/80 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-[#74778F] text-xs font-bold">
+                    <span>{isEn ? 'Excused / Free Absences' : 'الغياب المعفى (غير المحسوب)'}</span>
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <strong className="text-xl font-black text-amber-700 block">
+                    {attendanceAnalytics.absentExcusedCount} <span className="text-xs text-[#74778F] font-medium">{isEn ? 'excused' : 'معفى'}</span>
+                  </strong>
+                  <p className="text-[11px] text-[#74778F] font-medium">
+                    {isEn ? 'Excused absences without financial deduction' : 'غياب مبرر بعذر مقبول دون خصم رصيد أو رسوم'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1139,6 +1223,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <strong className="font-black text-[#7657F6]">{selectedGroupFin.completedSessionsCount}</strong>
                 </div>
               </div>
+
+              {/* Group Attendance Trends Line Chart */}
+              <AttendanceTrendsChart
+                sessions={sessions}
+                allAttendance={allAttendanceRecords}
+                students={students}
+                groups={groups}
+                selectedGroupId={selectedGroupId}
+                periodFilter={periodFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+              />
             </div>
           )}
         </div>
@@ -1206,6 +1302,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   </strong>
                 </div>
               </div>
+
+              {/* Student Attendance Trends Line Chart */}
+              <AttendanceTrendsChart
+                sessions={sessions}
+                allAttendance={allAttendanceRecords}
+                students={students}
+                groups={groups}
+                selectedStudentId={selectedStudentId}
+                periodFilter={periodFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+              />
             </div>
           )}
         </div>

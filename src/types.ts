@@ -234,6 +234,7 @@ export interface Session {
   packageTotalPrice?: number; // إجمالي سعر الباقة وقت التسجيل
   packageSessionsCount?: number; // عدد حصص الباقة وقت التسجيل
   status: SessionStatus;
+  isExtraSession?: boolean; // علامة تمييز الحصة الإضافية (Extra Session)
   notes?: string;
   createdAt: string;
   updatedAt?: string;
@@ -816,6 +817,10 @@ export interface NotificationSettings {
   enableAttendanceReminders: boolean; // تنبيهات رصد الحضور
   enableOverdueReminders: boolean; // تنبيهات مستحقات السداد
   enableAbsenceReminders: boolean; // تنبيهات الغياب المتكرر
+  enableDailyAttendanceReminder?: boolean; // تذكير تسجيل الحضور اليومي
+  dailyAttendanceReminderTime?: string; // وقت التذكير اليومي (افتراضي "22:00" أي 10:00 م)
+  notificationSoundUri?: string; // مسار أو اسم ملف الصوت المخصص للتنبيه (e.g. "beep.wav", "classy_chime.wav", etc.)
+  notificationSoundName?: string; // الاسم المعروض لنغمة التنبيه المحددة
 }
 
 export interface NotificationStateItem {

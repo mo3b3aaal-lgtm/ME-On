@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   DollarSign,
@@ -75,8 +75,11 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [notes, setNotes] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
 
-  // Enrollments for selected student
-  const studentEnrollments = db.getStudentEnrollments(studentId);
+  // Enrollments for selected student (Memoized for fast modal rendering)
+  const studentEnrollments = useMemo(
+    () => (studentId ? db.getStudentEnrollments(studentId) : []),
+    [studentId]
+  );
 
   useEffect(() => {
     if (targetStudent) {
@@ -96,11 +99,22 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     } else {
       setSelectedEnrollmentId('');
     }
-  }, [studentId, studentEnrollments.length]);
+  }, [studentId, studentEnrollments, targetEnrollmentId, selectedEnrollmentId]);
 
-  const activeEnrollment = studentEnrollments.find((e) => e.id === selectedEnrollmentId) || studentEnrollments[0];
-  const activeGroup = activeEnrollment ? db.getGroupById(activeEnrollment.groupId) : undefined;
-  const enrollmentSummary = activeEnrollment ? db.calculateEnrollmentFinancials(activeEnrollment.id) : undefined;
+  const activeEnrollment = useMemo(
+    () => studentEnrollments.find((e) => e.id === selectedEnrollmentId) || studentEnrollments[0],
+    [studentEnrollments, selectedEnrollmentId]
+  );
+
+  const activeGroup = useMemo(
+    () => (activeEnrollment ? db.getGroupById(activeEnrollment.groupId) : undefined),
+    [activeEnrollment?.groupId]
+  );
+
+  const enrollmentSummary = useMemo(
+    () => (activeEnrollment ? db.calculateEnrollmentFinancials(activeEnrollment.id) : undefined),
+    [activeEnrollment?.id]
+  );
 
   // Unit session price for active enrollment
   const sessionUnitPrice = getEffectiveSessionPrice(activeEnrollment, activeGroup);

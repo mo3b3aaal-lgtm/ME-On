@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Layers,
@@ -8,40 +8,19 @@ import {
   Plus,
   ArrowUpRight,
   Clock,
-  MapPin,
   CheckCircle2,
   Calendar,
-  AlertCircle,
   TrendingUp,
-  Sparkles,
   Bell,
-  Check,
-  XCircle,
-  MessageCircle,
-  Phone,
   ChevronDown,
   ChevronUp,
-  AlertTriangle,
   Receipt,
   UserCheck,
   X,
-  CreditCard,
-  Mail,
   WifiOff,
-  Wifi,
   RefreshCw,
-  CloudOff,
-  Cloud,
-  Database,
-  ShieldCheck,
-  HardDrive,
-  BrainCircuit,
-  Lightbulb,
-  Activity,
-  ArrowRight,
-  PieChart,
 } from 'lucide-react';
-import { Student, Group, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, Enrollment, ActiveTab, AutoSyncConfig } from '../types';
+import { Student, Group, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, ActiveTab, AutoSyncConfig } from '../types';
 import {
   db,
   roundMoney,
@@ -51,18 +30,14 @@ import {
   getAutoSyncConfig,
   performFullSync,
   subscribeToSyncUpdates,
-  formatSyncStatusArabic,
 } from '../utils/storage';
 import {
   subscribeToNetworkStatus,
   getCachedNetworkStatus,
   DetailedNetworkStatus,
 } from '../utils/network';
-import { getLocalizedStageName } from '../utils/stages';
-import { getScheduledClassesForDate, ScheduledClassItem, parseTimeToMinutes } from '../utils/schedule';
-import { getSmartReminders, SmartReminderItem } from '../utils/reminders';
-import { fetchAttendanceInsights, SmartAttendanceInsightsResult } from '../utils/aiInsights';
-import { generateQuickTips, QuickTip } from '../utils/quickTips';
+import { getScheduledClassesForDate, ScheduledClassItem } from '../utils/schedule';
+import { getSmartReminders } from '../utils/reminders';
 import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
 
@@ -94,8 +69,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddGroup,
   onOpenAddSession,
   onOpenAddPayment,
-  onOpenStudentProfile,
-  onOpenGroupProfile,
   onOpenAttendanceModal,
   onOpenNotificationsModal,
   onNavigateToTab,
@@ -112,13 +85,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [expandedAttendanceCardId, setExpandedAttendanceCardId] = useState<string | null>(null);
   const [quickSuccessMsg, setQuickSuccessMsg] = useState<string | null>(null);
 
-  // Smart AI Insights state
-  const [insights, setInsights] = useState<SmartAttendanceInsightsResult | null>(null);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-
-  // Selected date for calendar strip
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(todayStr);
-
   const showQuickFeedback = (msg: string) => {
     setQuickSuccessMsg(msg);
     setTimeout(() => setQuickSuccessMsg(null), 3000);
@@ -131,7 +97,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const enrollments = useMemo(() => db.getEnrollments(), [students, groups]);
   const allAttendance = useMemo(() => db.getAttendance(), [sessions]);
-  const regularGroups = useMemo(() => groups.filter((g) => g.type !== 'private'), [groups]);
 
   // Network & Sync State
   const [networkStatus, setNetworkStatus] = useState<DetailedNetworkStatus>(() => getCachedNetworkStatus());
@@ -180,31 +145,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       setIsManualSyncing(false);
     }
   };
-
-  // Load Smart Attendance Insights
-  const loadInsights = useCallback(async () => {
-    if (students.length === 0) return;
-    setIsLoadingInsights(true);
-    try {
-      const result = await fetchAttendanceInsights(
-        students,
-        groups,
-        sessions,
-        allAttendance,
-        teacherProfile.subject || (isEn ? 'General' : 'عام'),
-        teacherProfile.name || (isEn ? 'Teacher' : 'المعلم')
-      );
-      setInsights(result);
-    } catch {
-      // Handled
-    } finally {
-      setIsLoadingInsights(false);
-    }
-  }, [students, groups, sessions, allAttendance, teacherProfile, isEn]);
-
-  useEffect(() => {
-    loadInsights();
-  }, [loadInsights]);
 
   // Scheduled classes for today
   const scheduledToday = useMemo(() => {
@@ -293,57 +233,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const smartReminders = useMemo(() => {
     return getSmartReminders(students, groups, sessions, enrollments, allAttendance);
   }, [students, groups, sessions, enrollments, allAttendance]);
-
-  // Personalized Quick Tips based on data state
-  const quickTips = useMemo(() => {
-    return generateQuickTips(students, groups, sessions, payments, enrollments, allAttendance);
-  }, [students, groups, sessions, payments, enrollments, allAttendance]);
-
-  const [dismissedTipIds, setDismissedTipIds] = useState<string[]>([]);
-  const activeQuickTips = useMemo(() => {
-    return quickTips.filter((t) => !dismissedTipIds.includes(t.id));
-  }, [quickTips, dismissedTipIds]);
-
-  const handleQuickTipAction = (tip: QuickTip) => {
-    switch (tip.actionType) {
-      case 'open_add_payment':
-        onOpenAddPayment();
-        break;
-      case 'open_add_session':
-        onOpenAddSession();
-        break;
-      case 'open_add_student':
-        onOpenAddStudent();
-        break;
-      case 'navigate_students':
-        onNavigateToTab('students');
-        break;
-      case 'navigate_groups':
-        onNavigateToTab('groups');
-        break;
-      case 'navigate_reports':
-        onNavigateToTab('reports');
-        break;
-      case 'open_student':
-        if (tip.targetStudentId) {
-          const st = students.find((s) => s.id === tip.targetStudentId);
-          if (st) onOpenStudentProfile(st);
-        } else {
-          onNavigateToTab('students');
-        }
-        break;
-      case 'open_group':
-        if (tip.targetGroupId) {
-          const grp = groups.find((g) => g.id === tip.targetGroupId);
-          if (grp) onOpenGroupProfile(grp);
-        } else {
-          onNavigateToTab('groups');
-        }
-        break;
-      default:
-        break;
-    }
-  };
 
   const findSessionForScheduleItem = (item: ScheduledClassItem) => {
     return sessions.find(
@@ -1028,89 +917,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             })}
           </div>
         )}
-      </div>
-
-      {/* =========================================================================
-          5. Financial Summary & Quick Tips Section
-          ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-        {/* Financial Card */}
-        <div className="classy-card p-4 sm:p-5 space-y-3.5 flex flex-col justify-between bg-white">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2.5 border-b border-[#E8E7FF]">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#17163D] to-[#403B9C] text-white flex items-center justify-center shadow-md">
-                  <DollarSign className="w-4 h-4 text-[#55C7E8]" />
-                </div>
-                <div>
-                  <h3 className="text-xs sm:text-sm font-black text-[#17163D]">
-                    {isEn ? `Financial Summary (Month ${currentMonth})` : `الملخص المالي (شهر ${currentMonth})`}
-                  </h3>
-                  <p className="text-[10px] text-[#74778F] font-medium">
-                    {isEn ? 'Revenues and outstanding dues' : 'متابعة الإيرادات والمستحقات المتبقية'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => onNavigateToTab('reports')}
-                className="text-xs font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-0.5 cursor-pointer"
-              >
-                <span>{isEn ? 'Full Report' : 'التقرير المالي'}</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#7657F6]" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="bg-[#F6F7FC] p-3 rounded-2xl border border-[#E8E7FF]">
-                <span className="text-[10px] text-[#74778F] font-bold block">{t('monthlyRevenue')}</span>
-                <strong className="text-base sm:text-lg font-black text-[#17163D] block mt-0.5">
-                  {totalMonthRevenue} <span className="text-[10px] text-[#74778F]">{t('currency')}</span>
-                </strong>
-              </div>
-              <div className="bg-[#FFF1F3] p-3 rounded-2xl border border-[#FECDD3]">
-                <span className="text-[10px] text-[#FF647C] font-bold block">{t('totalPendingDues')}</span>
-                <strong className="text-base sm:text-lg font-black text-[#FF647C] block mt-0.5">
-                  {totalOutstandingDues} <span className="text-[10px] text-[#FF647C]">{t('currency')}</span>
-                </strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Tips & Recommendations */}
-        <div className="classy-card p-4 sm:p-5 space-y-3 bg-white">
-          <div className="flex items-center justify-between pb-2.5 border-b border-[#E8E7FF]">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                <Lightbulb className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs sm:text-sm font-black text-[#17163D]">{isEn ? 'Smart Insights & Tips' : 'نصائح وإرشادات ذكية'}</h3>
-                <p className="text-[10px] text-[#74778F] font-medium">{isEn ? 'Proactive recommendations for your classes' : 'توصيات لتحسين المتابعة والتحصيل'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {activeQuickTips.slice(0, 3).map((tip) => (
-              <div
-                key={tip.id}
-                onClick={() => handleQuickTipAction(tip)}
-                className="p-3 rounded-2xl bg-[#F6F7FC] hover:bg-[#E8E7FF]/50 border border-[#E8E7FF] flex items-center justify-between gap-2 transition-all cursor-pointer"
-              >
-                <div className="space-y-0.5 min-w-0">
-                  <h4 className="font-bold text-xs text-[#17163D] truncate">{tip.title}</h4>
-                  <p className="text-[11px] text-[#74778F] line-clamp-1">{tip.description}</p>
-                </div>
-                {tip.actionLabel && (
-                  <span className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-white border border-[#E8E7FF] text-[#7657F6] shrink-0">
-                    {tip.actionLabel}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   CheckCircle2,
@@ -54,29 +54,44 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     isEn ? 'Other Reason' : 'سبب آخر',
   ];
 
-  const group = session ? db.getGroupById(session.groupId) : undefined;
-  const isPrivateSession = group?.type === 'private' || !!session?.studentId;
-  let privateStudent: Student | undefined = undefined;
-  if (session?.studentId) {
-    privateStudent = db.getStudentById(session.studentId);
-  } else if (group?.type === 'private') {
-    const enrs = db.getGroupEnrollments(group.id);
-    if (enrs[0]) {
-      privateStudent = db.getStudentById(enrs[0].studentId);
-    }
-  }
+  const sessionId = session?.id;
+  const groupId = session?.groupId;
+  const sessionStudentId = session?.studentId;
 
-  const enrolledStudents = session
-    ? privateStudent
-      ? [privateStudent]
-      : db.getGroupStudents(session.groupId)
-    : [];
-  const existingAttendance = session ? db.getSessionAttendance(session.id) : [];
-  const allEnrollments = session
-    ? isPrivateSession && privateStudent
-      ? db.getStudentPrivateEnrollments(privateStudent.id).map((p) => p.enrollment)
-      : db.getGroupEnrollments(session.groupId)
-    : [];
+  const group = useMemo(() => (groupId ? db.getGroupById(groupId) : undefined), [groupId]);
+  const isPrivateSession = group?.type === 'private' || !!sessionStudentId;
+
+  const privateStudent: Student | undefined = useMemo(() => {
+    if (sessionStudentId) {
+      return db.getStudentById(sessionStudentId);
+    }
+    if (group?.type === 'private' && groupId) {
+      const enrs = db.getGroupEnrollments(groupId);
+      if (enrs[0]) {
+        return db.getStudentById(enrs[0].studentId);
+      }
+    }
+    return undefined;
+  }, [sessionStudentId, group?.type, groupId]);
+
+  const enrolledStudents = useMemo(() => {
+    if (!sessionId || !groupId) return [];
+    if (privateStudent) return [privateStudent];
+    return db.getGroupStudents(groupId);
+  }, [sessionId, groupId, privateStudent]);
+
+  const existingAttendance = useMemo(
+    () => (sessionId ? db.getSessionAttendance(sessionId) : []),
+    [sessionId]
+  );
+
+  const allEnrollments = useMemo(() => {
+    if (!sessionId || !groupId) return [];
+    if (isPrivateSession && privateStudent) {
+      return db.getStudentPrivateEnrollments(privateStudent.id).map((p) => p.enrollment);
+    }
+    return db.getGroupEnrollments(groupId);
+  }, [sessionId, groupId, isPrivateSession, privateStudent]);
 
   // Local state for attendance records mapping: studentId -> StudentAttendanceRecord
   const [records, setRecords] = useState<Record<string, StudentAttendanceRecord>>({});

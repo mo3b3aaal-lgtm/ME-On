@@ -273,6 +273,10 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   enableAttendanceReminders: true,
   enableOverdueReminders: true,
   enableAbsenceReminders: true,
+  enableDailyAttendanceReminder: true,
+  dailyAttendanceReminderTime: '22:00',
+  notificationSoundUri: 'beep.wav',
+  notificationSoundName: 'Classy Alert (Beep)',
 };
 
 // ==========================================

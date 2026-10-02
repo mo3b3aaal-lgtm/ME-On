@@ -31,7 +31,7 @@ import {
   ChevronRight,
   User,
 } from 'lucide-react';
-import { Student, Group, Attendance, Session } from '../types';
+import { Student, Group, Attendance, Session, Enrollment } from '../types';
 import { db } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { getLocalizedStageName } from '../utils/stages';
@@ -92,6 +92,56 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     return Array.from(new Set(students.map((s) => s.gradeLevel).filter(Boolean)));
   }, [students]);
 
+  // Pre-index student groups, enrollments, and balances in a single memoized pass for ultra-fast rendering
+  const studentDataMap = useMemo(() => {
+    const allEnrs = db.getEnrollments();
+    const groupsMap = new Map<string, Group>(groups.map((g) => [g.id, g]));
+
+    const map = new Map<
+      string,
+      {
+        studentGroups: { group: Group; enrollment: Enrollment }[];
+        privateEnrollments: { group: Group; enrollment: Enrollment }[];
+        enrollmentGroupIds: Set<string>;
+        isPrivateOnly: boolean;
+        isGroupAndPrivate: boolean;
+        balance: number;
+      }
+    >();
+
+    students.forEach((student) => {
+      const sEnrs = allEnrs.filter((e) => e.studentId === student.id && e.status !== 'stopped');
+      const sGroups: { group: Group; enrollment: Enrollment }[] = [];
+      const sPriv: { group: Group; enrollment: Enrollment }[] = [];
+      const grpIds = new Set<string>();
+
+      sEnrs.forEach((enr) => {
+        const g = groupsMap.get(enr.groupId);
+        if (g) {
+          grpIds.add(g.id);
+          if (g.type === 'private' || enr.serviceType === 'private') {
+            sPriv.push({ group: g, enrollment: enr });
+          } else {
+            sGroups.push({ group: g, enrollment: enr });
+          }
+        }
+      });
+
+      const fin = db.calculateStudentFinancials(student.id);
+
+      map.set(student.id, {
+        studentGroups: sGroups,
+        privateEnrollments: sPriv,
+        enrollmentGroupIds: grpIds,
+        isPrivateOnly: sGroups.length === 0 && sPriv.length > 0,
+        isGroupAndPrivate: sGroups.length > 0 && sPriv.length > 0,
+        balance: fin.balance,
+      });
+    });
+
+    return map;
+  }, [students, groups]);
+
   // Counts for active vs archived
   const activeStudentsCount = useMemo(
     () => students.filter((s) => s.status !== 'archived').length,
@@ -107,21 +157,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     return students
       .filter((s) => s.status !== 'archived')
       .filter((s) => {
-        const fin = db.calculateStudentFinancials(s.id);
-        return fin.balance < 0;
+        const info = studentDataMap.get(s.id);
+        return (info?.balance ?? 0) < 0;
       }).length;
-  }, [students]);
+  }, [students, studentDataMap]);
 
   // Active private-only students
   const privateOnlyCount = useMemo(() => {
     return students
       .filter((s) => s.status !== 'archived')
       .filter((s) => {
-        const grps = db.getStudentGroups(s.id);
-        const priv = db.getStudentPrivateEnrollments(s.id);
-        return grps.length === 0 && priv.length > 0;
+        const info = studentDataMap.get(s.id);
+        return !!info?.isPrivateOnly;
       }).length;
-  }, [students]);
+  }, [students, studentDataMap]);
 
   // Filtered students list
   const filteredStudents = useMemo(() => {
@@ -150,31 +199,25 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         return false;
       }
 
+      const info = studentDataMap.get(student.id);
+
       // 4. Group Filter
       if (selectedGroupFilter !== 'all') {
-        const studentEnrollments = db.getStudentEnrollments(student.id);
-        const isEnrolledInSelected = studentEnrollments.some(
-          (e) => e.groupId === selectedGroupFilter && e.status !== 'stopped'
-        );
-        if (!isEnrolledInSelected) return false;
+        if (!info?.enrollmentGroupIds.has(selectedGroupFilter)) return false;
       }
 
       // 5. Quick Filters
       if (quickFilter === 'debtors') {
-        const fin = db.calculateStudentFinancials(student.id);
-        if (fin.balance >= 0) return false;
+        if ((info?.balance ?? 0) >= 0) return false;
       } else if (quickFilter === 'private_only') {
-        const regularGrps = db.getStudentGroups(student.id);
-        const privateEnrs = db.getStudentPrivateEnrollments(student.id);
-        if (!(regularGrps.length === 0 && privateEnrs.length > 0)) {
-          return false;
-        }
+        if (!info?.isPrivateOnly) return false;
       }
 
       return true;
     });
   }, [
     students,
+    studentDataMap,
     activeTabType,
     searchQuery,
     selectedGradeFilter,
@@ -647,9 +690,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       ) : (
         <div className="space-y-3">
           {filteredStudents.map((student) => {
-            const studentGroups = db.getStudentGroups(student.id);
-            const privateEnrollments = db.getStudentPrivateEnrollments(student.id);
-            const fin = db.calculateStudentFinancials(student.id);
+            const data = studentDataMap.get(student.id);
+            const studentGroups = data?.studentGroups || [];
+            const privateEnrollments = data?.privateEnrollments || [];
+            const balance = data?.balance ?? 0;
             const isSelected = selectedStudentIds.has(student.id);
             const isStudentArchived = student.status === 'archived';
 
@@ -661,8 +705,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             ).length;
             const attendancePercentage = studentAtt.length > 0 ? Math.round((presentCount / studentAtt.length) * 100) : null;
 
-            const isPrivateOnly = studentGroups.length === 0 && privateEnrollments.length > 0;
-            const isGroupAndPrivate = studentGroups.length > 0 && privateEnrollments.length > 0;
+            const isPrivateOnly = data?.isPrivateOnly || false;
+            const isGroupAndPrivate = data?.isGroupAndPrivate || false;
 
             return (
               <div
@@ -772,17 +816,17 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <div className="space-y-1 text-left">
                         <span
                           className={`text-xs font-black px-3 py-1 rounded-xl inline-block border ${
-                            fin.balance < 0
+                            balance < 0
                               ? 'bg-[#FFF1F3] text-[#FF647C] border-[#FECDD3] shadow-2xs'
-                              : fin.balance > 0
+                              : balance > 0
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
                               : 'bg-[#F6F7FC] text-[#403B9C] border-[#E8E7FF]'
                           }`}
                         >
-                          {fin.balance < 0
-                            ? `${Math.abs(fin.balance)} ${t('currency')} ${t('hasDue')}`
-                            : fin.balance > 0
-                            ? `+${fin.balance} ${t('currency')} ${t('hasCredit')}`
+                          {balance < 0
+                            ? `${Math.abs(balance)} ${t('currency')} ${t('hasDue')}`
+                            : balance > 0
+                            ? `+${balance} ${t('currency')} ${t('hasCredit')}`
                             : t('settled')}
                         </span>
                       </div>

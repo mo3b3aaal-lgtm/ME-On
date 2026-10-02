@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Phone,
@@ -164,12 +164,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [editPackagePrice, setEditPackagePrice] = useState<number>(900);
   const [editPackageSessions, setEditPackageSessions] = useState<number>(10);
 
-  // Load relations and calculated financials
-  const studentGroups = student ? db.getStudentGroups(student.id) : [];
-  const enrollments = db.getEnrollments();
-  const grandFinancials: StudentGrandFinancialSummary = student
-    ? db.calculateStudentGrandFinancials(student.id)
-    : {
+  // Load relations and calculated financials (Memoized to guarantee instant tab switches & zero lag)
+  const studentId = student?.id;
+  const studentGroups = useMemo(() => (studentId ? db.getStudentGroups(studentId) : []), [studentId]);
+  const enrollments = useMemo(() => (studentId ? db.getEnrollments() : []), [studentId]);
+  
+  const grandFinancials: StudentGrandFinancialSummary = useMemo(() => {
+    if (!studentId) {
+      return {
         studentId: '',
         studentName: '',
         grandTotalDue: 0,
@@ -201,43 +203,67 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         enrollmentsSummary: [],
         allPayments: [],
       };
+    }
+    return db.calculateStudentGrandFinancials(studentId);
+  }, [studentId]);
+
   const allPayments = grandFinancials.allPayments;
-  const attendanceList = student ? db.getStudentAttendance(student.id) : [];
-  const allSessions = db.getSessions();
-  const allCreditLogs = student ? db.getCreditLogs().filter((l) => l.studentId === student.id) : [];
-  const studentBehaviorLogs = student ? db.getStudentBehaviorLogs(student.id) : [];
-  const behaviorStats = calculateStudentBehaviorStats(studentBehaviorLogs);
-  const serviceType = student ? db.getStudentServiceType(student.id) : 'none';
+  const attendanceList = useMemo(() => (studentId ? db.getStudentAttendance(studentId) : []), [studentId]);
+  const allSessions = useMemo(() => (studentId ? db.getSessions() : []), [studentId]);
+  const allCreditLogs = useMemo(() => (studentId ? db.getCreditLogs().filter((l) => l.studentId === studentId) : []), [studentId]);
+  const studentBehaviorLogs = useMemo(() => (studentId ? db.getStudentBehaviorLogs(studentId) : []), [studentId]);
+  const behaviorStats = useMemo(() => calculateStudentBehaviorStats(studentBehaviorLogs), [studentBehaviorLogs]);
+  const serviceType = useMemo(() => (studentId ? db.getStudentServiceType(studentId) : 'none'), [studentId]);
 
   // Effective recurring schedule for student
-  const effectiveSchedule = student
-    ? getStudentEffectiveSchedule(student, allGroups, enrollments, isRTL)
-    : null;
+  const effectiveSchedule = useMemo(() => {
+    return student ? getStudentEffectiveSchedule(student, allGroups, enrollments, isRTL) : null;
+  }, [student, allGroups, enrollments, isRTL]);
 
   // Upcoming scheduled classes for student
-  const upcomingClasses = student
-    ? getUpcomingClassesForStudent(student.id, allGroups, enrollments, 5, isRTL)
-    : [];
+  const upcomingClasses = useMemo(() => {
+    return studentId ? getUpcomingClassesForStudent(studentId, allGroups, enrollments, 5, isRTL) : [];
+  }, [studentId, allGroups, enrollments, isRTL]);
+
   const nextClass = upcomingClasses[0] || null;
 
   // Attendance metrics calculation
-  const totalScheduledSessions = attendanceList.length;
-  const presentCount = attendanceList.filter((a) => a.status === 'present').length;
-  const absentChargedCount = attendanceList.filter(
-    (a) => a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false)
-  ).length;
-  const absentExcusedCount = attendanceList.filter(
-    (a) => a.status === 'absent_free' || a.status === 'excused' || a.isCharged === false
-  ).length;
-  const lateCount = attendanceList.filter((a) => a.status === 'late').length;
-  const cancelledCount = allSessions.filter(
-    (s) =>
-      s.status === 'cancelled' &&
-      (s.studentId === student?.id || studentGroups.some((g) => g.group.id === s.groupId))
-  ).length;
-  const totalCounted = presentCount + absentChargedCount + absentExcusedCount + lateCount;
-  const attendanceRate =
-    totalCounted > 0 ? Math.round(((presentCount + lateCount) / totalCounted) * 100) : 100;
+  const {
+    totalScheduledSessions,
+    presentCount,
+    absentChargedCount,
+    absentExcusedCount,
+    lateCount,
+    cancelledCount,
+    attendanceRate,
+  } = useMemo(() => {
+    const totalScheduled = attendanceList.length;
+    const present = attendanceList.filter((a) => a.status === 'present').length;
+    const absentCharged = attendanceList.filter(
+      (a) => a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false)
+    ).length;
+    const absentExcused = attendanceList.filter(
+      (a) => a.status === 'absent_free' || a.status === 'excused' || a.isCharged === false
+    ).length;
+    const late = attendanceList.filter((a) => a.status === 'late').length;
+    const cancelled = allSessions.filter(
+      (s) =>
+        s.status === 'cancelled' &&
+        (s.studentId === studentId || studentGroups.some((g) => g.group.id === s.groupId))
+    ).length;
+    const totalCounted = present + absentCharged + absentExcused + late;
+    const rate = totalCounted > 0 ? Math.round(((present + late) / totalCounted) * 100) : 100;
+
+    return {
+      totalScheduledSessions: totalScheduled,
+      presentCount: present,
+      absentChargedCount: absentCharged,
+      absentExcusedCount: absentExcused,
+      lateCount: late,
+      cancelledCount: cancelled,
+      attendanceRate: rate,
+    };
+  }, [attendanceList, allSessions, studentId, studentGroups]);
 
   // Recent activity stream
   interface ActivityItem {
@@ -251,109 +277,116 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     timestamp: number;
   }
 
-  const recentActivity: ActivityItem[] = [];
+  const { recentActivity, latestActivities } = useMemo(() => {
+    const activities: ActivityItem[] = [];
 
-  // 1. Add behavior activities
-  studentBehaviorLogs.slice(0, 8).forEach((b) => {
-    const isPos = b.category === 'positive';
-    const isNeg = b.category === 'needs_improvement';
-    recentActivity.push({
-      id: `act_bhv_${b.id}`,
-      type: 'behavior',
-      date: b.timestamp.split('T')[0],
-      title: `${b.emoji ? b.emoji + ' ' : ''}${b.tag}`,
-      subtitle: b.note || (b.groupName ? (isEn ? `in ${b.groupName}` : `في ${b.groupName}`) : (isEn ? 'Quick behavior assessment' : 'تقييم سلوكي سريع')),
-      badge: `${(b.points ?? 0) > 0 ? '+' : ''}${b.points ?? 0} ${t('points')}`,
-      badgeColor: isPos
-        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-        : isNeg
-        ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
-        : 'bg-[#F6F7FC] text-[#17163D] border border-[#E8E7FF]',
-      timestamp: new Date(b.timestamp || b.createdAt).getTime(),
-    });
-  });
-
-  // 2. Add attendance activities
-  attendanceList.slice(0, 8).forEach((att) => {
-    const ses = allSessions.find((s) => s.id === att.sessionId);
-    const grp = allGroups.find((g) => g.id === ses?.groupId);
-    const isPres = att.status === 'present';
-    const isLate = att.status === 'late';
-    const isCharged =
-      att.status === 'absent_charged' || (att.status === 'absent' && att.isCharged !== false);
-
-    recentActivity.push({
-      id: `act_att_${att.id}`,
-      type: 'attendance',
-      date: ses?.date || att.recordedAt?.split('T')[0] || '',
-      title: ses?.title || grp?.name || (isEn ? 'Class Session' : 'حصة دراسية'),
-      subtitle: isPres
-        ? (isEn ? 'Present' : 'حضور كامل')
-        : isLate
-        ? (isEn ? 'Late' : 'حضور متأخر')
-        : isCharged
-        ? (isEn ? 'Charged Absence' : 'غياب محسوب')
-        : (isEn ? `Excused Absence (${att.absenceReason || 'Excused'})` : `غياب معفى (${att.absenceReason || 'معتذر'})`),
-      badge: isPres ? t('present') : isLate ? t('late') : isCharged ? t('absentCharged') : t('absentExcused'),
-      badgeColor: isPres
-        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-        : isLate
-        ? 'bg-amber-50 text-amber-900 border border-amber-300'
-        : isCharged
-        ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
-        : 'bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]',
-      timestamp: new Date(att.recordedAt || ses?.date || 0).getTime(),
-    });
-  });
-
-  // 3. Add payment activities
-  allPayments.slice(0, 8).forEach((p) => {
-    recentActivity.push({
-      id: `act_pay_${p.id}`,
-      type: 'payment',
-      date: p.date,
-      title: isEn ? `Payment of ${p.amount} ${t('currency')}` : `سداد مبلغ ${p.amount} ج.م`,
-      subtitle: `${
-        p.notes || (p.targetMonth ? (isEn ? `Month: ${getArabicMonthName(p.targetMonth)}` : `عن شهر ${getArabicMonthName(p.targetMonth)}`) : (isEn ? 'Account Payment' : 'دفعة حساب'))
-      }`,
-      badge:
-        p.paymentMethod === 'vodafone_cash'
-          ? (isEn ? 'Vodafone Cash' : 'فودافون كاش')
-          : p.paymentMethod === 'instapay'
-          ? (isEn ? 'InstaPay' : 'إنستاباي')
-          : p.paymentMethod === 'bank_transfer'
-          ? (isEn ? 'Bank Transfer' : 'تحويل بنكي')
-          : (isEn ? 'Cash' : 'كاش'),
-      badgeColor: 'bg-emerald-50 text-emerald-800 border border-emerald-300',
-      timestamp: new Date(p.createdAt || p.date).getTime(),
-    });
-  });
-
-  // 4. Add credit log activities
-  allCreditLogs.slice(0, 8).forEach((log) => {
-    recentActivity.push({
-      id: `act_crd_${log.id}`,
-      type: 'credit',
-      date: log.date,
-      title: log.reason || (isEn ? 'Session balance adjustment' : 'تعديل رصيد الحصص'),
-      subtitle: isEn ? `Balance after: ${log.balanceAfter} sessions` : `الرصيد بعد العملية: ${log.balanceAfter} حصص`,
-      badge: `${log.sessionsDelta > 0 ? '+' : ''}${log.sessionsDelta} ${isEn ? 'sessions' : 'حصة'}`,
-      badgeColor:
-        log.sessionsDelta > 0
+    // 1. Add behavior activities
+    studentBehaviorLogs.slice(0, 8).forEach((b) => {
+      const isPos = b.category === 'positive';
+      const isNeg = b.category === 'needs_improvement';
+      activities.push({
+        id: `act_bhv_${b.id}`,
+        type: 'behavior',
+        date: b.timestamp.split('T')[0],
+        title: `${b.emoji ? b.emoji + ' ' : ''}${b.tag}`,
+        subtitle: b.note || (b.groupName ? (isEn ? `in ${b.groupName}` : `في ${b.groupName}`) : (isEn ? 'Quick behavior assessment' : 'تقييم سلوكي سريع')),
+        badge: `${(b.points ?? 0) > 0 ? '+' : ''}${b.points ?? 0} ${t('points')}`,
+        badgeColor: isPos
           ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-          : 'bg-amber-50 text-amber-900 border border-amber-300',
-      timestamp: new Date(log.date).getTime(),
+          : isNeg
+          ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+          : 'bg-[#F6F7FC] text-[#17163D] border border-[#E8E7FF]',
+        timestamp: new Date(b.timestamp || b.createdAt).getTime(),
+      });
     });
-  });
 
-  recentActivity.sort((a, b) => b.timestamp - a.timestamp);
-  const latestActivities = recentActivity.slice(0, 6);
+    // 2. Add attendance activities
+    attendanceList.slice(0, 8).forEach((att) => {
+      const ses = allSessions.find((s) => s.id === att.sessionId);
+      const grp = allGroups.find((g) => g.id === ses?.groupId);
+      const isPres = att.status === 'present';
+      const isLate = att.status === 'late';
+      const isCharged =
+        att.status === 'absent_charged' || (att.status === 'absent' && att.isCharged !== false);
 
-  const privateEnrollments = grandFinancials.enrollmentsSummary.filter(
-    (e) => e.groupType === 'private'
+      activities.push({
+        id: `act_att_${att.id}`,
+        type: 'attendance',
+        date: ses?.date || att.recordedAt?.split('T')[0] || '',
+        title: ses?.title || grp?.name || (isEn ? 'Class Session' : 'حصة دراسية'),
+        subtitle: isPres
+          ? (isEn ? 'Present' : 'حضور كامل')
+          : isLate
+          ? (isEn ? 'Late' : 'حضور متأخر')
+          : isCharged
+          ? (isEn ? 'Charged Absence' : 'غياب محسوب')
+          : (isEn ? `Excused Absence (${att.absenceReason || 'Excused'})` : `غياب معفى (${att.absenceReason || 'معتذر'})`),
+        badge: isPres ? t('present') : isLate ? t('late') : isCharged ? t('absentCharged') : t('absentExcused'),
+        badgeColor: isPres
+          ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+          : isLate
+          ? 'bg-amber-50 text-amber-900 border border-amber-300'
+          : isCharged
+          ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+          : 'bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]',
+        timestamp: new Date(att.recordedAt || ses?.date || 0).getTime(),
+      });
+    });
+
+    // 3. Add payment activities
+    allPayments.slice(0, 8).forEach((p) => {
+      activities.push({
+        id: `act_pay_${p.id}`,
+        type: 'payment',
+        date: p.date,
+        title: isEn ? `Payment of ${p.amount} ${t('currency')}` : `سداد مبلغ ${p.amount} ج.م`,
+        subtitle: `${
+          p.notes || (p.targetMonth ? (isEn ? `Month: ${getArabicMonthName(p.targetMonth)}` : `عن شهر ${getArabicMonthName(p.targetMonth)}`) : (isEn ? 'Account Payment' : 'دفعة حساب'))
+        }`,
+        badge:
+          p.paymentMethod === 'vodafone_cash'
+            ? (isEn ? 'Vodafone Cash' : 'فودافون كاش')
+            : p.paymentMethod === 'instapay'
+            ? (isEn ? 'InstaPay' : 'إنستاباي')
+            : p.paymentMethod === 'bank_transfer'
+            ? (isEn ? 'Bank Transfer' : 'تحويل بنكي')
+            : (isEn ? 'Cash' : 'كاش'),
+        badgeColor: 'bg-emerald-50 text-emerald-800 border border-emerald-300',
+        timestamp: new Date(p.createdAt || p.date).getTime(),
+      });
+    });
+
+    // 4. Add credit log activities
+    allCreditLogs.slice(0, 8).forEach((log) => {
+      activities.push({
+        id: `act_crd_${log.id}`,
+        type: 'credit',
+        date: log.date,
+        title: log.reason || (isEn ? 'Session balance adjustment' : 'تعديل رصيد الحصص'),
+        subtitle: isEn ? `Balance after: ${log.balanceAfter} sessions` : `الرصيد بعد العملية: ${log.balanceAfter} حصص`,
+        badge: `${log.sessionsDelta > 0 ? '+' : ''}${log.sessionsDelta} ${isEn ? 'sessions' : 'حصة'}`,
+        badgeColor:
+          log.sessionsDelta > 0
+            ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+            : 'bg-amber-50 text-amber-900 border border-amber-300',
+        timestamp: new Date(log.date).getTime(),
+      });
+    });
+
+    activities.sort((a, b) => b.timestamp - a.timestamp);
+    return {
+      recentActivity: activities,
+      latestActivities: activities.slice(0, 6),
+    };
+  }, [studentBehaviorLogs, attendanceList, allSessions, allGroups, allPayments, allCreditLogs, isEn, t]);
+
+  const privateEnrollments = useMemo(
+    () => grandFinancials.enrollmentsSummary.filter((e) => e.groupType === 'private'),
+    [grandFinancials]
   );
-  const groupEnrollments = grandFinancials.enrollmentsSummary.filter(
-    (e) => e.groupType !== 'private'
+  const groupEnrollments = useMemo(
+    () => grandFinancials.enrollmentsSummary.filter((e) => e.groupType !== 'private'),
+    [grandFinancials]
   );
   const hasPrivate =
     privateEnrollments.length > 0 || serviceType === 'private_only' || serviceType === 'both';

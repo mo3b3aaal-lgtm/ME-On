@@ -11,6 +11,7 @@ interface AddEditSessionModalProps {
   editingSession?: Session | null;
   defaultGroupId?: string;
   defaultDate?: string;
+  isExtraSessionDefault?: boolean;
   allGroups: Group[];
   onSaveComplete: (savedSession: Session) => void;
 }
@@ -23,10 +24,12 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   editingSession,
   defaultGroupId,
   defaultDate,
+  isExtraSessionDefault = false,
   allGroups,
   onSaveComplete,
 }) => {
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [groupId, setGroupId] = useState(defaultGroupId || allGroups[0]?.id || '');
@@ -39,6 +42,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   const [hourlyRate, setHourlyRate] = useState<number>(100);
   const [pricePerStudent, setPricePerStudent] = useState<number>(100);
   const [status, setStatus] = useState<'scheduled' | 'completed' | 'cancelled'>('scheduled');
+  const [isExtraSession, setIsExtraSession] = useState<boolean>(isExtraSessionDefault);
   const [notes, setNotes] = useState('');
 
   const selectedGroup = allGroups.find((g) => g.id === groupId);
@@ -73,12 +77,13 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       setHourlyRate(editingSession.hourlyRate || editingSession.pricePerStudent || 100);
       setPricePerStudent(editingSession.pricePerStudent || 100);
       setStatus(editingSession.status);
+      setIsExtraSession(editingSession.isExtraSession || false);
       setNotes(editingSession.notes || '');
     } else {
       const gId = defaultGroupId || allGroups[0]?.id || '';
       setGroupId(gId);
       const grp = allGroups.find((g) => g.id === gId);
-      setTitle('حصة شرح وتطبيق');
+      setTitle(isExtraSessionDefault ? (isEn ? 'Extra Session' : 'حصة إضافية') : (isEn ? 'Lesson & Application' : 'حصة شرح وتطبيق'));
       setDate(defaultDate || todayStr);
       setStartTime('16:00');
       setEndTime('17:30');
@@ -92,9 +97,10 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
         : getEffectiveSessionPrice(null, grp);
       setPricePerStudent(calculatedPrice);
       setStatus('scheduled');
+      setIsExtraSession(isExtraSessionDefault);
       setNotes('');
     }
-  }, [editingSession, defaultGroupId, defaultDate, isOpen]);
+  }, [editingSession, defaultGroupId, defaultDate, isExtraSessionDefault, isOpen]);
 
   // Update hours and price when times or group change
   const handleTimeChange = (newStart: string, newEnd: string) => {
@@ -152,6 +158,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       packageTotalPrice,
       packageSessionsCount,
       status,
+      isExtraSession: isExtraSession || false,
       notes: notes.trim(),
       createdAt: editingSession ? editingSession.createdAt : new Date().toISOString(),
     };
@@ -284,16 +291,41 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
 
           {/* Status & Pricing Options */}
           <div className="classy-card p-3.5 space-y-1.5">
-            <label className="font-black text-xs text-[#17163D] mb-1">حالة الحصة</label>
+            <label className="font-black text-xs text-[#17163D] mb-1">
+              {isEn ? 'Session Status' : 'حالة الحصة'}
+            </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
               className="classy-select"
             >
-              <option value="scheduled">مجدولة (قادمة)</option>
-              <option value="completed">تمت واكتملت</option>
-              <option value="cancelled">ملغاة</option>
+              <option value="scheduled">{isEn ? 'Scheduled' : 'مجدولة (قادمة)'}</option>
+              <option value="completed">{isEn ? 'Completed' : 'تمت واكتملت'}</option>
+              <option value="cancelled">{isEn ? 'Cancelled' : 'ملغاة'}</option>
             </select>
+          </div>
+
+          {/* Extra Session Identifier */}
+          <div className="classy-card p-3.5 bg-gradient-to-r from-[#FFFBF0] to-[#FFF7ED] border-[#FED7AA] space-y-1">
+            <label className="flex items-center justify-between cursor-pointer">
+              <div className="space-y-0.5">
+                <span className="font-black text-xs text-[#9A3412] flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-md bg-[#F97316] text-white text-[10px] font-black">
+                    {isEn ? 'Extra' : 'إضافية'}
+                  </span>
+                  {isEn ? 'Extra / Additional Session' : 'حصة إضافية (خارج الجدول المعتاد)'}
+                </span>
+                <p className="text-[11px] text-[#C2410C] font-medium">
+                  {isEn ? 'Distinguishes this session as an extra lesson on the Classes Calendar' : 'تمييز هذه الحصة كحصة إضافية في تقويم الحصص وسجلات المتابعة'}
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={isExtraSession}
+                onChange={(e) => setIsExtraSession(e.target.checked)}
+                className="w-4.5 h-4.5 accent-[#F97316] rounded cursor-pointer"
+              />
+            </label>
           </div>
 
           {isHourly ? (

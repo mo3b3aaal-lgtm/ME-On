@@ -29,9 +29,11 @@ import { GroupProfileModal } from './components/GroupProfileModal';
 import { RecordAttendanceModal } from './components/RecordAttendanceModal';
 import { AddPaymentModal } from './components/AddPaymentModal';
 import { NotificationsModal } from './components/NotificationsModal';
+import { initLocalNotifications, scheduleDailyAttendanceReminder } from './utils/localNotifications';
 
 export default function App() {
-  const { t, isRTL } = useTranslation();
+  const { t, language, isRTL } = useTranslation();
+  const isEn = language.startsWith('en');
   const { popTopModal } = useModalContext();
 
   // Animated Splash Screen
@@ -57,7 +59,26 @@ export default function App() {
     setSessions(db.getSessions());
     setPayments(db.getPayments());
     setTeacherProfile(db.getTeacherProfile());
-  }, []);
+    scheduleDailyAttendanceReminder({ isEn: language.startsWith('en') }).catch(() => {});
+  }, [language]);
+
+  // Initialize Local Notifications and Tap Action Listener
+  useEffect(() => {
+    initLocalNotifications(() => {
+      setActiveTab('sessions');
+    });
+
+    const handleReminderEvent = () => {
+      setActiveTab('sessions');
+    };
+    window.addEventListener('classy_open_attendance_reminder', handleReminderEvent);
+
+    scheduleDailyAttendanceReminder({ isEn }).catch(() => {});
+
+    return () => {
+      window.removeEventListener('classy_open_attendance_reminder', handleReminderEvent);
+    };
+  }, [isEn]);
 
   // Process any pending resets on startup or network recovery
   useEffect(() => {
@@ -370,135 +391,155 @@ export default function App() {
           />
         )}
 
-        {/* --- MODALS --- */}
+        {/* --- MODALS (Mounted only when active for instant responsiveness & zero background lag) --- */}
 
         {/* Add/Edit Student Modal */}
-        <AddEditStudentModal
-          isOpen={isAddStudentOpen}
-          onClose={() => setIsAddStudentOpen(false)}
-          editingStudent={editingStudent}
-          allGroups={groups}
-          onSaveComplete={() => {
-            refreshData();
-          }}
-        />
+        {isAddStudentOpen && (
+          <AddEditStudentModal
+            isOpen={isAddStudentOpen}
+            onClose={() => setIsAddStudentOpen(false)}
+            editingStudent={editingStudent}
+            allGroups={groups}
+            onSaveComplete={() => {
+              refreshData();
+            }}
+          />
+        )}
 
         {/* Add/Edit Group Modal */}
-        <AddEditGroupModal
-          isOpen={isAddGroupOpen}
-          onClose={() => setIsAddGroupOpen(false)}
-          editingGroup={editingGroup}
-          onSaveComplete={() => {
-            refreshData();
-          }}
-        />
+        {isAddGroupOpen && (
+          <AddEditGroupModal
+            isOpen={isAddGroupOpen}
+            onClose={() => setIsAddGroupOpen(false)}
+            editingGroup={editingGroup}
+            onSaveComplete={() => {
+              refreshData();
+            }}
+          />
+        )}
 
         {/* Add/Edit Session Modal */}
-        <AddEditSessionModal
-          isOpen={isAddSessionOpen}
-          onClose={() => setIsAddSessionOpen(false)}
-          editingSession={editingSession}
-          defaultGroupId={sessionDefaultGroupId}
-          defaultDate={sessionDefaultDate}
-          allGroups={groups}
-          onSaveComplete={() => {
-            refreshData();
-          }}
-        />
+        {isAddSessionOpen && (
+          <AddEditSessionModal
+            isOpen={isAddSessionOpen}
+            onClose={() => setIsAddSessionOpen(false)}
+            editingSession={editingSession}
+            defaultGroupId={sessionDefaultGroupId}
+            defaultDate={sessionDefaultDate}
+            allGroups={groups}
+            onSaveComplete={() => {
+              refreshData();
+            }}
+          />
+        )}
 
         {/* Enroll Existing Student into Group Modal */}
-        <EnrollExistingStudentModal
-          isOpen={isEnrollModalOpen}
-          onClose={() => setIsEnrollModalOpen(false)}
-          targetStudent={enrollTargetStudent}
-          targetGroup={enrollTargetGroup}
-          allStudents={students}
-          allGroups={groups}
-          onEnrollmentComplete={() => {
-            refreshData();
-          }}
-        />
+        {isEnrollModalOpen && (
+          <EnrollExistingStudentModal
+            isOpen={isEnrollModalOpen}
+            onClose={() => setIsEnrollModalOpen(false)}
+            targetStudent={enrollTargetStudent}
+            targetGroup={enrollTargetGroup}
+            allStudents={students}
+            allGroups={groups}
+            onEnrollmentComplete={() => {
+              refreshData();
+            }}
+          />
+        )}
 
         {/* Student Dossier / Profile Modal */}
-        <StudentProfileModal
-          isOpen={!!selectedStudentForProfile}
-          onClose={() => setSelectedStudentForProfile(null)}
-          student={selectedStudentForProfile}
-          allGroups={groups}
-          onEditStudent={(st) => handleOpenEditStudent(st)}
-          onOpenEnrollModal={(st) => handleOpenEnrollForStudent(st)}
-          onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
-          onDataChanged={refreshData}
-        />
+        {selectedStudentForProfile && (
+          <StudentProfileModal
+            isOpen={!!selectedStudentForProfile}
+            onClose={() => setSelectedStudentForProfile(null)}
+            student={selectedStudentForProfile}
+            allGroups={groups}
+            onEditStudent={(st) => handleOpenEditStudent(st)}
+            onOpenEnrollModal={(st) => handleOpenEnrollForStudent(st)}
+            onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+            onDataChanged={refreshData}
+          />
+        )}
 
         {/* Group Dossier / Profile Modal */}
-        <GroupProfileModal
-          isOpen={!!selectedGroupForProfile}
-          onClose={() => setSelectedGroupForProfile(null)}
-          group={selectedGroupForProfile}
-          onEditGroup={(grp) => handleOpenEditGroup(grp)}
-          onAddExistingStudent={(grp) => handleOpenEnrollForGroup(grp)}
-          onAddNewStudentToGroup={(grp) => {
-            handleOpenAddStudent();
-          }}
-          onAddSessionForGroup={(grp) => handleOpenAddSession(grp.id)}
-          onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
-          onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
-          onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
-          onDataChanged={refreshData}
-        />
+        {selectedGroupForProfile && (
+          <GroupProfileModal
+            isOpen={!!selectedGroupForProfile}
+            onClose={() => setSelectedGroupForProfile(null)}
+            group={selectedGroupForProfile}
+            onEditGroup={(grp) => handleOpenEditGroup(grp)}
+            onAddExistingStudent={(grp) => handleOpenEnrollForGroup(grp)}
+            onAddNewStudentToGroup={(grp) => {
+              handleOpenAddStudent();
+            }}
+            onAddSessionForGroup={(grp) => handleOpenAddSession(grp.id)}
+            onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+            onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+            onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
+            onDataChanged={refreshData}
+          />
+        )}
 
         {/* Bulk Add Sessions for Multiple Students Modal */}
-        <BulkAddSessionModal
-          isOpen={isBulkAddSessionOpen}
-          onClose={() => {
-            setIsBulkAddSessionOpen(false);
-            setBulkAddStudents([]);
-            setBulkAddGroupId(undefined);
-          }}
-          selectedStudents={bulkAddStudents}
-          preselectedGroupId={bulkAddGroupId}
-          allGroups={groups}
-          onSuccess={() => {
-            refreshData();
-          }}
-        />
+        {isBulkAddSessionOpen && (
+          <BulkAddSessionModal
+            isOpen={isBulkAddSessionOpen}
+            onClose={() => {
+              setIsBulkAddSessionOpen(false);
+              setBulkAddStudents([]);
+              setBulkAddGroupId(undefined);
+            }}
+            selectedStudents={bulkAddStudents}
+            preselectedGroupId={bulkAddGroupId}
+            allGroups={groups}
+            onSuccess={() => {
+              refreshData();
+            }}
+          />
+        )}
 
         {/* Record Attendance Modal */}
-        <RecordAttendanceModal
-          isOpen={!!selectedSessionForAttendance}
-          onClose={() => setSelectedSessionForAttendance(null)}
-          session={selectedSessionForAttendance}
-          onSaveComplete={refreshData}
-        />
+        {selectedSessionForAttendance && (
+          <RecordAttendanceModal
+            isOpen={!!selectedSessionForAttendance}
+            onClose={() => setSelectedSessionForAttendance(null)}
+            session={selectedSessionForAttendance}
+            onSaveComplete={refreshData}
+          />
+        )}
 
         {/* Add Payment Modal */}
-        <AddPaymentModal
-          isOpen={isAddPaymentOpen}
-          onClose={() => {
-            setIsAddPaymentOpen(false);
-            setTargetStudentForPayment(null);
-            setTargetEnrollmentIdForPayment(undefined);
-          }}
-          targetStudent={targetStudentForPayment}
-          targetEnrollmentId={targetEnrollmentIdForPayment}
-          allStudents={students}
-          onPaymentSaved={refreshData}
-        />
+        {isAddPaymentOpen && (
+          <AddPaymentModal
+            isOpen={isAddPaymentOpen}
+            onClose={() => {
+              setIsAddPaymentOpen(false);
+              setTargetStudentForPayment(null);
+              setTargetEnrollmentIdForPayment(undefined);
+            }}
+            targetStudent={targetStudentForPayment}
+            targetEnrollmentId={targetEnrollmentIdForPayment}
+            allStudents={students}
+            onPaymentSaved={refreshData}
+          />
+        )}
 
         {/* Notifications & Smart Alerts Modal */}
-        <NotificationsModal
-          isOpen={isNotificationsModalOpen}
-          onClose={() => setIsNotificationsModalOpen(false)}
-          students={students}
-          groups={groups}
-          sessions={sessions}
-          enrollments={db.getEnrollments()}
-          onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
-          onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
-          onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
-          onDataChanged={refreshData}
-        />
+        {isNotificationsModalOpen && (
+          <NotificationsModal
+            isOpen={isNotificationsModalOpen}
+            onClose={() => setIsNotificationsModalOpen(false)}
+            students={students}
+            groups={groups}
+            sessions={sessions}
+            enrollments={db.getEnrollments()}
+            onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+            onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+            onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+            onDataChanged={refreshData}
+          />
+        )}
 
       </div>
     </div>

@@ -37,6 +37,7 @@ import {
   Layers,
   FileJson,
   Laptop,
+  Volume2,
 } from 'lucide-react';
 import { TeacherProfile, UserAccount, AutoSyncFrequency, AutoSyncConfig, NotificationSettings } from '../types';
 import {
@@ -51,6 +52,14 @@ import {
   DetailedNetworkStatus,
 } from '../utils/network';
 import { useTranslation, Language } from '../utils/i18n';
+import {
+  formatReminderTimeDisplay,
+  scheduleDailyAttendanceReminder,
+  sendTestAttendanceReminderNotification,
+  requestNotificationPermission,
+  AVAILABLE_NOTIFICATION_SOUNDS,
+  updateNotificationSoundPreference,
+} from '../utils/localNotifications';
 
 interface SettingsViewProps {
   teacherProfile: TeacherProfile;
@@ -322,6 +331,79 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     };
     setNotifSettings(updated);
     db.saveNotificationSettings(updated, currentUser?.id);
+  };
+
+  // Handle Daily Attendance Reminder Toggle
+  const handleToggleDailyAttendanceReminder = async () => {
+    const nextVal = notifSettings.enableDailyAttendanceReminder === false;
+    if (nextVal) {
+      await requestNotificationPermission();
+    }
+    const updated = {
+      ...notifSettings,
+      enableDailyAttendanceReminder: nextVal,
+    };
+    setNotifSettings(updated);
+    db.saveNotificationSettings(updated, currentUser?.id);
+    await scheduleDailyAttendanceReminder({ userId: currentUser?.id, isEn });
+  };
+
+  // Handle Daily Attendance Reminder Time Change
+  const handleReminderTimeChange = async (newTime: string) => {
+    const updated = {
+      ...notifSettings,
+      dailyAttendanceReminderTime: newTime,
+    };
+    setNotifSettings(updated);
+    db.saveNotificationSettings(updated, currentUser?.id);
+    await scheduleDailyAttendanceReminder({ userId: currentUser?.id, isEn });
+  };
+
+  // Handle Notification Sound Change
+  const handleSoundChange = async (soundUri: string) => {
+    const selectedOption = AVAILABLE_NOTIFICATION_SOUNDS.find((s) => s.uri === soundUri);
+    const soundName = selectedOption ? (isEn ? selectedOption.nameEn : selectedOption.nameAr) : soundUri;
+
+    const updated = {
+      ...notifSettings,
+      notificationSoundUri: soundUri,
+      notificationSoundName: soundName,
+    };
+    setNotifSettings(updated);
+
+    await updateNotificationSoundPreference(soundUri, soundName, currentUser?.id, isEn);
+  };
+
+  // Test Notification Trigger
+  const handleSendTestNotification = async () => {
+    const success = await sendTestAttendanceReminderNotification(isEn);
+    if (success) {
+      alert(isEn ? 'Test notification sent! Check your notification tray.' : 'تم إرسال التنبيه التجريبي! تحقق من لوحة إشعارات الهاتف.');
+    } else {
+      alert(isEn ? 'Could not send test notification. Please enable notification permissions in system settings.' : 'تعذر إرسال التنبيه. يرجى تفعيل إذن الإشعارات من إعدادات الهاتف.');
+    }
+  };
+
+  // Test Sound Trigger (Plays dummy notification with the selected custom alert sound)
+  const handleTestSound = async () => {
+    const activeSoundUri = notifSettings.notificationSoundUri || 'beep.wav';
+    const selectedOption = AVAILABLE_NOTIFICATION_SOUNDS.find((s) => s.uri === activeSoundUri);
+    const soundDisplayName = selectedOption ? (isEn ? selectedOption.nameEn : selectedOption.nameAr) : activeSoundUri;
+
+    const success = await sendTestAttendanceReminderNotification(isEn, activeSoundUri);
+    if (success) {
+      alert(
+        isEn
+          ? `Playing dummy reminder with alert sound: "${soundDisplayName}". Check your phone's notification banner!`
+          : `تم تشغيل إشعار تذكير تجريبي بنغمة: "${soundDisplayName}". تحقق من إشعار الهاتف!`
+      );
+    } else {
+      alert(
+        isEn
+          ? 'Could not trigger sound test. Please ensure notification permissions are granted in device settings.'
+          : 'تعذر تشغيل اختبار الصوت. يرجى التأكد من منح إذن الإشعارات في إعدادات الهاتف.'
+      );
+    }
   };
 
   // Handle reset data
@@ -635,20 +717,119 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* =========================================================================
           5. NOTIFICATIONS & SMART REMINDERS
           ========================================================================= */}
-      <div className="classy-card p-4 sm:p-5 bg-white space-y-3">
+      <div className="classy-card p-4 sm:p-5 bg-white space-y-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
             <Bell className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-black text-[#17163D]">{isEn ? 'Smart Notifications & Reminders' : 'التنبيهات والتذكيرات الذكية'}</h3>
-            <p className="text-[11px] text-[#74778F] font-medium">{isEn ? 'Configure proactive system alerts' : 'تفعيل التنبيهات المسبقة ومتابعة الحصص والمستحقات'}</p>
+            <p className="text-[11px] text-[#74778F] font-medium">{isEn ? 'Configure mobile notifications and proactive class alerts' : 'تفعيل التنبيهات المسبقة ومتابعة الحصص والمستحقات'}</p>
           </div>
+        </div>
+
+        {/* Daily Attendance Reminder Card */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-[#F6F7FC] to-[#E8E7FF]/30 border border-[#E8E7FF] space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#7657F6] shrink-0" />
+                <span className="font-black text-xs sm:text-sm text-[#17163D]">
+                  {isEn ? 'Daily Attendance Reminder' : 'تذكير تسجيل الحضور اليومي'}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#74778F] font-medium">
+                {isEn ? 'Sends a mobile reminder if sessions today are missing attendance' : 'تنبيه يومي على الهاتف في حال وجود حصص لم يتم تسجيل حضورها اليوم'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleDailyAttendanceReminder}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer border shrink-0 ${
+                notifSettings.enableDailyAttendanceReminder !== false
+                  ? 'bg-gradient-to-r from-[#17163D] to-[#7657F6] text-white border-transparent shadow-xs'
+                  : 'bg-white text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]'
+              }`}
+            >
+              {notifSettings.enableDailyAttendanceReminder !== false ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}
+            </button>
+          </div>
+
+          {notifSettings.enableDailyAttendanceReminder !== false && (
+            <div className="pt-2 border-t border-[#E8E7FF]/80 space-y-2.5 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#17163D]">
+                    {isEn ? 'Reminder Time:' : 'وقت التذكير:'}
+                  </span>
+                  <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-white border border-[#E8E7FF] text-[#7657F6] shadow-2xs">
+                    {formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', isEn)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={notifSettings.dailyAttendanceReminderTime || '22:00'}
+                    onChange={(e) => handleReminderTimeChange(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl bg-white border border-[#E8E7FF] font-bold text-xs text-[#17163D] focus:outline-none focus:border-[#7657F6] cursor-pointer shadow-2xs"
+                    aria-label={isEn ? 'Reminder Time' : 'وقت التذكير'}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendTestNotification}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#E8E7FF] border border-[#E8E7FF] text-[#7657F6] font-bold text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
+                    title={isEn ? 'Send test notification now' : 'إرسال تنبيه تجريبي للهاتف'}
+                  >
+                    {isEn ? 'Test Alert' : 'تجربة التنبيه'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Notification Sound Selection */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-dashed border-[#E8E7FF]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#17163D]">
+                    {isEn ? 'Alert Sound:' : 'نغمة التنبيه:'}
+                  </span>
+                  <span className="text-[11px] font-bold text-[#74778F]">
+                    {isEn ? '(Android Custom Channel Sound)' : '(قناة تنبيه أندرويد المخصصة)'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={notifSettings.notificationSoundUri || 'beep.wav'}
+                    onChange={(e) => handleSoundChange(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl bg-white border border-[#E8E7FF] font-bold text-xs text-[#17163D] focus:outline-none focus:border-[#7657F6] cursor-pointer shadow-2xs"
+                    aria-label={isEn ? 'Alert Sound' : 'نغمة التنبيه'}
+                  >
+                    {AVAILABLE_NOTIFICATION_SOUNDS.map((sound) => (
+                      <option key={sound.id} value={sound.uri}>
+                        {isEn ? sound.nameEn : sound.nameAr}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handleTestSound}
+                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17163D] to-[#7657F6] text-white font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 shrink-0"
+                    title={isEn ? 'Play dummy notification with this sound' : 'تشغيل إشعار تجريبي بهذه النغمة'}
+                  >
+                    <Volume2 className="w-3.5 h-3.5 text-[#55C7E8]" />
+                    <span>{isEn ? 'Test Sound' : 'تجربة الصوت'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2 pt-1">
           <label className="flex items-center justify-between p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] cursor-pointer">
-            <span className="font-bold text-xs text-[#17163D]">{isEn ? 'Attendance Reminders' : 'تذكيرات تسجيل حضور الحصص'}</span>
+            <span className="font-bold text-xs text-[#17163D]">{isEn ? 'In-App Attendance Alerts' : 'تنبيهات رصد الحضور داخل التطبيق'}</span>
             <input
               type="checkbox"
               checked={notifSettings.enableAttendanceReminders}

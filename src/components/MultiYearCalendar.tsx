@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
 import {
   ChevronRight,
   ChevronLeft,
@@ -229,12 +230,69 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
     onOpenAttendanceModal(newSession);
   };
 
+  const handlePrevDay = () => {
+    const d = new Date(selectedDateStr);
+    d.setDate(d.getDate() - 1);
+    const dStr = d.toISOString().split('T')[0];
+    setSelectedDateStr(dStr);
+    setSelectedYear(d.getFullYear());
+    setSelectedMonthIdx(d.getMonth());
+  };
+
+  const handleNextDay = () => {
+    const d = new Date(selectedDateStr);
+    d.setDate(d.getDate() + 1);
+    const dStr = d.toISOString().split('T')[0];
+    setSelectedDateStr(dStr);
+    setSelectedYear(d.getFullYear());
+    setSelectedMonthIdx(d.getMonth());
+  };
+
+  const handlePrevYear = () => {
+    setSelectedYear((prev) => prev - 1);
+  };
+
+  const handleNextYear = () => {
+    setSelectedYear((prev) => prev + 1);
+  };
+
+  const handleSwipePrev = () => {
+    if (viewMode === 'week') {
+      handlePrevDay();
+    } else if (viewMode === 'month') {
+      handlePrevMonth();
+    } else if (viewMode === 'year') {
+      handlePrevYear();
+    }
+  };
+
+  const handleSwipeNext = () => {
+    if (viewMode === 'week') {
+      handleNextDay();
+    } else if (viewMode === 'month') {
+      handleNextMonth();
+    } else if (viewMode === 'year') {
+      handleNextYear();
+    }
+  };
+
+  // Swiping gestures for Calendar container (natural swipe mapping)
+  const calendarSwipeGestures = useSwipeGesture({
+    onSwipeLeft: isRTL ? handleSwipePrev : handleSwipeNext,
+    onSwipeRight: isRTL ? handleSwipeNext : handleSwipePrev,
+    threshold: 45,
+  });
+
   const weekdayHeaders = isEn
     ? ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     : CALENDAR_WEEKDAY_HEADERS_ARABIC;
 
   return (
-    <div className="space-y-3.5 text-[#0F172A]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div
+      {...calendarSwipeGestures}
+      className="space-y-3.5 text-[#0F172A] select-none-touch"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       {/* 1. COMPACT & CLEAN TOP TOOLBAR */}
       <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 shadow-xs space-y-3">
         {/* Row 1: Mode Switcher & Date Stepper */}

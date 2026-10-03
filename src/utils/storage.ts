@@ -1977,9 +1977,16 @@ export const db = {
         userId: enrollment.userId || list[idx].userId || activeUserId,
         updatedAt: now,
       };
-      saveList(STORAGE_KEYS.ENROLLMENTS, list);
-      autoSyncUserAccount(activeUserId);
+    } else {
+      list.unshift({
+        ...enrollment,
+        userId: enrollment.userId || activeUserId,
+        updatedAt: now,
+        createdAt: enrollment.createdAt || now,
+      });
     }
+    saveList(STORAGE_KEYS.ENROLLMENTS, list);
+    autoSyncUserAccount(activeUserId);
   },
 
   /**
@@ -2613,8 +2620,29 @@ export const db = {
         recordedAt: r.recordedAt || now,
       };
     });
-    const combined = [...recordsWithUserId, ...otherSessionsAtt];
+
+    // Merge new records into oldSessionAttendance by studentId, or clear if empty records array passed
+    let mergedSessionAttendance: Attendance[] = [];
+    if (records.length > 0) {
+      const sessionAttendanceMap = new Map<string, Attendance>();
+      oldSessionAttendance.forEach((a) => sessionAttendanceMap.set(a.studentId, a));
+      recordsWithUserId.forEach((a) => sessionAttendanceMap.set(a.studentId, a));
+      mergedSessionAttendance = Array.from(sessionAttendanceMap.values());
+    } else {
+      // Empty array explicitly clears attendance for this session
+      mergedSessionAttendance = [];
+    }
+
+    const combined = [...mergedSessionAttendance, ...otherSessionsAtt];
     saveList(STORAGE_KEYS.ATTENDANCE, combined);
+
+    // If session is scheduled and has attendance recorded, mark it completed
+    if (session && session.status !== 'completed' && session.status !== 'cancelled') {
+      if (mergedSessionAttendance.length > 0) {
+        db.saveSession({ ...session, status: 'completed' });
+      }
+    }
+
     autoSyncUserAccount(activeUserId);
   },
 
@@ -3316,8 +3344,10 @@ export const db = {
     const groupType = group ? group.type : enrollment.serviceType;
     const accentColor = group ? group.accentColor : '#7657F6';
 
-    const allGroupSessions = db.getSessions().filter((s) => s.groupId === enrollment.groupId);
-    const sessions = allGroupSessions.filter((s) => s.status === 'completed');
+    const allGroupSessions = db.getSessions().filter(
+      (s) => s.groupId === enrollment.groupId || (s.enrollmentId && s.enrollmentId === enrollment.id)
+    );
+    const sessions = allGroupSessions.filter((s) => s.status !== 'cancelled');
     const allGroupSessionIds = new Set(allGroupSessions.map((s) => s.id));
     const attendanceRecords = db.getStudentAttendance(enrollment.studentId);
     const payments = db.getEnrollmentPayments(enrollment.id);
@@ -3331,6 +3361,22 @@ export const db = {
     });
 
     const attendedCount = consumedAttendance.length;
+    const consumedUnits = consumedAttendance.reduce((sum, a) => {
+      const sess = sessions.find((s) => s.id === a.sessionId);
+      const units =
+        a.sessionUnits !== undefined && a.sessionUnits !== null
+          ? Number(a.sessionUnits)
+          : a.sessionCount !== undefined && a.sessionCount !== null
+          ? Number(a.sessionCount)
+          : sess?.sessionUnits !== undefined && sess?.sessionUnits !== null
+          ? Number(sess.sessionUnits)
+          : sess?.sessionCount !== undefined && sess?.sessionCount !== null
+          ? Number(sess.sessionCount)
+          : 1;
+      return sum + (isNaN(units) || units <= 0 ? 1 : units);
+    }, 0);
+    const attendedUnits = roundMoney(consumedUnits, 2);
+
     const baseSessionsLimit = enrollment.baseSessionsPerMonth || 8;
     const extraSessionRate =
       enrollment.extraSessionPrice ||
@@ -3470,7 +3516,7 @@ export const db = {
       const packageSessions = enrollment.packageSessionsCount || group?.packageSessionsCount || 8;
       const packagePrice = enrollment.packagePrice || group?.defaultPrice || enrollment.customPrice;
       const unitRate = packageSessions > 0 ? divideMoney(packagePrice, packageSessions) : 100;
-      totalDue = multiplyMoney(attendedCount, unitRate);
+      totalDue = multiplyMoney(attendedUnits, unitRate);
     } else if (isPrepaid) {
       // PREPAID Rules:
       // - Normal attendance is automatically marked Paid (Due = 0).
@@ -3486,13 +3532,21 @@ export const db = {
         (a) => !(a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false)
       );
 
-      const prepaidPaidValue = prepaidPaidAttendance.reduce((sum, a) => addMoney(sum, a.sessionPriceSnapshot || sessionRate), 0);
-      const prepaidUnpaidValue = prepaidUnpaidAttendance.reduce((sum, a) => addMoney(sum, a.sessionPriceSnapshot || sessionRate), 0);
+      const prepaidPaidValue = prepaidPaidAttendance.reduce((sum, a) => {
+        const sess = sessions.find((s) => s.id === a.sessionId);
+        const units = a.sessionUnits !== undefined && a.sessionUnits !== null ? Number(a.sessionUnits) : (sess?.sessionUnits !== undefined && sess?.sessionUnits !== null ? Number(sess.sessionUnits) : 1);
+        return addMoney(sum, a.sessionPriceSnapshot || multiplyMoney(units, sessionRate));
+      }, 0);
+      const prepaidUnpaidValue = prepaidUnpaidAttendance.reduce((sum, a) => {
+        const sess = sessions.find((s) => s.id === a.sessionId);
+        const units = a.sessionUnits !== undefined && a.sessionUnits !== null ? Number(a.sessionUnits) : (sess?.sessionUnits !== undefined && sess?.sessionUnits !== null ? Number(sess.sessionUnits) : 1);
+        return addMoney(sum, a.sessionPriceSnapshot || multiplyMoney(units, sessionRate));
+      }, 0);
       totalDue = addMoney(prepaidPaidValue, prepaidUnpaidValue);
     } else {
       // Per session billing (Prepaid / Postpaid)
       const sessionRate = getEffectiveSessionPrice(enrollment, group);
-      totalDue = multiplyMoney(attendedCount, sessionRate);
+      totalDue = multiplyMoney(attendedUnits, sessionRate);
     }
 
     const freeAttendance = attendanceRecords.filter((a) => {
@@ -3566,12 +3620,16 @@ export const db = {
 
       const prepaidPaidCount = prepaidPaidAttendance.length;
       const prepaidUnpaidCount = prepaidUnpaidAttendance.length;
-      const prepaidPaidValue = prepaidPaidAttendance.reduce((sum, a) => addMoney(sum, a.sessionPriceSnapshot || sessionRate), 0);
+      const prepaidPaidValue = prepaidPaidAttendance.reduce((sum, a) => {
+        const sess = sessions.find((s) => s.id === a.sessionId);
+        const units = a.sessionUnits !== undefined && a.sessionUnits !== null ? Number(a.sessionUnits) : (sess?.sessionUnits !== undefined && sess?.sessionUnits !== null ? Number(sess.sessionUnits) : 1);
+        return addMoney(sum, a.sessionPriceSnapshot || multiplyMoney(units, sessionRate));
+      }, 0);
 
       totalPaid = addMoney(prepaidPaidValue, explicitPaymentsTotal);
       remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
 
-      usedSessionsCount = attendedCount;
+      usedSessionsCount = attendedUnits;
       settledSessionsCount = prepaidPaidCount;
       effectiveSessionCredit = 0;
       sessionCreditValue = 0;
@@ -3583,27 +3641,27 @@ export const db = {
       // POSTPAID Rules:
       remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
       if (totalPaid >= totalDue) {
-        settledSessionsCount = attendedCount;
+        settledSessionsCount = attendedUnits;
         unpaidSessionsCount = 0;
         remaining = 0;
         const excess = subtractMoney(totalPaid, totalDue);
         effectiveSessionCredit = sessionRate > 0 ? calculateCoveredSessions(excess, sessionRate) : 0;
         sessionCreditValue = multiplyMoney(effectiveSessionCredit, sessionRate);
-        purchasedSessionsCount = attendedCount + effectiveSessionCredit;
-        usedSessionsCount = attendedCount;
+        purchasedSessionsCount = attendedUnits + effectiveSessionCredit;
+        usedSessionsCount = attendedUnits;
       } else {
         settledSessionsCount = sessionRate > 0 ? calculateCoveredSessions(totalPaid, sessionRate) : 0;
-        unpaidSessionsCount = Math.max(0, attendedCount - settledSessionsCount);
+        unpaidSessionsCount = Math.max(0, subtractMoney(attendedUnits, settledSessionsCount));
         effectiveSessionCredit = 0;
         sessionCreditValue = 0;
         purchasedSessionsCount = settledSessionsCount;
-        usedSessionsCount = attendedCount;
+        usedSessionsCount = attendedUnits;
       }
     } else if (enrollment.billingType === 'monthly') {
       // Monthly Billing
       remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
       purchasedSessionsCount = payments.length;
-      usedSessionsCount = attendedCount;
+      usedSessionsCount = attendedUnits;
       effectiveSessionCredit = 0;
       sessionCreditValue = 0;
       unpaidSessionsCount = 0;
@@ -3622,10 +3680,10 @@ export const db = {
       }, 0) + payments.reduce((sum, p) => sum + (p.autoSessionsConverted || 0), 0);
 
       purchasedSessionsCount = explicitPurchased > 0 ? explicitPurchased : (unitRate > 0 ? calculateCoveredSessions(totalPaid, unitRate) : 0);
-      usedSessionsCount = Math.min(attendedCount, purchasedSessionsCount);
-      effectiveSessionCredit = Math.max(0, purchasedSessionsCount - attendedCount);
+      usedSessionsCount = Math.min(attendedUnits, purchasedSessionsCount);
+      effectiveSessionCredit = Math.max(0, subtractMoney(purchasedSessionsCount, attendedUnits));
       sessionCreditValue = multiplyMoney(effectiveSessionCredit, unitRate);
-      unpaidSessionsCount = Math.max(0, attendedCount - purchasedSessionsCount);
+      unpaidSessionsCount = Math.max(0, subtractMoney(attendedUnits, purchasedSessionsCount));
       remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
     }
 
@@ -3650,7 +3708,9 @@ export const db = {
       sessionCredit: effectiveSessionCredit,
       sessionCreditValue,
       financialCredit: enrollment.financialCredit || 0,
-      attendedSessionsCount: attendedCount,
+      attendedSessionsCount: attendedUnits,
+      actualOccurrencesCount: attendedCount,
+      totalConsumedUnits: attendedUnits,
       totalHours: isHourly ? totalAccumulatedHours : undefined,
       unpaidHours: isHourly ? unpaidHours : undefined,
       extraSessionsCount: extraSessionsTotal,

@@ -228,6 +228,7 @@ export interface Session {
   pricePerStudent?: number; // سعر الحصة الفعلي
   hours?: number; // عدد الساعات المنفذة للحصة (مثلاً: 1.5 أو 2)
   hourlyRate?: number; // سعر الساعة المحسوبة للحصة
+  sessionUnits?: number; // عدد الحصص/الكمية المنفذة للدرس الخاص (e.g. 0.5, 1, 1.5, 2, 2.5, 3)
   sessionCount?: number; // عدد الحصص المسجلة
   effectiveSessionPrice?: number; // سعر الحصة الفعلي (Effective Session Price = Package Total Price ÷ Package Session Count أو Hours × HourlyRate)
   totalSessionValue?: number; // إجمالي قيمة الحصص المسجلة
@@ -261,6 +262,7 @@ export interface Attendance {
   paymentStatus?: 'paid' | 'unpaid' | 'default'; // حالة سداد الحصة (مدفوعة أو مستحقة/غير مسددة)
   isPaid?: boolean; // هل الحصة مدفوعة أم لا
   paymentOverride?: 'paid' | 'unpaid'; // تجاوز يدوي من المعلم لحالة السداد
+  sessionUnits?: number; // عدد الحصص/الكمية المنفذة للدرس الخاص (e.g. 0.5, 1, 1.5, 2, 2.5, 3)
   hours?: number; // عدد الساعات المسجلة للطالب
   hourlyRate?: number; // سعر الساعة للطالب
   absenceReason?: string; // سبب عدم احتساب الغياب (الطالب ألغى | المدرس ألغى | مرض | ظرف طارئ | سبب آخر | مخصص)
@@ -362,6 +364,8 @@ export interface EnrollmentFinancialSummary {
   sessionCreditValue: number;
   financialCredit: number;
   attendedSessionsCount: number;
+  actualOccurrencesCount?: number;
+  totalConsumedUnits?: number;
   totalHours?: number;
   unpaidHours?: number;
   extraSessionsCount: number;

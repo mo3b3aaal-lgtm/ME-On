@@ -1802,7 +1802,7 @@ export function getDetailedAgendaForDate(
     
     let attendanceList: any[] = [];
     try {
-      const rawAtt = localStorage.getItem('tm_attendance_v2');
+      const rawAtt = localStorage.getItem('tm_v2_attendance');
       if (rawAtt) {
         const parsed = JSON.parse(rawAtt);
         attendanceList = parsed.filter((a: any) => a.sessionId === session.id);

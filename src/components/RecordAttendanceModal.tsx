@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
 import {
   X,
   CheckCircle2,
@@ -32,6 +33,8 @@ interface RecordAttendanceModalProps {
 interface StudentAttendanceRecord {
   status: AttendanceStatus;
   isCharged: boolean;
+  sessionUnits?: number;
+  hours?: number;
   absenceReason: string;
   homeworkDone: boolean;
   notes: string;
@@ -124,6 +127,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         map[st.id] = {
           status: found.status,
           isCharged,
+          sessionUnits: found.sessionUnits ?? session?.sessionUnits ?? 1,
+          hours: found.hours ?? session?.hours ?? 1.5,
           absenceReason: found.absenceReason || found.notes || '',
           homeworkDone: found.homeworkDone ?? true,
           notes: found.notes || '',
@@ -132,6 +137,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         map[st.id] = {
           status: 'present',
           isCharged: true,
+          sessionUnits: session?.sessionUnits ?? 1,
+          hours: session?.hours ?? 1.5,
           absenceReason: '',
           homeworkDone: true,
           notes: '',
@@ -308,7 +315,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         enrollmentId: enr?.id,
         status: item.status,
         isCharged: item.isCharged,
-        hours: session.hours,
+        sessionUnits: item.sessionUnits,
+        hours: item.hours || session.hours,
         hourlyRate: session.hourlyRate || enr?.hourlyRate || group?.hourlyRate,
         absenceReason: item.absenceReason,
         homeworkDone: item.homeworkDone,
@@ -318,10 +326,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     });
 
     // Mark session as completed
+    const firstRec = Object.values(records)[0];
     if (session.status !== 'completed' && session.status !== 'cancelled') {
       db.saveSession({
         ...session,
         status: 'completed',
+        sessionUnits: firstRec?.sessionUnits || session.sessionUnits,
+        hours: firstRec?.hours || session.hours,
       });
     }
 
@@ -344,6 +355,11 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   useModalLayer('attendance-confirm-student', !!confirmingStudent, () => setConfirmingStudent(null));
   useModalLayer('attendance-batch-confirm', isBatchAbsentConfirmOpen, () => setIsBatchAbsentConfirmOpen(false));
 
+  const headerSwipeGestures = useSwipeGesture({
+    onSwipeDown: onClose,
+    threshold: 45,
+  });
+
   if (!isOpen || !session) return null;
 
   return (
@@ -353,34 +369,44 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
         
         {/* Signature Classy Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
-          <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Users className="w-5 h-5 text-[#55C7E8]" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
-                {isPrivateSession ? (isEn ? 'Record Private Attendance' : 'رصد حضور الدرس الخاص') : (isEn ? 'Take Attendance & Credit Consumption' : 'رصد الحضور واستهلاك الحصص')}
-              </h2>
-              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
-                {isPrivateSession && privateStudent
-                  ? (isEn ? `Student: ${privateStudent.name}` : `الطالب: ${privateStudent.name}`)
-                  : (group?.name || (isEn ? 'Group' : 'مجموعة'))} • {session.title || (isEn ? 'Class Session' : 'حصة دراسية')} ({session.date})
-              </p>
-            </div>
+        <div
+          {...headerSwipeGestures}
+          className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex flex-col shrink-0 relative overflow-hidden cursor-grab active:cursor-grabbing"
+        >
+          {/* Mobile Drag Indicator */}
+          <div className="sm:hidden w-full pb-2.5 flex items-center justify-center -mt-2">
+            <div className="modal-drag-handle" />
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
-            title={t('close')}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3 relative z-10 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Users className="w-5 h-5 text-[#55C7E8]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
+                  {isPrivateSession ? (isEn ? 'Record Private Attendance' : 'رصد حضور الدرس الخاص') : (isEn ? 'Take Attendance & Credit Consumption' : 'رصد الحضور واستهلاك الحصص')}
+                </h2>
+                <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
+                  {isPrivateSession && privateStudent
+                    ? (isEn ? `Student: ${privateStudent.name}` : `الطالب: ${privateStudent.name}`)
+                    : (group?.name || (isEn ? 'Group' : 'مجموعة'))} • {session.title || (isEn ? 'Class Session' : 'حصة دراسية')} ({session.date})
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+              title={t('close')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Quick Batch Actions & Stats Bar */}

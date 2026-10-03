@@ -36,10 +36,17 @@ import {
   getCachedNetworkStatus,
   DetailedNetworkStatus,
 } from '../utils/network';
-import { getScheduledClassesForDate, ScheduledClassItem } from '../utils/schedule';
+import {
+  getScheduledClassesForDate,
+  ScheduledClassItem,
+  parseTimeToMinutes,
+  formatTimeDisplay,
+  getArabicDayForDate,
+} from '../utils/schedule';
 import { getSmartReminders } from '../utils/reminders';
 import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
+import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
 
 interface DashboardViewProps {
   students: Student[];
@@ -78,6 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isEn = language.startsWith('en');
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayArabicDay = useMemo(() => getArabicDayForDate(new Date()), []);
   const currentMonth = useMemo(() => new Date().getMonth() + 1, []);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
@@ -235,13 +243,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [students, groups, sessions, enrollments, allAttendance]);
 
   const findSessionForScheduleItem = (item: ScheduledClassItem) => {
-    return sessions.find(
-      (s) =>
-        s.date === todayStr &&
-        s.groupId === item.groupId &&
-        (!item.studentId || s.studentId === item.studentId) &&
-        s.status !== 'cancelled'
-    );
+    return sessions.find((s) => {
+      if (s.date !== todayStr) return false;
+      if (s.status === 'cancelled') return false;
+      if (s.groupId !== item.groupId) return false;
+      if (item.studentId && s.studentId && s.studentId !== item.studentId) return false;
+
+      // Match exact start time (parsed to minutes) to isolate multiple sessions on same day
+      if (item.rawTime || item.sortMinutes) {
+        const sMins = parseTimeToMinutes(s.startTime);
+        const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime);
+        if (sMins !== itemMins) return false;
+      }
+      return true;
+    });
   };
 
   const getOrCreateSessionForSchedule = (item: ScheduledClassItem): Session => {
@@ -250,9 +265,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     const group = groups.find((g) => g.id === item.groupId);
     const d = new Date(todayStr);
-    const [h, m] = item.time.split(':').map(Number);
-    const endH = (h + 1) % 24;
-    const endTime = `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+    const rawStartTime = item.rawTime || '16:00';
+    const [h, m] = rawStartTime.split(':').map(Number);
+    const endH = !isNaN(h) ? (h + 1) % 24 : 17;
+    const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
 
     const newSession: Session = {
       id: `sess_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
@@ -261,7 +277,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       enrollmentId: item.enrollmentId,
       title: item.isPrivate ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : item.groupName,
       date: todayStr,
-      startTime: item.time,
+      startTime: rawStartTime,
       endTime,
       dayName: item.dayName,
       month: d.getMonth() + 1,
@@ -276,11 +292,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return newSession;
   };
 
+  const [privateIntakeTarget, setPrivateIntakeTarget] = useState<{
+    item: ScheduledClassItem;
+    studentId: string;
+  } | null>(null);
+
   const handleMarkAllPresent = (item: ScheduledClassItem) => {
+    // If it is a private lesson, open PrivateClassIntakeModal to ask the teacher what the intake was
+    if (item.isPrivate || item.studentId) {
+      const studentId = item.studentId || (students.find((s) => s.name === item.studentName)?.id || '');
+      setPrivateIntakeTarget({ item, studentId });
+      return;
+    }
+
+    // Standard Group Logic (100% untouched)
     const session = getOrCreateSessionForSchedule(item);
-    const groupStudents = item.studentId
-      ? students.filter((s) => s.id === item.studentId)
-      : db.getGroupStudents(item.groupId);
+    const groupStudents = db.getGroupStudents(item.groupId);
 
     const attendanceRecords: Attendance[] = groupStudents.map((st) => {
       const enr = enrollments.find(
@@ -298,10 +325,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
 
     db.saveAttendanceBatch(session.id, attendanceRecords);
+    if (session.status !== 'completed' && session.status !== 'cancelled') {
+      db.saveSession({ ...session, status: 'completed' });
+    }
     showQuickFeedback(
       isEn
-        ? `Marked all present for ${item.isPrivate ? item.studentName : item.groupName}`
-        : `تم رصد حضور جميع طلاب ${item.isPrivate ? item.studentName : item.groupName} بنجاح`
+        ? `Marked all present for ${item.groupName}`
+        : `تم رصد حضور جميع طلاب ${item.groupName} بنجاح`
     );
     onDataChanged?.();
   };
@@ -312,6 +342,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     status: AttendanceStatus,
     isCharged: boolean = true
   ) => {
+    // If it is a private lesson and marked present, ask for intake
+    if ((item.isPrivate || item.studentId) && status === 'present') {
+      setPrivateIntakeTarget({ item, studentId });
+      return;
+    }
+
     const session = getOrCreateSessionForSchedule(item);
     const enr = enrollments.find(
       (e) => e.studentId === studentId && (e.groupId === item.groupId || e.id === item.enrollmentId)
@@ -328,9 +364,95 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
 
     db.saveAttendanceBatch(session.id, [record]);
+    if (session.status !== 'completed' && session.status !== 'cancelled') {
+      db.saveSession({ ...session, status: 'completed' });
+    }
     showQuickFeedback(isEn ? 'Attendance status updated' : 'تم تحديث حالة الحضور');
     onDataChanged?.();
   };
+
+  const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
+    if (!privateIntakeTarget) return;
+    const { item, studentId } = privateIntakeTarget;
+    const session = getOrCreateSessionForSchedule(item);
+    const enr = enrollments.find(
+      (e) => e.studentId === studentId && (e.groupId === item.groupId || e.id === item.enrollmentId)
+    );
+
+    const record: Attendance = {
+      id: `att_${session.id}_${studentId}`,
+      sessionId: session.id,
+      studentId,
+      enrollmentId: enr?.id || item.enrollmentId,
+      status: 'present',
+      isCharged: true,
+      sessionUnits: result.sessionUnits,
+      hours: result.hours,
+      pricePerStudent: result.pricePerStudent,
+      notes: result.notes,
+      recordedAt: new Date().toISOString(),
+    };
+
+    db.saveAttendanceBatch(session.id, [record]);
+    db.saveSession({
+      ...session,
+      status: 'completed',
+      sessionUnits: result.sessionUnits,
+      hours: result.hours,
+      pricePerStudent: result.pricePerStudent,
+      notes: result.notes || session.notes,
+    });
+
+    showQuickFeedback(
+      isEn
+        ? `Recorded ${result.sessionUnits} session(s) for ${item.studentName}`
+        : `تم تسجيل حضور ${result.sessionUnits} حصة للطالب ${item.studentName}`
+    );
+    setPrivateIntakeTarget(null);
+    onDataChanged?.();
+  };
+
+  // Comprehensive list of items to display on today's schedule (scheduled recurring + explicit ad-hoc)
+  const allTodayDisplayItems = useMemo(() => {
+    const list: ScheduledClassItem[] = [...scheduledToday];
+
+    todaySessions.forEach((s) => {
+      const alreadyRepresented = list.some((item) => {
+        const matching = findSessionForScheduleItem(item);
+        return matching?.id === s.id;
+      });
+
+      if (!alreadyRepresented) {
+        const group = groups.find((g) => g.id === s.groupId);
+        const isPrivate = group?.type === 'private' || !!s.studentId;
+        const student = s.studentId ? students.find((st) => st.id === s.studentId) : undefined;
+        const sortMinutes = parseTimeToMinutes(s.startTime);
+        const formattedTime = formatTimeDisplay(s.startTime, isRTL);
+
+        list.push({
+          id: `today_ses_${s.id}`,
+          studentId: s.studentId || '',
+          studentName: student?.name || s.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (group?.name || '')),
+          student,
+          groupId: s.groupId,
+          groupName: group?.name || s.title || (isEn ? 'Academic Session' : 'حصة دراسية'),
+          group,
+          enrollmentId: s.enrollmentId,
+          isPrivate,
+          subject: group?.subject || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'General' : 'عام')),
+          dayName: s.dayName || todayArabicDay,
+          time: formattedTime,
+          rawTime: s.startTime || '16:00',
+          sortMinutes,
+          location: group?.roomOrLocation,
+          accentColor: group?.accentColor || (isPrivate ? '#FF647C' : '#7657F6'),
+        });
+      }
+    });
+
+    list.sort((a, b) => a.sortMinutes - b.sortMinutes);
+    return list;
+  }, [scheduledToday, todaySessions, groups, students, isRTL, isEn, todayArabicDay, sessions]);
 
   // Greeting dynamic text based on current hour
   const greetingText = useMemo(() => {
@@ -690,7 +812,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
-        {scheduledToday.length === 0 ? (
+        {allTodayDisplayItems.length === 0 ? (
           <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-white">
             <div className="w-28 h-28 flex items-center justify-center">
               <ClassyOwlMascot size="lg" pose="waving" glow={true} />
@@ -713,7 +835,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         ) : (
           <div className="space-y-2.5">
-            {scheduledToday.map((item) => {
+            {allTodayDisplayItems.map((item) => {
               const matchingSession = findSessionForScheduleItem(item);
               const sessionAttendance = matchingSession ? db.getSessionAttendance(matchingSession.id) : [];
               const groupStudents = item.studentId
@@ -916,6 +1038,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               );
             })}
           </div>
+        )}
+        {/* Private Class Intake Modal */}
+        {privateIntakeTarget && (
+          <PrivateClassIntakeModal
+            isOpen={!!privateIntakeTarget}
+            onClose={() => setPrivateIntakeTarget(null)}
+            student={students.find((s) => s.id === privateIntakeTarget.studentId) || null}
+            enrollment={enrollments.find((e) => e.studentId === privateIntakeTarget.studentId && (e.groupId === privateIntakeTarget.item.groupId || e.id === privateIntakeTarget.item.enrollmentId)) || null}
+            session={findSessionForScheduleItem(privateIntakeTarget.item)}
+            onConfirm={handleConfirmPrivateIntake}
+          />
         )}
       </div>
     </div>

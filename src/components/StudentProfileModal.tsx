@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
 import {
   X,
   Phone,
@@ -98,6 +99,16 @@ interface StudentProfileModalProps {
   onDataChanged: () => void;
 }
 
+type StudentProfileSubTab =
+  | 'overview'
+  | 'groups'
+  | 'private'
+  | 'finances'
+  | 'attendance'
+  | 'behavior'
+  | 'history'
+  | 'credit_logs';
+
 export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   isOpen,
   onClose,
@@ -111,9 +122,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
 
-  const [activeSubTab, setActiveSubTab] = useState<
-    'overview' | 'groups' | 'private' | 'finances' | 'attendance' | 'behavior' | 'history' | 'credit_logs'
-  >('overview');
+  const [activeSubTab, setActiveSubTab] = useState<StudentProfileSubTab>('overview');
   const [serviceFilter, setServiceFilter] = useState<'all' | 'group' | 'private'>('all');
   const [isRecordPrivateModalOpen, setIsRecordPrivateModalOpen] = useState<boolean>(false);
   const [isQuickBehaviorModalOpen, setIsQuickBehaviorModalOpen] = useState<boolean>(false);
@@ -507,6 +516,35 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [isSafeDeleteModalOpen, setIsSafeDeleteModalOpen] = useState(false);
   const modalLayer = useModalLayer('student-profile', isOpen && !!student, onClose);
 
+  const subTabs: StudentProfileSubTab[] = ['overview', 'groups', 'private', 'finances', 'attendance', 'behavior', 'history', 'credit_logs'];
+
+  const handleNextSubTab = () => {
+    const currentIdx = subTabs.indexOf(activeSubTab);
+    if (currentIdx < subTabs.length - 1) {
+      setActiveSubTab(subTabs[currentIdx + 1]);
+    }
+  };
+
+  const handlePrevSubTab = () => {
+    const currentIdx = subTabs.indexOf(activeSubTab);
+    if (currentIdx > 0) {
+      setActiveSubTab(subTabs[currentIdx - 1]);
+    }
+  };
+
+  // Touch gestures: Swipe left/right on tab body switches subtabs
+  const tabContentSwipeGestures = useSwipeGesture({
+    onSwipeLeft: isRTL ? handlePrevSubTab : handleNextSubTab,
+    onSwipeRight: isRTL ? handleNextSubTab : handlePrevSubTab,
+    threshold: 60,
+  });
+
+  // Touch gesture: Swipe down on header dismisses modal
+  const headerSwipeDownGestures = useSwipeGesture({
+    onSwipeDown: onClose,
+    threshold: 45,
+  });
+
   if (!isOpen || !student) return null;
 
   const isArchived = student.status === 'archived';
@@ -518,11 +556,19 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F5F6FC] border border-[#E8E7FF] rounded-t-[32px] sm:rounded-[32px] max-w-2xl w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="bg-[#F5F6FC] border border-[#E8E7FF] rounded-t-[32px] sm:rounded-[32px] max-w-2xl w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
           {/* =========================================================================
               1. STUDENT PROFILE HERO (Classy Midnight & Royal Gradient)
               ========================================================================= */}
-          <div className="bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] p-5 sm:p-6 text-white relative overflow-hidden shrink-0 border-b border-white/10">
+          <div
+            {...headerSwipeDownGestures}
+            className="bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] p-5 sm:p-6 text-white relative overflow-hidden shrink-0 border-b border-white/10 select-none cursor-grab active:cursor-grabbing"
+          >
+            {/* Mobile Drag Indicator */}
+            <div className="sm:hidden w-full pb-2 flex items-center justify-center -mt-2">
+              <div className="modal-drag-handle" />
+            </div>
+
             {/* Ambient internal glows */}
             <div className="absolute -top-16 -right-16 w-52 h-52 bg-[#7657F6]/35 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-16 -left-16 w-52 h-52 bg-[#FF647C]/30 rounded-full blur-3xl pointer-events-none" />
@@ -758,7 +804,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           {/* =========================================================================
               3. TAB CONTENTS
               ========================================================================= */}
-          <div className="p-4 sm:p-5 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar flex-1 space-y-4 text-xs text-[#191A2E]">
+          <div
+            {...tabContentSwipeGestures}
+            className="p-4 sm:p-5 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar flex-1 space-y-4 text-xs text-[#191A2E]"
+          >
             {/* -------------------------------------------------------------
                 TAB 1: OVERVIEW / TEACHER DOSSIER
                 ------------------------------------------------------------- */}
@@ -1803,12 +1852,27 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           </div>
 
                           <div className="flex items-center justify-between text-[11px] text-[#74778F] pt-1 border-t border-[#E8E7FF] flex-wrap gap-2">
-                            <span>
-                              {session?.date || att.recordedAt?.split('T')[0]}{' '}
-                              {session?.startTime
-                                ? `• ${formatTimeDisplay(session.startTime, true)}`
-                                : ''}
-                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>
+                                {session?.date || att.recordedAt?.split('T')[0]}{' '}
+                                {session?.startTime
+                                  ? `• ${formatTimeDisplay(session.startTime, true)}`
+                                  : ''}
+                              </span>
+
+                              {isPrivate && (
+                                <span className="font-black text-[10px] px-2 py-0.5 rounded-lg bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] inline-flex items-center gap-1">
+                                  <span>
+                                    {att.hours
+                                      ? `${att.hours} ${isEn ? 'hrs' : 'ساعة'}`
+                                      : `${att.sessionUnits || session?.sessionUnits || 1} ${isEn ? 'session(s)' : 'حصة'}`}
+                                  </span>
+                                  {(att.pricePerStudent || session?.pricePerStudent) && (
+                                    <span>• {att.pricePerStudent || session?.pricePerStudent} {t('currency')}</span>
+                                  )}
+                                </span>
+                              )}
+                            </div>
 
                             <div className="flex items-center gap-2">
                               <button

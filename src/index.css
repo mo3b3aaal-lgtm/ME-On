@@ -503,3 +503,57 @@
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(116, 119, 143, 0.45);
 }
+
+/* ==========================================================================
+   TOUCH & GESTURES OPTIMIZATION (Classy Touch Engine)
+   ========================================================================== */
+html, body {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  overscroll-behavior-y: contain;
+}
+
+button, a, input, select, textarea, [role="button"], .interactive-touch {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-drag-handle {
+  width: 40px;
+  height: 5px;
+  background-color: #D3D0FB;
+  border-radius: 9999px;
+  margin: 0 auto;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.modal-drag-handle:active {
+  background-color: #7657F6;
+  transform: scaleX(1.2);
+}
+
+.select-none-touch {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.touch-feedback {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+}
+
+.touch-feedback:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+

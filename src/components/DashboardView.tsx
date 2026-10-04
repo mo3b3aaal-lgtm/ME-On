@@ -28,6 +28,7 @@ import {
   roundMoney,
   multiplyMoney,
   addMoney,
+  formatSessionQuantityDisplay,
   getEffectiveSessionPrice,
   getAutoSyncConfig,
   performFullSync,
@@ -381,6 +382,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       (e) => e.studentId === studentId && (e.groupId === item.groupId || e.id === item.enrollmentId)
     );
 
+    const isHourly =
+      item.group?.billingMode === 'hourly' ||
+      item.group?.billingType === 'hourly' ||
+      enr?.billingMode === 'hourly' ||
+      enr?.billingType === 'hourly';
+
     const record: Attendance = {
       id: `att_${session.id}_${studentId}`,
       sessionId: session.id,
@@ -388,8 +395,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       enrollmentId: enr?.id || item.enrollmentId,
       status: 'present',
       isCharged: true,
-      sessionUnits: result.sessionUnits,
-      hours: result.hours,
+      sessionUnits: isHourly ? undefined : result.sessionUnits,
+      hours: isHourly ? result.hours : undefined,
       notes: result.notes,
       recordedAt: new Date().toISOString(),
     };
@@ -398,16 +405,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     db.saveSession({
       ...session,
       status: 'completed',
-      sessionUnits: result.sessionUnits,
-      hours: result.hours,
+      sessionUnits: isHourly ? undefined : result.sessionUnits,
+      hours: isHourly ? result.hours : undefined,
       pricePerStudent: result.pricePerStudent,
       notes: result.notes || session.notes,
     });
 
+    const qtyText = formatSessionQuantityDisplay({
+      sessionUnits: result.sessionUnits,
+      hours: result.hours,
+      isHourly,
+    }, isRTL);
+
     showQuickFeedback(
       isEn
-        ? `Recorded ${result.sessionUnits} session(s) for ${item.studentName}`
-        : `تم تسجيل حضور ${result.sessionUnits} حصة للطالب ${item.studentName}`
+        ? `Recorded ${qtyText} for ${item.studentName}`
+        : `تم تسجيل حضور ${qtyText} للطالب ${item.studentName}`
     );
     setPrivateIntakeTarget(null);
     onDataChanged?.();

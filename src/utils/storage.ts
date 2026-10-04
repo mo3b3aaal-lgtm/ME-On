@@ -84,6 +84,73 @@ export {
   formatMoney,
 };
 
+/**
+ * Universal Formatter for Session Quantity / Duration
+ * Enforces THE GOLDEN RULE: NEVER MIX LESSONS WITH HOURS
+ */
+export function formatSessionQuantityDisplay(
+  item: {
+    sessionUnits?: number | null;
+    hours?: number | null;
+    billingMode?: BillingMode | string | null;
+    billingType?: BillingType | string | null;
+    isHourly?: boolean;
+  },
+  isRTLOrLang?: boolean | string
+): string {
+  const isRTL =
+    typeof isRTLOrLang === 'boolean'
+      ? isRTLOrLang
+      : typeof isRTLOrLang === 'string'
+      ? isRTLOrLang.startsWith('ar')
+      : getAppLanguage().startsWith('ar');
+  const isHourlyMode =
+    item.isHourly === true ||
+    item.billingMode === 'hourly' ||
+    item.billingType === 'hourly';
+
+  if (isHourlyMode) {
+    const rawHours =
+      item.hours !== undefined && item.hours !== null && Number(item.hours) > 0
+        ? Number(item.hours)
+        : 1;
+    const hrs = roundMoney(rawHours, 2);
+
+    if (!isRTL) {
+      return hrs === 1 ? '1 Hour' : `${hrs} Hours`;
+    }
+    // Arabic formatted
+    if (hrs === 0.5) return 'نصف ساعة';
+    if (hrs === 1) return 'ساعة واحدة';
+    if (hrs === 1.5) return 'ساعة ونصف';
+    if (hrs === 2) return 'ساعتان';
+    if (hrs === 2.5) return 'ساعتان ونصف';
+    if (hrs === 3) return '3 ساعات';
+    if (hrs > 2 && hrs <= 10 && Number.isInteger(hrs)) return `${hrs} ساعات`;
+    return `${hrs} ساعة`;
+  }
+
+  // Session-based billing (Package, Postpaid, Prepaid, Monthly, Per-session)
+  const rawUnits =
+    item.sessionUnits !== undefined && item.sessionUnits !== null && Number(item.sessionUnits) > 0
+      ? Number(item.sessionUnits)
+      : 1;
+  const units = roundMoney(rawUnits, 2);
+
+  if (!isRTL) {
+    return units === 1 ? '1 Lesson' : `${units} Lessons`;
+  }
+  // Arabic formatted
+  if (units === 0.5) return 'نصف حصة';
+  if (units === 1) return 'حصة واحدة';
+  if (units === 1.5) return 'حصة ونصف';
+  if (units === 2) return 'حصتان';
+  if (units === 2.5) return 'حصتان ونصف';
+  if (units === 3) return '3 حصص';
+  if (units > 2 && units <= 10 && Number.isInteger(units)) return `${units} حصص`;
+  return `${units} حصة`;
+}
+
 let lastAuthDiagnosticsRecord: AuthDiagnostics | null = null;
 const executedBulkBatches = new Map<string, BulkCreateSessionsResult>();
 
@@ -3932,27 +3999,25 @@ export const db = {
       const isChargedAbsent =
         status === 'absent_charged' || (status === 'absent' && att?.isCharged !== false);
 
-      const sessionUnits =
-        att?.sessionUnits !== undefined && att?.sessionUnits !== null
+      const sessionUnits = !isHourly
+        ? att?.sessionUnits !== undefined && att?.sessionUnits !== null && Number(att.sessionUnits) > 0
           ? Number(att.sessionUnits)
-          : s.sessionUnits !== undefined && s.sessionUnits !== null
+          : s.sessionUnits !== undefined && s.sessionUnits !== null && Number(s.sessionUnits) > 0
           ? Number(s.sessionUnits)
           : isPresent || isChargedAbsent
-          ? isHourly
-            ? undefined
-            : s.sessionUnits || 1
-          : undefined;
+          ? 1
+          : undefined
+        : undefined;
 
-      const hours =
-        att?.hours !== undefined && att?.hours !== null
+      const hours = isHourly
+        ? att?.hours !== undefined && att?.hours !== null && Number(att.hours) > 0
           ? Number(att.hours)
-          : s.hours !== undefined && s.hours !== null
+          : s.hours !== undefined && s.hours !== null && Number(s.hours) > 0
           ? Number(s.hours)
           : isPresent || isChargedAbsent
-          ? isHourly
-            ? s.hours || 1
-            : undefined
-          : undefined;
+          ? 1
+          : undefined
+        : undefined;
 
       // Incomplete check (Feature 3)
       const isIncomplete =
@@ -4082,19 +4147,9 @@ export const db = {
     const isEn = !getAppLanguage().startsWith('ar');
     let totalUnitsOrHoursText = '';
     if (totalHours > 0 && totalSessionUnits === 0) {
-      totalUnitsOrHoursText = `${totalHours} ${isEn ? 'Hours' : 'ساعة'}`;
+      totalUnitsOrHoursText = formatSessionQuantityDisplay({ hours: totalHours, isHourly: true }, !isEn);
     } else if (totalSessionUnits > 0) {
-      totalUnitsOrHoursText = `${totalSessionUnits} ${
-        isEn
-          ? totalSessionUnits === 1
-            ? 'Session'
-            : 'Sessions'
-          : totalSessionUnits === 1
-          ? 'حصة'
-          : totalSessionUnits <= 10
-          ? 'حصص'
-          : 'حصة'
-      }`;
+      totalUnitsOrHoursText = formatSessionQuantityDisplay({ sessionUnits: totalSessionUnits, isHourly: false }, !isEn);
     } else {
       totalUnitsOrHoursText = isEn ? '0 Sessions' : '0 حصة';
     }

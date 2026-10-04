@@ -19,8 +19,8 @@ import { useTranslation } from '../utils/i18n';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 
 export interface PrivateClassIntakeResult {
-  sessionUnits: number;
-  hours: number;
+  sessionUnits?: number;
+  hours?: number;
   pricePerStudent?: number;
   notes?: string;
 }
@@ -222,8 +222,8 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   };
 
   const handleConfirm = () => {
-    const finalUnits = isHourly ? 1 : selectedUnits;
-    const finalHours = isHourly ? selectedHours : selectedHours;
+    const finalUnits = isHourly ? undefined : selectedUnits;
+    const finalHours = isHourly ? selectedHours : undefined;
     onConfirm({
       sessionUnits: finalUnits,
       hours: finalHours,

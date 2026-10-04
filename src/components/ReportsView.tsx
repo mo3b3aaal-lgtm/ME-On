@@ -43,6 +43,7 @@ import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
 import { StudentAvatar } from './StudentAvatar';
 import { AttendanceTrendsChart } from './AttendanceTrendsChart';
+import { BillingStreamsProgressChart } from './BillingStreamsProgressChart';
 
 interface ReportsViewProps {
   students: Student[];
@@ -84,7 +85,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   // Financial & Attendance Sub-Tabs
   const [financialSubTab, setFinancialSubTab] = useState<
-    'overview' | 'attendance_trends' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
+    'overview' | 'billing_streams' | 'attendance_trends' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
   >('overview');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'group' | 'private'>('all');
   const [expandedMonthYear, setExpandedMonthYear] = useState<string | null>(null);
@@ -664,6 +665,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
               <button
                 type="button"
+                onClick={() => setFinancialSubTab('billing_streams')}
+                className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  financialSubTab === 'billing_streams'
+                    ? 'bg-[#17163D] text-white shadow-xs'
+                    : 'text-[#74778F] hover:bg-[#F6F7FC] hover:text-[#17163D]'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-[#7657F6]" />
+                <span>{isEn ? 'Billing Streams (Lessons vs Hours)' : 'مسارات المحاسبة (حصص vs ساعات)'}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setFinancialSubTab('attendance_trends')}
                 className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
                   financialSubTab === 'attendance_trends'
@@ -862,12 +876,42 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </div>
               </div>
 
+              {/* Interactive Billing Streams Progress (Lesson-Based vs Hourly Progress) */}
+              <BillingStreamsProgressChart
+                sessions={sessions}
+                allAttendance={allAttendanceRecords}
+                students={students}
+                groups={groups}
+                enrollments={activeEnrollments}
+                payments={payments}
+                periodFilter={periodFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+              />
+
               {/* Interactive Attendance Trends Over Time Visualization */}
               <AttendanceTrendsChart
                 sessions={sessions}
                 allAttendance={allAttendanceRecords}
                 students={students}
                 groups={groups}
+                periodFilter={periodFilter}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+              />
+            </div>
+          )}
+
+          {/* Sub-Tab 1.2: Dedicated Billing Streams Visualization (Lessons vs Hours) */}
+          {financialSubTab === 'billing_streams' && (
+            <div className="space-y-4">
+              <BillingStreamsProgressChart
+                sessions={sessions}
+                allAttendance={allAttendanceRecords}
+                students={students}
+                groups={groups}
+                enrollments={activeEnrollments}
+                payments={payments}
                 periodFilter={periodFilter}
                 customStartDate={customStartDate}
                 customEndDate={customEndDate}

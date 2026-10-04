@@ -236,6 +236,7 @@ export interface Session {
   packageSessionsCount?: number; // عدد حصص الباقة وقت التسجيل
   status: SessionStatus;
   isExtraSession?: boolean; // علامة تمييز الحصة الإضافية (Extra Session)
+  isIncomplete?: boolean; // هل الحصة غير مكتملة البيانات/الكمية للدرس الخاص؟
   notes?: string;
   createdAt: string;
   updatedAt?: string;
@@ -259,6 +260,7 @@ export interface Attendance {
   enrollmentId?: string;
   status: AttendanceStatus; // حاضر | غائب - محسوبة | غائب - غير محسوبة | متأخر | معتذر
   isCharged?: boolean; // هل الحصة محسوبة ماليًا على الطالب؟
+  isIncomplete?: boolean; // هل رصد حضور الدرس الخاص غير مكتمل الكمية أو المدة؟
   paymentStatus?: 'paid' | 'unpaid' | 'default'; // حالة سداد الحصة (مدفوعة أو مستحقة/غير مسددة)
   isPaid?: boolean; // هل الحصة مدفوعة أم لا
   paymentOverride?: 'paid' | 'unpaid'; // تجاوز يدوي من المعلم لحالة السداد
@@ -499,6 +501,41 @@ export interface LifetimeFinancialSummary {
   private: PeriodFinancialBreakdown;
   years: YearFinancialRecord[];
   months: MonthFinancialRecord[];
+}
+
+// 12.1 Today's Private Lessons Summary (Feature 1)
+export interface TodayPrivateSessionItem {
+  sessionId?: string;
+  occurrenceId: string;
+  studentId: string;
+  studentName: string;
+  enrollmentId?: string;
+  groupId?: string;
+  subject: string;
+  time: string;
+  status: AttendanceStatus | 'unrecorded';
+  sessionUnits?: number;
+  hours?: number;
+  price: number;
+  billingMode?: BillingMode;
+  isIncomplete: boolean;
+  notes?: string;
+}
+
+export interface TodayStudentPrivateSummary {
+  studentId: string;
+  studentName: string;
+  date: string;
+  visitsCount: number;
+  recordedVisitsCount: number;
+  unrecordedVisitsCount: number;
+  totalSessionUnits: number;
+  totalHours: number;
+  totalAmount: number;
+  hasIncomplete: boolean;
+  incompleteCount: number;
+  totalUnitsOrHoursText: string;
+  sessions: TodayPrivateSessionItem[];
 }
 
 export interface TeacherOverallFinancialSummary {

@@ -19,6 +19,8 @@ import {
   X,
   WifiOff,
   RefreshCw,
+  Sparkles,
+  Edit3,
 } from 'lucide-react';
 import { Student, Group, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, ActiveTab, AutoSyncConfig } from '../types';
 import {
@@ -39,10 +41,12 @@ import {
 import {
   getScheduledClassesForDate,
   ScheduledClassItem,
-  parseTimeToMinutes,
   formatTimeDisplay,
-  getArabicDayForDate,
+  getLocalizedWeekdayName,
+  parseTimeToMinutes,
 } from '../utils/schedule';
+import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
+import { parseLocalTimeToStandard } from '../utils/localDate';
 import { getSmartReminders } from '../utils/reminders';
 import { useTranslation } from '../utils/i18n';
 import { ClassyOwlMascot } from './ClassyOwlMascot';
@@ -84,10 +88,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const { t, language, isRTL } = useTranslation();
   const isEn = language.startsWith('en');
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const todayArabicDay = useMemo(() => getArabicDayForDate(new Date()), []);
-  const currentMonth = useMemo(() => new Date().getMonth() + 1, []);
-  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const { todayStr, canonicalWeekday, parts } = useCurrentLocalDate();
+  const todayArabicDay = useMemo(() => getLocalizedWeekdayName(canonicalWeekday, isRTL), [canonicalWeekday, isRTL]);
+  const currentMonth = parts.month;
+  const currentYear = parts.year;
 
   // State for expanded quick attendance cards
   const [expandedAttendanceCardId, setExpandedAttendanceCardId] = useState<string | null>(null);
@@ -249,12 +253,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       if (s.groupId !== item.groupId) return false;
       if (item.studentId && s.studentId && s.studentId !== item.studentId) return false;
 
-      // Match exact start time (parsed to minutes) to isolate multiple sessions on same day
-      if (item.rawTime || item.sortMinutes) {
-        const sMins = parseTimeToMinutes(s.startTime);
-        const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime);
-        if (sMins !== itemMins) return false;
-      }
+      // Match exact start time (parsed to minutes) to strictly isolate multiple sessions on same day
+      const sMins = parseLocalTimeToStandard(s.startTime).sortMinutes;
+      const itemMins = item.sortMinutes || parseLocalTimeToStandard(item.rawTime).sortMinutes;
+      if (sMins !== itemMins) return false;
       return true;
     });
   };
@@ -264,14 +266,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (existing) return existing;
 
     const group = groups.find((g) => g.id === item.groupId);
-    const d = new Date(todayStr);
-    const rawStartTime = item.rawTime || '16:00';
+    const timeInfo = parseLocalTimeToStandard(item.rawTime);
+    const rawStartTime = timeInfo.normalizedTime;
     const [h, m] = rawStartTime.split(':').map(Number);
     const endH = !isNaN(h) ? (h + 1) % 24 : 17;
     const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
 
     const newSession: Session = {
-      id: `sess_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: `sess_${todayStr}_${item.groupId}_${item.studentId || 'grp'}_${timeInfo.sortMinutes}_${Math.random().toString(36).substr(2, 5)}`,
       groupId: item.groupId,
       studentId: item.studentId,
       enrollmentId: item.enrollmentId,
@@ -280,8 +282,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       startTime: rawStartTime,
       endTime,
       dayName: item.dayName,
-      month: d.getMonth() + 1,
-      year: d.getFullYear(),
+      month: parts.month,
+      year: parts.year,
       status: 'scheduled',
       pricePerStudent: group?.defaultPrice || 100,
       createdAt: new Date().toISOString(),
@@ -388,7 +390,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       isCharged: true,
       sessionUnits: result.sessionUnits,
       hours: result.hours,
-      pricePerStudent: result.pricePerStudent,
       notes: result.notes,
       recordedAt: new Date().toISOString(),
     };
@@ -453,6 +454,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     list.sort((a, b) => a.sortMinutes - b.sortMinutes);
     return list;
   }, [scheduledToday, todaySessions, groups, students, isRTL, isEn, todayArabicDay, sessions]);
+
+  // Today's Private Lessons Summary for students with private appointments today (Feature 1)
+  const todayPrivateStudentsSummary = useMemo(() => {
+    const map = new Map<string, {
+      studentId: string;
+      studentName: string;
+      items: { session: Session; attendance?: Attendance; time: string; units: number; hours: number; val: number; isHourly: boolean }[];
+      totalUnits: number;
+      totalHours: number;
+      totalValue: number;
+      recordedSessionsCount: number;
+      hasIncomplete: boolean;
+    }>();
+
+    allTodayDisplayItems.filter((item) => item.isPrivate && item.studentId).forEach((item) => {
+      const stuId = item.studentId;
+      const matching = findSessionForScheduleItem(item);
+      const att = matching ? allAttendance.find((a) => a.sessionId === matching.id && a.studentId === stuId) : undefined;
+      const isPresent = att?.status === 'present' || att?.status === 'late';
+      const enr = enrollments.find((e) => e.studentId === stuId && (e.groupId === item.groupId || e.id === item.enrollmentId));
+      const isHourly = enr?.billingMode === 'hourly' || enr?.billingType === 'hourly' || item.group?.billingMode === 'hourly';
+      const units = att?.sessionUnits !== undefined ? att.sessionUnits : (matching?.sessionUnits !== undefined ? matching.sessionUnits : 0);
+      const hours = att?.hours !== undefined ? att.hours : (matching?.hours !== undefined ? matching.hours : 0);
+      const rate = enr?.customPrice || item.group?.defaultPrice || 100;
+      const val = att?.pricePerStudent || matching?.pricePerStudent || (isHourly ? multiplyMoney(hours, rate) : multiplyMoney(units, rate));
+      const isIncomplete = isPresent && (isHourly ? hours <= 0 : units <= 0);
+
+      const existing = map.get(stuId) || {
+        studentId: stuId,
+        studentName: item.studentName,
+        items: [],
+        totalUnits: 0,
+        totalHours: 0,
+        totalValue: 0,
+        recordedSessionsCount: 0,
+        hasIncomplete: false,
+      };
+
+      if (matching) {
+        existing.items.push({
+          session: matching,
+          attendance: att,
+          time: item.time,
+          units,
+          hours,
+          val,
+          isHourly,
+        });
+      }
+
+      if (att && isPresent) {
+        existing.recordedSessionsCount++;
+        existing.totalUnits = roundMoney(existing.totalUnits + units, 2);
+        existing.totalHours = roundMoney(existing.totalHours + hours, 2);
+        existing.totalValue = addMoney(existing.totalValue, val);
+      }
+      if (isIncomplete) {
+        existing.hasIncomplete = true;
+      }
+
+      map.set(stuId, existing);
+    });
+
+    return Array.from(map.values()).map((s) => ({
+      ...s,
+      totalUnitsOrHoursText: s.totalHours > 0
+        ? `${s.totalHours} ${isEn ? 'hrs' : 'ساعة'}`
+        : `${s.totalUnits} ${isEn ? 'sessions' : 'حصة'}`,
+    }));
+  }, [allTodayDisplayItems, allAttendance, sessions, enrollments, isEn, todayStr]);
 
   // Greeting dynamic text based on current hour
   const greetingText = useMemo(() => {
@@ -812,6 +883,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
+        {/* Today's Private Lessons Summary Banner (Feature 1) */}
+        {todayPrivateStudentsSummary.length > 0 && (
+          <div className="p-3.5 bg-gradient-to-r from-white to-[#FFF1F3]/40 rounded-2xl border border-[#FECDD3] space-y-2.5 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#FF647C]" />
+                <span>{isEn ? "Today's Private Lessons Summary" : 'ملخص الدروس الخاصة لليوم'}</span>
+              </span>
+              <span className="text-[10px] font-black text-[#FF647C] bg-[#FFF1F3] px-2 py-0.5 rounded-full border border-[#FECDD3]">
+                {todayPrivateStudentsSummary.length} {isEn ? 'Students' : 'طلاب'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {todayPrivateStudentsSummary.map((summary) => (
+                <div key={summary.studentId} className="p-2.5 rounded-xl bg-white border border-[#FECDD3]/80 text-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between font-black text-[#17163D]">
+                    <span className="truncate">{summary.studentName}</span>
+                    <span className="text-[#FF647C] shrink-0 font-black">{summary.totalUnitsOrHoursText}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-[#74778F]">
+                    <span>{isEn ? `${summary.recordedSessionsCount} recorded visit(s)` : `${summary.recordedSessionsCount} حصة مسجلة`}</span>
+                    <strong className="text-emerald-700 font-black">{summary.totalValue} {t('currency')}</strong>
+                  </div>
+                  {summary.hasIncomplete && (
+                    <div className="pt-1 text-[10px] font-black text-amber-700 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>{isEn ? 'Incomplete session details' : 'حصة غير مكتملة التفاصيل'}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {allTodayDisplayItems.length === 0 ? (
           <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-white">
             <div className="w-28 h-28 flex items-center justify-center">
@@ -900,20 +1007,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="flex items-center gap-1.5 shrink-0">
                       {isRecorded ? (
                         item.isPrivate ? (
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 ${
-                            presentCount > 0
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
-                          }`}>
-                            {presentCount > 0 ? (
-                              <>
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>{isEn ? 'Attended' : 'حضر'}</span>
-                              </>
-                            ) : (
-                              <span>{isEn ? 'Absent' : 'لم يحضر'}</span>
-                            )}
-                          </span>
+                          (() => {
+                            const firstAtt = sessionAttendance[0];
+                            const isHourly = item.group?.billingMode === 'hourly' || item.group?.billingType === 'hourly';
+                            const isPres = firstAtt?.status === 'present' || firstAtt?.status === 'late';
+                            const isIncomplete =
+                              isPres &&
+                              (isHourly
+                                ? (firstAtt?.hours === undefined || firstAtt?.hours === null || firstAtt.hours <= 0)
+                                : (firstAtt?.sessionUnits === undefined || firstAtt?.sessionUnits === null || firstAtt.sessionUnits <= 0));
+
+                            if (isIncomplete) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
+                                  className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-black flex items-center gap-1 cursor-pointer hover:bg-amber-100 transition-all shadow-2xs animate-pulse"
+                                  title={isEn ? 'Click to complete session details' : 'اضغط لاستكمال تفاصيل الدرس'}
+                                >
+                                  <span>⚠️</span>
+                                  <span>{isEn ? 'Details Required' : 'تفاصيل مطلوبة'}</span>
+                                </button>
+                              );
+                            }
+
+                            return (
+                              <div className="flex items-center gap-1">
+                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 ${
+                                  presentCount > 0
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+                                }`}>
+                                  {presentCount > 0 ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>
+                                        {firstAtt?.hours
+                                          ? `${firstAtt.hours} ${isEn ? 'hrs' : 'ساعة'}`
+                                          : `${firstAtt?.sessionUnits || 1} ${isEn ? 'session(s)' : 'حصة'}`}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span>{isEn ? 'Absent' : 'لم يحضر'}</span>
+                                  )}
+                                </span>
+                                {presentCount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
+                                    className="p-1.5 rounded-lg bg-white border border-[#E8E7FF] text-[#7657F6] hover:bg-[#F6F7FC] transition-colors cursor-pointer"
+                                    title={isEn ? 'Edit Intake' : 'تعديل التفاصيل'}
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()
                         ) : (
                           <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />

@@ -1,5 +1,6 @@
 import { Group, Student, Enrollment, Session, SessionStatus } from '../types';
 import { getAppLanguage } from './i18n';
+import { getLocalDateParts, getLocalDateString, parseLocalTimeToStandard } from './localDate';
 
 // ==========================================
 // 1. CANONICAL WEEKDAYS ARCHITECTURE
@@ -710,8 +711,9 @@ export function getScheduledClassesForDate(
     }
   }
 
-  const targetDayIdx = d.getDay(); // 0 = Sunday, 6 = Saturday
-  const canonicalTodayKey = DAY_INDEX_TO_CANONICAL[targetDayIdx];
+  const parts = getLocalDateParts(dateInput);
+  const targetDayIdx = parts.weekdayIndex; // 0 = Sunday, 6 = Saturday
+  const canonicalTodayKey = parts.canonicalWeekday;
   const localizedDayName = getLocalizedWeekdayName(canonicalTodayKey, isRTL);
 
   const activeStudentsMap = new Map<string, Student>();

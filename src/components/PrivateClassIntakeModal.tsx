@@ -175,20 +175,23 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
     return multiplyMoney(selectedUnits, baseSessionPrice);
   }, [isHourly, isPackage, selectedUnits, selectedHours, hourlyRate, unitRate, baseSessionPrice]);
 
-  // Package Remaining Projection
+  // Package Remaining Projection with exact Before / This Session / After values
   const packageProjection = useMemo(() => {
     if (!isPackage || !activeEnrollment) return null;
     const currentFin = db.calculateEnrollmentFinancials(activeEnrollment.id);
-    const currentUsed = currentFin?.attendedSessionsCount || 0;
-    const projectedUsed = roundMoney(currentUsed + selectedUnits, 2);
-    const projectedRemaining = Math.max(0, roundMoney(packageTotalSessions - projectedUsed, 2));
+    const prevSessionUnits = session?.sessionUnits || 0;
+    const baseUsed = Math.max(0, (currentFin?.attendedSessionsCount || 0) - prevSessionUnits);
+    const beforeRemaining = Math.max(0, roundMoney(packageTotalSessions - baseUsed, 2));
+    const projectedUsed = roundMoney(baseUsed + selectedUnits, 2);
+    const afterRemaining = Math.max(0, roundMoney(packageTotalSessions - projectedUsed, 2));
     return {
-      currentUsed,
+      beforeRemaining,
+      thisSessionUnits: selectedUnits,
+      afterRemaining,
       projectedUsed,
-      projectedRemaining,
       total: packageTotalSessions,
     };
-  }, [isPackage, activeEnrollment, selectedUnits, packageTotalSessions]);
+  }, [isPackage, activeEnrollment, selectedUnits, packageTotalSessions, session]);
 
   const handleSelectPresetUnit = (val: number) => {
     setSelectedUnits(val);
@@ -495,14 +498,18 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
 
               {/* Package Details if applicable */}
               {packageProjection && (
-                <div className="mt-2 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200/80 text-[11px] space-y-1 text-indigo-900">
-                  <div className="flex items-center justify-between font-bold">
-                    <span>{isEn ? 'Package Usage After this Class:' : 'استهلاك الباقة بعد هذا الدرس:'}</span>
-                    <span className="font-black">{packageProjection.projectedUsed} / {packageProjection.total} {isEn ? 'sessions' : 'حصة'}</span>
+                <div className="mt-2.5 p-3 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-xs space-y-2 text-[#17163D]">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#74778F] border-b border-[#E8E7FF] pb-1.5">
+                    <span>{isEn ? 'Package Balance Before:' : 'رصيد الباقة قبل التسجيل:'}</span>
+                    <strong className="font-black text-[#17163D]">{packageProjection.beforeRemaining} {isEn ? 'sessions' : 'حصة'}</strong>
                   </div>
-                  <div className="flex items-center justify-between text-indigo-700">
-                    <span>{isEn ? 'Remaining in Package:' : 'المتبقي في الباقة:'}</span>
-                    <strong className="font-black">{packageProjection.projectedRemaining} {isEn ? 'sessions' : 'حصة'}</strong>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#7657F6]">
+                    <span>{isEn ? 'Deducted This Session:' : 'المستهلك في هذه الحصة:'}</span>
+                    <strong className="font-black">-{packageProjection.thisSessionUnits} {isEn ? 'sessions' : 'حصة'}</strong>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-black text-emerald-700 pt-1 border-t border-[#E8E7FF]">
+                    <span>{isEn ? 'Package Remaining After:' : 'المتبقي في الباقة بعد الحصة:'}</span>
+                    <span className="text-sm font-black">{packageProjection.afterRemaining} {isEn ? 'sessions' : 'حصة'}</span>
                   </div>
                 </div>
               )}

@@ -53,8 +53,12 @@ import {
   NotificationSettings,
   NotificationStateItem,
   StudentBehaviorLog,
+  TodayPrivateSessionItem,
+  TodayStudentPrivateSummary,
 } from '../types';
 import { getAppLanguage } from './i18n';
+import { getLocalDateString } from './localDate';
+import { formatTimeDisplay, parseTimeToMinutes, getScheduledClassesForDate } from './schedule';
 import {
   roundMoney,
   multiplyMoney,
@@ -3366,8 +3370,6 @@ export const db = {
       const units =
         a.sessionUnits !== undefined && a.sessionUnits !== null
           ? Number(a.sessionUnits)
-          : a.sessionCount !== undefined && a.sessionCount !== null
-          ? Number(a.sessionCount)
           : sess?.sessionUnits !== undefined && sess?.sessionUnits !== null
           ? Number(sess.sessionUnits)
           : sess?.sessionCount !== undefined && sess?.sessionCount !== null
@@ -3855,6 +3857,281 @@ export const db = {
       totalPrepaidCredits,
       studentsSummary,
     };
+  },
+
+  /**
+   * ملخص الدروس الخاصة لليوم لطالب محدد (Feature 1)
+   * Today's Private Lessons Summary for a student
+   */
+  getStudentTodayPrivateSummary: (studentId: string, targetDate?: string): TodayStudentPrivateSummary => {
+    const student = db.getStudentById(studentId);
+    const date = targetDate || getLocalDateString();
+    const studentName = student?.name || '';
+
+    const allEnrollments = db.getStudentPrivateEnrollments(studentId);
+    const privateGroupIds = new Set(allEnrollments.map((e) => e.enrollment.groupId));
+
+    const allSessions = db.getSessions();
+    const todaySessions = allSessions.filter((s) => {
+      if (s.date !== date) return false;
+      if (s.studentId === studentId) return true;
+      if (s.groupId && privateGroupIds.has(s.groupId)) return true;
+      return false;
+    });
+
+    const allAttendance = db.getAttendance();
+    const todayAttendance = allAttendance.filter((a) => {
+      if (a.studentId !== studentId) return false;
+      const s = allSessions.find((sess) => sess.id === a.sessionId);
+      return s && s.date === date;
+    });
+
+    const allGroups = db.getGroups();
+    const allEnrs = db.getEnrollments();
+    const allStudents = db.getStudents();
+    const scheduledItems = getScheduledClassesForDate(date, allGroups, allStudents, allEnrs);
+    const studentScheduledPrivate = scheduledItems.filter(
+      (it) => it.isPrivate && (it.studentId === studentId || it.studentName === studentName)
+    );
+
+    const sessionItems: TodayPrivateSessionItem[] = [];
+
+    // 1. First add recorded / existing session records for today
+    todaySessions.forEach((s) => {
+      const att = todayAttendance.find((a) => a.sessionId === s.id);
+      const enr = allEnrollments.find(
+        (e) => e.enrollment.id === s.enrollmentId || e.enrollment.groupId === s.groupId
+      )?.enrollment;
+      const grp = allGroups.find((g) => g.id === s.groupId);
+
+      const isHourly =
+        enr?.billingMode === 'hourly' ||
+        enr?.billingType === 'hourly' ||
+        grp?.billingMode === 'hourly' ||
+        grp?.billingType === 'hourly';
+      const isPackage =
+        !isHourly &&
+        (enr?.billingMode === 'package' ||
+          enr?.billingType === 'package' ||
+          grp?.billingMode === 'package' ||
+          grp?.billingType === 'package');
+      const isMonthly =
+        !isHourly &&
+        !isPackage &&
+        (enr?.billingMode === 'monthly' ||
+          enr?.billingType === 'monthly' ||
+          grp?.billingMode === 'monthly' ||
+          grp?.billingType === 'monthly');
+
+      const status: AttendanceStatus | 'unrecorded' = att
+        ? att.status
+        : s.status === 'completed'
+        ? 'present'
+        : 'unrecorded';
+      const isPresent = status === 'present' || status === 'late';
+      const isChargedAbsent =
+        status === 'absent_charged' || (status === 'absent' && att?.isCharged !== false);
+
+      const sessionUnits =
+        att?.sessionUnits !== undefined && att?.sessionUnits !== null
+          ? Number(att.sessionUnits)
+          : s.sessionUnits !== undefined && s.sessionUnits !== null
+          ? Number(s.sessionUnits)
+          : isPresent || isChargedAbsent
+          ? isHourly
+            ? undefined
+            : s.sessionUnits || 1
+          : undefined;
+
+      const hours =
+        att?.hours !== undefined && att?.hours !== null
+          ? Number(att.hours)
+          : s.hours !== undefined && s.hours !== null
+          ? Number(s.hours)
+          : isPresent || isChargedAbsent
+          ? isHourly
+            ? s.hours || 1
+            : undefined
+          : undefined;
+
+      // Incomplete check (Feature 3)
+      const isIncomplete =
+        Boolean(s.isIncomplete || att?.isIncomplete) ||
+        (isPresent &&
+          (isHourly
+            ? hours === undefined || hours === null || hours <= 0
+            : !isMonthly
+            ? sessionUnits === undefined || sessionUnits === null || sessionUnits <= 0
+            : false));
+
+      // Financial value calculation (monetary precision)
+      let price = 0;
+      if ((isPresent || isChargedAbsent) && !isIncomplete) {
+        if (isHourly) {
+          const rate =
+            enr?.hourlyRate ||
+            grp?.hourlyRate ||
+            enr?.customPrice ||
+            grp?.defaultPrice ||
+            100;
+          price = roundMoney(multiplyMoney(hours || 0, rate), 2);
+        } else if (isPackage) {
+          const pkgSessions = enr?.packageSessionsCount || grp?.packageSessionsCount || 8;
+          const pkgPrice =
+            enr?.packagePrice ||
+            grp?.defaultPrice ||
+            pkgSessions * (enr?.customPrice || 100);
+          const unitRate =
+            pkgSessions > 0
+              ? divideMoney(pkgPrice, pkgSessions)
+              : enr?.customPrice || 100;
+          price = roundMoney(multiplyMoney(sessionUnits || 0, unitRate), 2);
+        } else if (isMonthly) {
+          price = 0; // Monthly subscription is flat, not per session
+        } else {
+          // Postpaid / Prepaid / Per-session
+          const rate = enr?.customPrice || grp?.defaultPrice || 100;
+          price = roundMoney(multiplyMoney(sessionUnits || 0, rate), 2);
+        }
+      }
+
+      sessionItems.push({
+        sessionId: s.id,
+        occurrenceId: s.id,
+        studentId,
+        studentName,
+        enrollmentId: s.enrollmentId || enr?.id,
+        groupId: s.groupId,
+        subject: grp?.subject || s.title || 'Private Lesson',
+        time: formatTimeDisplay(s.startTime, getAppLanguage().startsWith('ar')),
+        status,
+        sessionUnits,
+        hours,
+        price,
+        billingMode:
+          enr?.billingMode ||
+          (isHourly ? 'hourly' : isPackage ? 'package' : isMonthly ? 'monthly' : 'postpaid'),
+        isIncomplete,
+        notes: att?.notes || s.notes,
+      });
+    });
+
+    // 2. Add scheduled appointments not yet converted to a session
+    studentScheduledPrivate.forEach((sch) => {
+      const alreadyHas = sessionItems.some(
+        (it) => it.time === sch.time || (it.sessionId && sch.id.includes(it.sessionId))
+      );
+      if (!alreadyHas) {
+        const enr = allEnrollments.find((e) => e.enrollment.groupId === sch.groupId)?.enrollment;
+        const grp = allGroups.find((g) => g.id === sch.groupId);
+        const isHourly =
+          enr?.billingMode === 'hourly' ||
+          enr?.billingType === 'hourly' ||
+          grp?.billingMode === 'hourly';
+
+        sessionItems.push({
+          occurrenceId: sch.id,
+          studentId,
+          studentName,
+          enrollmentId: enr?.id || sch.enrollmentId,
+          groupId: sch.groupId,
+          subject: sch.subject || 'Private Lesson',
+          time: sch.time,
+          status: 'unrecorded',
+          price: 0,
+          billingMode: enr?.billingMode || (isHourly ? 'hourly' : 'postpaid'),
+          isIncomplete: false,
+        });
+      }
+    });
+
+    // Sort items chronologically
+    sessionItems.sort((a, b) => {
+      const minA = parseTimeToMinutes(a.time);
+      const minB = parseTimeToMinutes(b.time);
+      return minA - minB;
+    });
+
+    const recordedItems = sessionItems.filter((it) => it.status !== 'unrecorded');
+    const unrecordedItems = sessionItems.filter((it) => it.status === 'unrecorded');
+    const incompleteItems = sessionItems.filter((it) => it.isIncomplete);
+
+    const totalSessionUnits = roundMoney(
+      recordedItems.reduce(
+        (sum, it) =>
+          sum + (!it.isIncomplete && it.sessionUnits && it.sessionUnits > 0 ? it.sessionUnits : 0),
+        0
+      ),
+      2
+    );
+    const totalHours = roundMoney(
+      recordedItems.reduce(
+        (sum, it) => sum + (!it.isIncomplete && it.hours && it.hours > 0 ? it.hours : 0),
+        0
+      ),
+      2
+    );
+    const totalAmount = roundMoney(
+      recordedItems.reduce(
+        (sum, it) => sum + (!it.isIncomplete && it.price && it.price > 0 ? it.price : 0),
+        0
+      ),
+      2
+    );
+
+    const isEn = !getAppLanguage().startsWith('ar');
+    let totalUnitsOrHoursText = '';
+    if (totalHours > 0 && totalSessionUnits === 0) {
+      totalUnitsOrHoursText = `${totalHours} ${isEn ? 'Hours' : 'ساعة'}`;
+    } else if (totalSessionUnits > 0) {
+      totalUnitsOrHoursText = `${totalSessionUnits} ${
+        isEn
+          ? totalSessionUnits === 1
+            ? 'Session'
+            : 'Sessions'
+          : totalSessionUnits === 1
+          ? 'حصة'
+          : totalSessionUnits <= 10
+          ? 'حصص'
+          : 'حصة'
+      }`;
+    } else {
+      totalUnitsOrHoursText = isEn ? '0 Sessions' : '0 حصة';
+    }
+
+    return {
+      studentId,
+      studentName,
+      date,
+      visitsCount: sessionItems.length,
+      recordedVisitsCount: recordedItems.length,
+      unrecordedVisitsCount: unrecordedItems.length,
+      totalSessionUnits,
+      totalHours,
+      totalAmount,
+      hasIncomplete: incompleteItems.length > 0,
+      incompleteCount: incompleteItems.length,
+      totalUnitsOrHoursText,
+      sessions: sessionItems,
+    };
+  },
+
+  /**
+   * جلب ملخص الدروس الخاصة لليوم لجميع الطلاب الذين لديهم دروس خاصة اليوم
+   */
+  getAllTodayPrivateSummaries: (targetDate?: string): TodayStudentPrivateSummary[] => {
+    const date = targetDate || getLocalDateString();
+    const students = db.getStudents().filter((s) => s.status !== 'archived');
+    const list: TodayStudentPrivateSummary[] = [];
+
+    students.forEach((st) => {
+      const summary = db.getStudentTodayPrivateSummary(st.id, date);
+      if (summary.visitsCount > 0) {
+        list.push(summary);
+      }
+    });
+
+    return list;
   },
 
   /**

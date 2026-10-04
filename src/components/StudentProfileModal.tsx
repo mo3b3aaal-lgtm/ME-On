@@ -87,6 +87,8 @@ import {
   getCategoryBadge,
 } from '../utils/behavior';
 import { useTranslation } from '../utils/i18n';
+import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
+import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -223,6 +225,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const studentBehaviorLogs = useMemo(() => (studentId ? db.getStudentBehaviorLogs(studentId) : []), [studentId]);
   const behaviorStats = useMemo(() => calculateStudentBehaviorStats(studentBehaviorLogs), [studentBehaviorLogs]);
   const serviceType = useMemo(() => (studentId ? db.getStudentServiceType(studentId) : 'none'), [studentId]);
+
+  const { todayStr: todayDateStr } = useCurrentLocalDate();
+
+  // Today's Private Lessons Summary for this student (Feature 1)
+  const todayPrivateSummary = useMemo(() => {
+    if (!studentId) return null;
+    return db.getStudentTodayPrivateSummary(studentId, todayDateStr);
+  }, [studentId, todayDateStr, allSessions, attendanceList, enrollments]);
+
+  // Intake modal target state for completing incomplete sessions
+  const [selectedPrivateIntakeSession, setSelectedPrivateIntakeSession] = useState<{
+    session: Session;
+    item: any;
+  } | null>(null);
 
   // Effective recurring schedule for student
   const effectiveSchedule = useMemo(() => {
@@ -511,6 +527,43 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     db.restoreStudent(student.id);
     onDataChanged();
     onClose();
+  };
+
+  const handleConfirmPrivateIntakeInProfile = (result: PrivateClassIntakeResult) => {
+    if (!selectedPrivateIntakeSession || !student) return;
+    const { session } = selectedPrivateIntakeSession;
+    const enrollment = enrollments.find(
+      (e) => e.studentId === student.id && (e.groupId === session.groupId || e.id === session.enrollmentId)
+    );
+
+    const record: Attendance = {
+      id: `att_${session.id}_${student.id}`,
+      sessionId: session.id,
+      studentId: student.id,
+      enrollmentId: enrollment?.id || session.enrollmentId,
+      status: 'present',
+      isCharged: true,
+      sessionUnits: result.sessionUnits,
+      hours: result.hours,
+      isIncomplete: false,
+      notes: result.notes || session.notes,
+      recordedAt: new Date().toISOString(),
+    };
+
+    db.saveAttendanceBatch(session.id, [record]);
+    db.saveSession({
+      ...session,
+      status: 'completed',
+      sessionUnits: result.sessionUnits,
+      hours: result.hours,
+      pricePerStudent: result.pricePerStudent,
+      isIncomplete: false,
+      notes: result.notes || session.notes,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setSelectedPrivateIntakeSession(null);
+    onDataChanged();
   };
 
   const [isSafeDeleteModalOpen, setIsSafeDeleteModalOpen] = useState(false);
@@ -813,6 +866,133 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 ------------------------------------------------------------- */}
             {activeSubTab === 'overview' && (
               <div className="space-y-4">
+                {/* Today's Private Lessons Summary (Feature 1 & Feature 3) */}
+                {todayPrivateSummary && todayPrivateSummary.visitsCount > 0 && (
+                  <div className="classy-card p-4 bg-gradient-to-r from-white via-rose-50/20 to-white border-[#FECDD3] space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-[#FFF1F3] text-[#FF647C] flex items-center justify-center font-black">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-xs sm:text-sm text-[#17163D] flex items-center gap-1.5">
+                            <span>{isEn ? "Today's Private Lessons" : 'دروس اليوم الخاصة'}</span>
+                          </h3>
+                          <p className="text-[11px] text-[#74778F] font-medium">
+                            {student.name} • {todayPrivateSummary.date}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {todayPrivateSummary.hasIncomplete && (
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                            ⚠️ {isEn ? `${todayPrivateSummary.incompleteCount} need(s) completion` : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]">
+                          {todayPrivateSummary.visitsCount} {isEn ? (todayPrivateSummary.visitsCount === 1 ? 'Lesson' : 'Lessons') : (todayPrivateSummary.visitsCount === 1 ? 'درس' : 'دروس')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* List of Today's Sessions */}
+                    <div className="space-y-2">
+                      {todayPrivateSummary.sessions.map((sesItem) => {
+                        const isPres = sesItem.status === 'present' || sesItem.status === 'late';
+                        const isHourly = sesItem.billingMode === 'hourly';
+
+                        return (
+                          <div
+                            key={sesItem.occurrenceId}
+                            className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all ${
+                              sesItem.isIncomplete
+                                ? 'bg-amber-50/80 border-amber-300'
+                                : isPres
+                                ? 'bg-white border-emerald-200 shadow-2xs'
+                                : 'bg-[#F6F7FC] border-[#E8E7FF]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="px-2.5 py-1 rounded-xl bg-[#17163D] text-white font-black text-xs shrink-0">
+                                {sesItem.time}
+                              </div>
+                              <div className="min-w-0">
+                                <strong className="text-xs font-black text-[#17163D] block truncate">
+                                  {sesItem.subject}
+                                </strong>
+                                <span className="text-[11px] text-[#74778F] block">
+                                  {sesItem.status === 'unrecorded'
+                                    ? (isEn ? 'Scheduled • Not recorded yet' : 'مجدول • لم يُرصد بعد')
+                                    : isPres
+                                    ? (isEn ? '✓ Present' : '✓ حضر')
+                                    : (isEn ? 'Absent' : 'لم يحضر')}
+                                  {isPres && (
+                                    <span className="font-black text-[#7657F6] ms-1">
+                                      • {isHourly ? `${sesItem.hours || 0} ${isEn ? 'Hours' : 'ساعة'}` : `${sesItem.sessionUnits || 0} ${isEn ? 'Session(s)' : 'حصة'}`}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {sesItem.isIncomplete ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const actualSession = allSessions.find((s) => s.id === sesItem.sessionId);
+                                    if (actualSession) {
+                                      setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
+                                    }
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-[10px] flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
+                                >
+                                  <span>⚠️</span>
+                                  <span>{isEn ? 'Complete Session' : 'استكمال تفاصيل الحصة'}</span>
+                                </button>
+                              ) : isPres ? (
+                                <div className="text-right">
+                                  <span className="text-xs font-black text-emerald-700 block">
+                                    {sesItem.price} {t('currency')}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const actualSession = allSessions.find((s) => s.id === sesItem.sessionId);
+                                      if (actualSession) {
+                                        setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
+                                      }
+                                    }}
+                                    className="text-[10px] text-[#7657F6] font-bold hover:underline cursor-pointer"
+                                  >
+                                    {isEn ? 'Edit' : 'تعديل'}
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Daily Totals Bar */}
+                    <div className="p-3 rounded-xl bg-white border border-[#FECDD3] flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#74778F]">
+                        {isEn ? "Today's Total:" : 'إجمالي اليوم:'}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-[#7657F6]">
+                          {todayPrivateSummary.totalUnitsOrHoursText}
+                        </span>
+                        <span className="text-sm font-black text-emerald-700">
+                          {todayPrivateSummary.totalAmount} {t('currency')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Financial Summary Bento Cards */}
                 <div className="grid grid-cols-3 gap-2.5 text-center">
                   <div className="classy-card p-3.5 bg-white space-y-1">
@@ -1406,6 +1586,133 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 ------------------------------------------------------------- */}
             {activeSubTab === 'private' && (
               <div className="space-y-3.5">
+                {/* Today's Private Lessons Summary (Feature 1 & Feature 3) */}
+                {todayPrivateSummary && todayPrivateSummary.visitsCount > 0 && (
+                  <div className="classy-card p-4 bg-gradient-to-r from-white via-rose-50/20 to-white border-[#FECDD3] space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-[#FFF1F3] text-[#FF647C] flex items-center justify-center font-black">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-xs sm:text-sm text-[#17163D] flex items-center gap-1.5">
+                            <span>{isEn ? "Today's Private Lessons" : 'دروس اليوم الخاصة'}</span>
+                          </h3>
+                          <p className="text-[11px] text-[#74778F] font-medium">
+                            {student.name} • {todayPrivateSummary.date}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {todayPrivateSummary.hasIncomplete && (
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                            ⚠️ {isEn ? `${todayPrivateSummary.incompleteCount} need(s) completion` : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]">
+                          {todayPrivateSummary.visitsCount} {isEn ? (todayPrivateSummary.visitsCount === 1 ? 'Lesson' : 'Lessons') : (todayPrivateSummary.visitsCount === 1 ? 'درس' : 'دروس')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* List of Today's Sessions */}
+                    <div className="space-y-2">
+                      {todayPrivateSummary.sessions.map((sesItem) => {
+                        const isPres = sesItem.status === 'present' || sesItem.status === 'late';
+                        const isHourly = sesItem.billingMode === 'hourly';
+
+                        return (
+                          <div
+                            key={sesItem.occurrenceId}
+                            className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all ${
+                              sesItem.isIncomplete
+                                ? 'bg-amber-50/80 border-amber-300'
+                                : isPres
+                                ? 'bg-white border-emerald-200 shadow-2xs'
+                                : 'bg-[#F6F7FC] border-[#E8E7FF]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="px-2.5 py-1 rounded-xl bg-[#17163D] text-white font-black text-xs shrink-0">
+                                {sesItem.time}
+                              </div>
+                              <div className="min-w-0">
+                                <strong className="text-xs font-black text-[#17163D] block truncate">
+                                  {sesItem.subject}
+                                </strong>
+                                <span className="text-[11px] text-[#74778F] block">
+                                  {sesItem.status === 'unrecorded'
+                                    ? (isEn ? 'Scheduled • Not recorded yet' : 'مجدول • لم يُرصد بعد')
+                                    : isPres
+                                    ? (isEn ? '✓ Present' : '✓ حضر')
+                                    : (isEn ? 'Absent' : 'لم يحضر')}
+                                  {isPres && (
+                                    <span className="font-black text-[#7657F6] ms-1">
+                                      • {isHourly ? `${sesItem.hours || 0} ${isEn ? 'Hours' : 'ساعة'}` : `${sesItem.sessionUnits || 0} ${isEn ? 'Session(s)' : 'حصة'}`}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {sesItem.isIncomplete ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const actualSession = allSessions.find((s) => s.id === sesItem.sessionId);
+                                    if (actualSession) {
+                                      setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
+                                    }
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-[10px] flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
+                                >
+                                  <span>⚠️</span>
+                                  <span>{isEn ? 'Complete Session' : 'استكمال تفاصيل الحصة'}</span>
+                                </button>
+                              ) : isPres ? (
+                                <div className="text-right">
+                                  <span className="text-xs font-black text-emerald-700 block">
+                                    {sesItem.price} {t('currency')}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const actualSession = allSessions.find((s) => s.id === sesItem.sessionId);
+                                      if (actualSession) {
+                                        setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
+                                      }
+                                    }}
+                                    className="text-[10px] text-[#7657F6] font-bold hover:underline cursor-pointer"
+                                  >
+                                    {isEn ? 'Edit' : 'تعديل'}
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Daily Totals Bar */}
+                    <div className="p-3 rounded-xl bg-white border border-[#FECDD3] flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#74778F]">
+                        {isEn ? "Today's Total:" : 'إجمالي اليوم:'}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-[#7657F6]">
+                          {todayPrivateSummary.totalUnitsOrHoursText}
+                        </span>
+                        <span className="text-sm font-black text-emerald-700">
+                          {todayPrivateSummary.totalAmount} {t('currency')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-[#17163D]">
                     {isEn ? `Private Services & Tutoring (${privateEnrollments.length})` : `الخدمات والدروس الخاصة (${privateEnrollments.length})`}
@@ -2100,6 +2407,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           student={student}
           onConfirmArchive={handleConfirmArchive}
           onConfirmPermanentDelete={handleConfirmPermanentDelete}
+        />
+      )}
+
+      {selectedPrivateIntakeSession && (
+        <PrivateClassIntakeModal
+          isOpen={!!selectedPrivateIntakeSession}
+          onClose={() => setSelectedPrivateIntakeSession(null)}
+          student={student}
+          session={selectedPrivateIntakeSession.session}
+          onConfirm={handleConfirmPrivateIntakeInProfile}
         />
       )}
     </ModalPortal>

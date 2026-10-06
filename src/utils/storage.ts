@@ -55,6 +55,7 @@ import {
   StudentBehaviorLog,
   TodayPrivateSessionItem,
   TodayStudentPrivateSummary,
+  CategoryFinancialBreakdown,
 } from '../types';
 import { getAppLanguage } from './i18n';
 import { getLocalDateString } from './localDate';
@@ -149,6 +150,161 @@ export function formatSessionQuantityDisplay(
   if (units === 3) return '3 حصص';
   if (units > 2 && units <= 10 && Number.isInteger(units)) return `${units} حصص`;
   return `${units} حصة`;
+}
+
+/**
+ * Central Single Source of Truth for Lesson Quantity Calculation
+ * Absolute Rule: ONE SESSION RECORD DOES NOT NECESSARILY EQUAL ONE LESSON
+ */
+export function getSessionLessonQuantity(
+  session?: { sessionUnits?: number | null; sessionCount?: number | null } | null,
+  attendance?: { sessionUnits?: number | null } | null
+): number {
+  if (attendance?.sessionUnits !== undefined && attendance?.sessionUnits !== null && Number(attendance.sessionUnits) > 0) {
+    return Number(attendance.sessionUnits);
+  }
+  if (session?.sessionUnits !== undefined && session?.sessionUnits !== null && Number(session.sessionUnits) > 0) {
+    return Number(session.sessionUnits);
+  }
+  if (session?.sessionCount !== undefined && session?.sessionCount !== null && Number(session.sessionCount) > 0) {
+    return Number(session.sessionCount);
+  }
+  return 1;
+}
+
+/**
+ * Calculates total completed lesson units for a list of attendance records
+ */
+export function calculateAttendanceLessonUnits(
+  attendanceList: Attendance[],
+  sessions: Session[],
+  filterStatus?: (status: string) => boolean
+): number {
+  const sessionMap = new Map<string, Session>();
+  sessions.forEach((s) => sessionMap.set(s.id, s));
+
+  return roundMoney(
+    attendanceList.reduce((sum, att) => {
+      if (filterStatus && !filterStatus(att.status)) return sum;
+      const sess = sessionMap.get(att.sessionId);
+      const isHourly = sess?.isHourly === true || (att.hours !== undefined && Number(att.hours) > 0);
+      if (isHourly) return sum; // Do not mix hours into lesson counts
+
+      const qty = getSessionLessonQuantity(sess, att);
+      return sum + qty;
+    }, 0),
+    2
+  );
+}
+
+export interface WorkloadSummary {
+  totalAppointments: number;
+  completedAppointments: number;
+  scheduledAppointments: number;
+  cancelledAppointments: number;
+  completedLessonUnits: number;
+  presentLessonUnits: number;
+  absentChargedLessonUnits: number;
+  completedHours: number;
+  totalWorkloadValue: number;
+  workloadDisplayLabel: string;
+}
+
+/**
+ * Universal Central Workload and Quantity Calculator
+ * Strictest Separation: Appointments (Sessions) vs Lessons (Units) vs Hours (Duration)
+ */
+export function calculateWorkloadSummary(
+  sessions: Session[],
+  attendanceList: Attendance[],
+  isRTL: boolean = true
+): WorkloadSummary {
+  const sessionMap = new Map<string, Session>();
+  sessions.forEach((s) => sessionMap.set(s.id, s));
+
+  let totalAppointments = sessions.length;
+  let completedAppointments = 0;
+  let scheduledAppointments = 0;
+  let cancelledAppointments = 0;
+
+  let completedLessonUnits = 0;
+  let presentLessonUnits = 0;
+  let absentChargedLessonUnits = 0;
+  let completedHours = 0;
+  let totalWorkloadValue = 0;
+
+  sessions.forEach((s) => {
+    if (s.status === 'completed') completedAppointments++;
+    else if (s.status === 'scheduled') scheduledAppointments++;
+    else if (s.status === 'cancelled') cancelledAppointments++;
+  });
+
+  const processedSessionIds = new Set<string>();
+
+  attendanceList.forEach((att) => {
+    const s = sessionMap.get(att.sessionId);
+    if (!s || s.status === 'cancelled') return;
+
+    const isHourly = s.isHourly === true || (att.hours !== undefined && Number(att.hours) > 0);
+    const isPresent = att.status === 'present' || att.status === 'late';
+    const isAbsentCharged = att.status === 'absent_charged' || (att.status === 'absent' && att.isCharged !== false);
+
+    if (isPresent || isAbsentCharged) {
+      if (isHourly) {
+        const hrs = att.hours !== undefined && att.hours !== null ? Number(att.hours) : (s.hours !== undefined ? Number(s.hours) : 1);
+        completedHours = roundMoney(completedHours + hrs, 2);
+        const rate = att.hourlyRate || s.hourlyRate || 100;
+        totalWorkloadValue = addMoney(totalWorkloadValue, multiplyMoney(hrs, rate));
+      } else {
+        const qty = getSessionLessonQuantity(s, att);
+        completedLessonUnits = roundMoney(completedLessonUnits + qty, 2);
+        if (isPresent) presentLessonUnits = roundMoney(presentLessonUnits + qty, 2);
+        if (isAbsentCharged) absentChargedLessonUnits = roundMoney(absentChargedLessonUnits + qty, 2);
+        const unitPrice = s.effectiveSessionPrice || (s.sessionUnits && s.sessionUnits > 0 ? divideMoney(s.pricePerStudent || 100, s.sessionUnits) : (s.pricePerStudent || 100));
+        totalWorkloadValue = addMoney(totalWorkloadValue, multiplyMoney(qty, unitPrice));
+      }
+    }
+    processedSessionIds.add(att.sessionId);
+  });
+
+  // For any completed sessions with no individual attendance record yet (e.g. legacy/batch completed)
+  sessions.filter((s) => s.status === 'completed' && !processedSessionIds.has(s.id)).forEach((s) => {
+    const isHourly = s.isHourly === true || (s.hours !== undefined && Number(s.hours) > 0);
+    if (isHourly) {
+      const hrs = s.hours !== undefined ? Number(s.hours) : 1;
+      completedHours = roundMoney(completedHours + hrs, 2);
+      totalWorkloadValue = addMoney(totalWorkloadValue, s.totalSessionValue || multiplyMoney(hrs, s.hourlyRate || 100));
+    } else {
+      const qty = getSessionLessonQuantity(s, null);
+      completedLessonUnits = roundMoney(completedLessonUnits + qty, 2);
+      presentLessonUnits = roundMoney(presentLessonUnits + qty, 2);
+      totalWorkloadValue = addMoney(totalWorkloadValue, s.totalSessionValue || s.pricePerStudent || 100);
+    }
+  });
+
+  let workloadDisplayLabel = '';
+  if (completedHours > 0 && completedLessonUnits === 0) {
+    workloadDisplayLabel = formatSessionQuantityDisplay({ hours: completedHours, isHourly: true }, isRTL);
+  } else if (completedLessonUnits > 0 && completedHours === 0) {
+    workloadDisplayLabel = formatSessionQuantityDisplay({ sessionUnits: completedLessonUnits, isHourly: false }, isRTL);
+  } else if (completedLessonUnits > 0 && completedHours > 0) {
+    workloadDisplayLabel = `${formatSessionQuantityDisplay({ sessionUnits: completedLessonUnits, isHourly: false }, isRTL)} + ${formatSessionQuantityDisplay({ hours: completedHours, isHourly: true }, isRTL)}`;
+  } else {
+    workloadDisplayLabel = isRTL ? '0 حصة' : '0 Lessons';
+  }
+
+  return {
+    totalAppointments,
+    completedAppointments,
+    scheduledAppointments,
+    cancelledAppointments,
+    completedLessonUnits,
+    presentLessonUnits,
+    absentChargedLessonUnits,
+    completedHours,
+    totalWorkloadValue,
+    workloadDisplayLabel,
+  };
 }
 
 let lastAuthDiagnosticsRecord: AuthDiagnostics | null = null;
@@ -1465,7 +1621,7 @@ export function formatSyncStatusArabic(
         label: isEn
           ? 'Deferred - Cannot reach Cloud Server (Data saved safely locally)'
           : 'مؤجل - تعذر الوصول للسيرفر السحابي (البيانات محفوظة محلياً)',
-        badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
+        badgeClass: 'bg-[#B56B45]/15 text-[#B56B45] border border-[#B56B45]/35',
         iconType: 'offline',
       };
     }
@@ -1473,7 +1629,7 @@ export function formatSyncStatusArabic(
       label: isEn
         ? 'Deferred - No Internet connection (Data saved safely locally)'
         : 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
-      badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
+      badgeClass: 'bg-[#B56B45]/15 text-[#B56B45] border border-[#B56B45]/35',
       iconType: 'offline',
     };
   }
@@ -1482,26 +1638,26 @@ export function formatSyncStatusArabic(
     case 'syncing':
       return {
         label: isEn ? 'Syncing data with cloud...' : 'جاري مزامنة البيانات مع السحابة...',
-        badgeClass: 'bg-[#55C7E8]/15 text-[#0284C7] border border-[#55C7E8]/30',
+        badgeClass: 'bg-[#B68A4C]/15 text-[#5C4033] border border-[#B68A4C]/40',
         iconType: 'syncing',
       };
     case 'success':
     case 'idle':
       return {
         label: isEn ? 'Synced & Ready (All data secured on Cloud)' : 'متزامن وجاهز (جميع البيانات مؤمنة بالسحابة)',
-        badgeClass: 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30',
+        badgeClass: 'bg-[#EADBC7] text-[#5C4033] border border-[#B68A4C]/50',
         iconType: 'success',
       };
     case 'error':
       return {
         label: isEn ? 'Last sync failed (Data preserved locally)' : 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
-        badgeClass: 'bg-[#FF647C]/15 text-[#FF647C] border border-[#FF647C]/30',
+        badgeClass: 'bg-[#6B1E2B]/15 text-[#6B1E2B] border border-[#6B1E2B]/35',
         iconType: 'error',
       };
     default:
       return {
         label: isEn ? 'Synced & Ready' : 'متزامن وجاهز',
-        badgeClass: 'bg-[#7657F6]/15 text-[#7657F6] border border-[#7657F6]/30',
+        badgeClass: 'bg-[#EADBC7] text-[#6B1E2B] border border-[#B6A89C]',
         iconType: 'idle',
       };
   }
@@ -1571,13 +1727,32 @@ export function calculateCustomEnrollmentPrice(
 
 // ==========================================
 // Database Engine API
+const ALLOWED_LUXURY_HEX = ['#6B1E2B', '#B68A4C', '#B56B45', '#5C4033', '#69493C', '#2F2F2F', '#B6A89C'];
+
+function normalizeLuxuryAccentColor(color: string | undefined, idSeed: string, fallback = '#6B1E2B'): string {
+  if (!color) return fallback;
+  const upper = color.toUpperCase();
+  if (ALLOWED_LUXURY_HEX.includes(upper)) return upper;
+  let hash = 0;
+  const str = idSeed || color;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return ALLOWED_LUXURY_HEX[Math.abs(hash) % ALLOWED_LUXURY_HEX.length];
+}
+
 // ==========================================
 export const db = {
   // 1. Students (الطلاب)
   getStudents: (userId?: string): Student[] => {
     const currentUserId = userId || getActiveUserId();
     const all = getList<Student>(STORAGE_KEYS.STUDENTS, []);
-    return all.filter((s) => (s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+    return all
+      .filter((s) => (s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher'))
+      .map((s) => ({
+        ...s,
+        avatarColor: normalizeLuxuryAccentColor(s.avatarColor, s.id, '#6B1E2B'),
+      }));
   },
 
   getStudentById: (id: string): Student | undefined => {
@@ -1738,7 +1913,12 @@ export const db = {
   getGroups: (userId?: string): Group[] => {
     const currentUserId = userId || getActiveUserId();
     const all = getList<Group>(STORAGE_KEYS.GROUPS, []);
-    return all.filter((g) => (g.userId ? g.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+    return all
+      .filter((g) => (g.userId ? g.userId === currentUserId : currentUserId === 'acc_master_teacher'))
+      .map((g) => ({
+        ...g,
+        accentColor: normalizeLuxuryAccentColor(g.accentColor, g.id, g.type === 'private' ? '#B56B45' : '#6B1E2B'),
+      }));
   },
 
   getGroupById: (id: string): Group | undefined => {
@@ -1927,7 +2107,7 @@ export const db = {
       scheduleTime: options.scheduleTime || '04:00 م',
       scheduleTimes: options.scheduleTimes,
       roomOrLocation: options.roomOrLocation || 'منزل الطالب / أونلاين',
-      accentColor: '#FF647C', // Coral accent for private lessons
+      accentColor: '#B56B45', // Copper accent for private lessons
       notes: options.notes || '',
       createdAt: new Date().toISOString(),
     };
@@ -2136,7 +2316,9 @@ export const db = {
     groupId: string;
     date: string;
     startTime: string;
-    sessionCount: number;
+    sessionCount?: number;
+    sessionUnits?: number;
+    pricePerStudent?: number;
     hours?: number;
     hourlyRate?: number;
     title?: string;
@@ -2147,12 +2329,36 @@ export const db = {
     sessionStatus?: 'completed' | 'cancelled' | 'scheduled';
   }): Session[] => {
     const activeUserId = getActiveUserId();
-    const count = Math.max(1, Math.floor(params.sessionCount || 1));
+    const count = Math.max(0.25, Number(params.sessionUnits ?? params.sessionCount) || 1);
     const student = db.getStudentById(params.studentId);
     const enrollment = db.getEnrollmentById(params.enrollmentId);
     const group = db.getGroupById(params.groupId);
 
+    const billingMode: BillingMode =
+      enrollment?.billingMode ||
+      (enrollment?.billingType === 'hourly'
+        ? 'hourly'
+        : enrollment?.billingType === 'monthly'
+        ? 'monthly'
+        : enrollment?.billingType === 'package'
+        ? 'package'
+        : enrollment?.billingType === 'prepaid'
+        ? 'prepaid'
+        : 'postpaid') ||
+      group?.billingMode ||
+      (group?.billingType === 'hourly'
+        ? 'hourly'
+        : group?.billingType === 'monthly'
+        ? 'monthly'
+        : group?.billingType === 'package'
+        ? 'package'
+        : group?.billingType === 'prepaid'
+        ? 'prepaid'
+        : 'postpaid') ||
+      'postpaid';
+
     const isHourly =
+      billingMode === 'hourly' ||
       enrollment?.billingMode === 'hourly' ||
       enrollment?.billingType === 'hourly' ||
       group?.billingMode === 'hourly' ||
@@ -2218,57 +2424,58 @@ export const db = {
     const createdSessions: Session[] = [];
     const baseTitle = params.title || (isCancelled ? `حصة خاصة ملغاة: ${student?.name || 'طالب'}` : `حصة خاصة: ${student?.name || 'طالب'}`);
 
-    for (let i = 1; i <= count; i++) {
-      const sessionSuffix = count > 1 ? ` (حصة ${i} من ${count})` : '';
-      const sessionId = `ses_priv_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 6)}`;
-      
-      const newSession: Session = {
-        id: sessionId,
-        userId: activeUserId,
-        groupId: params.groupId,
-        enrollmentId: params.enrollmentId,
-        studentId: params.studentId,
-        packageId,
-        title: `${baseTitle}${sessionSuffix}`,
-        date: params.date,
-        dayName,
-        month,
-        year,
-        startTime: params.startTime,
-        status: finalSessionStatus,
-        pricePerStudent: effectiveSessionPrice,
-        hours: isHourly ? hours : undefined,
-        hourlyRate: isHourly ? hourlyRate : undefined,
-        sessionCount: 1,
-        effectiveSessionPrice,
-        totalSessionValue: effectiveSessionPrice,
-        packageTotalPrice,
-        packageSessionsCount,
-        notes: params.notes || '',
-        createdAt: new Date().toISOString(),
-      };
+    const sessionId = `ses_priv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    
+    const newSession: Session = {
+      id: sessionId,
+      userId: activeUserId,
+      groupId: params.groupId,
+      enrollmentId: params.enrollmentId,
+      studentId: params.studentId,
+      packageId,
+      title: baseTitle,
+      date: params.date,
+      dayName,
+      month,
+      year,
+      startTime: params.startTime,
+      status: finalSessionStatus,
+      pricePerStudent: totalSessionValue,
+      sessionUnits: isHourly ? undefined : count,
+      sessionCount: isHourly ? 1 : count,
+      hours: isHourly ? hours : undefined,
+      hourlyRate: isHourly ? hourlyRate : undefined,
+      isHourly,
+      billingMode,
+      effectiveSessionPrice: isHourly ? effectiveSessionPrice : (count > 0 ? divideMoney(totalSessionValue, count) : effectiveSessionPrice),
+      totalSessionValue,
+      packageTotalPrice,
+      packageSessionsCount,
+      notes: params.notes || '',
+      createdAt: new Date().toISOString(),
+    };
 
-      db.saveSession(newSession);
-      createdSessions.push(newSession);
+    db.saveSession(newSession);
+    createdSessions.push(newSession);
 
-      // Create attendance record
-      const attendanceRec: Attendance = {
-        id: `att_priv_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 6)}`,
-        userId: activeUserId,
-        sessionId: newSession.id,
-        studentId: params.studentId,
-        enrollmentId: params.enrollmentId,
-        status: finalAttendanceStatus,
-        isCharged: finalIsCharged,
-        hours: isHourly ? hours : undefined,
-        hourlyRate: isHourly ? hourlyRate : undefined,
-        absenceReason: params.absenceReason || (isCancelled ? 'حصة ملغاة' : undefined),
-        recordedAt: new Date().toISOString(),
-        notes: params.notes || (params.absenceReason ? `سبب الغياب: ${params.absenceReason}` : undefined),
-      };
+    // Create attendance record
+    const attendanceRec: Attendance = {
+      id: `att_priv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      userId: activeUserId,
+      sessionId: newSession.id,
+      studentId: params.studentId,
+      enrollmentId: params.enrollmentId,
+      status: finalAttendanceStatus,
+      isCharged: finalIsCharged,
+      sessionUnits: isHourly ? undefined : count,
+      hours: isHourly ? hours : undefined,
+      hourlyRate: isHourly ? hourlyRate : undefined,
+      absenceReason: params.absenceReason || (isCancelled ? 'حصة ملغاة' : undefined),
+      recordedAt: new Date().toISOString(),
+      notes: params.notes || (params.absenceReason ? `سبب الغياب: ${params.absenceReason}` : undefined),
+    };
 
-      db.saveAttendanceBatch(newSession.id, [attendanceRec]);
-    }
+    db.saveAttendanceBatch(newSession.id, [attendanceRec]);
 
     return createdSessions;
   },
@@ -3413,7 +3620,7 @@ export const db = {
     const group = db.getGroupById(enrollment.groupId);
     const groupName = group ? group.name : 'مجموعة محذوفة';
     const groupType = group ? group.type : enrollment.serviceType;
-    const accentColor = group ? group.accentColor : '#7657F6';
+    const accentColor = group ? group.accentColor : '#6B1E2B';
 
     const allGroupSessions = db.getSessions().filter(
       (s) => s.groupId === enrollment.groupId || (s.enrollmentId && s.enrollmentId === enrollment.id)
@@ -3756,6 +3963,26 @@ export const db = {
       remaining = Math.max(0, subtractMoney(totalDue, totalPaid));
     }
 
+    // Exact Paid & Unpaid Lesson Quantities (Converting Payments into Equivalent Paid Lessons)
+    let paidLessonsCount = 0;
+    let unpaidLessonsCount = 0;
+
+    if (!isHourly) {
+      const effectiveUnitRate = isPackage
+        ? (enrollment.packageSessionsCount && enrollment.packageSessionsCount > 0
+            ? divideMoney(enrollment.packagePrice || group?.defaultPrice || enrollment.customPrice, enrollment.packageSessionsCount)
+            : sessionRate)
+        : sessionRate;
+
+      if (effectiveUnitRate > 0) {
+        paidLessonsCount = Math.min(attendedUnits, roundMoney(totalPaid / effectiveUnitRate, 2));
+        unpaidLessonsCount = Math.max(0, roundMoney(subtractMoney(attendedUnits, paidLessonsCount), 2));
+      } else {
+        paidLessonsCount = attendedUnits;
+        unpaidLessonsCount = 0;
+      }
+    }
+
     const creditLogs = db.getEnrollmentCreditLogs(enrollment.id);
 
     return {
@@ -3788,6 +4015,8 @@ export const db = {
       settledSessionsCount,
       freeSessionsCount,
       unpaidSessionsCount,
+      paidLessonsCount,
+      unpaidLessonsCount,
       creditLogs,
       monthlyLedger,
       payments,
@@ -3827,25 +4056,75 @@ export const db = {
     const groupSummaries = enrollmentsSummary.filter((e) => e.groupType !== 'private');
     const privateSummaries = enrollmentsSummary.filter((e) => e.groupType === 'private');
 
-    const groupsFinancials = {
-      totalDue: roundMoney(groupSummaries.reduce((sum, s) => sum + s.totalDue, 0), 2),
-      totalPaid: roundMoney(groupSummaries.reduce((sum, s) => sum + s.totalPaid, 0), 2),
-      remaining: roundMoney(groupSummaries.reduce((sum, s) => sum + s.remaining, 0), 2),
-      totalSessionCredit: groupSummaries.reduce((sum, s) => sum + s.sessionCredit, 0),
-      totalUnpaidSessions: groupSummaries.reduce((sum, s) => sum + s.unpaidSessionsCount, 0),
-      totalFinancialCredit: roundMoney(groupSummaries.reduce((sum, s) => sum + s.financialCredit, 0), 2),
-      enrollments: groupSummaries,
+    const buildCategoryBreakdown = (summaries: EnrollmentFinancialSummary[]): CategoryFinancialBreakdown => {
+      const totalDue = roundMoney(summaries.reduce((sum, s) => sum + s.totalDue, 0), 2);
+      const totalPaid = roundMoney(summaries.reduce((sum, s) => sum + s.totalPaid, 0), 2);
+      const remaining = roundMoney(summaries.reduce((sum, s) => sum + s.remaining, 0), 2);
+      const totalSessionCredit = summaries.reduce((sum, s) => sum + s.sessionCredit, 0);
+      const totalUnpaidSessions = summaries.reduce((sum, s) => sum + s.unpaidSessionsCount, 0);
+      const totalFinancialCredit = roundMoney(summaries.reduce((sum, s) => sum + s.financialCredit, 0), 2);
+
+      const lessonSummaries = summaries.filter((s) => s.billingType !== 'hourly' && s.billingMode !== 'hourly');
+      const hourlySummaries = summaries.filter((s) => s.billingType === 'hourly' || s.billingMode === 'hourly');
+
+      const totalCompletedLessons = roundMoney(
+        lessonSummaries.reduce((sum, s) => sum + (s.totalConsumedUnits || s.attendedSessionsCount || 0), 0),
+        2
+      );
+      const totalPaidLessons = roundMoney(
+        lessonSummaries.reduce((sum, s) => sum + (s.paidLessonsCount ?? s.settledSessionsCount ?? 0), 0),
+        2
+      );
+      const totalUnpaidLessons = roundMoney(
+        lessonSummaries.reduce((sum, s) => sum + (s.unpaidLessonsCount ?? s.unpaidSessionsCount ?? 0), 0),
+        2
+      );
+      const totalAppointments = summaries.reduce((sum, s) => sum + (s.actualOccurrencesCount || 0), 0);
+      const totalHours = roundMoney(hourlySummaries.reduce((sum, s) => sum + (s.totalHours || 0), 0), 2);
+      const totalUnpaidHours = roundMoney(hourlySummaries.reduce((sum, s) => sum + (s.unpaidHours || 0), 0), 2);
+
+      return {
+        totalDue,
+        totalPaid,
+        remaining,
+        totalSessionCredit,
+        totalUnpaidSessions,
+        totalCompletedLessons,
+        totalPaidLessons,
+        totalUnpaidLessons,
+        totalAppointments,
+        totalHours,
+        totalUnpaidHours,
+        totalFinancialCredit,
+        enrollments: summaries,
+      };
     };
 
-    const privateFinancials = {
-      totalDue: roundMoney(privateSummaries.reduce((sum, s) => sum + s.totalDue, 0), 2),
-      totalPaid: roundMoney(privateSummaries.reduce((sum, s) => sum + s.totalPaid, 0), 2),
-      remaining: roundMoney(privateSummaries.reduce((sum, s) => sum + s.remaining, 0), 2),
-      totalSessionCredit: privateSummaries.reduce((sum, s) => sum + s.sessionCredit, 0),
-      totalUnpaidSessions: privateSummaries.reduce((sum, s) => sum + s.unpaidSessionsCount, 0),
-      totalFinancialCredit: roundMoney(privateSummaries.reduce((sum, s) => sum + s.financialCredit, 0), 2),
-      enrollments: privateSummaries,
-    };
+    const groupsFinancials = buildCategoryBreakdown(groupSummaries);
+    const privateFinancials = buildCategoryBreakdown(privateSummaries);
+
+    const grandCompletedLessons = roundMoney(
+      (groupsFinancials.totalCompletedLessons || 0) + (privateFinancials.totalCompletedLessons || 0),
+      2
+    );
+    const grandPaidLessons = roundMoney(
+      (groupsFinancials.totalPaidLessons || 0) + (privateFinancials.totalPaidLessons || 0),
+      2
+    );
+    const grandUnpaidLessons = roundMoney(
+      (groupsFinancials.totalUnpaidLessons || 0) + (privateFinancials.totalUnpaidLessons || 0),
+      2
+    );
+    const grandAppointmentsCount =
+      (groupsFinancials.totalAppointments || 0) + (privateFinancials.totalAppointments || 0);
+    const grandTotalHours = roundMoney(
+      (groupsFinancials.totalHours || 0) + (privateFinancials.totalHours || 0),
+      2
+    );
+    const grandUnpaidHours = roundMoney(
+      (groupsFinancials.totalUnpaidHours || 0) + (privateFinancials.totalUnpaidHours || 0),
+      2
+    );
 
     return {
       studentId,
@@ -3856,6 +4135,12 @@ export const db = {
       grandRemaining,
       totalSessionCredit,
       totalUnpaidSessions,
+      grandCompletedLessons,
+      grandPaidLessons,
+      grandUnpaidLessons,
+      grandAppointmentsCount,
+      grandTotalHours,
+      grandUnpaidHours,
       totalFinancialCredit,
       allPayments,
       groupsFinancials,
@@ -3908,6 +4193,22 @@ export const db = {
       }
     }
 
+    const isHourlyGroup = group.billingType === 'hourly' || group.billingMode === 'hourly';
+    const isPrivateGroup = group.type === 'private';
+    const allAtt = db.getAttendance();
+    const completedLessonsOrSessionsCount =
+      isPrivateGroup && !isHourlyGroup
+        ? roundMoney(
+            completedSessions.reduce((sum, s) => {
+              const att = allAtt.find((a) => a.sessionId === s.id);
+              return sum + getSessionLessonQuantity(s, att);
+            }, 0),
+            2
+          )
+        : completedSessions.length;
+
+    const remainingAmount = Math.max(0, subtractMoney(totalDue, totalPaid));
+
     return {
       groupId: group.id,
       groupName: group.name,
@@ -3918,9 +4219,14 @@ export const db = {
       totalStudents: enrollments.length,
       totalDue,
       totalPaid,
-      remaining: Math.max(0, subtractMoney(totalDue, totalPaid)),
-      totalCompletedSessions: completedSessions.length,
-      totalAttendedSessions,
+      remaining: remainingAmount,
+      totalCompletedSessions: completedLessonsOrSessionsCount,
+      totalCompletedAppointments: completedSessions.length,
+      completedSessionsCount: completedLessonsOrSessionsCount,
+      totalExpectedRevenue: totalDue,
+      totalRevenue: totalPaid,
+      totalRemainingDues: remainingAmount,
+      totalAttendedSessions: roundMoney(totalAttendedSessions, 2),
       totalPrepaidCredits,
       studentsSummary,
     };
@@ -4256,12 +4562,12 @@ export const db = {
       const groupBreakdown = initBreakdown();
       const privateBreakdown = initBreakdown();
       const methodStats: Record<string, { label: string; amount: number; count: number; color?: string }> = {
-        cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#607B5E' },
-        vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#B86B52' },
-        instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#586E7E' },
-        bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#B88438' },
-        prepaid_auto: { label: 'دفع مسبق للحصص', amount: 0, count: 0, color: '#4F46E5' },
-        other: { label: 'أخرى', amount: 0, count: 0, color: '#878E82' },
+        cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#6B1E2B' },
+        vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#B56B45' },
+        instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#B68A4C' },
+        bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#5C4033' },
+        prepaid_auto: { label: 'دفع مسبق للحصص', amount: 0, count: 0, color: '#69493C' },
+        other: { label: 'أخرى', amount: 0, count: 0, color: '#B6A89C' },
       };
 
       let totalCompleted = 0;
@@ -4279,30 +4585,50 @@ export const db = {
         const isCompleted = s.status === 'completed';
         const isCancelled = s.status === 'cancelled';
         if (isCancelled) cancelledCount++;
-        if (isCompleted) totalCompleted++;
 
         const grp = groups.find((g) => g.id === s.groupId);
-        const isPrivate = grp?.type === 'private' || s.groupId.startsWith('private_');
+        const isPrivate = !!s.studentId || grp?.type === 'private' || s.groupId.startsWith('private_');
         const targetB = isPrivate ? privateBreakdown : groupBreakdown;
 
-        targetB.totalSessions++;
-        if (isCompleted) targetB.completedSessions++;
-
         const sAttendance = attendance.filter((a) => a.sessionId === s.id);
+        const sEnr = enrollments.find(
+          (e) =>
+            e.id === s.enrollmentId ||
+            (sAttendance[0]?.enrollmentId && e.id === sAttendance[0].enrollmentId) ||
+            (s.studentId && e.studentId === s.studentId && e.groupId === s.groupId)
+        );
+        const isSessionHourly =
+          s.isHourly === true ||
+          s.billingMode === 'hourly' ||
+          sEnr?.billingType === 'hourly' ||
+          sEnr?.billingMode === 'hourly' ||
+          grp?.billingType === 'hourly' ||
+          grp?.billingMode === 'hourly' ||
+          (s.hours !== undefined && Number(s.hours) > 0 && !s.sessionUnits && !sAttendance[0]?.sessionUnits);
+
+        // Session-based Private uses sessionUnits; Hourly and Group stay 1 per session
+        const sessionLessonQty = isPrivate && !isSessionHourly ? getSessionLessonQuantity(s, sAttendance[0]) : 1;
+
+        targetB.totalSessions = roundMoney(targetB.totalSessions + sessionLessonQty, 2);
+        if (isCompleted) {
+          totalCompleted = roundMoney(totalCompleted + sessionLessonQty, 2);
+          targetB.completedSessions = roundMoney(targetB.completedSessions + sessionLessonQty, 2);
+        }
 
         sAttendance.forEach((a) => {
+          const attLessonQty = isPrivate && !isSessionHourly ? getSessionLessonQuantity(s, a) : 1;
           if (a.status === 'present') {
-            presentCount++;
-            targetB.presentCount++;
+            presentCount = roundMoney(presentCount + attLessonQty, 2);
+            targetB.presentCount = roundMoney(targetB.presentCount + attLessonQty, 2);
           } else if (a.status === 'late') {
-            lateCount++;
-            targetB.lateCount++;
+            lateCount = roundMoney(lateCount + attLessonQty, 2);
+            targetB.lateCount = roundMoney(targetB.lateCount + attLessonQty, 2);
           } else if (a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false)) {
-            absentChargedCount++;
-            targetB.absentChargedCount++;
+            absentChargedCount = roundMoney(absentChargedCount + attLessonQty, 2);
+            targetB.absentChargedCount = roundMoney(targetB.absentChargedCount + attLessonQty, 2);
           } else if (a.status === 'absent_free' || a.status === 'excused') {
-            freeCount++;
-            targetB.freeCount++;
+            freeCount = roundMoney(freeCount + attLessonQty, 2);
+            targetB.freeCount = roundMoney(targetB.freeCount + attLessonQty, 2);
           }
 
           const isCharged =
@@ -4334,13 +4660,15 @@ export const db = {
               const rate = a.hourlyRate || s.hourlyRate || enr?.hourlyRate || grp?.hourlyRate || enr?.customPrice || grp?.defaultPrice || 100;
               sessionVal = roundMoney(multiplyMoney(hours, rate), 2);
             } else if (isPackage) {
+              const qty = getSessionLessonQuantity(s, a);
               const pkgSessions = enr?.packageSessionsCount || grp?.packageSessionsCount || 8;
               const pkgPrice = enr?.packagePrice || grp?.defaultPrice || enr?.customPrice || 800;
               const uRate = pkgSessions > 0 ? divideMoney(pkgPrice, pkgSessions) : 100;
-              sessionVal = roundMoney(uRate, 2);
+              sessionVal = roundMoney(multiplyMoney(qty, uRate), 2);
             } else {
+              const qty = getSessionLessonQuantity(s, a);
               const sRate = a.sessionPriceSnapshot || (enr ? getEffectiveSessionPrice(enr, grp) : (grp?.defaultPrice || 100));
-              sessionVal = roundMoney(sRate, 2);
+              sessionVal = roundMoney(multiplyMoney(qty, sRate), 2);
             }
 
             totalSessionVal = addMoney(totalSessionVal, sessionVal);
@@ -4453,33 +4781,33 @@ export const db = {
         let tRem = 0;
 
         mList.forEach((m) => {
-          totalComp += m.totalCompletedSessions;
-          pCount += m.presentSessionsCount;
-          lCount += m.lateSessionsCount;
-          aCount += m.absentChargedCount;
-          fCount += m.freeSessionsCount;
+          totalComp = roundMoney(totalComp + m.totalCompletedSessions, 2);
+          pCount = roundMoney(pCount + m.presentSessionsCount, 2);
+          lCount = roundMoney(lCount + m.lateSessionsCount, 2);
+          aCount = roundMoney(aCount + m.absentChargedCount, 2);
+          fCount = roundMoney(fCount + m.freeSessionsCount, 2);
           tVal = addMoney(tVal, m.totalSessionValue);
           tColl = addMoney(tColl, m.totalCollected);
           tDue = addMoney(tDue, m.totalDue);
           tRem = addMoney(tRem, m.totalRemaining);
 
-          grpB.totalSessions += m.group.totalSessions;
-          grpB.completedSessions += m.group.completedSessions;
-          grpB.presentCount += m.group.presentCount;
-          grpB.lateCount += m.group.lateCount;
-          grpB.absentChargedCount += m.group.absentChargedCount;
-          grpB.freeCount += m.group.freeCount;
+          grpB.totalSessions = roundMoney(grpB.totalSessions + m.group.totalSessions, 2);
+          grpB.completedSessions = roundMoney(grpB.completedSessions + m.group.completedSessions, 2);
+          grpB.presentCount = roundMoney(grpB.presentCount + m.group.presentCount, 2);
+          grpB.lateCount = roundMoney(grpB.lateCount + m.group.lateCount, 2);
+          grpB.absentChargedCount = roundMoney(grpB.absentChargedCount + m.group.absentChargedCount, 2);
+          grpB.freeCount = roundMoney(grpB.freeCount + m.group.freeCount, 2);
           grpB.totalSessionValue = addMoney(grpB.totalSessionValue, m.group.totalSessionValue);
           grpB.totalCollected = addMoney(grpB.totalCollected, m.group.totalCollected);
           grpB.totalDue = addMoney(grpB.totalDue, m.group.totalDue);
           grpB.totalRemaining = addMoney(grpB.totalRemaining, m.group.totalRemaining);
 
-          privB.totalSessions += m.private.totalSessions;
-          privB.completedSessions += m.private.completedSessions;
-          privB.presentCount += m.private.presentCount;
-          privB.lateCount += m.private.lateCount;
-          privB.absentChargedCount += m.private.absentChargedCount;
-          privB.freeCount += m.private.freeCount;
+          privB.totalSessions = roundMoney(privB.totalSessions + m.private.totalSessions, 2);
+          privB.completedSessions = roundMoney(privB.completedSessions + m.private.completedSessions, 2);
+          privB.presentCount = roundMoney(privB.presentCount + m.private.presentCount, 2);
+          privB.lateCount = roundMoney(privB.lateCount + m.private.lateCount, 2);
+          privB.absentChargedCount = roundMoney(privB.absentChargedCount + m.private.absentChargedCount, 2);
+          privB.freeCount = roundMoney(privB.freeCount + m.private.freeCount, 2);
           privB.totalSessionValue = addMoney(privB.totalSessionValue, m.private.totalSessionValue);
           privB.totalCollected = addMoney(privB.totalCollected, m.private.totalCollected);
           privB.totalDue = addMoney(privB.totalDue, m.private.totalDue);
@@ -4540,33 +4868,33 @@ export const db = {
     let lifetimeRemaining = 0;
 
     monthRecords.forEach((m) => {
-      lifetimeCompleted += m.totalCompletedSessions;
-      lifetimePresent += m.presentSessionsCount;
-      lifetimeLate += m.lateSessionsCount;
-      lifetimeAbsent += m.absentChargedCount;
-      lifetimeFree += m.freeSessionsCount;
+      lifetimeCompleted = roundMoney(lifetimeCompleted + m.totalCompletedSessions, 2);
+      lifetimePresent = roundMoney(lifetimePresent + m.presentSessionsCount, 2);
+      lifetimeLate = roundMoney(lifetimeLate + m.lateSessionsCount, 2);
+      lifetimeAbsent = roundMoney(lifetimeAbsent + m.absentChargedCount, 2);
+      lifetimeFree = roundMoney(lifetimeFree + m.freeSessionsCount, 2);
       lifetimeValue = addMoney(lifetimeValue, m.totalSessionValue);
       lifetimeCollected = addMoney(lifetimeCollected, m.totalCollected);
       lifetimeDue = addMoney(lifetimeDue, m.totalDue);
       lifetimeRemaining = addMoney(lifetimeRemaining, m.totalRemaining);
 
-      lifeGrp.totalSessions += m.group.totalSessions;
-      lifeGrp.completedSessions += m.group.completedSessions;
-      lifeGrp.presentCount += m.group.presentCount;
-      lifeGrp.lateCount += m.group.lateCount;
-      lifeGrp.absentChargedCount += m.group.absentChargedCount;
-      lifeGrp.freeCount += m.group.freeCount;
+      lifeGrp.totalSessions = roundMoney(lifeGrp.totalSessions + m.group.totalSessions, 2);
+      lifeGrp.completedSessions = roundMoney(lifeGrp.completedSessions + m.group.completedSessions, 2);
+      lifeGrp.presentCount = roundMoney(lifeGrp.presentCount + m.group.presentCount, 2);
+      lifeGrp.lateCount = roundMoney(lifeGrp.lateCount + m.group.lateCount, 2);
+      lifeGrp.absentChargedCount = roundMoney(lifeGrp.absentChargedCount + m.group.absentChargedCount, 2);
+      lifeGrp.freeCount = roundMoney(lifeGrp.freeCount + m.group.freeCount, 2);
       lifeGrp.totalSessionValue = addMoney(lifeGrp.totalSessionValue, m.group.totalSessionValue);
       lifeGrp.totalCollected = addMoney(lifeGrp.totalCollected, m.group.totalCollected);
       lifeGrp.totalDue = addMoney(lifeGrp.totalDue, m.group.totalDue);
       lifeGrp.totalRemaining = addMoney(lifeGrp.totalRemaining, m.group.totalRemaining);
 
-      lifePriv.totalSessions += m.private.totalSessions;
-      lifePriv.completedSessions += m.private.completedSessions;
-      lifePriv.presentCount += m.private.presentCount;
-      lifePriv.lateCount += m.private.lateCount;
-      lifePriv.absentChargedCount += m.private.absentChargedCount;
-      lifePriv.freeCount += m.private.freeCount;
+      lifePriv.totalSessions = roundMoney(lifePriv.totalSessions + m.private.totalSessions, 2);
+      lifePriv.completedSessions = roundMoney(lifePriv.completedSessions + m.private.completedSessions, 2);
+      lifePriv.presentCount = roundMoney(lifePriv.presentCount + m.private.presentCount, 2);
+      lifePriv.lateCount = roundMoney(lifePriv.lateCount + m.private.lateCount, 2);
+      lifePriv.absentChargedCount = roundMoney(lifePriv.absentChargedCount + m.private.absentChargedCount, 2);
+      lifePriv.freeCount = roundMoney(lifePriv.freeCount + m.private.freeCount, 2);
       lifePriv.totalSessionValue = addMoney(lifePriv.totalSessionValue, m.private.totalSessionValue);
       lifePriv.totalCollected = addMoney(lifePriv.totalCollected, m.private.totalCollected);
       lifePriv.totalDue = addMoney(lifePriv.totalDue, m.private.totalDue);
@@ -4623,9 +4951,11 @@ export const db = {
     return {
       totalRevenue: history.totalCollected,
       totalDues: history.totalDue,
+      totalDue: history.totalDue,
       totalRemaining: history.totalRemaining,
       totalActiveStudents: students.filter((s) => s.status === 'active').length,
-      totalSessionsConducted: sessions.length,
+      totalSessionsConducted: history.totalCompletedSessions,
+      totalAppointmentsConducted: sessions.length,
       totalExtraSessions,
       monthlyRevenues,
       paymentsList: payments,
@@ -4660,7 +4990,7 @@ export const db = {
     return {
       studentCount: summary?.totalStudents || 0,
       totalSessions: sessions.length,
-      completedSessions: completedSessions.length,
+      completedSessions: summary?.totalCompletedSessions ?? completedSessions.length,
       attendanceRate,
       totalRevenue: summary?.totalPaid || 0,
       totalDue: summary?.totalDue || 0,

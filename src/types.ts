@@ -235,6 +235,8 @@ export interface Session {
   packageTotalPrice?: number; // إجمالي سعر الباقة وقت التسجيل
   packageSessionsCount?: number; // عدد حصص الباقة وقت التسجيل
   status: SessionStatus;
+  isHourly?: boolean; // هل الحصة بنظام الساعات؟
+  billingMode?: BillingMode;
   isExtraSession?: boolean; // علامة تمييز الحصة الإضافية (Extra Session)
   isIncomplete?: boolean; // هل الحصة غير مكتملة البيانات/الكمية للدرس الخاص؟
   notes?: string;
@@ -376,6 +378,8 @@ export interface EnrollmentFinancialSummary {
   settledSessionsCount?: number;
   freeSessionsCount: number;
   unpaidSessionsCount: number;
+  paidLessonsCount?: number; // عدد الحصص المسددة فعلياً
+  unpaidLessonsCount?: number; // عدد الحصص المتبقية غير المسددة
   creditLogs: SessionCreditLog[];
   monthlyLedger: MonthlyBillingLedgerItem[];
   payments: Payment[];
@@ -388,6 +392,12 @@ export interface CategoryFinancialBreakdown {
   remaining: number;
   totalSessionCredit: number;
   totalUnpaidSessions: number;
+  totalCompletedLessons?: number; // إجمالي كمية الحصص المنفذة (SUM of sessionUnits)
+  totalPaidLessons?: number; // إجمالي الحصص المسددة
+  totalUnpaidLessons?: number; // إجمالي الحصص غير المسددة
+  totalAppointments?: number; // عدد الجلسات / المواعيد المنعقدة
+  totalHours?: number; // إجمالي ساعات العمل المنفذة (للساعات)
+  totalUnpaidHours?: number; // الساعات المتبقية غير المسددة
   totalFinancialCredit: number;
   enrollments: EnrollmentFinancialSummary[];
 }
@@ -401,6 +411,12 @@ export interface StudentGrandFinancialSummary {
   grandRemaining: number;
   totalSessionCredit: number;
   totalUnpaidSessions: number;
+  grandCompletedLessons?: number; // إجمالي كمية الحصص المنفذة
+  grandPaidLessons?: number; // إجمالي الحصص المسددة
+  grandUnpaidLessons?: number; // إجمالي الحصص غير المسددة
+  grandAppointmentsCount?: number; // إجمالي عدد الجلسات المنعقدة
+  grandTotalHours?: number; // إجمالي ساعات العمل
+  grandUnpaidHours?: number; // إجمالي الساعات غير المسددة
   totalFinancialCredit: number;
   allPayments: Payment[];
   groupsFinancials: CategoryFinancialBreakdown;
@@ -422,6 +438,11 @@ export interface GroupFinancialSummary {
   totalPaid: number;
   remaining: number;
   totalCompletedSessions: number;
+  totalCompletedAppointments?: number;
+  completedSessionsCount?: number;
+  totalExpectedRevenue?: number;
+  totalRevenue?: number;
+  totalRemainingDues?: number;
   totalAttendedSessions: number;
   totalPrepaidCredits: number;
   studentsSummary: {
@@ -541,9 +562,11 @@ export interface TodayStudentPrivateSummary {
 export interface TeacherOverallFinancialSummary {
   totalRevenue: number;
   totalDues: number;
+  totalDue?: number;
   totalRemaining: number;
   totalActiveStudents: number;
   totalSessionsConducted: number;
+  totalAppointmentsConducted?: number;
   totalExtraSessions: number;
   monthlyRevenues: {
     monthYear: string;

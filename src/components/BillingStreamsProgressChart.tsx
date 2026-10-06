@@ -466,57 +466,57 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
     if (!data) return null;
 
     return (
-      <div className="bg-[#17163D] text-white p-3.5 rounded-2xl shadow-xl border border-[#302D70] min-w-[240px] text-xs space-y-2.5 z-50">
-        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+      <div className="bg-[#5C4033] text-[#FAF7F2] p-3.5 rounded-2xl shadow-xl border border-[#B68A4C]/50 min-w-[240px] text-xs space-y-2.5 z-50">
+        <div className="flex items-center justify-between border-b border-[#EADBC7]/20 pb-2">
           <div className="flex items-center gap-1.5 font-black text-sm">
-            <Calendar className="w-3.5 h-3.5 text-[#55C7E8]" />
+            <Calendar className="w-3.5 h-3.5 text-[#B68A4C]" />
             <span>{data.fullDateLabel}</span>
           </div>
-          <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-bold">
+          <span className="text-[10px] bg-[#EADBC7]/20 px-2 py-0.5 rounded-full font-bold text-[#F8F2EA]">
             {data.totalSessionsCount} {isEn ? 'Sessions' : 'حصص'}
           </span>
         </div>
 
         {/* Lesson-Based Stream Section */}
-        <div className="p-2 rounded-xl bg-[#7657F6]/20 border border-[#7657F6]/40 space-y-1">
-          <div className="flex items-center justify-between font-bold text-[#E8E7FF]">
+        <div className="p-2 rounded-xl bg-[#6B1E2B]/40 border border-[#6B1E2B]/60 space-y-1">
+          <div className="flex items-center justify-between font-bold text-[#F8F2EA]">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#7657F6] inline-block" />
+              <span className="w-2 h-2 rounded-full bg-[#6B1E2B] inline-block" />
               {isEn ? 'Lesson-Based Stream' : 'نظام الحصص (Lessons)'}
             </span>
-            <span className="font-black text-white">
+            <span className="font-black text-[#FAF7F2]">
               {formatMoney(data.lessonRevenue)} {t('currency')}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-white/80">
+          <div className="flex items-center justify-between text-[11px] text-[#EADBC7]">
             <span>{isEn ? 'Delivered Lessons:' : 'كمية الحصص:'}</span>
-            <span className="font-black text-[#55C7E8]">
+            <span className="font-black text-[#B68A4C]">
               {formatSessionQuantityDisplay({ sessionUnits: data.lessonUnits, isHourly: false }, isRTL)}
             </span>
           </div>
         </div>
 
         {/* Hourly-Based Stream Section */}
-        <div className="p-2 rounded-xl bg-[#55C7E8]/20 border border-[#55C7E8]/40 space-y-1">
-          <div className="flex items-center justify-between font-bold text-[#E0F7FE]">
+        <div className="p-2 rounded-xl bg-[#B68A4C]/25 border border-[#B68A4C]/45 space-y-1">
+          <div className="flex items-center justify-between font-bold text-[#F8F2EA]">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#55C7E8] inline-block" />
+              <span className="w-2 h-2 rounded-full bg-[#B68A4C] inline-block" />
               {isEn ? 'Hourly-Based Stream' : 'نظام الساعات (Hours)'}
             </span>
-            <span className="font-black text-white">
+            <span className="font-black text-[#FAF7F2]">
               {formatMoney(data.hourlyRevenue)} {t('currency')}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-white/80">
+          <div className="flex items-center justify-between text-[11px] text-[#EADBC7]">
             <span>{isEn ? 'Logged Duration:' : 'ساعات العمل:'}</span>
-            <span className="font-black text-[#55C7E8]">
+            <span className="font-black text-[#B68A4C]">
               {formatSessionQuantityDisplay({ hours: data.hourlyDurationHours, isHourly: true }, isRTL)}
             </span>
           </div>
         </div>
 
         {/* Day Total */}
-        <div className="flex items-center justify-between pt-1 border-t border-white/10 font-black text-xs text-emerald-400">
+        <div className="flex items-center justify-between pt-1 border-t border-[#EADBC7]/20 font-black text-xs text-[#B68A4C]">
           <span>{isEn ? 'Total Day Revenue:' : 'إجمالي دخل اليوم:'}</span>
           <span>
             {formatMoney(data.totalRevenue)} {t('currency')}
@@ -527,45 +527,44 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
   };
 
   return (
-    <div className="classy-card p-4 sm:p-5 bg-white space-y-4 shadow-xs border border-[#E8E7FF]">
+    <div className="classy-card p-4 bg-[#FAF7F2] space-y-4 shadow-xs border border-[#EADBC7] overflow-hidden">
       {/* 1. Header & Quick Controls */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#7657F6] to-[#55C7E8] text-white flex items-center justify-center shadow-md shadow-[#7657F6]/20">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#6B1E2B] to-[#B68A4C] text-[#FAF7F2] flex items-center justify-center shadow-md shadow-[#6B1E2B]/20 shrink-0">
             <Layers className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="font-black text-sm sm:text-base text-[#17163D] flex items-center gap-2">
-              <span>{isEn ? 'Billing Streams: Lesson-Based vs Hourly Progress' : 'مقارنة التدفق المالي: نظام الحصص مقابل نظام الساعات'}</span>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E8E7FF] text-[#7657F6]">
-                Recharts
-              </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-black text-xs sm:text-sm text-[#2F2F2F] truncate">
+              {isEn ? 'Billing Streams: Lesson-Based vs Hourly' : 'مقارنة التدفق المالي: الحصص مقابل الساعات'}
             </h3>
-            <p className="text-[11px] text-[#74778F] font-medium">
+            <p className="text-[11px] text-[#69493C] font-medium truncate">
               {isEn
-                ? 'Monitors revenue and workload delivery without confusing lesson units with hourly duration.'
-                : 'متابعة مسارات الدخل وساعات العمل الفعلية مع التمييز الصارم بين كمية الحصص وساعات المحاسبة.'}
+                ? 'Monitors revenue and workload delivery accurately.'
+                : 'متابعة مسارات الدخل مع التمييز بين كمية الحصص وساعات العمل.'}
             </p>
           </div>
         </div>
 
-        {/* Timeframe selector (Default: Last Month / Last 30 Days) */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Timeframe selector (2-Column Grid) */}
+        <div className="grid grid-cols-2 gap-1.5">
           {[
             { key: 'last_month', label: isEn ? 'Last Month' : 'الشهر الماضي' },
             { key: 'last_30_days', label: isEn ? 'Last 30 Days' : 'آخر 30 يوم' },
             { key: 'this_month', label: isEn ? 'This Month' : 'هذا الشهر' },
             { key: 'last_60_days', label: isEn ? 'Last 60 Days' : 'آخر 60 يوم' },
-            { key: 'all_time', label: isEn ? 'All Time' : 'الكل' },
-          ].map((tf) => (
+            { key: 'all_time', label: isEn ? 'All Time (Comprehensive)' : 'الكل (شامل)' },
+          ].map((tf, idx, arr) => (
             <button
               key={tf.key}
               type="button"
               onClick={() => setTimeframe(tf.key as TimeframeOption)}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer text-center truncate ${
+                idx === arr.length - 1 ? 'col-span-2' : ''
+              } ${
                 timeframe === tf.key
-                  ? 'bg-[#17163D] text-white shadow-xs'
-                  : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF] hover:bg-[#E8E7FF]'
+                  ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                  : 'bg-[#F8F2EA] text-[#69493C] border border-[#B6A89C]/50 hover:bg-[#EADBC7]'
               }`}
             >
               {tf.label}
@@ -574,187 +573,163 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
         </div>
       </div>
 
-      {/* 2. Stream KPI Summary Bento Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Lesson-Based Stream KPI */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-[#7657F6]/10 via-white to-white border border-[#7657F6]/30 shadow-2xs space-y-2 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#7657F6] flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" />
-              {isEn ? 'Lesson-Based Stream' : 'مسار نظام الحصص'}
+      {/* 2. Stream KPI Summary (2x2 Square Bento Grid like Dashboard) */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Card 1: Lesson-Based Stream Revenue */}
+        <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#6B1E2B]/10 via-[#F8F2EA] to-[#FAF7F2] border border-[#6B1E2B]/30 shadow-2xs flex flex-col justify-between min-h-[108px] relative overflow-hidden">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-bold text-[#6B1E2B] flex items-center gap-1 truncate">
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{isEn ? 'Lessons Stream' : 'مسار الحصص'}</span>
             </span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#7657F6] text-white">
-              {streamTotals.lessonSharePercent}% {isEn ? 'Share' : 'من الدخل'}
-            </span>
-          </div>
-
-          <div className="flex items-baseline justify-between gap-2">
-            <div>
-              <strong className="text-xl sm:text-2xl font-black text-[#17163D] block">
-                {formatMoney(streamTotals.totalLessonRevenue)} <span className="text-xs font-bold text-[#74778F]">{t('currency')}</span>
-              </strong>
-              <span className="text-[11px] text-[#74778F] font-medium block">
-                {streamTotals.totalLessonUnits} {isEn ? (streamTotals.totalLessonUnits === 1 ? 'Lesson' : 'Lessons') : (streamTotals.totalLessonUnits === 1 ? 'حصة' : 'حصص')} ({streamTotals.totalLessonSessions} {isEn ? 'Sessions' : 'جلسة'})
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Avg / Lesson' : 'متوسط الحصة'}</span>
-              <span className="text-xs font-black text-[#7657F6]">
-                {streamTotals.avgRevenuePerLesson} {t('currency')}
-              </span>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-[#7657F6]/20 flex items-center justify-between text-[10px] text-[#74778F]">
-            <span>{isEn ? 'Includes: Packages, Prepaid, Postpaid' : 'يشمل: باقات، دفع مسبق، لاحق'}</span>
-            <span className="font-bold text-[#17163D]">✓ {isEn ? 'Discrete units' : 'كميات محددة'}</span>
-          </div>
-        </div>
-
-        {/* Hourly-Based Stream KPI */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-[#55C7E8]/10 via-white to-white border border-[#55C7E8]/40 shadow-2xs space-y-2 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#0284C7] flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" />
-              {isEn ? 'Hourly-Based Stream' : 'مسار المحاسبة بالساعة'}
-            </span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#0284C7] text-white">
-              {streamTotals.hourlySharePercent}% {isEn ? 'Share' : 'من الدخل'}
+            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-[#6B1E2B] text-[#FAF7F2] shrink-0">
+              {streamTotals.lessonSharePercent}%
             </span>
           </div>
-
-          <div className="flex items-baseline justify-between gap-2">
-            <div>
-              <strong className="text-xl sm:text-2xl font-black text-[#17163D] block">
-                {formatMoney(streamTotals.totalHourlyRevenue)} <span className="text-xs font-bold text-[#74778F]">{t('currency')}</span>
-              </strong>
-              <span className="text-[11px] text-[#74778F] font-medium block">
-                {streamTotals.totalHourlyHours} {isEn ? (streamTotals.totalHourlyHours === 1 ? 'Hour' : 'Hours') : (streamTotals.totalHourlyHours === 1 ? 'ساعة' : 'ساعات')} ({streamTotals.totalHourlySessions} {isEn ? 'Sessions' : 'جلسة'})
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] text-[#74778F] block font-bold">{isEn ? 'Avg / Hour' : 'متوسط الساعة'}</span>
-              <span className="text-xs font-black text-[#0284C7]">
-                {streamTotals.avgRevenuePerHour} {t('currency')}
-              </span>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-[#55C7E8]/30 flex items-center justify-between text-[10px] text-[#74778F]">
-            <span>{isEn ? 'Includes: Hourly Private & Groups' : 'يشمل: الدروس بالساعة ومجموعات الساعات'}</span>
-            <span className="font-bold text-[#17163D]">✓ {isEn ? 'Real duration' : 'مدة زمنية دقيقة'}</span>
-          </div>
-        </div>
-
-        {/* Combined Grand Progress KPI */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-[#17163D] to-[#2B276B] text-white shadow-2xs space-y-2 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#55C7E8] flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5" />
-              {isEn ? 'Total Billing Streams Revenue' : 'إجمالي التدفقات المالية'}
-            </span>
-            <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
-              {processedStreamData.length} {timeGrouping === 'weekly' ? (isEn ? 'weeks' : 'أسابيع') : (isEn ? 'days' : 'أيام')}
-            </span>
-          </div>
-
-          <div>
-            <strong className="text-xl sm:text-2xl font-black text-white block">
-              {formatMoney(streamTotals.grandTotalRevenue)} <span className="text-xs font-bold text-white/70">{t('currency')}</span>
+          <div className="min-w-0 mt-1">
+            <strong className="text-lg sm:text-xl font-black text-[#2F2F2F] block truncate">
+              {formatMoney(streamTotals.totalLessonRevenue)} <span className="text-[10px] font-bold text-[#69493C]">{t('currency')}</span>
             </strong>
+            <span className="text-[10px] text-[#69493C] font-bold block truncate mt-0.5">
+              {streamTotals.totalLessonUnits} {isEn ? 'Lessons' : 'حصة'} ({streamTotals.totalLessonSessions} {isEn ? 'Appts' : 'موعد'})
+            </span>
           </div>
+        </div>
 
-          {/* Contribution Progress Bar */}
-          <div className="space-y-1 pt-1">
-            <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden flex">
+        {/* Card 2: Hourly-Based Stream Revenue */}
+        <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#B68A4C]/15 via-[#F8F2EA] to-[#FAF7F2] border border-[#B68A4C]/40 shadow-2xs flex flex-col justify-between min-h-[108px] relative overflow-hidden">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-bold text-[#5C4033] flex items-center gap-1 truncate">
+              <Clock className="w-3.5 h-3.5 text-[#B68A4C] shrink-0" />
+              <span className="truncate">{isEn ? 'Hourly Stream' : 'مسار الساعات'}</span>
+            </span>
+            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-[#B68A4C] text-[#FAF7F2] shrink-0">
+              {streamTotals.hourlySharePercent}%
+            </span>
+          </div>
+          <div className="min-w-0 mt-1">
+            <strong className="text-lg sm:text-xl font-black text-[#2F2F2F] block truncate">
+              {formatMoney(streamTotals.totalHourlyRevenue)} <span className="text-[10px] font-bold text-[#69493C]">{t('currency')}</span>
+            </strong>
+            <span className="text-[10px] text-[#69493C] font-bold block truncate mt-0.5">
+              {streamTotals.totalHourlyHours} {isEn ? 'Hours' : 'ساعة'} ({streamTotals.totalHourlySessions} {isEn ? 'Appts' : 'موعد'})
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Average Unit / Hour Rate */}
+        <div className="p-3.5 rounded-[22px] bg-[#F8F2EA] border border-[#EADBC7] shadow-2xs flex flex-col justify-between min-h-[108px] relative overflow-hidden">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-bold text-[#69493C] truncate">
+              {isEn ? 'Average Rate' : 'متوسط العائد'}
+            </span>
+            <Activity className="w-3.5 h-3.5 text-[#B56B45] shrink-0" />
+          </div>
+          <div className="space-y-1 mt-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[#69493C] text-[10px] font-bold">{isEn ? 'Per Lesson:' : 'للحصة:'}</span>
+              <strong className="font-black text-[#6B1E2B]">{streamTotals.avgRevenuePerLesson} {t('currency')}</strong>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[#69493C] text-[10px] font-bold">{isEn ? 'Per Hour:' : 'للساعة:'}</span>
+              <strong className="font-black text-[#B68A4C]">{streamTotals.avgRevenuePerHour} {t('currency')}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Combined Grand Progress KPI */}
+        <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-2xs flex flex-col justify-between min-h-[108px] relative overflow-hidden">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-bold text-[#EADBC7] flex items-center gap-1 truncate">
+              <TrendingUp className="w-3.5 h-3.5 text-[#B68A4C] shrink-0" />
+              <span className="truncate">{isEn ? 'Total Revenue' : 'إجمالي التدفقات'}</span>
+            </span>
+          </div>
+          <div className="min-w-0 mt-1">
+            <strong className="text-lg sm:text-xl font-black text-[#FAF7F2] block truncate">
+              {formatMoney(streamTotals.grandTotalRevenue)} <span className="text-[10px] font-bold text-[#EADBC7]/80">{t('currency')}</span>
+            </strong>
+            <div className="h-1.5 w-full bg-[#FAF7F2]/20 rounded-full overflow-hidden flex mt-1.5">
               <div
                 style={{ width: `${streamTotals.lessonSharePercent}%` }}
-                className="bg-[#7657F6] h-full transition-all"
-                title={`Lessons: ${streamTotals.lessonSharePercent}%`}
+                className="bg-[#B68A4C] h-full transition-all"
               />
               <div
                 style={{ width: `${streamTotals.hourlySharePercent}%` }}
-                className="bg-[#55C7E8] h-full transition-all"
-                title={`Hourly: ${streamTotals.hourlySharePercent}%`}
+                className="bg-[#EADBC7] h-full transition-all"
               />
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-white/80 font-bold">
-              <span>🟣 {isEn ? 'Lessons' : 'حصص'}: {streamTotals.lessonSharePercent}%</span>
-              <span>🔵 {isEn ? 'Hourly' : 'ساعات'}: {streamTotals.hourlySharePercent}%</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Metric Mode & Filter Toolbar */}
-      <div className="p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-between flex-wrap gap-2">
-        {/* Metric Modes */}
-        <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-[11px] font-bold text-[#74778F] px-1">{isEn ? 'Display Metric:' : 'نوع الرسم:'}</span>
+      {/* 3. Metric Mode & Filter Toolbar (2x2 Square Grid) */}
+      <div className="p-2.5 rounded-2xl bg-[#F8F2EA] border border-[#EADBC7] space-y-2">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
             onClick={() => setMetricMode('revenue')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate ${
               metricMode === 'revenue'
-                ? 'bg-[#17163D] text-white shadow-xs'
-                : 'text-[#74778F] hover:bg-[#E8E7FF] hover:text-[#17163D]'
+                ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                : 'bg-[#FAF7F2] text-[#69493C] border border-[#B6A89C]/50 hover:text-[#2F2F2F]'
             }`}
           >
-            <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isEn ? 'Revenue (EGP)' : 'المقارنة المالية (ج.م)'}</span>
+            <DollarSign className="w-3.5 h-3.5 text-[#B68A4C] shrink-0" />
+            <span className="truncate">{isEn ? 'Revenue (EGP)' : 'المقارنة المالية'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setMetricMode('volume')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate ${
               metricMode === 'volume'
-                ? 'bg-[#17163D] text-white shadow-xs'
-                : 'text-[#74778F] hover:bg-[#E8E7FF] hover:text-[#17163D]'
+                ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                : 'bg-[#FAF7F2] text-[#69493C] border border-[#B6A89C]/50 hover:text-[#2F2F2F]'
             }`}
           >
-            <Activity className="w-3.5 h-3.5 text-[#55C7E8]" />
-            <span>{isEn ? 'Workload Volume (Lessons vs Hours)' : 'حجم النشاط (حصص vs ساعات)'}</span>
+            <Activity className="w-3.5 h-3.5 text-[#B56B45] shrink-0" />
+            <span className="truncate">{isEn ? 'Workload Volume' : 'حجم النشاط'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setMetricMode('cumulative')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate ${
               metricMode === 'cumulative'
-                ? 'bg-[#17163D] text-white shadow-xs'
-                : 'text-[#74778F] hover:bg-[#E8E7FF] hover:text-[#17163D]'
+                ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                : 'bg-[#FAF7F2] text-[#69493C] border border-[#B6A89C]/50 hover:text-[#2F2F2F]'
             }`}
           >
-            <TrendingUp className="w-3.5 h-3.5 text-[#7657F6]" />
-            <span>{isEn ? 'Cumulative Growth' : 'النمو التراكمي'}</span>
+            <TrendingUp className="w-3.5 h-3.5 text-[#B68A4C] shrink-0" />
+            <span className="truncate">{isEn ? 'Cumulative' : 'النمو التراكمي'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setMetricMode('shares')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate ${
               metricMode === 'shares'
-                ? 'bg-[#17163D] text-white shadow-xs'
-                : 'text-[#74778F] hover:bg-[#E8E7FF] hover:text-[#17163D]'
+                ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                : 'bg-[#FAF7F2] text-[#69493C] border border-[#B6A89C]/50 hover:text-[#2F2F2F]'
             }`}
           >
-            <Percent className="w-3.5 h-3.5 text-amber-500" />
-            <span>{isEn ? 'Stream Proportions' : 'نسب التدفق'}</span>
+            <Percent className="w-3.5 h-3.5 text-[#B56B45] shrink-0" />
+            <span className="truncate">{isEn ? 'Proportions' : 'نسب التدفق'}</span>
           </button>
         </div>
 
         {/* Grouping & Service Toggles */}
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-1.5">
           {/* Daily vs Weekly */}
-          <div className="flex items-center bg-white p-1 rounded-lg border border-[#E8E7FF]">
+          <div className="grid grid-cols-2 bg-[#FAF7F2] p-1 rounded-xl border border-[#B6A89C]/50">
             <button
               type="button"
               onClick={() => setTimeGrouping('daily')}
-              className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+              className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center ${
                 timeGrouping === 'daily'
-                  ? 'bg-[#17163D] text-white'
-                  : 'text-[#74778F] hover:text-[#17163D]'
+                  ? 'bg-[#6B1E2B] text-[#FAF7F2]'
+                  : 'text-[#69493C] hover:text-[#2F2F2F]'
               }`}
             >
               {isEn ? 'Daily' : 'يومي'}
@@ -762,10 +737,10 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
             <button
               type="button"
               onClick={() => setTimeGrouping('weekly')}
-              className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+              className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center ${
                 timeGrouping === 'weekly'
-                  ? 'bg-[#17163D] text-white'
-                  : 'text-[#74778F] hover:text-[#17163D]'
+                  ? 'bg-[#6B1E2B] text-[#FAF7F2]'
+                  : 'text-[#69493C] hover:text-[#2F2F2F]'
               }`}
             >
               {isEn ? 'Weekly' : 'أسبوعي'}
@@ -776,10 +751,10 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
           <select
             value={serviceFilter}
             onChange={(e) => setServiceFilter(e.target.value as any)}
-            className="px-2.5 py-1.5 bg-white rounded-lg border border-[#E8E7FF] text-xs font-bold text-[#17163D] focus:outline-none focus:border-[#7657F6] cursor-pointer"
+            className="px-2.5 py-1.5 bg-[#FAF7F2] rounded-xl border border-[#B6A89C]/50 text-xs font-bold text-[#2F2F2F] focus:outline-none focus:border-[#B68A4C] cursor-pointer w-full"
           >
             <option value="all">{isEn ? 'All Services' : 'كافة الخدمات'}</option>
-            <option value="private">{isEn ? 'Private Lessons Only' : 'دروس خاصة فقط'}</option>
+            <option value="private">{isEn ? 'Private Only' : 'دروس خاصة فقط'}</option>
             <option value="group">{isEn ? 'Groups Only' : 'مجموعات فقط'}</option>
           </select>
         </div>
@@ -788,8 +763,8 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
       {/* 4. The Interactive Recharts Canvas */}
       <div className="h-72 sm:h-80 w-full min-w-0" dir="ltr">
         {processedStreamData.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-[#74778F] space-y-2">
-            <Info className="w-8 h-8 text-[#7657F6]/50" />
+          <div className="h-full flex flex-col items-center justify-center text-[#69493C] space-y-2">
+            <Info className="w-8 h-8 text-[#B68A4C]" />
             <span className="font-bold text-xs">{isEn ? 'No sessions recorded in this timeframe' : 'لا توجد حصص مرصودة في هذه الفترة'}</span>
           </div>
         ) : (
@@ -800,17 +775,17 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                 data={processedStreamData}
                 margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F2F9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EADBC7" />
                 <XAxis
                   dataKey="displayDate"
-                  tick={{ fontSize: 11, fill: '#74778F', fontWeight: 600 }}
+                  tick={{ fontSize: 11, fill: '#69493C', fontWeight: 600 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8E7FF' }}
+                  axisLine={{ stroke: '#B6A89C' }}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#74778F', fontWeight: 600 }}
+                  tick={{ fontSize: 11, fill: '#69493C', fontWeight: 600 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8E7FF' }}
+                  axisLine={{ stroke: '#B6A89C' }}
                   tickFormatter={(val) => `${val}`}
                 />
                 <Tooltip content={<CustomStreamTooltip />} />
@@ -826,14 +801,14 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                   dataKey="lessonRevenue"
                   name="lessonRevenue"
                   stackId="a"
-                  fill="#7657F6"
+                  fill="#6B1E2B"
                   radius={[0, 0, 4, 4]}
                 />
                 <Bar
                   dataKey="hourlyRevenue"
                   name="hourlyRevenue"
                   stackId="a"
-                  fill="#55C7E8"
+                  fill="#B68A4C"
                   radius={[6, 6, 0, 0]}
                 />
               </BarChart>
@@ -843,27 +818,27 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                 data={processedStreamData}
                 margin={{ top: 10, right: 15, left: -10, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F2F9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EADBC7" />
                 <XAxis
                   dataKey="displayDate"
-                  tick={{ fontSize: 11, fill: '#74778F', fontWeight: 600 }}
+                  tick={{ fontSize: 11, fill: '#69493C', fontWeight: 600 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8E7FF' }}
+                  axisLine={{ stroke: '#B6A89C' }}
                 />
                 <YAxis
                   yAxisId="left"
                   orientation="left"
-                  tick={{ fontSize: 11, fill: '#7657F6', fontWeight: 700 }}
+                  tick={{ fontSize: 11, fill: '#6B1E2B', fontWeight: 700 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#7657F6' }}
+                  axisLine={{ stroke: '#6B1E2B' }}
                   unit={isEn ? ' L' : ' ح'}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 11, fill: '#0284C7', fontWeight: 700 }}
+                  tick={{ fontSize: 11, fill: '#B68A4C', fontWeight: 700 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#55C7E8' }}
+                  axisLine={{ stroke: '#B68A4C' }}
                   unit={isEn ? ' h' : ' س'}
                 />
                 <Tooltip content={<CustomStreamTooltip />} />
@@ -879,7 +854,7 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                   yAxisId="left"
                   dataKey="lessonUnits"
                   name="lessonUnits"
-                  fill="#7657F6"
+                  fill="#6B1E2B"
                   radius={[6, 6, 0, 0]}
                   barSize={16}
                 />
@@ -888,9 +863,9 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                   type="monotone"
                   dataKey="hourlyDurationHours"
                   name="hourlyDurationHours"
-                  stroke="#55C7E8"
+                  stroke="#B68A4C"
                   strokeWidth={3}
-                  dot={{ r: 4, fill: '#0284C7', strokeWidth: 2, stroke: '#fff' }}
+                  dot={{ r: 4, fill: '#B56B45', strokeWidth: 2, stroke: '#FAF7F2' }}
                   activeDot={{ r: 6 }}
                 />
               </ComposedChart>
@@ -902,25 +877,25 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
               >
                 <defs>
                   <linearGradient id="gradLessonCum" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#7657F6" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#7657F6" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor="#6B1E2B" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#6B1E2B" stopOpacity={0.0} />
                   </linearGradient>
                   <linearGradient id="gradHourlyCum" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#55C7E8" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#55C7E8" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor="#B68A4C" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#B68A4C" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F2F9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EADBC7" />
                 <XAxis
                   dataKey="displayDate"
-                  tick={{ fontSize: 11, fill: '#74778F', fontWeight: 600 }}
+                  tick={{ fontSize: 11, fill: '#69493C', fontWeight: 600 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8E7FF' }}
+                  axisLine={{ stroke: '#B6A89C' }}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#74778F', fontWeight: 600 }}
+                  tick={{ fontSize: 11, fill: '#69493C', fontWeight: 600 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8E7FF' }}
+                  axisLine={{ stroke: '#B6A89C' }}
                 />
                 <Tooltip content={<CustomStreamTooltip />} />
                 <Legend
@@ -936,7 +911,7 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                   type="monotone"
                   dataKey="cumulativeLessonRevenue"
                   name="cumulativeLessonRevenue"
-                  stroke="#7657F6"
+                  stroke="#6B1E2B"
                   strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#gradLessonCum)"
@@ -945,7 +920,7 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                   type="monotone"
                   dataKey="cumulativeHourlyRevenue"
                   name="cumulativeHourlyRevenue"
-                  stroke="#55C7E8"
+                  stroke="#B68A4C"
                   strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#gradHourlyCum)"
@@ -954,7 +929,7 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                   type="monotone"
                   dataKey="cumulativeTotalRevenue"
                   name="cumulativeTotalRevenue"
-                  stroke="#17163D"
+                  stroke="#5C4033"
                   strokeWidth={2}
                   strokeDasharray="4 4"
                   dot={false}
@@ -973,19 +948,19 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                 })}
                 margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F2F9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EADBC7" />
                 <XAxis
                   dataKey="displayDate"
-                  tick={{ fontSize: 11, fill: '#74778F', fontWeight: 600 }}
+                  tick={{ fontSize: 11, fill: '#69493C', fontWeight: 600 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8E7FF' }}
+                  axisLine={{ stroke: '#B6A89C' }}
                 />
                 <YAxis
                   unit="%"
                   domain={[0, 100]}
-                  tick={{ fontSize: 11, fill: '#74778F', fontWeight: 600 }}
+                  tick={{ fontSize: 11, fill: '#69493C', fontWeight: 600 }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8E7FF' }}
+                  axisLine={{ stroke: '#B6A89C' }}
                 />
                 <Tooltip content={<CustomStreamTooltip />} />
                 <Legend
@@ -1001,18 +976,18 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
                   dataKey="lessonShare"
                   name="lessonShare"
                   stackId="1"
-                  stroke="#7657F6"
-                  fill="#7657F6"
-                  fillOpacity={0.8}
+                  stroke="#6B1E2B"
+                  fill="#6B1E2B"
+                  fillOpacity={0.85}
                 />
                 <Area
                   type="monotone"
                   dataKey="hourlyShare"
                   name="hourlyShare"
                   stackId="1"
-                  stroke="#55C7E8"
-                  fill="#55C7E8"
-                  fillOpacity={0.8}
+                  stroke="#B68A4C"
+                  fill="#B68A4C"
+                  fillOpacity={0.85}
                 />
               </AreaChart>
             )}
@@ -1021,53 +996,53 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
       </div>
 
       {/* 5. Detailed Breakdown Table Toggle */}
-      <div className="pt-2 border-t border-[#E8E7FF]">
+      <div className="pt-2 border-t border-[#EADBC7]">
         <button
           type="button"
           onClick={() => setShowDataTable(!showDataTable)}
-          className="w-full py-2 px-3 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#17163D] text-xs font-black flex items-center justify-between transition-all cursor-pointer"
+          className="w-full py-2 px-3 rounded-xl bg-[#F8F2EA] hover:bg-[#EADBC7] text-[#2F2F2F] text-xs font-black flex items-center justify-between transition-all cursor-pointer border border-[#B6A89C]/40"
         >
           <span className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-[#7657F6]" />
+            <BarChart3 className="w-4 h-4 text-[#6B1E2B]" />
             <span>{isEn ? 'View Detailed Breakdown Table' : 'عرض جدول التدقيق والتفصيل اليومي'}</span>
           </span>
-          <span className="text-[11px] text-[#74778F]">
+          <span className="text-[11px] text-[#69493C]">
             {showDataTable ? (isEn ? 'Hide Table ▲' : 'إخفاء الجدول ▲') : (isEn ? 'Show Table ▼' : 'إظهار الجدول ▼')}
           </span>
         </button>
 
         {showDataTable && (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-[#E8E7FF]">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-[#B6A89C]/50">
             <table className="w-full text-xs text-start">
-              <thead className="bg-[#17163D] text-white font-bold">
+              <thead className="bg-[#5C4033] text-[#FAF7F2] font-bold">
                 <tr>
                   <th className="p-2.5 text-start">{isEn ? 'Date / Period' : 'التاريخ / الفترة'}</th>
-                  <th className="p-2.5 text-center text-[#E8E7FF] bg-[#7657F6]/30">{isEn ? 'Lessons Qty' : 'كمية الحصص'}</th>
-                  <th className="p-2.5 text-center text-[#E8E7FF] bg-[#7657F6]/30">{isEn ? 'Lesson Rev (EGP)' : 'دخل الحصص'}</th>
-                  <th className="p-2.5 text-center text-[#E0F7FE] bg-[#55C7E8]/30">{isEn ? 'Hourly Hours' : 'ساعات العمل'}</th>
-                  <th className="p-2.5 text-center text-[#E0F7FE] bg-[#55C7E8]/30">{isEn ? 'Hourly Rev (EGP)' : 'دخل الساعات'}</th>
-                  <th className="p-2.5 text-center text-emerald-300">{isEn ? 'Total Rev (EGP)' : 'إجمالي الدخل'}</th>
+                  <th className="p-2.5 text-center text-[#F8F2EA] bg-[#6B1E2B]/50">{isEn ? 'Lessons Qty' : 'كمية الحصص'}</th>
+                  <th className="p-2.5 text-center text-[#F8F2EA] bg-[#6B1E2B]/50">{isEn ? 'Lesson Rev (EGP)' : 'دخل الحصص'}</th>
+                  <th className="p-2.5 text-center text-[#EADBC7] bg-[#B68A4C]/30">{isEn ? 'Hourly Hours' : 'ساعات العمل'}</th>
+                  <th className="p-2.5 text-center text-[#EADBC7] bg-[#B68A4C]/30">{isEn ? 'Hourly Rev (EGP)' : 'دخل الساعات'}</th>
+                  <th className="p-2.5 text-center text-[#B68A4C]">{isEn ? 'Total Rev (EGP)' : 'إجمالي الدخل'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E8E7FF]">
+              <tbody className="divide-y divide-[#EADBC7]">
                 {processedStreamData
                   .filter((p) => p.totalSessionsCount > 0 || p.totalRevenue > 0)
                   .map((row) => (
-                    <tr key={row.date} className="hover:bg-[#F6F7FC] transition-colors">
-                      <td className="p-2.5 font-bold text-[#17163D]">{row.fullDateLabel}</td>
-                      <td className="p-2.5 text-center font-black text-[#7657F6]">
+                    <tr key={row.date} className="hover:bg-[#F8F2EA] transition-colors">
+                      <td className="p-2.5 font-bold text-[#2F2F2F]">{row.fullDateLabel}</td>
+                      <td className="p-2.5 text-center font-black text-[#6B1E2B]">
                         {formatSessionQuantityDisplay({ sessionUnits: row.lessonUnits, isHourly: false }, isRTL)}
                       </td>
-                      <td className="p-2.5 text-center font-bold text-[#17163D]">
+                      <td className="p-2.5 text-center font-bold text-[#2F2F2F]">
                         {formatMoney(row.lessonRevenue)}
                       </td>
-                      <td className="p-2.5 text-center font-black text-[#0284C7]">
+                      <td className="p-2.5 text-center font-black text-[#B68A4C]">
                         {formatSessionQuantityDisplay({ hours: row.hourlyDurationHours, isHourly: true }, isRTL)}
                       </td>
-                      <td className="p-2.5 text-center font-bold text-[#17163D]">
+                      <td className="p-2.5 text-center font-bold text-[#2F2F2F]">
                         {formatMoney(row.hourlyRevenue)}
                       </td>
-                      <td className="p-2.5 text-center font-black text-emerald-700">
+                      <td className="p-2.5 text-center font-black text-[#5C4033]">
                         {formatMoney(row.totalRevenue)} {t('currency')}
                       </td>
                     </tr>

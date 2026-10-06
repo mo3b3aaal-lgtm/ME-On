@@ -33,6 +33,8 @@ import {
   getAutoSyncConfig,
   performFullSync,
   subscribeToSyncUpdates,
+  calculateWorkloadSummary,
+  getSessionLessonQuantity,
 } from '../utils/storage';
 import {
   subscribeToNetworkStatus,
@@ -168,6 +170,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const completedTodaySessionsCount = useMemo(() => {
     return todaySessions.filter((s) => s.status === 'completed').length;
   }, [todaySessions]);
+
+  const todayWorkload = useMemo(() => {
+    return calculateWorkloadSummary(todaySessions, allAttendance, isRTL);
+  }, [todaySessions, allAttendance, isRTL]);
 
   const totalTodayClassesCount = useMemo(() => {
     return Math.max(scheduledToday.length, todaySessions.length);
@@ -459,7 +465,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           rawTime: s.startTime || '16:00',
           sortMinutes,
           location: group?.roomOrLocation,
-          accentColor: group?.accentColor || (isPrivate ? '#FF647C' : '#7657F6'),
+          accentColor: group?.accentColor || (isPrivate ? '#B56B45' : '#6B1E2B'),
         });
       }
     });
@@ -532,9 +538,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     return Array.from(map.values()).map((s) => ({
       ...s,
-      totalUnitsOrHoursText: s.totalHours > 0
-        ? `${s.totalHours} ${isEn ? 'hrs' : 'ساعة'}`
-        : `${s.totalUnits} ${isEn ? 'sessions' : 'حصة'}`,
+      totalUnitsOrHoursText:
+        s.totalHours > 0
+          ? formatSessionQuantityDisplay({ hours: s.totalHours, isHourly: true }, isRTL)
+          : formatSessionQuantityDisplay({ sessionUnits: s.totalUnits, isHourly: false }, isRTL),
     }));
   }, [allTodayDisplayItems, allAttendance, sessions, enrollments, isEn, todayStr]);
 
@@ -550,60 +557,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#191A2E] pb-32 bg-[#F5F6FC] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#2F2F2F] pb-32 bg-[#FAF7F2] relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Soft Ambient Light Glow in Background */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#7657F6]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#55C7E8]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#FF647C]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+      {/* Soft Ambient Warm Luxury Light Glow in Background */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#B68A4C]/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#B56B45]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#6B1E2B]/6 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* =========================================================================
           1. Profile & Signature Executive Hero Header
           ========================================================================= */}
-      <div className="rounded-[26px] bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] p-5 sm:p-6 text-white relative overflow-hidden shadow-xl border border-white/10">
-        <div className="absolute -top-16 -right-16 w-60 h-60 bg-[#7657F6]/35 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-[#FF647C]/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="rounded-[26px] bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] p-5 sm:p-6 text-[#FAF7F2] relative overflow-hidden shadow-xl border border-[#B68A4C]/35">
+        <div className="absolute -top-16 -right-16 w-60 h-60 bg-[#B68A4C]/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-[#B56B45]/25 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           {/* Teacher Profile & Greeting */}
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FF647C] via-[#7657F6] to-[#55C7E8] p-0.5 shadow-lg shadow-[#7657F6]/40 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-[#17163D] flex items-center justify-center text-white font-black text-2xl overflow-hidden">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#6B1E2B] via-[#B56B45] to-[#B68A4C] p-0.5 shadow-lg shadow-[#2F2F2F]/30 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-[#5C4033] flex items-center justify-center text-[#FAF7F2] font-black text-2xl overflow-hidden">
                 {teacherProfile.name ? teacherProfile.name.charAt(0) : 'C'}
               </div>
             </div>
 
             <div className="space-y-0.5 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#E8E7FF]/90 flex items-center gap-1">
+                <span className="text-xs font-bold text-[#EADBC7] flex items-center gap-1">
                   {greetingText}
                 </span>
               </div>
-              <h1 className="text-lg sm:text-2xl font-black text-white tracking-tight truncate">
+              <h1 className="text-lg sm:text-2xl font-black text-[#FAF7F2] tracking-tight truncate">
                 {teacherProfile.name ? `${isEn ? 'Teacher ' : 'أ. '}${teacherProfile.name}` : (isEn ? 'Teacher' : 'أستاذنا الفاضل')}
               </h1>
-              <p className="text-xs sm:text-sm text-[#E8E7FF]/85 font-medium truncate">
+              <p className="text-xs sm:text-sm text-[#EADBC7]/90 font-medium truncate">
                 {teacherProfile.subject || (isEn ? 'Subject' : 'المادة التعليمية')} • {teacherProfile.centerOrSchool || (isEn ? 'Classy Education' : 'منظومة كلاسي الذكية')}
               </p>
             </div>
           </div>
 
           {/* Action Hub & Mascot */}
-          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/15">
-            <div className="hidden md:flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-2xl shadow-xs">
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EADBC7]/20">
+            <div className="hidden md:flex items-center gap-2 bg-[#FAF7F2]/10 backdrop-blur-md border border-[#EADBC7]/25 px-3 py-1.5 rounded-2xl shadow-xs">
               <div className="w-9 h-9 flex items-center justify-center">
                 <ClassyOwlMascot size="sm" pose="welcome" glow={false} />
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-extrabold text-[#55C7E8] block leading-none">{isEn ? 'Smart Assistant' : 'مساعدك الذكي'}</span>
-                <span className="text-xs font-bold text-white block mt-0.5">{isEn ? 'Ready to help' : 'جاهز لخدمتك'}</span>
+                <span className="text-[10px] font-extrabold text-[#B68A4C] block leading-none">{isEn ? 'Smart Assistant' : 'مساعدك الذكي'}</span>
+                <span className="text-xs font-bold text-[#FAF7F2] block mt-0.5">{isEn ? 'Ready to help' : 'جاهز لخدمتك'}</span>
               </div>
             </div>
 
             {/* Date Badge */}
-            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/15 px-3 py-2 rounded-2xl text-xs font-bold text-white shadow-xs">
-              <Calendar className="w-3.5 h-3.5 text-[#55C7E8]" />
+            <div className="flex items-center gap-1.5 bg-[#FAF7F2]/10 backdrop-blur-md border border-[#EADBC7]/25 px-3 py-2 rounded-2xl text-xs font-bold text-[#FAF7F2] shadow-xs">
+              <Calendar className="w-3.5 h-3.5 text-[#B68A4C]" />
               <span>
                 {new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
               </span>
@@ -614,33 +621,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}
-                className="relative p-2.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
+                className="relative p-2.5 rounded-2xl bg-[#B56B45]/30 hover:bg-[#B56B45]/45 border border-[#B68A4C]/50 text-[#EADBC7] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
                 title={isEn ? 'Working Offline - Click to sync when online' : 'العمل بدون إنترنت - انقر للمزامنة عند الاتصال'}
               >
-                <WifiOff className="w-4.5 h-4.5 text-amber-300" />
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-[#17163D] animate-ping" />
+                <WifiOff className="w-4.5 h-4.5 text-[#EADBC7]" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#B68A4C] ring-2 ring-[#5C4033] animate-ping" />
               </button>
             )}
 
             <button
               onClick={handleTriggerSync}
               disabled={isSyncing}
-              className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
+              className="p-2.5 rounded-2xl bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 border border-[#EADBC7]/25 text-[#FAF7F2] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
               title={isEn ? 'Sync Cloud Data' : 'مزامنة البيانات السحابية'}
             >
-              <RefreshCw className={`w-4.5 h-4.5 text-[#55C7E8] ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4.5 h-4.5 text-[#B68A4C] ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
 
             {/* Notifications Bell */}
             {onOpenNotificationsModal && (
               <button
                 onClick={onOpenNotificationsModal}
-                className="relative p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
+                className="relative p-2.5 rounded-2xl bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 border border-[#EADBC7]/25 text-[#FAF7F2] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
                 title={t('smartNotifications')}
               >
-                <Bell className="w-4.5 h-4.5 text-white" />
+                <Bell className="w-4.5 h-4.5 text-[#FAF7F2]" />
                 {smartReminders.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#FF647C] text-white text-[9px] font-black flex items-center justify-center shadow-md ring-2 ring-[#17163D] animate-pulse">
+                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#B56B45] text-[#FAF7F2] text-[9px] font-black flex items-center justify-center shadow-md ring-2 ring-[#6B1E2B] animate-pulse">
                     {smartReminders.length}
                   </span>
                 )}
@@ -652,13 +659,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Quick Success Toast */}
       {quickSuccessMsg && (
-        <div className="p-3.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-between shadow-lg shadow-emerald-600/20 animate-in fade-in slide-in-from-top-2">
+        <div className="p-3.5 rounded-2xl bg-[#5C4033] text-[#FAF7F2] border border-[#B68A4C] text-xs font-bold flex items-center justify-between shadow-lg shadow-[#5C4033]/20 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className="w-4 h-4 text-[#B68A4C]" />
             <span>{quickSuccessMsg}</span>
           </div>
           <button onClick={() => setQuickSuccessMsg(null)}>
-            <X className="w-4 h-4 text-white/80 hover:text-white" />
+            <X className="w-4 h-4 text-[#EADBC7] hover:text-[#FAF7F2]" />
           </button>
         </div>
       )}
@@ -668,46 +675,58 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
         {/* Main Today Activity Hero Card */}
-        <div className="lg:col-span-7 rounded-[24px] bg-gradient-to-br from-[#17163D] to-[#403B9C] p-5 text-white flex flex-col justify-between relative overflow-hidden shadow-xl border border-white/10">
-          <div className="absolute -top-10 -left-10 w-44 h-44 bg-[#7657F6]/30 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-10 -right-10 w-44 h-44 bg-[#FF647C]/25 rounded-full blur-2xl pointer-events-none" />
+        <div className="lg:col-span-7 rounded-[24px] bg-gradient-to-br from-[#5C4033] via-[#69493C] to-[#6B1E2B] p-5 text-[#FAF7F2] flex flex-col justify-between relative overflow-hidden shadow-xl border border-[#B68A4C]/35">
+          <div className="absolute -top-10 -left-10 w-44 h-44 bg-[#B68A4C]/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-10 -right-10 w-44 h-44 bg-[#B56B45]/20 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#FF647C] animate-pulse" />
-                <span className="text-xs font-black uppercase tracking-wider text-[#E8E7FF]">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#B68A4C] animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-wider text-[#EADBC7]">
                   {isEn ? "Today's Academic Activity" : 'نشاط اليوم الدراسي'}
                 </span>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-white/15 text-white border border-white/20 shadow-xs">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-[#FAF7F2]/15 text-[#FAF7F2] border border-[#B68A4C]/40 shadow-xs">
                 {totalTodayClassesCount} {isEn ? 'scheduled' : 'حصص مجدولة'}
               </span>
             </div>
 
             <div className="space-y-1">
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-[#FAF7F2]">
                 {completedTodaySessionsCount === totalTodayClassesCount && totalTodayClassesCount > 0
                   ? (isEn ? "🎉 All today's sessions completed successfully!" : '🎉 اكتملت جميع حصص اليوم بنجاح!')
                   : (isEn ? `${remainingTodaySessionsCount} sessions pending attendance` : `متبقي ${remainingTodaySessionsCount} حصص للرصد والمتابعة`)}
               </h2>
-              <div className="flex items-center gap-3 text-xs text-[#E8E7FF]/90 font-medium flex-wrap">
-                <span>{isEn ? "Today's Revenue:" : 'تحصيل اليوم:'} <strong className="text-white font-bold">{totalTodayRevenue} {t('currency')}</strong></span>
+              <div className="flex items-center gap-3 text-xs text-[#EADBC7] font-medium flex-wrap">
+                <span>{isEn ? "Today's Revenue:" : 'تحصيل اليوم:'} <strong className="text-[#FAF7F2] font-bold">{totalTodayRevenue} {t('currency')}</strong></span>
                 <span>•</span>
-                <span>{isEn ? 'Recorded ' : 'تم رصد '}<strong className="text-white font-bold">{completedTodaySessionsCount}</strong> {isEn ? 'of ' : 'من '}<strong className="text-white font-bold">{totalTodayClassesCount}</strong></span>
+                <span>{isEn ? 'Appointments: ' : 'المواعيد: '}<strong className="text-[#FAF7F2] font-bold">{completedTodaySessionsCount}</strong> {isEn ? 'of ' : 'من '}<strong className="text-[#FAF7F2] font-bold">{totalTodayClassesCount}</strong></span>
+                {todayWorkload.completedLessonUnits > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>{isEn ? 'Lessons: ' : 'الحصص: '}<strong className="text-[#B68A4C] font-black">{todayWorkload.completedLessonUnits} {isEn ? 'Lessons' : 'حصة'}</strong></span>
+                  </>
+                )}
+                {todayWorkload.completedHours > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>{isEn ? 'Hours: ' : 'الساعات: '}<strong className="text-[#B68A4C] font-black">{todayWorkload.completedHours} {isEn ? 'Hours' : 'ساعة'}</strong></span>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="space-y-1.5 pt-1">
-              <div className="w-full bg-black/40 h-3 rounded-full overflow-hidden p-0.5 border border-white/15">
+              <div className="w-full bg-[#2F2F2F]/40 h-3 rounded-full overflow-hidden p-0.5 border border-[#EADBC7]/20">
                 <div
-                  className="bg-gradient-to-r from-[#7657F6] via-[#55C7E8] to-[#FF647C] h-full rounded-full transition-all duration-500 shadow-sm"
+                  className="bg-gradient-to-r from-[#B68A4C] via-[#B56B45] to-[#EADBC7] h-full rounded-full transition-all duration-500 shadow-sm"
                   style={{
                     width: `${totalTodayClassesCount > 0 ? (completedTodaySessionsCount / totalTodayClassesCount) * 100 : 0}%`,
                   }}
                 />
               </div>
-              <div className="flex justify-between text-[11px] font-bold text-[#E8E7FF]/85">
+              <div className="flex justify-between text-[11px] font-bold text-[#EADBC7]/90">
                 <span>{isEn ? 'Progress:' : 'نسبة الإنجاز:'} {totalTodayClassesCount > 0 ? Math.round((completedTodaySessionsCount / totalTodayClassesCount) * 100) : 0}%</span>
                 <span>{completedTodaySessionsCount}/{totalTodayClassesCount} {isEn ? 'completed' : 'تم رصدها'}</span>
               </div>
@@ -720,21 +739,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 1: Active Students */}
           <div
             onClick={() => onNavigateToTab('students')}
-            className="classy-lavender-card p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#7657F6]/50"
+            className="p-3.5 sm:p-4 rounded-[22px] bg-[#F8F2EA] border border-[#EADBC7] flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#B68A4C]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#7657F6] to-[#403B9C] text-white flex items-center justify-center shadow-md shadow-[#7657F6]/25">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] flex items-center justify-center shadow-md shadow-[#6B1E2B]/20">
                 <Users className="w-4.5 h-4.5" />
               </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#7657F6] border border-[#D8D5FB]">
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7] text-[#6B1E2B] border border-[#B6A89C]">
                 {isEn ? 'Active' : 'نشط'}
               </span>
             </div>
             <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#17163D] tracking-tight block">
+              <span className="text-2xl sm:text-3xl font-black text-[#2F2F2F] tracking-tight block">
                 {activeStudentsList.length}
               </span>
-              <span className="text-xs font-bold text-[#74778F] block mt-0.5">
+              <span className="text-xs font-bold text-[#69493C] block mt-0.5">
                 {t('activeStudents')}
               </span>
             </div>
@@ -743,21 +762,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 2: Attendance Rate */}
           <div
             onClick={() => onNavigateToTab('reports')}
-            className="p-3.5 sm:p-4 rounded-[22px] bg-gradient-to-br from-white to-emerald-50/40 border border-emerald-200 flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-emerald-400"
+            className="p-3.5 sm:p-4 rounded-[22px] bg-[#F8F2EA] border border-[#EADBC7] flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#B68A4C]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#B68A4C] to-[#5C4033] text-[#FAF7F2] flex items-center justify-center shadow-md shadow-[#B68A4C]/25">
                 <TrendingUp className="w-4.5 h-4.5" />
               </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7] text-[#5C4033] border border-[#B68A4C]/50">
                 {isEn ? 'Rate' : 'التزام'}
               </span>
             </div>
             <div>
-              <span className="text-2xl sm:text-3xl font-black text-emerald-700 tracking-tight block">
+              <span className="text-2xl sm:text-3xl font-black text-[#5C4033] tracking-tight block">
                 {overallAttendanceRate}%
               </span>
-              <span className="text-xs font-bold text-[#74778F] block mt-0.5">
+              <span className="text-xs font-bold text-[#69493C] block mt-0.5">
                 {t('attendanceRate')}
               </span>
             </div>
@@ -766,21 +785,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 3: Month Revenue */}
           <div
             onClick={() => onNavigateToTab('reports')}
-            className="classy-card p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#403B9C]/40"
+            className="p-3.5 sm:p-4 rounded-[22px] bg-[#F8F2EA] border border-[#EADBC7] flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#B68A4C]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17163D] to-[#403B9C] text-white flex items-center justify-center shadow-md shadow-[#17163D]/25">
-                <DollarSign className="w-4.5 h-4.5 text-[#55C7E8]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#5C4033] to-[#69493C] text-[#FAF7F2] flex items-center justify-center shadow-md shadow-[#5C4033]/20">
+                <DollarSign className="w-4.5 h-4.5 text-[#B68A4C]" />
               </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]">
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7] text-[#5C4033] border border-[#B6A89C]">
                 {isEn ? `Month ${currentMonth}` : `شهر ${currentMonth}`}
               </span>
             </div>
             <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#17163D] tracking-tight block truncate">
-                {totalMonthRevenue} <span className="text-xs font-bold text-[#74778F]">{t('currency')}</span>
+              <span className="text-2xl sm:text-3xl font-black text-[#2F2F2F] tracking-tight block truncate">
+                {totalMonthRevenue} <span className="text-xs font-bold text-[#69493C]">{t('currency')}</span>
               </span>
-              <span className="text-xs font-bold text-[#74778F] block mt-0.5">
+              <span className="text-xs font-bold text-[#69493C] block mt-0.5">
                 {t('monthlyRevenue')}
               </span>
             </div>
@@ -789,27 +808,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 4: Outstanding Dues */}
           <div
             onClick={() => onNavigateToTab('reports')}
-            className="classy-rose-card p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#FF647C]/50"
+            className="p-3.5 sm:p-4 rounded-[22px] bg-[#F8F2EA] border border-[#EADBC7] flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#6B1E2B]/50"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#FF647C] to-[#E02E4C] text-white flex items-center justify-center shadow-md shadow-[#FF647C]/25">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#B56B45] to-[#6B1E2B] text-[#FAF7F2] flex items-center justify-center shadow-md shadow-[#6B1E2B]/20">
                 <Receipt className="w-4.5 h-4.5" />
               </div>
               <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
                 totalOutstandingDues > 0
-                  ? 'bg-[#FFF1F3] text-[#FF647C] border-[#FECDD3]'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  ? 'bg-[#6B1E2B]/10 text-[#6B1E2B] border-[#6B1E2B]/30'
+                  : 'bg-[#EADBC7] text-[#5C4033] border-[#B68A4C]/50'
               }`}>
                 {totalOutstandingDues > 0 ? (isEn ? `${overdueStudentsCount} dues` : `${overdueStudentsCount} طلاب`) : t('settled')}
               </span>
             </div>
             <div>
               <span className={`text-2xl sm:text-3xl font-black tracking-tight block truncate ${
-                totalOutstandingDues > 0 ? 'text-[#FF647C]' : 'text-emerald-700'
+                totalOutstandingDues > 0 ? 'text-[#6B1E2B]' : 'text-[#5C4033]'
               }`}>
-                {totalOutstandingDues} <span className="text-xs font-bold text-[#74778F]">{t('currency')}</span>
+                {totalOutstandingDues} <span className="text-xs font-bold text-[#69493C]">{t('currency')}</span>
               </span>
-              <span className="text-xs font-bold text-[#74778F] block mt-0.5">
+              <span className="text-xs font-bold text-[#69493C] block mt-0.5">
                 {t('totalPendingDues')}
               </span>
             </div>
@@ -820,52 +839,52 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* =========================================================================
           3. Quick Actions Bar
           ========================================================================= */}
-      <div className="classy-card p-2 sm:p-3 bg-white">
+      <div className="classy-card p-2 sm:p-3 bg-[#F8F2EA] border border-[#EADBC7]">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <button
             onClick={onOpenAddStudent}
-            className="py-3 px-3.5 rounded-2xl bg-[#F6F7FC] hover:bg-[#E8E7FF] border border-[#E8E7FF] flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FAF7F2] hover:bg-[#EADBC7]/70 border border-[#B6A89C]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center shrink-0 group-hover:bg-[#7657F6] group-hover:text-white transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#EADBC7] text-[#6B1E2B] flex items-center justify-center shrink-0 group-hover:bg-[#6B1E2B] group-hover:text-[#FAF7F2] transition-colors shadow-2xs">
               <UserPlus className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#7657F6] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#2F2F2F] group-hover:text-[#6B1E2B] transition-colors truncate">
               {t('addStudent')}
             </span>
           </button>
 
           <button
             onClick={onOpenAddGroup}
-            className="py-3 px-3.5 rounded-2xl bg-[#F6F7FC] hover:bg-[#E8E7FF] border border-[#E8E7FF] flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FAF7F2] hover:bg-[#EADBC7]/70 border border-[#B6A89C]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#E8E7FF]/70 text-[#403B9C] flex items-center justify-center shrink-0 group-hover:bg-[#403B9C] group-hover:text-white transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#EADBC7] text-[#5C4033] flex items-center justify-center shrink-0 group-hover:bg-[#5C4033] group-hover:text-[#FAF7F2] transition-colors shadow-2xs">
               <Layers className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#403B9C] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#2F2F2F] group-hover:text-[#5C4033] transition-colors truncate">
               {t('createGroupBtn')}
             </span>
           </button>
 
           <button
             onClick={onOpenAddSession}
-            className="py-3 px-3.5 rounded-2xl bg-[#F6F7FC] hover:bg-[#F0FAFD] border border-[#E8E7FF] flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FAF7F2] hover:bg-[#EADBC7]/70 border border-[#B6A89C]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#F0FAFD] text-[#55C7E8] border border-[#BAE6FD] flex items-center justify-center shrink-0 group-hover:bg-[#55C7E8] group-hover:text-white transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#EADBC7] text-[#B68A4C] border border-[#B68A4C]/40 flex items-center justify-center shrink-0 group-hover:bg-[#B68A4C] group-hover:text-[#FAF7F2] transition-colors shadow-2xs">
               <CalendarCheck2 className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#0284C7] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#2F2F2F] group-hover:text-[#5C4033] transition-colors truncate">
               {t('scheduleSessionBtn')}
             </span>
           </button>
 
           <button
             onClick={onOpenAddPayment}
-            className="py-3 px-3.5 rounded-2xl bg-[#F6F7FC] hover:bg-[#FFF1F3] border border-[#E8E7FF] flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FAF7F2] hover:bg-[#EADBC7]/70 border border-[#B6A89C]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] flex items-center justify-center shrink-0 group-hover:bg-[#FF647C] group-hover:text-white transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#EADBC7] text-[#B56B45] border border-[#B56B45]/40 flex items-center justify-center shrink-0 group-hover:bg-[#B56B45] group-hover:text-[#FAF7F2] transition-colors shadow-2xs">
               <DollarSign className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#17163D] group-hover:text-[#FF647C] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#2F2F2F] group-hover:text-[#B56B45] transition-colors truncate">
               {t('recordPayment')}
             </span>
           </button>
@@ -878,50 +897,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#E8E7FF] text-[#7657F6] flex items-center justify-center font-bold shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#EADBC7] text-[#6B1E2B] flex items-center justify-center font-bold shadow-2xs border border-[#B6A89C]/50">
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black text-[#17163D]">
+              <h2 className="text-sm sm:text-base font-black text-[#2F2F2F]">
                 {isEn ? `Today's Sessions (${scheduledToday.length})` : `حصص اليوم الدراسي (${scheduledToday.length})`}
               </h2>
             </div>
           </div>
           <button
             onClick={() => onNavigateToTab('sessions')}
-            className="text-xs font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-[#6B1E2B] hover:text-[#5C4033] flex items-center gap-1 cursor-pointer"
           >
             <span>{t('sessionsTitle')}</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-[#7657F6]" />
+            <ArrowUpRight className="w-3.5 h-3.5 text-[#6B1E2B]" />
           </button>
         </div>
 
         {/* Today's Private Lessons Summary Banner (Feature 1) */}
         {todayPrivateStudentsSummary.length > 0 && (
-          <div className="p-3.5 bg-gradient-to-r from-white to-[#FFF1F3]/40 rounded-2xl border border-[#FECDD3] space-y-2.5 shadow-2xs">
+          <div className="p-3.5 bg-gradient-to-r from-[#F8F2EA] to-[#EADBC7]/60 rounded-2xl border border-[#B68A4C]/50 space-y-2.5 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#FF647C]" />
+              <span className="font-black text-xs text-[#2F2F2F] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#B56B45]" />
                 <span>{isEn ? "Today's Private Lessons Summary" : 'ملخص الدروس الخاصة لليوم'}</span>
               </span>
-              <span className="text-[10px] font-black text-[#FF647C] bg-[#FFF1F3] px-2 py-0.5 rounded-full border border-[#FECDD3]">
+              <span className="text-[10px] font-black text-[#6B1E2B] bg-[#FAF7F2] px-2 py-0.5 rounded-full border border-[#B6A89C]">
                 {todayPrivateStudentsSummary.length} {isEn ? 'Students' : 'طلاب'}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {todayPrivateStudentsSummary.map((summary) => (
-                <div key={summary.studentId} className="p-2.5 rounded-xl bg-white border border-[#FECDD3]/80 text-xs space-y-1 shadow-2xs">
-                  <div className="flex items-center justify-between font-black text-[#17163D]">
+                <div key={summary.studentId} className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EADBC7] text-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between font-black text-[#2F2F2F]">
                     <span className="truncate">{summary.studentName}</span>
-                    <span className="text-[#FF647C] shrink-0 font-black">{summary.totalUnitsOrHoursText}</span>
+                    <span className="text-[#6B1E2B] shrink-0 font-black">{summary.totalUnitsOrHoursText}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-[#74778F]">
-                    <span>{isEn ? `${summary.recordedSessionsCount} recorded visit(s)` : `${summary.recordedSessionsCount} حصة مسجلة`}</span>
-                    <strong className="text-emerald-700 font-black">{summary.totalValue} {t('currency')}</strong>
+                  <div className="flex items-center justify-between text-[11px] text-[#69493C]">
+                    <span>{isEn ? `${summary.recordedSessionsCount} appointment(s)` : `${summary.recordedSessionsCount} موعد مسجل`}</span>
+                    <strong className="text-[#5C4033] font-black">{summary.totalValue} {t('currency')}</strong>
                   </div>
                   {summary.hasIncomplete && (
-                    <div className="pt-1 text-[10px] font-black text-amber-700 flex items-center gap-1">
+                    <div className="pt-1 text-[10px] font-black text-[#B56B45] flex items-center gap-1">
                       <span>⚠️</span>
                       <span>{isEn ? 'Incomplete session details' : 'حصة غير مكتملة التفاصيل'}</span>
                     </div>
@@ -933,23 +952,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
 
         {allTodayDisplayItems.length === 0 ? (
-          <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-white">
+          <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-[#F8F2EA]">
             <div className="w-28 h-28 flex items-center justify-center">
               <ClassyOwlMascot size="lg" pose="waving" glow={true} />
             </div>
             <div className="max-w-md space-y-1">
-              <h3 className="font-black text-[#17163D] text-sm sm:text-base">
+              <h3 className="font-black text-[#2F2F2F] text-sm sm:text-base">
                 {isEn ? 'No sessions scheduled for today!' : 'لا توجد حصص مجدولة لليوم!'}
               </h3>
-              <p className="text-xs text-[#74778F] font-medium leading-relaxed">
+              <p className="text-xs text-[#69493C] font-medium leading-relaxed">
                 {isEn ? 'Enjoy your calm day or schedule a new teaching session now.' : 'استمتع بيومك الهادئ أو قم بجدولة حصة تدريسية جديدة الآن بضغطة زر.'}
               </p>
             </div>
             <button
               onClick={onOpenAddSession}
-              className="mt-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+              className="mt-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-[#B68A4C]" />
               <span>{isEn ? "Add Today's Session" : 'إضافة حصة اليوم'}</span>
             </button>
           </div>
@@ -971,17 +990,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`classy-card overflow-hidden transition-all bg-white ${
-                    isRecorded ? 'border-emerald-200/80 bg-gradient-to-r from-emerald-50/30 to-white' : 'hover:border-[#7657F6]/40'
+                  className={`classy-card overflow-hidden transition-all bg-[#FAF7F2] ${
+                    isRecorded ? 'border-[#B68A4C]/60 bg-gradient-to-r from-[#EADBC7]/45 to-[#FAF7F2]' : 'hover:border-[#B68A4C]/50'
                   }`}
                 >
                   <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Time slot pill */}
-                      <div className="px-3 py-1.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] text-center shrink-0 min-w-[66px]">
-                        <span className="text-xs font-black text-[#191A2E] block leading-tight">{item.time}</span>
+                      <div className="px-3 py-1.5 rounded-2xl bg-[#F8F2EA] border border-[#EADBC7] text-center shrink-0 min-w-[66px]">
+                        <span className="text-xs font-black text-[#2F2F2F] block leading-tight">{item.time}</span>
                         <span className={`text-[9px] font-extrabold block mt-0.5 px-2 py-0.2 rounded-full ${
-                          item.isPrivate ? 'bg-[#FFF1F3] text-[#FF647C]' : 'bg-[#E8E7FF] text-[#403B9C]'
+                          item.isPrivate ? 'bg-[#B56B45]/15 text-[#B56B45]' : 'bg-[#EADBC7] text-[#5C4033]'
                         }`}>
                           {item.isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
                         </span>
@@ -991,14 +1010,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div className="flex items-center gap-2">
                           <span
                             className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
-                            style={{ backgroundColor: item.accentColor || '#7657F6' }}
+                            style={{ backgroundColor: item.accentColor || '#6B1E2B' }}
                           />
-                          <h3 className="font-black text-xs sm:text-sm text-[#191A2E] truncate">
+                          <h3 className="font-black text-xs sm:text-sm text-[#2F2F2F] truncate">
                             {item.isPrivate ? (item.studentName || (isEn ? 'Private Lesson' : 'درس خاص')) : item.groupName}
                           </h3>
                         </div>
 
-                        <div className="flex items-center gap-2 text-[11px] text-[#74778F] flex-wrap font-medium">
+                        <div className="flex items-center gap-2 text-[11px] text-[#69493C] flex-wrap font-medium">
                           <span>{item.isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (item.subject || (isEn ? 'General' : 'عام'))}</span>
                           {!item.isPrivate && (
                             <>
@@ -1035,7 +1054,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
-                                  className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-black flex items-center gap-1 cursor-pointer hover:bg-amber-100 transition-all shadow-2xs animate-pulse"
+                                  className="px-2.5 py-1 rounded-xl bg-[#EADBC7] text-[#5C4033] border border-[#B56B45] text-[10px] font-black flex items-center gap-1 cursor-pointer hover:bg-[#B68A4C]/30 transition-all shadow-2xs animate-pulse"
                                   title={isEn ? 'Click to complete session details' : 'اضغط لاستكمال تفاصيل الدرس'}
                                 >
                                   <span>⚠️</span>
@@ -1048,12 +1067,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <div className="flex items-center gap-1">
                                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 ${
                                   presentCount > 0
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+                                    ? 'bg-[#EADBC7] text-[#5C4033] border border-[#B68A4C]/50'
+                                    : 'bg-[#6B1E2B]/10 text-[#6B1E2B] border border-[#6B1E2B]/30'
                                 }`}>
                                   {presentCount > 0 ? (
                                     <>
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <CheckCircle2 className="w-3 h-3 text-[#B68A4C]" />
                                       <span>
                                         {firstAtt?.hours
                                           ? `${firstAtt.hours} ${isEn ? 'hrs' : 'ساعة'}`
@@ -1068,7 +1087,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
-                                    className="p-1.5 rounded-lg bg-white border border-[#E8E7FF] text-[#7657F6] hover:bg-[#F6F7FC] transition-colors cursor-pointer"
+                                    className="p-1.5 rounded-lg bg-[#F8F2EA] border border-[#B6A89C] text-[#6B1E2B] hover:bg-[#EADBC7] transition-colors cursor-pointer"
                                     title={isEn ? 'Edit Intake' : 'تعديل التفاصيل'}
                                   >
                                     <Edit3 className="w-3 h-3" />
@@ -1078,8 +1097,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             );
                           })()
                         ) : (
-                          <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span className="text-[10px] font-bold bg-[#EADBC7] text-[#5C4033] border border-[#B68A4C]/50 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-[#B68A4C]" />
                             <span>{isEn ? 'Present' : 'حاضر'} {presentCount}/{groupStudents.length}</span>
                           </span>
                         )
@@ -1087,10 +1106,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleMarkAllPresent(item)}
-                          className="min-h-[34px] px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                          className="min-h-[34px] px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                           title={item.isPrivate ? (isEn ? 'Record attendance' : 'تسجيل حضور الطالب') : (isEn ? 'Mark all present' : 'تسجيل حضور جميع الطلاب دفعة واحدة')}
                         >
-                          <UserCheck className="w-3.5 h-3.5" />
+                          <UserCheck className="w-3.5 h-3.5 text-[#B68A4C]" />
                           <span>{item.isPrivate ? (isEn ? 'Attended' : 'حضر') : (isEn ? 'All Present' : 'حضور الكل')}</span>
                         </button>
                       )}
@@ -1099,7 +1118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setExpandedAttendanceCardId(isExpanded ? null : item.id)}
-                        className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] border border-[#E8E7FF] text-[#191A2E] transition-colors cursor-pointer"
+                        className="p-1.5 rounded-xl bg-[#F8F2EA] hover:bg-[#EADBC7] border border-[#B6A89C]/50 text-[#2F2F2F] transition-colors cursor-pointer"
                         title={isEn ? 'Details & individual marking' : 'تفاصيل ورصد فردي'}
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1109,8 +1128,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                   {/* Expanded Student List */}
                   {isExpanded && (
-                    <div className="p-3 bg-[#F6F7FC] border-t border-[#E8E7FF] space-y-2 animate-in slide-in-from-top-1 duration-150">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-[#74778F] mb-1">
+                    <div className="p-3 bg-[#F8F2EA] border-t border-[#EADBC7] space-y-2 animate-in slide-in-from-top-1 duration-150">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-[#69493C] mb-1">
                         <span>{isEn ? `Students List (${groupStudents.length})` : `قائمة الطلاب (${groupStudents.length})`}</span>
                         <span>{isEn ? 'Direct Individual Marking' : 'رصد فردي مباشر'}</span>
                       </div>
@@ -1123,9 +1142,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           return (
                             <div
                               key={st.id}
-                              className="p-2.5 bg-white rounded-2xl border border-[#E8E7FF] flex items-center justify-between gap-2 shadow-2xs"
+                              className="p-2.5 bg-[#FAF7F2] rounded-2xl border border-[#EADBC7] flex items-center justify-between gap-2 shadow-2xs"
                             >
-                              <span className="font-bold text-xs text-[#191A2E] truncate min-w-0">
+                              <span className="font-bold text-xs text-[#2F2F2F] truncate min-w-0">
                                 {st.name}
                               </span>
 
@@ -1135,8 +1154,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'present', true)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
                                     stStatus === 'present'
-                                      ? 'bg-emerald-600 text-white shadow-2xs'
-                                      : 'bg-[#F6F7FC] text-[#74778F] hover:bg-emerald-50 hover:text-emerald-700'
+                                      ? 'bg-[#5C4033] text-[#FAF7F2] shadow-2xs'
+                                      : 'bg-[#F8F2EA] text-[#69493C] hover:bg-[#EADBC7] hover:text-[#2F2F2F]'
                                   }`}
                                 >
                                   {isEn ? 'Present' : 'حاضر'}
@@ -1147,8 +1166,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_charged', true)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
                                     stStatus === 'absent_charged' || (stStatus === 'absent' && currentRecord?.isCharged !== false)
-                                      ? 'bg-[#FF647C] text-white shadow-2xs'
-                                      : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#FFF1F3] hover:text-[#FF647C]'
+                                      ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-2xs'
+                                      : 'bg-[#F8F2EA] text-[#69493C] hover:bg-[#6B1E2B]/15 hover:text-[#6B1E2B]'
                                   }`}
                                 >
                                   {isEn ? 'Absent (Paid)' : 'غياب محسوب'}
@@ -1159,8 +1178,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_free', false)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
                                     stStatus === 'absent_free' || stStatus === 'excused' || (stStatus === 'absent' && currentRecord?.isCharged === false)
-                                      ? 'bg-[#403B9C] text-white shadow-2xs'
-                                      : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]'
+                                      ? 'bg-[#69493C] text-[#FAF7F2] shadow-2xs'
+                                      : 'bg-[#F8F2EA] text-[#69493C] hover:bg-[#EADBC7]'
                                   }`}
                                 >
                                   {isEn ? 'Excused' : 'معتذر'}
@@ -1171,8 +1190,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'late', true)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
                                     stStatus === 'late'
-                                      ? 'bg-amber-600 text-white shadow-2xs'
-                                      : 'bg-[#F6F7FC] text-[#74778F] hover:bg-amber-50 hover:text-amber-700'
+                                      ? 'bg-[#B56B45] text-[#FAF7F2] shadow-2xs'
+                                      : 'bg-[#F8F2EA] text-[#69493C] hover:bg-[#B56B45]/15 hover:text-[#B56B45]'
                                   }`}
                                 >
                                   {isEn ? 'Late' : 'متأخر'}
@@ -1188,10 +1207,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onOpenAttendanceModal(matchingSession)}
-                            className="text-[11px] font-bold text-[#7657F6] hover:text-[#403B9C] hover:underline flex items-center gap-1 cursor-pointer"
+                            className="text-[11px] font-bold text-[#6B1E2B] hover:text-[#5C4033] hover:underline flex items-center gap-1 cursor-pointer"
                           >
                             <span>{isEn ? 'Open Full Attendance Modal' : 'فتح نافذة الحضور الشاملة'}</span>
-                            <ArrowUpRight className="w-3.5 h-3.5 text-[#7657F6]" />
+                            <ArrowUpRight className="w-3.5 h-3.5 text-[#6B1E2B]" />
                           </button>
                         </div>
                       )}

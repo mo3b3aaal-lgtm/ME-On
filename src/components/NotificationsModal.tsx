@@ -188,34 +188,34 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#6B1E2B]/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F6F7FC] rounded-[28px] w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[#E8E7FF] overflow-hidden">
+        <div className="bg-[#F8F2EA] rounded-[28px] w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[#EADBC7] overflow-hidden">
         
         {/* Signature Classy Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] text-[#FAF7F2] flex items-center justify-between shrink-0 relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-sm shrink-0">
-              <Bell className="w-5 h-5 text-[#55C7E8]" />
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF7F2]/15 backdrop-blur-md border border-[#EADBC7]/25 flex items-center justify-center text-[#FAF7F2] shadow-sm shrink-0">
+              <Bell className="w-5 h-5 text-[#B68A4C]" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">{t('notifications')}</h2>
+                <h2 className="text-base sm:text-lg font-black text-[#FAF7F2] tracking-tight">{t('notifications')}</h2>
                 {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FF647C] text-white shadow-md shadow-[#FF647C]/40 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#B56B45] text-[#FAF7F2] shadow-md shadow-[#B56B45]/40 animate-pulse">
                     {unreadCount} {isEn ? 'new' : 'جديد'}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
+              <p className="text-xs text-[#EADBC7]/85 font-medium truncate">
                 {isEn ? 'Track packages, dues, overdue payments, and attendance' : 'متابعة استحقاق الباقات، الدفعات، ورصد الحضور والغياب'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+            className="p-2 rounded-2xl bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 text-[#FAF7F2] border border-[#EADBC7]/20 transition-all cursor-pointer relative z-10 active:scale-95"
             title={t('close')}
           >
             <X className="w-4 h-4" />
@@ -224,16 +224,16 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
         {/* Quick Feedback Toast */}
         {feedback && (
-          <div className="px-4 py-2.5 bg-[#ECFDF5] text-[#065F46] text-xs font-black border-b border-[#A7F3D0] flex items-center justify-between">
+          <div className="px-4 py-2.5 bg-[#F8F2EA] text-[#5C4033] text-xs font-black border-b border-[#B68A4C] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <CheckCircle2 className="w-4 h-4 text-[#B68A4C]" />
               <span>{feedback}</span>
             </div>
           </div>
         )}
 
         {/* Filter Tabs & Mark All Read */}
-        <div className="p-3 bg-white border-b border-[#E8E7FF] flex items-center justify-between gap-2 shrink-0 flex-wrap">
+        <div className="p-3 bg-[#FAF7F2] border-b border-[#EADBC7] flex items-center justify-between gap-2 shrink-0 flex-wrap">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {[
               { id: 'active' as TabType, label: isEn ? 'Active' : 'النشطة', count: activeCount },
@@ -271,15 +271,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                     isSelected
-                      ? 'bg-[#17163D] text-white shadow-xs'
-                      : 'bg-[#F6F7FC] text-[#74778F] hover:bg-[#E8E7FF]/40 border border-[#E8E7FF]'
+                      ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                      : 'bg-[#F8F2EA] text-[#69493C] hover:bg-[#EADBC7]/40 border border-[#EADBC7]'
                   }`}
                 >
                   <span>{tab.label}</span>
                   {tab.count > 0 && (
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-[#E8E7FF] text-[#7657F6]'
+                        isSelected ? 'bg-[#FAF7F2]/20 text-[#FAF7F2]' : 'bg-[#EADBC7] text-[#6B1E2B]'
                       }`}
                     >
                       {tab.count}
@@ -293,7 +293,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           {unreadCount > 0 && activeTab !== 'resolved' && (
             <button
               onClick={handleMarkAllRead}
-              className="text-[11px] font-black text-[#7657F6] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+              className="text-[11px] font-black text-[#6B1E2B] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
               <span>{isEn ? 'Mark all as read' : 'تحديد الكل كمقروء'}</span>
@@ -304,17 +304,17 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         {/* Notifications List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 android-scrollbar">
           {filteredNotifications.length === 0 ? (
-            <div className="text-center py-12 space-y-3 bg-white rounded-3xl border border-[#E8E7FF] p-6 shadow-sm">
-              <div className="w-14 h-14 rounded-2xl bg-[#ECFDF5] text-emerald-600 flex items-center justify-center mx-auto border border-[#A7F3D0]">
-                <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+            <div className="text-center py-12 space-y-3 bg-[#FAF7F2] rounded-3xl border border-[#EADBC7] p-6 shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-[#F8F2EA] text-[#B68A4C] flex items-center justify-center mx-auto border border-[#B68A4C]">
+                <CheckCircle2 className="w-7 h-7 text-[#B68A4C]" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-black text-[#17163D]">
+                <h3 className="text-sm font-black text-[#2F2F2F]">
                   {activeTab === 'resolved'
                     ? (isEn ? 'No settled notifications yet' : 'لا توجد تنبيهات مسددة أو مكتملة بعد')
                     : (isEn ? 'Great! No pending notifications right now' : 'رائع! لا توجد تنبيهات معلقة حالياً')}
                 </h3>
-                <p className="text-xs text-[#74778F] max-w-sm mx-auto font-medium leading-relaxed">
+                <p className="text-xs text-[#69493C] max-w-sm mx-auto font-medium leading-relaxed">
                   {activeTab === 'resolved'
                     ? (isEn ? 'When packages and payments are settled, completed records will appear here.' : 'عند سداد الباقات والمستحقات، ستظهر سجلات التسوية المكتملة هنا.')
                     : (isEn ? 'All student enrollments, session packages, and attendance logs are up to date.' : 'جميع اشتراكات الطلاب وباقات الحصص وحالات الحضور محدثة ومنتظمة.')}
@@ -336,14 +336,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   key={item.id}
                   className={`p-4 rounded-2xl border transition-all space-y-2.5 relative ${
                     isResolved
-                      ? 'bg-[#ECFDF5]/50 border-[#A7F3D0] opacity-90'
+                      ? 'bg-[#F8F2EA]/50 border-[#B68A4C] opacity-90'
                       : isDismissed
-                      ? 'bg-white/60 border-[#E8E7FF] opacity-75'
+                      ? 'bg-[#FAF7F2]/60 border-[#EADBC7] opacity-75'
                       : isHigh
-                      ? 'bg-[#FFF1F3] border-[#FECDD3] shadow-xs'
+                      ? 'bg-[#F8F2EA] border-[#B6A89C] shadow-xs'
                       : isAlmostDue
-                      ? 'bg-[#FFFBEB] border-[#FDE68A] shadow-xs'
-                      : 'bg-white border-[#E8E7FF] shadow-xs'
+                      ? 'bg-[#F8F2EA] border-[#B68A4C] shadow-xs'
+                      : 'bg-[#FAF7F2] border-[#EADBC7] shadow-xs'
                   }`}
                 >
                   {/* Top line badge & status */}
@@ -351,42 +351,42 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     <div className="flex items-center gap-2">
                       {isUnread && (
                         <span
-                          className="w-2 h-2 rounded-full bg-[#FF647C] shrink-0 animate-pulse"
+                          className="w-2 h-2 rounded-full bg-[#B56B45] shrink-0 animate-pulse"
                           title={isEn ? 'Unread' : 'غير مقروء'}
                         />
                       )}
                       <span
                         className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black inline-flex items-center gap-1 ${
                           isResolved
-                            ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]'
+                            ? 'bg-[#F8F2EA] text-[#5C4033] border border-[#B68A4C]'
                             : isHigh
-                            ? 'bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3]'
+                            ? 'bg-[#F8F2EA] text-[#B56B45] border border-[#B6A89C]'
                             : isAlmostDue
-                            ? 'bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]'
-                            : 'bg-[#E8E7FF] text-[#403B9C] border border-[#D8D5FB]'
+                            ? 'bg-[#F8F2EA] text-[#5C4033] border border-[#B68A4C]'
+                            : 'bg-[#EADBC7] text-[#5C4033] border border-[#B6A89C]'
                         }`}
                       >
                         {isResolved ? (
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <CheckCircle2 className="w-3 h-3 text-[#B68A4C]" />
                         ) : isHigh ? (
-                          <AlertTriangle className="w-3 h-3 text-[#FF647C]" />
+                          <AlertTriangle className="w-3 h-3 text-[#B56B45]" />
                         ) : (
-                          <Clock className="w-3 h-3 text-[#F59E0B]" />
+                          <Clock className="w-3 h-3 text-[#B68A4C]" />
                         )}
                         <span>{item.badge}</span>
                       </span>
 
                       {item.groupName && (
-                        <span className="text-[10px] text-[#74778F] font-bold">
+                        <span className="text-[10px] text-[#69493C] font-bold">
                           {item.groupName}
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1 text-[10px] text-[#74778F]">
+                    <div className="flex items-center gap-1 text-[10px] text-[#69493C]">
                       <button
                         onClick={() => handleToggleRead(item)}
-                        className="p-1.5 rounded-lg hover:bg-[#E8E7FF]/40 text-[#74778F] transition-all cursor-pointer"
+                        className="p-1.5 rounded-lg hover:bg-[#EADBC7]/40 text-[#69493C] transition-all cursor-pointer"
                         title={item.isRead ? (isEn ? 'Mark as unread' : 'تحديد كغير مقروء') : (isEn ? 'Mark as read' : 'تحديد كمقروء')}
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -394,7 +394,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       {!isResolved && !isDismissed && (
                         <button
                           onClick={() => handleDismiss(item)}
-                          className="p-1.5 rounded-lg hover:bg-[#FFF1F3] text-[#74778F] hover:text-[#FF647C] transition-all cursor-pointer"
+                          className="p-1.5 rounded-lg hover:bg-[#F8F2EA] text-[#69493C] hover:text-[#B56B45] transition-all cursor-pointer"
                           title={isEn ? 'Dismiss notification' : 'إخفاء التنبيه'}
                         >
                           <Archive className="w-3.5 h-3.5" />
@@ -408,21 +408,21 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     <h4
                       className={`text-xs sm:text-sm font-black ${
                         isResolved
-                          ? 'text-emerald-950 line-through opacity-80'
+                          ? 'text-[#2F2F2F] line-through opacity-80'
                           : isUnread
-                          ? 'text-[#17163D]'
-                          : 'text-[#191A2E]'
+                          ? 'text-[#2F2F2F]'
+                          : 'text-[#2F2F2F]'
                       }`}
                     >
                       {item.title}
                     </h4>
-                    <p className="text-xs text-[#74778F] font-medium mt-0.5 leading-relaxed">
+                    <p className="text-xs text-[#69493C] font-medium mt-0.5 leading-relaxed">
                       {item.description}
                     </p>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="pt-2 border-t border-[#E8E7FF]/70 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="pt-2 border-t border-[#EADBC7]/70 flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       {targetStudent && (
                         <button
@@ -430,7 +430,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                             onClose();
                             onOpenStudentProfile(targetStudent);
                           }}
-                          className="px-3 py-1 rounded-xl bg-white border border-[#E8E7FF] text-[11px] font-black text-[#17163D] hover:bg-[#F6F7FC] transition-all cursor-pointer"
+                          className="px-3 py-1 rounded-xl bg-[#FAF7F2] border border-[#EADBC7] text-[11px] font-black text-[#2F2F2F] hover:bg-[#F8F2EA] transition-all cursor-pointer"
                         >
                           {isEn ? 'Profile' : 'الملف الشخصي'}
                         </button>
@@ -441,7 +441,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           href={waUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-3 py-1 rounded-xl bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0] text-[11px] font-black hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1 rounded-xl bg-[#F8F2EA] text-[#5C4033] border border-[#B68A4C] text-[11px] font-black hover:bg-[#5C4033] hover:text-[#FAF7F2] transition-all flex items-center gap-1 cursor-pointer"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
                           <span>{isEn ? 'WhatsApp Parent' : 'واتساب ولي الأمر'}</span>
@@ -453,9 +453,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       {item.actionType === 'add_payment' && targetStudent && !isResolved && (
                         <button
                           onClick={() => handleQuickPay(item)}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                         >
-                          <DollarSign className="w-3.5 h-3.5 text-[#55C7E8]" />
+                          <DollarSign className="w-3.5 h-3.5 text-[#B68A4C]" />
                           <span>{t('recordPayment')}</span>
                         </button>
                       )}
@@ -463,9 +463,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       {item.actionType === 'record_attendance' && item.sessionId && !isResolved && (
                         <button
                           onClick={() => handleOpenAttendance(item)}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] text-[#FAF7F2] text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                         >
-                          <CalendarCheck2 className="w-3.5 h-3.5 text-[#55C7E8]" />
+                          <CalendarCheck2 className="w-3.5 h-3.5 text-[#B68A4C]" />
                           <span>{isEn ? 'Take Attendance' : 'رصد الحضور'}</span>
                         </button>
                       )}
@@ -478,13 +478,13 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 bg-white border-t border-[#E8E7FF] flex items-center justify-between shrink-0">
-          <span className="text-[11px] text-[#74778F] font-bold">
+        <div className="p-3.5 bg-[#FAF7F2] border-t border-[#EADBC7] flex items-center justify-between shrink-0">
+          <span className="text-[11px] text-[#69493C] font-bold">
             {isEn ? `Total Notifications: ${allNotifications.length} (${activeCount} active)` : `إجمالي التنبيهات: ${allNotifications.length} (${activeCount} نشط)`}
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-2xl bg-[#17163D] hover:bg-[#403B9C] text-white text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
+            className="px-5 py-2 rounded-2xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
           >
             {t('close')}
           </button>

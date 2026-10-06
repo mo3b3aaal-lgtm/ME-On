@@ -241,22 +241,22 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#6B1E2B]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-[#F8F2EA] border border-[#EADBC7] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Signature Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] text-[#FAF7F2] flex items-center justify-between shrink-0 relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-sm shrink-0">
-              <UserCheck className="w-5 h-5 text-[#55C7E8]" />
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF7F2]/15 backdrop-blur-md border border-[#EADBC7]/25 flex items-center justify-center text-[#FAF7F2] shadow-sm shrink-0">
+              <UserCheck className="w-5 h-5 text-[#B68A4C]" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
+              <h2 className="text-base sm:text-lg font-black text-[#FAF7F2] tracking-tight truncate">
                 {isGroupMode ? `${t('enrollExistingStudentTitle')}: ${targetGroup?.name}` : t('enrollExistingStudentTitle')}
               </h2>
-              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
+              <p className="text-xs text-[#EADBC7]/85 font-medium truncate">
                 {t('enrollExistingStudentSubtitle')}
               </p>
             </div>
@@ -264,14 +264,14 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
 
           <button
             onClick={onClose}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+            className="p-2 rounded-2xl bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 text-[#FAF7F2] border border-[#EADBC7]/20 transition-all cursor-pointer relative z-10 active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#191A2E]">
+        <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#2F2F2F]">
           
           {/* Service Kind Switcher (if not fixed by targetGroup) */}
           {!targetGroup && (
@@ -281,8 +281,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 onClick={() => setEnrollmentKind('group')}
                 className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 font-black text-xs cursor-pointer ${
                   enrollmentKind === 'group'
-                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
-                    : 'text-[#74778F] hover:bg-[#F6F7FC]'
+                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-xs'
+                    : 'text-[#69493C] hover:bg-[#F8F2EA]'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
@@ -294,11 +294,11 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 onClick={() => setEnrollmentKind('private_service')}
                 className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 font-black text-xs cursor-pointer ${
                   enrollmentKind === 'private_service'
-                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
-                    : 'text-[#74778F] hover:bg-[#F6F7FC]'
+                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-xs'
+                    : 'text-[#69493C] hover:bg-[#F8F2EA]'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#55C7E8]" />
+                <Sparkles className="w-3.5 h-3.5 text-[#B68A4C]" />
                 <span>{t('groupTypePrivate')}</span>
               </button>
             </div>
@@ -308,24 +308,24 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
           {(!targetStudent || isGroupMode) && (
             <div className="classy-card p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="font-black text-xs text-[#17163D]">
+                <label className="font-black text-xs text-[#2F2F2F]">
                   {t('selectExistingStudentPrompt')} ({selectedStudentIds.length}):
                 </label>
                 <div className="relative w-44">
-                  <Search className={`w-3.5 h-3.5 absolute ${isRTL ? 'right-2.5' : 'left-2.5'} top-2.5 text-[#74778F]`} />
+                  <Search className={`w-3.5 h-3.5 absolute ${isRTL ? 'right-2.5' : 'left-2.5'} top-2.5 text-[#69493C]`} />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t('search')}
-                    className={`w-full ${isRTL ? 'pr-8 pl-2' : 'pl-8 pr-2'} py-1.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] text-[11px] text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white font-bold`}
+                    className={`w-full ${isRTL ? 'pr-8 pl-2' : 'pl-8 pr-2'} py-1.5 rounded-xl bg-[#F8F2EA] border border-[#EADBC7] text-[11px] text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-bold`}
                   />
                 </div>
               </div>
 
-              <div className="max-h-44 overflow-y-auto rounded-2xl border border-[#E8E7FF] bg-[#F6F7FC] p-1.5 space-y-1">
+              <div className="max-h-44 overflow-y-auto rounded-2xl border border-[#EADBC7] bg-[#F8F2EA] p-1.5 space-y-1">
                 {filteredStudents.length === 0 ? (
-                  <p className="p-3 text-center text-[#74778F] text-[11px] font-bold">{t('noStudentsFound')}</p>
+                  <p className="p-3 text-center text-[#69493C] text-[11px] font-bold">{t('noStudentsFound')}</p>
                 ) : (
                   filteredStudents.map((st) => {
                     const alreadyEnrolled = enrollmentKind === 'group' && isAlreadyEnrolled(st.id, selectedGroupId);
@@ -339,30 +339,30 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                         onClick={() => handleToggleStudent(st.id)}
                         className={`w-full p-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
                           alreadyEnrolled
-                            ? 'bg-[#E8E7FF]/30 opacity-50 cursor-not-allowed'
+                            ? 'bg-[#EADBC7]/30 opacity-50 cursor-not-allowed'
                             : isSelected
-                            ? 'bg-[#E8E7FF]/60 border border-[#7657F6]'
-                            : 'bg-white hover:bg-[#E8E7FF]/20 border border-transparent'
+                            ? 'bg-[#EADBC7]/60 border border-[#6B1E2B]'
+                            : 'bg-[#FAF7F2] hover:bg-[#EADBC7]/20 border border-transparent'
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
                               isSelected
-                                ? 'bg-[#7657F6] border-[#7657F6] text-white'
-                                : 'border-[#D8D5FB] bg-white'
+                                ? 'bg-[#6B1E2B] border-[#6B1E2B] text-[#FAF7F2]'
+                                : 'border-[#B6A89C] bg-[#FAF7F2]'
                             }`}
                           >
                             {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
                           <div className={isRTL ? 'text-right' : 'text-left'}>
-                            <p className="font-black text-[#17163D] text-xs">{st.name}</p>
-                            <p className="text-[10px] text-[#74778F]">{getLocalizedStageName(st.gradeLevel, language)}</p>
+                            <p className="font-black text-[#2F2F2F] text-xs">{st.name}</p>
+                            <p className="text-[10px] text-[#69493C]">{getLocalizedStageName(st.gradeLevel, language)}</p>
                           </div>
                         </div>
 
                         {alreadyEnrolled && (
-                          <span className="text-[10px] bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] px-2 py-0.5 rounded-full font-black">
+                          <span className="text-[10px] bg-[#F8F2EA] text-[#B56B45] border border-[#B6A89C] px-2 py-0.5 rounded-full font-black">
                             {t('alreadyEnrolledInGroup')}
                           </span>
                         )}
@@ -377,17 +377,17 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
           {/* Section 1: When creating Independent Private Service */}
           {enrollmentKind === 'private_service' ? (
             <div className="classy-card p-4 space-y-3.5">
-              <div className="flex items-center justify-between text-[#7657F6] font-black text-xs">
+              <div className="flex items-center justify-between text-[#6B1E2B] font-black text-xs">
                 <span className="flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4" />
                   <span>{t('privateLessonSetupTitle')}</span>
                 </span>
-                <span className="text-[10px] bg-[#E8E7FF] px-2.5 py-0.5 rounded-full">{t('groupTypePrivate')}</span>
+                <span className="text-[10px] bg-[#EADBC7] px-2.5 py-0.5 rounded-full">{t('groupTypePrivate')}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
-                  <label className="block text-[11px] text-[#74778F] mb-1 font-bold">{t('subjectNameLabel')} *</label>
+                  <label className="block text-[11px] text-[#69493C] mb-1 font-bold">{t('subjectNameLabel')} *</label>
                   <input
                     type="text"
                     value={privSubject}
@@ -398,7 +398,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-[#74778F] mb-1 font-bold">{t('billingType')}</label>
+                  <label className="block text-[11px] text-[#69493C] mb-1 font-bold">{t('billingType')}</label>
                   <select
                     value={privBillingMode}
                     onChange={(e) => setPrivBillingMode(e.target.value as BillingMode)}
@@ -414,7 +414,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
 
                 {privBillingMode === 'hourly' ? (
                   <div>
-                    <label className="block text-[11px] text-[#74778F] mb-1 font-bold">{t('hourlyRateInputLabel')} *</label>
+                    <label className="block text-[11px] text-[#69493C] mb-1 font-bold">{t('hourlyRateInputLabel')} *</label>
                     <input
                       type="number"
                       min="0"
@@ -425,7 +425,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                   </div>
                 ) : privBillingMode !== 'package' ? (
                   <div>
-                    <label className="block text-[11px] text-[#74778F] mb-1 font-bold">
+                    <label className="block text-[11px] text-[#69493C] mb-1 font-bold">
                       {privBillingMode === 'monthly' ? t('monthlyFeeLabel') : t('perSessionRateLabel')} *
                     </label>
                     <input
@@ -438,7 +438,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-[11px] text-[#74778F] mb-1 font-bold">{t('packageTotalFeeLabel')} *</label>
+                    <label className="block text-[11px] text-[#69493C] mb-1 font-bold">{t('packageTotalFeeLabel')} *</label>
                     <input
                       type="number"
                       min="0"
@@ -453,16 +453,16 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
 
               {/* Package Sessions Presets & Count for Private */}
               {privBillingMode === 'package' && (
-                <div className="p-3 bg-[#F6F7FC] rounded-2xl border border-[#E8E7FF] space-y-2">
+                <div className="p-3 bg-[#F8F2EA] rounded-2xl border border-[#EADBC7] space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-black text-[#17163D]">{t('packageSessionsNumberLabel')}</label>
+                    <label className="text-[11px] font-black text-[#2F2F2F]">{t('packageSessionsNumberLabel')}</label>
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
                         min="1"
                         value={privPackageSessions}
                         onChange={(e) => setPrivPackageSessions(Math.max(1, Number(e.target.value)))}
-                        className="w-16 bg-white border border-[#E8E7FF] rounded-xl p-1 text-xs font-black text-[#17163D] text-center focus:outline-none focus:border-[#7657F6]"
+                        className="w-16 bg-[#FAF7F2] border border-[#EADBC7] rounded-xl p-1 text-xs font-black text-[#2F2F2F] text-center focus:outline-none focus:border-[#6B1E2B]"
                       />
                     </div>
                   </div>
@@ -477,8 +477,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                           onClick={() => setPrivPackageSessions(count)}
                           className={`px-3 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
                             isSel
-                              ? 'bg-[#7657F6] text-white shadow-xs'
-                              : 'bg-white text-[#74778F] border border-[#E8E7FF] hover:border-[#7657F6]'
+                              ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                              : 'bg-[#FAF7F2] text-[#69493C] border border-[#EADBC7] hover:border-[#6B1E2B]'
                           }`}
                         >
                           {count} {t('navSessions')}
@@ -487,9 +487,9 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     })}
                   </div>
 
-                  <div className="p-2.5 bg-[#E8E7FF]/40 rounded-xl flex items-center justify-between text-xs text-[#403B9C] font-black border border-[#D8D5FB]">
+                  <div className="p-2.5 bg-[#EADBC7]/40 rounded-xl flex items-center justify-between text-xs text-[#5C4033] font-black border border-[#B6A89C]">
                     <span>{t('calculatedEffectivePrice')}</span>
-                    <span className="text-sm text-[#17163D]">
+                    <span className="text-sm text-[#2F2F2F]">
                       {privPackageSessions > 0 ? Math.round(privPackagePrice / privPackageSessions) : 0} {t('currency')} / {t('sessionPrice')}
                     </span>
                   </div>
@@ -497,8 +497,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
               )}
 
               {/* Schedule days & Per-Day Times */}
-              <div className="space-y-2 pt-1 border-t border-[#E8E7FF]">
-                <label className="block text-[11px] font-black text-[#17163D]">{t('scheduleDays')}:</label>
+              <div className="space-y-2 pt-1 border-t border-[#EADBC7]">
+                <label className="block text-[11px] font-black text-[#2F2F2F]">{t('scheduleDays')}:</label>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {([
                     { key: 'saturday', labelKey: 'daySat' },
@@ -518,8 +518,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                         onClick={() => togglePrivDay(key)}
                         className={`px-3 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer ${
                           isDayChecked
-                            ? 'bg-[#17163D] text-white border-[#17163D]'
-                            : 'bg-white text-[#74778F] border-[#E8E7FF]'
+                            ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B]'
+                            : 'bg-[#FAF7F2] text-[#69493C] border-[#EADBC7]'
                         }`}
                       >
                         {localizedName}
@@ -536,17 +536,17 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                       return (
                         <div
                           key={dayKey}
-                          className="p-2.5 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] space-y-2"
+                          className="p-2.5 rounded-xl bg-[#F8F2EA] border border-[#EADBC7] space-y-2"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-black text-[#17163D] flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#7657F6]"></span>
+                            <span className="text-[11px] font-black text-[#2F2F2F] flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#6B1E2B]"></span>
                               {localizedDay}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleAddPrivDayTime(dayKey)}
-                              className="text-[10px] font-bold text-[#7657F6] hover:text-[#403B9C] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#E8E7FF] hover:bg-[#D8D5FB] transition-colors cursor-pointer"
+                              className="text-[10px] font-bold text-[#6B1E2B] hover:text-[#5C4033] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#EADBC7] hover:bg-[#B6A89C]/40 transition-colors cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
                               <span>{isRTL ? 'إضافة موعد آخر' : 'Add another time'}</span>
@@ -557,20 +557,20 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                             {dayTimes.map((tVal, tIdx) => (
                               <div
                                 key={`${dayKey}_${tIdx}`}
-                                className="flex items-center gap-1 bg-white border border-[#E8E7FF] rounded-lg px-2.5 py-1 shadow-2xs"
+                                className="flex items-center gap-1 bg-[#FAF7F2] border border-[#EADBC7] rounded-lg px-2.5 py-1 shadow-2xs"
                               >
-                                <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
+                                <Clock className="w-3.5 h-3.5 text-[#6B1E2B]" />
                                 <input
                                   type="time"
                                   value={tVal}
                                   onChange={(e) => handlePrivDayTimeChange(dayKey, tIdx, e.target.value)}
-                                  className="bg-transparent text-xs font-black text-[#191A2E] focus:outline-none cursor-pointer"
+                                  className="bg-transparent text-xs font-black text-[#2F2F2F] focus:outline-none cursor-pointer"
                                 />
                                 {dayTimes.length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => handleRemovePrivDayTime(dayKey, tIdx)}
-                                    className="p-0.5 rounded text-[#74778F] hover:text-[#FF647C] transition-colors ml-0.5 cursor-pointer"
+                                    className="p-0.5 rounded text-[#69493C] hover:text-[#B56B45] transition-colors ml-0.5 cursor-pointer"
                                     title={isRTL ? 'حذف هذا الموعد' : 'Remove time'}
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -591,7 +591,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
               {/* Group Picker if not fixed */}
               {!targetGroup && (
                 <div className="classy-card p-3.5 space-y-1.5">
-                  <label className="font-black text-xs text-[#17163D]">{t('selectGroupsPrompt')}</label>
+                  <label className="font-black text-xs text-[#2F2F2F]">{t('selectGroupsPrompt')}</label>
                   <select
                     value={selectedGroupId}
                     onChange={(e) => {
@@ -620,8 +620,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
               {/* Billing System Selection */}
               <div className="classy-card p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="font-black text-[#17163D] text-xs block">{t('billingMode')}:</label>
-                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#403B9C]">
+                  <label className="font-black text-[#2F2F2F] text-xs block">{t('billingMode')}:</label>
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7] text-[#5C4033]">
                     {billingMode === 'monthly'
                       ? t('billingMonthly')
                       : billingMode === 'package'
@@ -633,14 +633,14 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 </div>
                 
                 {/* Primary Billing Categories */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl">
                   <button
                     type="button"
                     onClick={() => setBillingMode('monthly')}
                     className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
                       billingMode === 'monthly'
-                        ? 'bg-[#17163D] text-white shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                     }`}
                   >
                     {t('billingMonthly')}
@@ -653,8 +653,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     }}
                     className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
                       billingMode === 'prepaid' || billingMode === 'postpaid'
-                        ? 'bg-[#17163D] text-white shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                     }`}
                   >
                     {t('billingPerSession')}
@@ -665,8 +665,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     onClick={() => setBillingMode('package')}
                     className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
                       billingMode === 'package'
-                        ? 'bg-[#17163D] text-white shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                     }`}
                   >
                     {t('billingPackage')}
@@ -677,8 +677,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     onClick={() => setBillingMode('hourly')}
                     className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
                       billingMode === 'hourly'
-                        ? 'bg-[#17163D] text-white shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                     }`}
                   >
                     {t('billingHourly')}
@@ -686,22 +686,22 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 </div>
 
                 {billingMode === 'hourly' && (
-                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#74778F] font-bold">
+                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#69493C] font-bold">
                     <span>{t('hourlyRateInputLabel')} ({t('currency')} / hr):</span>
                     <input
                       type="number"
                       min="0"
                       value={groupHourlyRate}
                       onChange={(e) => setGroupHourlyRate(Number(e.target.value) || 0)}
-                      className="w-24 p-1.5 text-center font-black bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl text-xs text-[#191A2E]"
+                      className="w-24 p-1.5 text-center font-black bg-[#F8F2EA] border border-[#EADBC7] rounded-xl text-xs text-[#2F2F2F]"
                     />
                   </div>
                 )}
 
                 {/* Sub-modes for Per Session Billing: Prepaid vs Postpaid */}
                 {(billingMode === 'prepaid' || billingMode === 'postpaid') && (
-                  <div className="p-3 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl space-y-2 animate-in fade-in duration-150">
-                    <span className="text-[11px] font-black text-[#74778F] block">
+                  <div className="p-3 bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl space-y-2 animate-in fade-in duration-150">
+                    <span className="text-[11px] font-black text-[#69493C] block">
                       {t('billingMode')}:
                     </span>
                     <div className="grid grid-cols-2 gap-2">
@@ -713,13 +713,13 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                         }}
                         className={`p-2.5 rounded-xl border text-right font-black text-xs transition-all cursor-pointer ${
                           perSessionSubMode === 'prepaid'
-                            ? 'bg-white border-[#7657F6] text-[#17163D] ring-1 ring-[#7657F6] shadow-xs'
-                            : 'bg-white/60 border-[#E8E7FF] text-[#74778F] hover:bg-white'
+                            ? 'bg-[#FAF7F2] border-[#6B1E2B] text-[#2F2F2F] ring-1 ring-[#6B1E2B] shadow-xs'
+                            : 'bg-[#FAF7F2]/60 border-[#EADBC7] text-[#69493C] hover:bg-[#FAF7F2]'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="font-black text-[#17163D] text-xs">1. {t('billingPrepaid')}</span>
-                          <span className="w-2 h-2 rounded-full bg-[#7657F6]"></span>
+                          <span className="font-black text-[#2F2F2F] text-xs">1. {t('billingPrepaid')}</span>
+                          <span className="w-2 h-2 rounded-full bg-[#6B1E2B]"></span>
                         </div>
                       </button>
 
@@ -731,13 +731,13 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                         }}
                         className={`p-2.5 rounded-xl border text-right font-black text-xs transition-all cursor-pointer ${
                           perSessionSubMode === 'postpaid'
-                            ? 'bg-white border-[#7657F6] text-[#17163D] ring-1 ring-[#7657F6] shadow-xs'
-                            : 'bg-white/60 border-[#E8E7FF] text-[#74778F] hover:bg-white'
+                            ? 'bg-[#FAF7F2] border-[#6B1E2B] text-[#2F2F2F] ring-1 ring-[#6B1E2B] shadow-xs'
+                            : 'bg-[#FAF7F2]/60 border-[#EADBC7] text-[#69493C] hover:bg-[#FAF7F2]'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="font-black text-[#17163D] text-xs">2. {t('billingPostpaid')}</span>
-                          <span className="w-2 h-2 rounded-full bg-[#403B9C]"></span>
+                          <span className="font-black text-[#2F2F2F] text-xs">2. {t('billingPostpaid')}</span>
+                          <span className="w-2 h-2 rounded-full bg-[#5C4033]"></span>
                         </div>
                       </button>
                     </div>
@@ -745,27 +745,27 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 )}
 
                 {billingMode === 'monthly' && (
-                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#74778F] font-bold">
+                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#69493C] font-bold">
                     <span>{t('baseSessionsPerMonth')}:</span>
                     <input
                       type="number"
                       min="1"
                       value={baseSessionsPerMonth}
                       onChange={(e) => setBaseSessionsPerMonth(Math.max(1, Number(e.target.value)))}
-                      className="w-16 p-1.5 text-center font-black bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl text-xs text-[#191A2E]"
+                      className="w-16 p-1.5 text-center font-black bg-[#F8F2EA] border border-[#EADBC7] rounded-xl text-xs text-[#2F2F2F]"
                     />
                   </div>
                 )}
 
                 {billingMode === 'package' && (
-                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#74778F] font-bold">
+                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#69493C] font-bold">
                     <span>{t('packageSessionsCount')}:</span>
                     <input
                       type="number"
                       min="1"
                       value={packageSessionsCount}
                       onChange={(e) => setPackageSessionsCount(Math.max(1, Number(e.target.value)))}
-                      className="w-16 p-1.5 text-center font-black bg-[#F6F7FC] border border-[#E8E7FF] rounded-xl text-xs text-[#191A2E]"
+                      className="w-16 p-1.5 text-center font-black bg-[#F8F2EA] border border-[#EADBC7] rounded-xl text-xs text-[#2F2F2F]"
                     />
                   </div>
                 )}
@@ -774,11 +774,11 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
               {/* Customizable Pricing Options */}
               <div className="classy-card p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="font-black text-xs text-[#17163D]">{t('pricingCustomizationTitle')}</label>
-                  <span className="text-[11px] text-[#74778F] font-bold">{t('defaultPrice')}: {basePrice} {t('currency')}</span>
+                  <label className="font-black text-xs text-[#2F2F2F]">{t('pricingCustomizationTitle')}</label>
+                  <span className="text-[11px] text-[#69493C] font-bold">{t('defaultPrice')}: {basePrice} {t('currency')}</span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl">
                   <button
                     type="button"
                     onClick={() => {
@@ -787,8 +787,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     }}
                     className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
                       pricingType === 'same_as_group'
-                        ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40 border-transparent'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40 border-transparent'
                     }`}
                   >
                     {t('pricingInheritGroup')}
@@ -799,8 +799,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     onClick={() => setPricingType('fixed_discount')}
                     className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
                       pricingType === 'fixed_discount'
-                        ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40 border-transparent'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40 border-transparent'
                     }`}
                   >
                     {t('pricingDiscountAmount')}
@@ -811,8 +811,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     onClick={() => setPricingType('percentage_discount')}
                     className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
                       pricingType === 'percentage_discount'
-                        ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40 border-transparent'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40 border-transparent'
                     }`}
                   >
                     {t('pricingDiscountPercent')}
@@ -826,8 +826,8 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                     }}
                     className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
                       pricingType === 'custom_price'
-                        ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
-                        : 'text-[#74778F] hover:bg-[#E8E7FF]/40 border-transparent'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-xs'
+                        : 'text-[#69493C] hover:bg-[#EADBC7]/40 border-transparent'
                     }`}
                   >
                     {t('pricingCustomFixed')}
@@ -837,7 +837,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 {/* Value Input for Modifier */}
                 {pricingType !== 'same_as_group' && (
                   <div className="space-y-1 pt-1">
-                    <label className="text-[11px] font-black text-[#74778F]">
+                    <label className="text-[11px] font-black text-[#69493C]">
                       {pricingType === 'fixed_discount' && `${t('pricingDiscountAmount')}:`}
                       {pricingType === 'percentage_discount' && `${t('pricingDiscountPercent')}:`}
                       {pricingType === 'custom_price' && `${t('pricingCustomFixed')}:`}
@@ -850,7 +850,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                         onChange={(e) => setPricingValue(Math.max(0, Number(e.target.value)))}
                         className="classy-input font-black text-sm"
                       />
-                      <span className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-2.5 font-bold text-xs text-[#74778F]`}>
+                      <span className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-2.5 font-bold text-xs text-[#69493C]`}>
                         {pricingType.includes('percentage') ? '%' : t('currency')}
                       </span>
                     </div>
@@ -858,11 +858,11 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 )}
 
                 {/* Permanent Calculation Preview Box */}
-                <div className="p-3 bg-[#E8E7FF]/40 rounded-2xl border border-[#D8D5FB] flex items-center justify-between">
+                <div className="p-3 bg-[#EADBC7]/40 rounded-2xl border border-[#B6A89C] flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-[#74778F] block">{t('calculatedEffectivePrice')}</span>
+                    <span className="text-[11px] font-bold text-[#69493C] block">{t('calculatedEffectivePrice')}</span>
                   </div>
-                  <div className="font-black text-base text-[#7657F6]">
+                  <div className="font-black text-base text-[#6B1E2B]">
                     {calculatedFinalPrice} {t('currency')}
                   </div>
                 </div>
@@ -875,7 +875,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs hover:bg-[#F6F7FC] transition-all cursor-pointer"
+              className="flex-1 py-3 rounded-2xl border border-[#EADBC7] bg-[#FAF7F2] text-[#69493C] font-black text-xs hover:bg-[#F8F2EA] transition-all cursor-pointer"
             >
               {t('cancel')}
             </button>
@@ -883,9 +883,9 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
               type="button"
               onClick={handleSave}
               disabled={selectedStudentIds.length === 0 || (enrollmentKind === 'group' && !selectedGroupId)}
-              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] disabled:opacity-50 text-white font-black text-xs shadow-lg shadow-[#7657F6]/30 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:brightness-105"
+              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] disabled:opacity-50 text-[#FAF7F2] font-black text-xs shadow-lg shadow-[#6B1E2B]/30 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:brightness-105"
             >
-              <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
+              <Check className="w-4 h-4 text-[#B68A4C] stroke-[3]" />
               <span>{t('enrollSelectedStudentsBtn')}</span>
             </button>
           </div>

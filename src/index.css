@@ -1,5 +1,226 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* =========================================================================
+     CLASSY DUAL LUXURY MASTER PALETTE — TAILWIND THEME OVERRIDES
+     Strictly derived from PALETTE 01 (Antique Brocade) & PALETTE 02 (Copper Cashmere)
+     PALETTE 01: Burgundy #6B1E2B | Bronze #B68A4C | Cream #F8F2EA | Walnut #5C4033 | Soft Taupe #B6A89C
+     PALETTE 02: Copper #B56B45   | Walnut #69493C | Sand #EADBC7  | Ivory #FAF7F2  | Charcoal #2F2F2F
+     ========================================================================= */
+
+  /* Positive / Success -> Warm Bronze (#B68A4C) & Cream/Sand/Walnut */
+  --color-emerald-50: #F8F2EA;
+  --color-emerald-100: #EADBC7;
+  --color-emerald-200: #DBC39E;
+  --color-emerald-300: #CCA974;
+  --color-emerald-400: #C0985E;
+  --color-emerald-500: #B68A4C;
+  --color-emerald-600: #9A713B;
+  --color-emerald-700: #5C4033;
+  --color-emerald-800: #4B3328;
+  --color-emerald-900: #2F2F2F;
+  --color-emerald-950: #241C18;
+
+  --color-green-50: #F8F2EA;
+  --color-green-100: #EADBC7;
+  --color-green-200: #DBC39E;
+  --color-green-300: #CCA974;
+  --color-green-400: #C0985E;
+  --color-green-500: #B68A4C;
+  --color-green-600: #9A713B;
+  --color-green-700: #5C4033;
+  --color-green-800: #4B3328;
+  --color-green-900: #2F2F2F;
+
+  --color-teal-50: #F8F2EA;
+  --color-teal-100: #EADBC7;
+  --color-teal-200: #DBC39E;
+  --color-teal-300: #CCA974;
+  --color-teal-400: #C0985E;
+  --color-teal-500: #B68A4C;
+  --color-teal-600: #9A713B;
+  --color-teal-700: #5C4033;
+  --color-teal-800: #4B3328;
+  --color-teal-900: #2F2F2F;
+
+  /* Warning / Pending -> Copper (#B56B45) & Sand/Walnut */
+  --color-amber-50: #F8F2EA;
+  --color-amber-100: #EADBC7;
+  --color-amber-200: #DFBEAC;
+  --color-amber-300: #D19C80;
+  --color-amber-400: #C38362;
+  --color-amber-500: #B56B45;
+  --color-amber-600: #9B5735;
+  --color-amber-700: #69493C;
+  --color-amber-800: #5C4033;
+  --color-amber-900: #2F2F2F;
+  --color-amber-950: #241C18;
+
+  --color-yellow-50: #FAF7F2;
+  --color-yellow-100: #EADBC7;
+  --color-yellow-200: #DBC39E;
+  --color-yellow-300: #CCA974;
+  --color-yellow-400: #B68A4C;
+  --color-yellow-500: #B56B45;
+  --color-yellow-600: #9A713B;
+  --color-yellow-700: #69493C;
+  --color-yellow-800: #5C4033;
+  --color-yellow-900: #2F2F2F;
+
+  --color-orange-50: #F8F2EA;
+  --color-orange-100: #EADBC7;
+  --color-orange-200: #DFBEAC;
+  --color-orange-300: #D19C80;
+  --color-orange-400: #C38362;
+  --color-orange-500: #B56B45;
+  --color-orange-600: #9B5735;
+  --color-orange-700: #69493C;
+  --color-orange-800: #5C4033;
+  --color-orange-900: #2F2F2F;
+
+  /* Danger / Alert / Important -> Burgundy (#6B1E2B) */
+  --color-rose-50: #F6ECEE;
+  --color-rose-100: #EBD8DC;
+  --color-rose-200: #D7B2B9;
+  --color-rose-300: #BC838D;
+  --color-rose-400: #9E5461;
+  --color-rose-500: #843342;
+  --color-rose-600: #6B1E2B;
+  --color-rose-700: #581823;
+  --color-rose-800: #47131C;
+  --color-rose-900: #360E15;
+  --color-rose-950: #24090E;
+
+  --color-red-50: #F6ECEE;
+  --color-red-100: #EBD8DC;
+  --color-red-200: #D7B2B9;
+  --color-red-300: #BC838D;
+  --color-red-400: #9E5461;
+  --color-red-500: #843342;
+  --color-red-600: #6B1E2B;
+  --color-red-700: #581823;
+  --color-red-800: #47131C;
+  --color-red-900: #360E15;
+  --color-red-950: #24090E;
+
+  --color-pink-50: #F6ECEE;
+  --color-pink-100: #EBD8DC;
+  --color-pink-200: #D7B2B9;
+  --color-pink-300: #BC838D;
+  --color-pink-400: #9E5461;
+  --color-pink-500: #6B1E2B;
+  --color-pink-600: #581823;
+  --color-pink-700: #47131C;
+  --color-pink-800: #360E15;
+  --color-pink-900: #24090E;
+
+  /* Brand / Primary Remap -> Burgundy (#6B1E2B) & Walnut (#5C4033) */
+  --color-indigo-50: #F8F2EA;
+  --color-indigo-100: #EADBC7;
+  --color-indigo-200: #D7C6B8;
+  --color-indigo-300: #B6A89C;
+  --color-indigo-400: #8F6858;
+  --color-indigo-500: #6B1E2B;
+  --color-indigo-600: #6B1E2B;
+  --color-indigo-700: #581823;
+  --color-indigo-800: #5C4033;
+  --color-indigo-900: #2F2F2F;
+  --color-indigo-950: #241C18;
+
+  --color-violet-50: #F8F2EA;
+  --color-violet-100: #EADBC7;
+  --color-violet-200: #D7C6B8;
+  --color-violet-300: #B6A89C;
+  --color-violet-400: #B68A4C;
+  --color-violet-500: #6B1E2B;
+  --color-violet-600: #6B1E2B;
+  --color-violet-700: #5C4033;
+  --color-violet-800: #4B3328;
+  --color-violet-900: #2F2F2F;
+
+  --color-purple-50: #F8F2EA;
+  --color-purple-100: #EADBC7;
+  --color-purple-200: #D7C6B8;
+  --color-purple-300: #B6A89C;
+  --color-purple-400: #B68A4C;
+  --color-purple-500: #6B1E2B;
+  --color-purple-600: #6B1E2B;
+  --color-purple-700: #5C4033;
+  --color-purple-800: #4B3328;
+  --color-purple-900: #2F2F2F;
+
+  /* Secondary / Accent Remap -> Walnut (#69493C) & Bronze (#B68A4C) */
+  --color-blue-50: #F8F2EA;
+  --color-blue-100: #EADBC7;
+  --color-blue-200: #D7C6B8;
+  --color-blue-300: #B6A89C;
+  --color-blue-400: #B68A4C;
+  --color-blue-500: #69493C;
+  --color-blue-600: #5C4033;
+  --color-blue-700: #4B3328;
+  --color-blue-800: #3B281F;
+  --color-blue-900: #2F2F2F;
+
+  --color-sky-50: #F8F2EA;
+  --color-sky-100: #EADBC7;
+  --color-sky-200: #DBC39E;
+  --color-sky-300: #CCA974;
+  --color-sky-400: #B68A4C;
+  --color-sky-500: #B68A4C;
+  --color-sky-600: #69493C;
+  --color-sky-700: #5C4033;
+  --color-sky-800: #4B3328;
+  --color-sky-900: #2F2F2F;
+
+  --color-cyan-50: #F8F2EA;
+  --color-cyan-100: #EADBC7;
+  --color-cyan-200: #DBC39E;
+  --color-cyan-300: #CCA974;
+  --color-cyan-400: #B68A4C;
+  --color-cyan-500: #B68A4C;
+  --color-cyan-600: #69493C;
+  --color-cyan-700: #5C4033;
+  --color-cyan-800: #4B3328;
+  --color-cyan-900: #2F2F2F;
+
+  /* Warm Neutrals -> Ivory, Cream, Sand, Soft Taupe, Walnut, Charcoal */
+  --color-slate-50: #FAF7F2;
+  --color-slate-100: #F8F2EA;
+  --color-slate-200: #EADBC7;
+  --color-slate-300: #B6A89C;
+  --color-slate-400: #9A887B;
+  --color-slate-500: #69493C;
+  --color-slate-600: #5C4033;
+  --color-slate-700: #4B3328;
+  --color-slate-800: #382922;
+  --color-slate-900: #2F2F2F;
+  --color-slate-950: #221E1D;
+
+  --color-gray-50: #FAF7F2;
+  --color-gray-100: #F8F2EA;
+  --color-gray-200: #EADBC7;
+  --color-gray-300: #B6A89C;
+  --color-gray-400: #9A887B;
+  --color-gray-500: #69493C;
+  --color-gray-600: #5C4033;
+  --color-gray-700: #4B3328;
+  --color-gray-800: #382922;
+  --color-gray-900: #2F2F2F;
+
+  --color-zinc-50: #FAF7F2;
+  --color-zinc-100: #F8F2EA;
+  --color-zinc-200: #EADBC7;
+  --color-zinc-300: #B6A89C;
+  --color-zinc-400: #9A887B;
+  --color-zinc-500: #69493C;
+  --color-zinc-600: #5C4033;
+  --color-zinc-700: #4B3328;
+  --color-zinc-800: #382922;
+  --color-zinc-900: #2F2F2F;
+}
+
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
@@ -7,8 +228,8 @@
 
   body {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #F6F7FC;
-    color: #191A2E;
+    background-color: #FAF7F2;
+    color: #2F2F2F;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
@@ -17,118 +238,151 @@
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', sans-serif;
     font-weight: 700;
-    color: #191A2E;
+    color: #2F2F2F;
     letter-spacing: -0.02em;
   }
 }
 
 /* ==========================================================================
-   CLASSY UNIFIED DESIGN TOKENS (Single Source of Truth)
+   CLASSY UNIFIED LUXURY DESIGN TOKENS (Single Source of Truth)
    ========================================================================== */
 :root {
-  --color-midnight: #17163D;
-  --color-royal: #403B9C;
-  --color-violet: #7657F6;
-  --color-lavender: #E8E7FF;
-  --color-coral: #FF647C;
-  --color-cyan: #55C7E8;
-  --color-canvas: #F6F7FC;
-  --color-surface: #FFFFFF;
-  --color-text-main: #191A2E;
-  --color-text-muted: #74778F;
-  --color-border-subtle: #E8E7FF;
+  /* Master Luxury Semantic Tokens */
+  --classy-background: #FAF7F2;
+  --classy-background-secondary: #F8F2EA;
+  --classy-surface: #F8F2EA;
+  --classy-surface-elevated: #FAF7F2;
+  --classy-surface-sand: #EADBC7;
 
-  /* Semantic Status Tokens */
-  --status-success: #10B981;
-  --status-success-bg: #ECFDF5;
-  --status-success-border: #A7F3D0;
-  --status-warning: #F59E0B;
-  --status-warning-bg: #FFFBEB;
-  --status-warning-border: #FDE68A;
-  --status-danger: #FF647C;
-  --status-danger-bg: #FFF1F3;
-  --status-danger-border: #FECDD3;
-  --status-info: #55C7E8;
-  --status-info-bg: #F0F9FF;
-  --status-info-border: #BAE6FD;
+  --classy-primary: #6B1E2B;
+  --classy-primary-hover: #581823;
+  --classy-primary-active: #47131C;
+
+  --classy-secondary: #5C4033;
+  --classy-secondary-warm: #69493C;
+  --classy-accent: #B68A4C;
+  --classy-accent-secondary: #B56B45;
+
+  --classy-text-primary: #2F2F2F;
+  --classy-text-secondary: #5C4033;
+  --classy-text-muted: #69493C;
+  --classy-text-subtle: #B6A89C;
+
+  --classy-border: #B6A89C;
+  --classy-border-soft: #EADBC7;
+
+  --classy-badge-bg: #EADBC7;
+  --classy-badge-text: #5C4033;
+
+  --classy-positive: #B68A4C;
+  --classy-warning: #B56B45;
+  --classy-danger: #6B1E2B;
+  --classy-neutral: #69493C;
+
+  /* Mapped Legacy Token Aliases */
+  --color-midnight: #6B1E2B;
+  --color-royal: #5C4033;
+  --color-violet: #6B1E2B;
+  --color-lavender: #EADBC7;
+  --color-coral: #B56B45;
+  --color-cyan: #B68A4C;
+  --color-canvas: #FAF7F2;
+  --color-surface: #F8F2EA;
+  --color-text-main: #2F2F2F;
+  --color-text-muted: #69493C;
+  --color-border-subtle: #EADBC7;
+
+  /* Semantic Status Tokens (Strictly Luxury Master Palette) */
+  --status-success: #B68A4C;
+  --status-success-bg: #F8F2EA;
+  --status-success-border: #B68A4C;
+  --status-warning: #B56B45;
+  --status-warning-bg: #F8F2EA;
+  --status-warning-border: #B56B45;
+  --status-danger: #6B1E2B;
+  --status-danger-bg: #F6ECEE;
+  --status-danger-border: #BC838D;
+  --status-info: #69493C;
+  --status-info-bg: #EADBC7;
+  --status-info-border: #B6A89C;
 }
 
 /* ==========================================================================
    CARDS & SURFACES
    ========================================================================== */
 .classy-card {
-  background-color: #FFFFFF;
+  background-color: #F8F2EA;
   border-radius: 22px;
-  border: 1px solid #E8E7FF;
-  box-shadow: 0 4px 20px -4px rgba(23, 22, 61, 0.05), 0 1px 3px rgba(23, 22, 61, 0.02);
+  border: 1px solid rgba(182, 168, 156, 0.55);
+  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.08), 0 1px 3px rgba(47, 47, 47, 0.03);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .classy-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -6px rgba(118, 87, 246, 0.12), 0 2px 8px -1px rgba(23, 22, 61, 0.04);
-  border-color: #D3D0FB;
+  box-shadow: 0 12px 28px -6px rgba(107, 30, 43, 0.14), 0 2px 8px -1px rgba(92, 64, 51, 0.06);
+  border-color: #B68A4C;
 }
 
 .classy-subtle-card {
-  background-color: #F6F7FC;
+  background-color: #FAF7F2;
   border-radius: 18px;
-  border: 1px solid #E8E7FF;
+  border: 1px solid #EADBC7;
   padding: 0.875rem;
 }
 
 .classy-lavender-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, #F4F3FF 100%);
+  background: linear-gradient(135deg, #FAF7F2 0%, #F8F2EA 55%, #EADBC7 100%);
   border-radius: 22px;
-  border: 1px solid #D8D5FB;
-  box-shadow: 0 4px 20px -4px rgba(118, 87, 246, 0.08);
+  border: 1px solid rgba(182, 168, 156, 0.6);
+  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.09);
 }
 
 .classy-rose-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F7 100%);
+  background: linear-gradient(135deg, #FAF7F2 0%, #F5E9EB 100%);
   border-radius: 22px;
-  border: 1px solid #FED7E2;
-  box-shadow: 0 4px 20px -4px rgba(255, 100, 124, 0.08);
+  border: 1px solid rgba(107, 30, 43, 0.25);
+  box-shadow: 0 4px 20px -4px rgba(107, 30, 43, 0.09);
 }
 
 .classy-cyan-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, #F0FAFD 100%);
+  background: linear-gradient(135deg, #FAF7F2 0%, #EADBC7 100%);
   border-radius: 22px;
-  border: 1px solid #BAE6FD;
-  box-shadow: 0 4px 20px -4px rgba(85, 199, 232, 0.08);
+  border: 1px solid rgba(182, 138, 76, 0.4);
+  box-shadow: 0 4px 20px -4px rgba(182, 138, 76, 0.1);
 }
 
 .classy-mint-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);
+  background: linear-gradient(135deg, #FAF7F2 0%, #F8F2EA 60%, #EADBC7 100%);
   border-radius: 22px;
-  border: 1px solid #BBF7D0;
-  box-shadow: 0 4px 20px -4px rgba(34, 160, 107, 0.08);
+  border: 1px solid rgba(182, 138, 76, 0.45);
+  box-shadow: 0 4px 20px -4px rgba(182, 138, 76, 0.1);
 }
 
-/* Executive Midnight Indigo Dark Card */
+/* Executive Luxury Burgundy & Walnut Card */
 .classy-dark-card {
-  background: linear-gradient(135deg, #17163D 0%, #25225C 50%, #403B9C 100%);
+  background: linear-gradient(135deg, #6B1E2B 0%, #5C4033 55%, #69493C 100%);
   border-radius: 26px;
-  border: 1px solid rgba(232, 231, 255, 0.14);
-  box-shadow: 0 16px 36px -8px rgba(23, 22, 61, 0.35);
-  color: #FFFFFF;
+  border: 1px solid rgba(182, 138, 76, 0.35);
+  box-shadow: 0 16px 36px -8px rgba(92, 64, 51, 0.35);
+  color: #FAF7F2;
 }
 
 /* ==========================================================================
    BUTTONS
    ========================================================================== */
 .btn-primary {
-  background: linear-gradient(135deg, #17163D 0%, #403B9C 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #6B1E2B 0%, #5C4033 100%);
+  color: #FAF7F2;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 4px 14px -2px rgba(23, 22, 61, 0.35);
+  box-shadow: 0 4px 14px -2px rgba(107, 30, 43, 0.35);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 22px -2px rgba(64, 59, 156, 0.45);
+  box-shadow: 0 8px 22px -2px rgba(107, 30, 43, 0.45);
   filter: brightness(1.06);
 }
 
@@ -137,18 +391,18 @@
 }
 
 .btn-secondary {
-  background-color: #FFFFFF;
-  color: #17163D;
-  border: 1px solid #E8E7FF;
+  background-color: #FAF7F2;
+  color: #5C4033;
+  border: 1px solid #B6A89C;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(23, 22, 61, 0.04);
+  box-shadow: 0 2px 6px rgba(92, 64, 51, 0.06);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-secondary:hover {
-  background-color: #E8E7FF;
-  border-color: #D3D0FB;
+  background-color: #EADBC7;
+  border-color: #B68A4C;
   transform: translateY(-1px);
 }
 
@@ -157,17 +411,17 @@
 }
 
 .btn-violet {
-  background: linear-gradient(135deg, #7657F6 0%, #5B3CE0 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #6B1E2B 0%, #581823 100%);
+  color: #FAF7F2;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 6px 18px -3px rgba(118, 87, 246, 0.35);
+  box-shadow: 0 6px 18px -3px rgba(107, 30, 43, 0.35);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-violet:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -2px rgba(118, 87, 246, 0.45);
+  box-shadow: 0 10px 24px -2px rgba(107, 30, 43, 0.45);
   filter: brightness(1.05);
 }
 
@@ -176,17 +430,17 @@
 }
 
 .btn-coral {
-  background: linear-gradient(135deg, #FF647C 0%, #F44964 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #B56B45 0%, #6B1E2B 100%);
+  color: #FAF7F2;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 6px 18px -3px rgba(255, 100, 124, 0.35);
+  box-shadow: 0 6px 18px -3px rgba(181, 107, 69, 0.35);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-coral:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -2px rgba(255, 100, 124, 0.45);
+  box-shadow: 0 10px 24px -2px rgba(181, 107, 69, 0.45);
   filter: brightness(1.05);
 }
 
@@ -201,13 +455,13 @@
 .classy-select,
 .classy-textarea {
   width: 100%;
-  background-color: #F6F7FC;
-  border: 1px solid #E8E7FF;
+  background-color: #FAF7F2;
+  border: 1px solid #B6A89C;
   border-radius: 16px;
   padding: 0.625rem 0.875rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #191A2E;
+  color: #2F2F2F;
   transition: all 0.2s ease;
 }
 
@@ -215,14 +469,14 @@
 .classy-select:focus,
 .classy-textarea:focus {
   outline: none;
-  border-color: #7657F6;
-  background-color: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(118, 87, 246, 0.12);
+  border-color: #6B1E2B;
+  background-color: #FAF7F2;
+  box-shadow: 0 0 0 3px rgba(107, 30, 43, 0.14);
 }
 
 .classy-input::placeholder,
 .classy-textarea::placeholder {
-  color: rgba(116, 119, 143, 0.65);
+  color: rgba(105, 73, 60, 0.65);
   font-weight: 500;
 }
 
@@ -230,7 +484,7 @@
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #191A2E;
+  color: #5C4033;
   margin-bottom: 0.375rem;
 }
 
@@ -238,9 +492,9 @@
    SEMANTIC BADGES
    ========================================================================== */
 .badge-success {
-  background-color: #ECFDF5;
-  color: #065F46;
-  border: 1px solid #A7F3D0;
+  background-color: rgba(182, 138, 76, 0.16);
+  color: #5C4033;
+  border: 1px solid rgba(182, 138, 76, 0.45);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -248,9 +502,9 @@
 }
 
 .badge-warning {
-  background-color: #FFFBEB;
-  color: #92400E;
-  border: 1px solid #FDE68A;
+  background-color: rgba(181, 107, 69, 0.16);
+  color: #69493C;
+  border: 1px solid rgba(181, 107, 69, 0.45);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -258,9 +512,9 @@
 }
 
 .badge-danger {
-  background-color: #FFF1F3;
-  color: #9F1239;
-  border: 1px solid #FECDD3;
+  background-color: rgba(107, 30, 43, 0.12);
+  color: #6B1E2B;
+  border: 1px solid rgba(107, 30, 43, 0.32);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -268,9 +522,9 @@
 }
 
 .badge-info {
-  background-color: #F0F9FF;
-  color: #0369A1;
-  border: 1px solid #BAE6FD;
+  background-color: #EADBC7;
+  color: #5C4033;
+  border: 1px solid #B6A89C;
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -278,9 +532,9 @@
 }
 
 .badge-primary {
-  background-color: #E8E7FF;
-  color: #403B9C;
-  border: 1px solid #D3D0FB;
+  background-color: rgba(107, 30, 43, 0.12);
+  color: #6B1E2B;
+  border: 1px solid rgba(107, 30, 43, 0.28);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -291,26 +545,26 @@
    ICON BOX CONTAINERS
    ========================================================================== */
 .icon-box-violet {
-  background-color: #E8E7FF;
-  color: #7657F6;
+  background-color: #EADBC7;
+  color: #6B1E2B;
   border-radius: 16px;
 }
 
 .icon-box-coral {
-  background-color: rgba(255, 100, 124, 0.12);
-  color: #FF647C;
+  background-color: rgba(181, 107, 69, 0.15);
+  color: #B56B45;
   border-radius: 16px;
 }
 
 .icon-box-cyan {
-  background-color: rgba(85, 199, 232, 0.15);
-  color: #0284C7;
+  background-color: rgba(182, 138, 76, 0.18);
+  color: #5C4033;
   border-radius: 16px;
 }
 
 .icon-box-midnight {
-  background-color: rgba(23, 22, 61, 0.08);
-  color: #17163D;
+  background-color: rgba(92, 64, 51, 0.12);
+  color: #5C4033;
   border-radius: 16px;
 }
 
@@ -318,8 +572,8 @@
    SEGMENTED CONTROLS / TABS
    ========================================================================== */
 .classy-segment {
-  background-color: #F6F7FC;
-  border: 1px solid #E8E7FF;
+  background-color: #FAF7F2;
+  border: 1px solid #EADBC7;
   border-radius: 18px;
   padding: 0.25rem;
   display: flex;
@@ -339,19 +593,19 @@
 }
 
 .classy-segment-btn-active {
-  background-color: #17163D;
-  color: #FFFFFF;
-  box-shadow: 0 4px 10px rgba(23, 22, 61, 0.18);
+  background-color: #6B1E2B;
+  color: #FAF7F2;
+  box-shadow: 0 4px 10px rgba(107, 30, 43, 0.25);
 }
 
 .classy-segment-btn-inactive {
-  color: #74778F;
+  color: #69493C;
   background-color: transparent;
 }
 
 .classy-segment-btn-inactive:hover {
-  color: #191A2E;
-  background-color: rgba(232, 231, 255, 0.4);
+  color: #2F2F2F;
+  background-color: rgba(234, 219, 199, 0.55);
 }
 
 /* ==========================================================================
@@ -365,19 +619,19 @@
   width: 56px;
   height: 56px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #7657F6 0%, #FF647C 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #6B1E2B 0%, #B68A4C 100%);
+  color: #FAF7F2;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 28px -4px rgba(118, 87, 246, 0.45), 0 4px 10px rgba(255, 100, 124, 0.3);
+  box-shadow: 0 12px 28px -4px rgba(107, 30, 43, 0.45), 0 4px 10px rgba(182, 138, 76, 0.3);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 
 .classy-fab:hover {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 16px 34px -4px rgba(118, 87, 246, 0.55);
+  box-shadow: 0 16px 34px -4px rgba(107, 30, 43, 0.55);
 }
 
 .classy-fab:active {
@@ -388,25 +642,25 @@
    BACKWARD COMPATIBILITY ALIASES
    ========================================================================== */
 .neu-card, .royal-card {
-  background-color: #FFFFFF;
+  background-color: #F8F2EA;
   border-radius: 22px;
-  box-shadow: 0 4px 20px -4px rgba(23, 22, 61, 0.05);
-  border: 1px solid #E8E7FF;
+  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.08);
+  border: 1px solid #EADBC7;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .neu-card-hover:hover, .royal-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(118, 87, 246, 0.12);
-  border-color: #D3D0FB;
+  box-shadow: 0 12px 28px -4px rgba(107, 30, 43, 0.14);
+  border-color: #B68A4C;
 }
 
 .bento-stat-card {
-  background-color: #FFFFFF;
+  background-color: #F8F2EA;
   border-radius: 22px;
   padding: 1.25rem;
-  box-shadow: 0 4px 20px -4px rgba(23, 22, 61, 0.05);
-  border: 1px solid #E8E7FF;
+  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.08);
+  border: 1px solid #EADBC7;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -417,8 +671,8 @@
 
 .bento-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(118, 87, 246, 0.12);
-  border-color: #D3D0FB;
+  box-shadow: 0 12px 28px -4px rgba(107, 30, 43, 0.14);
+  border-color: #B68A4C;
 }
 
 /* ==========================================================================
@@ -497,11 +751,11 @@
   background: transparent;
 }
 .android-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(116, 119, 143, 0.25);
+  background: rgba(182, 168, 156, 0.45);
   border-radius: 9999px;
 }
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(116, 119, 143, 0.45);
+  background: rgba(107, 30, 43, 0.55);
 }
 
 /* ==========================================================================
@@ -529,7 +783,7 @@ button, a, input, select, textarea, [role="button"], .interactive-touch {
 .modal-drag-handle {
   width: 40px;
   height: 5px;
-  background-color: #D3D0FB;
+  background-color: #B6A89C;
   border-radius: 9999px;
   margin: 0 auto;
   cursor: grab;
@@ -537,7 +791,7 @@ button, a, input, select, textarea, [role="button"], .interactive-touch {
 }
 
 .modal-drag-handle:active {
-  background-color: #7657F6;
+  background-color: #6B1E2B;
   transform: scaleX(1.2);
 }
 

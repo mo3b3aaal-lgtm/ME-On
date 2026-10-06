@@ -295,34 +295,34 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#191A2E] pb-32 bg-[#F5F6FC] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#2F2F2F] pb-32 bg-[#FAF7F2] relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Ambient background glows matching Classy visual identity */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#7657F6]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#55C7E8]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#FF647C]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#6B1E2B]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#B68A4C]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#B56B45]/6 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* =========================================================================
           1. Header Section with Signature Classy Executive Gradient Styling
           ========================================================================= */}
-      <div className="rounded-[24px] bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] p-5 sm:p-6 text-white relative overflow-hidden shadow-xl border border-white/10">
+      <div className="rounded-[24px] bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] p-5 sm:p-6 text-[#FAF7F2] relative overflow-hidden shadow-xl border border-[#EADBC7]/15">
         {/* Soft internal gradient orbs */}
-        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#7657F6]/35 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#FF647C]/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#6B1E2B]/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#B56B45]/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#FF647C] via-[#7657F6] to-[#55C7E8] p-0.5 shadow-lg shadow-[#7657F6]/35 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-[#17163D] flex items-center justify-center text-white">
-                <Users className="w-6 h-6 text-[#55C7E8]" />
+            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#6B1E2B] via-[#B56B45] to-[#B68A4C] p-0.5 shadow-lg shadow-[#6B1E2B]/35 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-[#6B1E2B] flex items-center justify-center text-[#FAF7F2]">
+                <Users className="w-6 h-6 text-[#B68A4C]" />
               </div>
             </div>
 
             <div className="space-y-0.5 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#E8E7FF]/90 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#55C7E8]" />
+                <span className="text-xs font-bold text-[#EADBC7]/90 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#B68A4C]" />
                   <span>
                     {activeTabType === 'active'
                       ? (isEn ? 'Student Management & Follow-up' : 'إدارة ومتابعة الطلاب')
@@ -330,13 +330,13 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   </span>
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5 truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-[#FAF7F2] tracking-tight flex items-center gap-2.5 truncate">
                 <span>{t('studentsTitle')}</span>
-                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/20 shadow-xs">
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FAF7F2]/20 text-[#FAF7F2] border border-[#EADBC7]/25 shadow-xs">
                   {activeTabType === 'active' ? activeStudentsCount : archivedStudentsCount}
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm text-[#E8E7FF]/85 font-medium truncate">
+              <p className="text-xs sm:text-sm text-[#EADBC7]/85 font-medium truncate">
                 {activeTabType === 'active'
                   ? (isEn ? 'Comprehensive student directory, enrollments, attendance, and balances' : 'سجل الطلاب الشامل، الاشتراكات، الحضور، والأرصدة المالية')
                   : (isEn ? 'Archived students with preserved records of attendance, payments, and reports' : 'الطلاب المؤرشفون مع الحفاظ الكامل على الحضور والمدفوعات والتقارير')}
@@ -345,7 +345,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </div>
 
           {/* Header Actions */}
-          <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/15 justify-end">
+          <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EADBC7]/20 justify-end">
             {activeTabType === 'active' && activeStudentsCount > 0 && (
               <button
                 type="button"
@@ -358,12 +358,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 }}
                 className={`px-3.5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border cursor-pointer ${
                   isSelectionMode
-                    ? 'bg-white text-[#17163D] border-white shadow-lg'
-                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-xs'
+                    ? 'bg-[#FAF7F2] text-[#2F2F2F] border-[#FAF7F2] shadow-lg'
+                    : 'bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 text-[#FAF7F2] border-[#EADBC7]/25 shadow-xs'
                 }`}
                 title={isSelectionMode ? (isEn ? 'Cancel selection mode' : 'إلغاء وضع التحديد') : (isEn ? 'Select students to schedule session' : 'تحديد طلاب لجدولة حصة جماعية')}
               >
-                <CheckSquare className={`w-4 h-4 ${isSelectionMode ? 'text-[#FF647C]' : 'text-[#55C7E8]'}`} />
+                <CheckSquare className={`w-4 h-4 ${isSelectionMode ? 'text-[#B56B45]' : 'text-[#B68A4C]'}`} />
                 <span>{isSelectionMode ? t('exitSelectionMode') : t('selectStudents')}</span>
               </button>
             )}
@@ -371,7 +371,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={onOpenAddStudent}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#FF647C]/40 transition-all active:scale-95 cursor-pointer hover:brightness-105"
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#B56B45]/40 transition-all active:scale-95 cursor-pointer hover:brightness-105"
             >
               <UserPlus className="w-4 h-4 stroke-[2.5]" />
               <span>{t('addStudent')}</span>
@@ -380,31 +380,31 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         </div>
 
         {/* Quick Stat Highlights inside Header */}
-        <div className="grid grid-cols-3 gap-2 pt-4 mt-4 border-t border-white/15 text-center">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Active Students' : 'الطلاب النشطون'}</span>
-            <span className="text-base sm:text-lg font-black text-white">{activeStudentsCount}</span>
+        <div className="grid grid-cols-3 gap-2 pt-4 mt-4 border-t border-[#EADBC7]/20 text-center">
+          <div className="bg-[#FAF7F2]/10 backdrop-blur-md rounded-xl p-2 border border-[#EADBC7]/15">
+            <span className="text-[10px] text-[#EADBC7]/80 block font-bold">{isEn ? 'Active Students' : 'الطلاب النشطون'}</span>
+            <span className="text-base sm:text-lg font-black text-[#FAF7F2]">{activeStudentsCount}</span>
           </div>
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Have Dues' : 'عليهم مستحقات'}</span>
-            <span className="text-base sm:text-lg font-black text-[#FF647C]">{activeDebtorsCount}</span>
+          <div className="bg-[#FAF7F2]/10 backdrop-blur-md rounded-xl p-2 border border-[#EADBC7]/15">
+            <span className="text-[10px] text-[#EADBC7]/80 block font-bold">{isEn ? 'Have Dues' : 'عليهم مستحقات'}</span>
+            <span className="text-base sm:text-lg font-black text-[#B56B45]">{activeDebtorsCount}</span>
           </div>
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 border border-white/10">
-            <span className="text-[10px] text-[#E8E7FF]/80 block font-bold">{isEn ? 'Private Only' : 'دروس خاصة فقط'}</span>
-            <span className="text-base sm:text-lg font-black text-[#55C7E8]">{privateOnlyCount}</span>
+          <div className="bg-[#FAF7F2]/10 backdrop-blur-md rounded-xl p-2 border border-[#EADBC7]/15">
+            <span className="text-[10px] text-[#EADBC7]/80 block font-bold">{isEn ? 'Private Only' : 'دروس خاصة فقط'}</span>
+            <span className="text-base sm:text-lg font-black text-[#B68A4C]">{privateOnlyCount}</span>
           </div>
         </div>
       </div>
 
       {/* Quick Feedback Toast */}
       {feedbackToast && (
-        <div className="p-3.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-between shadow-lg shadow-emerald-600/20 animate-in fade-in slide-in-from-top-2">
+        <div className="p-3.5 rounded-2xl bg-[#5C4033] text-[#FAF7F2] text-xs font-bold flex items-center justify-between shadow-lg shadow-[#5C4033]/20 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             <span>{feedbackToast}</span>
           </div>
           <button onClick={() => setFeedbackToast(null)}>
-            <X className="w-4 h-4 text-white/80 hover:text-white" />
+            <X className="w-4 h-4 text-[#EADBC7] hover:text-[#FAF7F2]" />
           </button>
         </div>
       )}
@@ -412,7 +412,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {/* =========================================================================
           2. Active vs Archived Segmented Control
           ========================================================================= */}
-      <div className="classy-card p-1.5 flex items-center gap-1.5 bg-white">
+      <div className="classy-card p-1.5 flex items-center gap-1.5 bg-[#FAF7F2]">
         <button
           type="button"
           onClick={() => {
@@ -421,8 +421,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           }}
           className={`flex-1 py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeTabType === 'active'
-              ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-md shadow-[#17163D]/20'
-              : 'text-[#74778F] hover:text-[#17163D] hover:bg-[#F6F7FC]'
+              ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-md shadow-[#5C4033]/20'
+              : 'text-[#69493C] hover:text-[#2F2F2F] hover:bg-[#F8F2EA]'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -430,8 +430,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <span
             className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
               activeTabType === 'active'
-                ? 'bg-white/20 text-white'
-                : 'bg-[#E8E7FF] text-[#7657F6]'
+                ? 'bg-[#FAF7F2]/20 text-[#FAF7F2]'
+                : 'bg-[#EADBC7] text-[#6B1E2B]'
             }`}
           >
             {activeStudentsCount}
@@ -446,8 +446,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           }}
           className={`flex-1 py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeTabType === 'archived'
-              ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-md shadow-[#17163D]/20'
-              : 'text-[#74778F] hover:text-[#17163D] hover:bg-[#F6F7FC]'
+              ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-md shadow-[#5C4033]/20'
+              : 'text-[#69493C] hover:text-[#2F2F2F] hover:bg-[#F8F2EA]'
           }`}
         >
           <Archive className="w-4 h-4" />
@@ -456,8 +456,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <span
               className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
                 activeTabType === 'archived'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-amber-100 text-amber-900 border border-amber-200'
+                  ? 'bg-[#FAF7F2]/20 text-[#FAF7F2]'
+                  : 'bg-[#EADBC7] text-[#5C4033] border border-[#EADBC7]'
               }`}
             >
               {archivedStudentsCount}
@@ -468,12 +468,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* Selection Mode Toolbar Banner */}
       {isSelectionMode && activeTabType === 'active' && (
-        <div className="p-3.5 bg-gradient-to-r from-[#E8E7FF] to-[#F0FAFD] border border-[#7657F6]/30 rounded-2xl flex items-center justify-between gap-2 animate-in fade-in duration-150 shadow-sm">
+        <div className="p-3.5 bg-gradient-to-r from-[#EADBC7] to-[#F8F2EA] border border-[#6B1E2B]/30 rounded-2xl flex items-center justify-between gap-2 animate-in fade-in duration-150 shadow-sm">
           <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-xl bg-[#7657F6] text-white flex items-center justify-center font-black text-xs shadow-xs">
+            <span className="w-7 h-7 rounded-xl bg-[#6B1E2B] text-[#FAF7F2] flex items-center justify-center font-black text-xs shadow-xs">
               {selectedCount}
             </span>
-            <span className="font-black text-[#17163D] text-xs sm:text-sm">
+            <span className="font-black text-[#2F2F2F] text-xs sm:text-sm">
               {t('selectedCount', { count: selectedCount.toString() })}
             </span>
           </div>
@@ -482,14 +482,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={isAllFilteredSelected ? handleDeselectAll : handleSelectAllFiltered}
-              className="px-3 py-1.5 rounded-xl bg-white border border-[#E8E7FF] text-[#7657F6] font-bold text-xs hover:bg-[#E8E7FF] transition-colors cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#EADBC7] text-[#6B1E2B] font-bold text-xs hover:bg-[#EADBC7] transition-colors cursor-pointer shadow-2xs"
             >
               {isAllFilteredSelected ? t('deselectAll') : t('selectAll')}
             </button>
             <button
               type="button"
               onClick={handleExitSelectionMode}
-              className="p-1.5 rounded-xl text-[#74778F] hover:text-[#17163D] hover:bg-white/60 transition-colors cursor-pointer"
+              className="p-1.5 rounded-xl text-[#69493C] hover:text-[#2F2F2F] hover:bg-[#FAF7F2]/60 transition-colors cursor-pointer"
               title={t('exitSelectionMode')}
             >
               <X className="w-4 h-4" />
@@ -501,11 +501,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {/* =========================================================================
           3. Search & Filters Bar
           ========================================================================= */}
-      <div className="classy-card p-3.5 sm:p-4 space-y-3 bg-white">
+      <div className="classy-card p-3.5 sm:p-4 space-y-3 bg-[#FAF7F2]">
         {/* Search Input */}
         <div className="relative">
           <Search
-            className={`w-4.5 h-4.5 text-[#74778F] absolute top-3.5 ${
+            className={`w-4.5 h-4.5 text-[#69493C] absolute top-3.5 ${
               isRTL ? 'right-3.5' : 'left-3.5'
             }`}
           />
@@ -518,7 +518,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/70 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all shadow-inner ${
+            className={`w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl py-3 text-xs sm:text-sm text-[#2F2F2F] placeholder-[#69493C]/70 focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-medium transition-all shadow-inner ${
               isRTL ? 'pr-11 pl-9' : 'pl-11 pr-9'
             }`}
           />
@@ -526,7 +526,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className={`absolute top-3 text-[#74778F] hover:text-[#191A2E] p-1 rounded-full hover:bg-[#E8E7FF]/50 transition-colors ${
+              className={`absolute top-3 text-[#69493C] hover:text-[#2F2F2F] p-1 rounded-full hover:bg-[#EADBC7]/50 transition-colors ${
                 isRTL ? 'left-3' : 'right-3'
               }`}
             >
@@ -539,15 +539,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
           {/* Dropdown Selects */}
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <div className="flex items-center gap-1.5 text-[#74778F] text-[11px] font-bold shrink-0">
-              <Filter className="w-3.5 h-3.5 text-[#7657F6]" />
+            <div className="flex items-center gap-1.5 text-[#69493C] text-[11px] font-bold shrink-0">
+              <Filter className="w-3.5 h-3.5 text-[#6B1E2B]" />
               <span>{isEn ? 'Filter:' : 'تصفية:'}</span>
             </div>
 
             <select
               value={selectedGradeFilter}
               onChange={(e) => setSelectedGradeFilter(e.target.value)}
-              className="bg-[#F6F7FC] hover:bg-[#E8E7FF]/30 border border-[#E8E7FF] rounded-xl px-3 py-1.5 text-xs text-[#191A2E] font-bold focus:outline-none focus:border-[#7657F6] cursor-pointer transition-colors"
+              className="bg-[#F8F2EA] hover:bg-[#EADBC7]/30 border border-[#EADBC7] rounded-xl px-3 py-1.5 text-xs text-[#2F2F2F] font-bold focus:outline-none focus:border-[#6B1E2B] cursor-pointer transition-colors"
             >
               <option value="all">{isEn ? 'All Stages' : 'كل المراحل الدراسية'}</option>
               {gradeLevels.map((lvl) => (
@@ -560,7 +560,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <select
               value={selectedGroupFilter}
               onChange={(e) => setSelectedGroupFilter(e.target.value)}
-              className="bg-[#F6F7FC] hover:bg-[#E8E7FF]/30 border border-[#E8E7FF] rounded-xl px-3 py-1.5 text-xs text-[#191A2E] font-bold focus:outline-none focus:border-[#7657F6] cursor-pointer transition-colors"
+              className="bg-[#F8F2EA] hover:bg-[#EADBC7]/30 border border-[#EADBC7] rounded-xl px-3 py-1.5 text-xs text-[#2F2F2F] font-bold focus:outline-none focus:border-[#6B1E2B] cursor-pointer transition-colors"
             >
               <option value="all">{isEn ? 'All Groups' : 'كل المجموعات'}</option>
               {groups.map((g) => (
@@ -578,8 +578,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               onClick={() => setQuickFilter('all')}
               className={`px-3 py-1.5 rounded-xl font-bold transition-all border cursor-pointer text-xs ${
                 quickFilter === 'all'
-                  ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
-                  : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
+                  ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-xs'
+                  : 'bg-[#F8F2EA] text-[#69493C] border-[#EADBC7] hover:bg-[#EADBC7]/40'
               }`}
             >
               {t('all')}
@@ -590,14 +590,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               onClick={() => setQuickFilter(quickFilter === 'debtors' ? 'all' : 'debtors')}
               className={`px-3 py-1.5 rounded-xl font-bold transition-all border cursor-pointer text-xs flex items-center gap-1.5 ${
                 quickFilter === 'debtors'
-                  ? 'bg-[#FF647C] text-white border-[#FF647C] shadow-sm'
-                  : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#FFF1F3] hover:text-[#FF647C] hover:border-[#FECDD3]'
+                  ? 'bg-[#B56B45] text-[#FAF7F2] border-[#B56B45] shadow-sm'
+                  : 'bg-[#F8F2EA] text-[#69493C] border-[#EADBC7] hover:bg-[#F8F2EA] hover:text-[#B56B45] hover:border-[#B6A89C]'
               }`}
             >
               <DollarSign className="w-3.5 h-3.5" />
               <span>{isEn ? 'Have Dues' : 'عليهم مستحقات'}</span>
               {activeDebtorsCount > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${quickFilter === 'debtors' ? 'bg-white/25 text-white' : 'bg-[#FF647C]/15 text-[#FF647C]'}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${quickFilter === 'debtors' ? 'bg-[#FAF7F2]/25 text-[#FAF7F2]' : 'bg-[#B56B45]/15 text-[#B56B45]'}`}>
                   {activeDebtorsCount}
                 </span>
               )}
@@ -608,14 +608,14 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               onClick={() => setQuickFilter(quickFilter === 'private_only' ? 'all' : 'private_only')}
               className={`px-3 py-1.5 rounded-xl font-bold transition-all border cursor-pointer text-xs flex items-center gap-1.5 ${
                 quickFilter === 'private_only'
-                  ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-sm'
-                  : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF] hover:text-[#7657F6]'
+                  ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-sm'
+                  : 'bg-[#F8F2EA] text-[#69493C] border-[#EADBC7] hover:bg-[#EADBC7] hover:text-[#6B1E2B]'
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
               <span>{isEn ? 'Private Only' : 'دروس خاصة فقط'}</span>
               {privateOnlyCount > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${quickFilter === 'private_only' ? 'bg-white/25 text-white' : 'bg-[#7657F6]/15 text-[#7657F6]'}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${quickFilter === 'private_only' ? 'bg-[#FAF7F2]/25 text-[#FAF7F2]' : 'bg-[#6B1E2B]/15 text-[#6B1E2B]'}`}>
                   {privateOnlyCount}
                 </span>
               )}
@@ -625,7 +625,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="px-2.5 py-1.5 rounded-xl text-xs text-[#74778F] hover:text-[#FF647C] hover:bg-[#FFF1F3] transition-colors cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl text-xs text-[#69493C] hover:text-[#B56B45] hover:bg-[#F8F2EA] transition-colors cursor-pointer"
                 title={t('resetFilters')}
               >
                 <X className="w-3.5 h-3.5" />
@@ -639,49 +639,49 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           4. Student Cards List or Premium Empty State
           ========================================================================= */}
       {students.length === 0 ? (
-        <div className="classy-card p-8 sm:p-12 text-center space-y-4 flex flex-col items-center justify-center relative overflow-hidden bg-white">
+        <div className="classy-card p-8 sm:p-12 text-center space-y-4 flex flex-col items-center justify-center relative overflow-hidden bg-[#FAF7F2]">
           <div className="w-28 h-28 flex items-center justify-center">
             <ClassyOwlMascot size="lg" glow={true} pose="happy" />
           </div>
           <div className="max-w-md space-y-1.5">
-            <h3 className="font-black text-base sm:text-lg text-[#17163D]">
+            <h3 className="font-black text-base sm:text-lg text-[#2F2F2F]">
               {t('noStudentsFound')}
             </h3>
-            <p className="text-xs sm:text-sm text-[#74778F] font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#69493C] font-medium leading-relaxed">
               {isEn ? 'Start by adding your first student to track attendance, packages, and collections with ease.' : 'ابدأ بإضافة أول طالب إلى صفوفك التعليمية لمتابعة حضوره، باقاته، وتحصيل مستحقاته بكل سهولة وأناقة.'}
             </p>
           </div>
           <button
             onClick={onOpenAddStudent}
-            className="mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-[#FF647C]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
+            className="mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-[#B56B45]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
           >
             <UserPlus className="w-4.5 h-4.5 stroke-[2.5]" />
             <span>+ {t('addStudent')}</span>
           </button>
         </div>
       ) : filteredStudents.length === 0 ? (
-        <div className="classy-card p-8 sm:p-12 text-center text-[#74778F] space-y-3 flex flex-col items-center bg-white">
-          <div className="w-16 h-16 rounded-3xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center justify-center shadow-inner">
+        <div className="classy-card p-8 sm:p-12 text-center text-[#69493C] space-y-3 flex flex-col items-center bg-[#FAF7F2]">
+          <div className="w-16 h-16 rounded-3xl bg-[#F8F2EA] border border-[#EADBC7] flex items-center justify-center shadow-inner">
             {activeTabType === 'archived' ? (
-              <Archive className="w-8 h-8 text-[#7657F6]" />
+              <Archive className="w-8 h-8 text-[#6B1E2B]" />
             ) : (
-              <Search className="w-8 h-8 text-[#FF647C]" />
+              <Search className="w-8 h-8 text-[#B56B45]" />
             )}
           </div>
           <div className="space-y-1">
-            <h3 className="font-black text-sm sm:text-base text-[#17163D]">
+            <h3 className="font-black text-sm sm:text-base text-[#2F2F2F]">
               {activeTabType === 'archived'
                 ? (isEn ? 'No matching archived students' : 'لا يوجد طلاب مطابقين في الأرشيف')
                 : (isEn ? 'No results match your search' : 'لا توجد نتائج مطابقة لبحثك')}
             </h3>
-            <p className="text-xs text-[#74778F] font-medium">
+            <p className="text-xs text-[#69493C] font-medium">
               {isEn ? 'Try changing search terms or resetting filters' : 'جرّب تغيير كلمات البحث أو إعادة ضبط خيارات التصفية'}
             </p>
           </div>
           {hasActiveFilters && (
             <button
               onClick={handleResetFilters}
-              className="px-4 py-2 rounded-xl bg-[#E8E7FF] text-[#7657F6] font-bold text-xs hover:bg-[#7657F6] hover:text-white transition-all cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#EADBC7] text-[#6B1E2B] font-bold text-xs hover:bg-[#6B1E2B] hover:text-[#FAF7F2] transition-all cursor-pointer"
             >
               {t('resetFilters')}
             </button>
@@ -720,10 +720,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 }}
                 className={`classy-card classy-card-hover p-4 sm:p-4.5 transition-all cursor-pointer space-y-3.5 active:scale-[0.99] relative overflow-hidden group ${
                   isSelected
-                    ? 'border-[#7657F6] bg-gradient-to-r from-[#E8E7FF]/50 to-white ring-2 ring-[#7657F6]/40 shadow-md'
+                    ? 'border-[#6B1E2B] bg-gradient-to-r from-[#EADBC7]/50 to-[#FAF7F2] ring-2 ring-[#6B1E2B]/40 shadow-md'
                     : isStudentArchived
-                    ? 'bg-slate-50/80 border-slate-200 opacity-90'
-                    : 'hover:border-[#7657F6]/50 bg-white'
+                    ? 'bg-[#F8F2EA]/80 border-[#EADBC7] opacity-90'
+                    : 'hover:border-[#6B1E2B]/50 bg-[#FAF7F2]'
                 }`}
               >
                 {/* Top Section: Avatar + Name + Badges + Financial Pill */}
@@ -737,8 +737,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         onClick={(e) => toggleSelectStudent(student.id, e)}
                         className={`w-6 h-6 rounded-xl flex items-center justify-center border transition-all shrink-0 mt-2.5 ${
                           isSelected
-                            ? 'bg-[#7657F6] border-[#7657F6] text-white shadow-xs'
-                            : 'bg-white border-[#E8E7FF] text-transparent hover:border-[#7657F6]'
+                            ? 'bg-[#6B1E2B] border-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                            : 'bg-[#FAF7F2] border-[#EADBC7] text-transparent hover:border-[#6B1E2B]'
                         }`}
                       >
                         <CheckCheck className="w-3.5 h-3.5 stroke-[3]" />
@@ -753,46 +753,46 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     {/* Student Identity & Meta */}
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-black text-sm sm:text-base text-[#17163D] truncate group-hover:text-[#7657F6] transition-colors">
+                        <h3 className="font-black text-sm sm:text-base text-[#2F2F2F] truncate group-hover:text-[#6B1E2B] transition-colors">
                           {student.name}
                         </h3>
 
                         {/* Status Badges */}
                         {isStudentArchived ? (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
-                            <Archive className="w-3 h-3 text-amber-700" />
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7] text-[#5C4033] border border-[#B56B45]/50 inline-flex items-center gap-1 shadow-2xs">
+                            <Archive className="w-3 h-3 text-[#B56B45]" />
                             <span>{isEn ? 'Archived Student' : 'طالب مؤرشف'}</span>
                           </span>
                         ) : isPrivateOnly ? (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] inline-flex items-center gap-1 shadow-2xs">
-                            <Zap className="w-3 h-3 text-[#FF647C]" />
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EA] text-[#B56B45] border border-[#B6A89C] inline-flex items-center gap-1 shadow-2xs">
+                            <Zap className="w-3 h-3 text-[#B56B45]" />
                             <span>{isEn ? 'Private Only' : 'درس خاص فقط'}</span>
                           </span>
                         ) : isGroupAndPrivate ? (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E8E7FF] text-[#7657F6] border border-[#D8D5FB] inline-flex items-center gap-1 shadow-2xs">
-                            <Layers className="w-3 h-3 text-[#7657F6]" />
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7] text-[#6B1E2B] border border-[#B6A89C] inline-flex items-center gap-1 shadow-2xs">
+                            <Layers className="w-3 h-3 text-[#6B1E2B]" />
                             <span>{isEn ? 'Groups + Private' : 'مجموعات + خاص'}</span>
                           </span>
                         ) : null}
                       </div>
 
                       {/* Stage, School, and Contact details */}
-                      <div className="flex items-center gap-2 text-xs text-[#74778F] font-medium flex-wrap">
+                      <div className="flex items-center gap-2 text-xs text-[#69493C] font-medium flex-wrap">
                         {student.gradeLevel && (
-                          <span className="text-[#191A2E] font-bold bg-[#F6F7FC] px-2 py-0.5 rounded-lg border border-[#E8E7FF]">
+                          <span className="text-[#2F2F2F] font-bold bg-[#F8F2EA] px-2 py-0.5 rounded-lg border border-[#EADBC7]">
                             {getLocalizedStageName(student.gradeLevel)}
                           </span>
                         )}
 
                         {student.school && (
-                          <span className="truncate max-w-[140px] text-[#74778F] flex items-center gap-1">
-                            <School className="w-3 h-3 text-[#7657F6]" />
+                          <span className="truncate max-w-[140px] text-[#69493C] flex items-center gap-1">
+                            <School className="w-3 h-3 text-[#6B1E2B]" />
                             <span>{student.school}</span>
                           </span>
                         )}
 
                         {student.phone && (
-                          <span dir="ltr" className="font-mono text-[11px] text-[#74778F] bg-[#F6F7FC] px-1.5 py-0.5 rounded border border-[#E8E7FF]/70">
+                          <span dir="ltr" className="font-mono text-[11px] text-[#69493C] bg-[#F8F2EA] px-1.5 py-0.5 rounded border border-[#EADBC7]/70">
                             {student.phone}
                           </span>
                         )}
@@ -806,10 +806,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleRestore(student, e)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#EADBC7]/65 hover:bg-[#EADBC7] text-[#5C4033] border border-[#B68A4C]/60 font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
                         title={isEn ? 'Restore student to active list' : 'استعادة الطالب وإعادته للقائمة النشطة'}
                       >
-                        <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+                        <RotateCcw className="w-3.5 h-3.5 text-[#B68A4C]" />
                         <span>{t('restore')}</span>
                       </button>
                     ) : (
@@ -817,10 +817,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         <span
                           className={`text-xs font-black px-3 py-1 rounded-xl inline-block border ${
                             balance < 0
-                              ? 'bg-[#FFF1F3] text-[#FF647C] border-[#FECDD3] shadow-2xs'
+                              ? 'bg-[#F8F2EA] text-[#B56B45] border-[#B6A89C] shadow-2xs'
                               : balance > 0
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
-                              : 'bg-[#F6F7FC] text-[#403B9C] border-[#E8E7FF]'
+                              ? 'bg-[#EADBC7]/65 text-[#5C4033] border-[#B68A4C]/50 shadow-2xs'
+                              : 'bg-[#F8F2EA] text-[#5C4033] border-[#EADBC7]'
                           }`}
                         >
                           {balance < 0
@@ -836,19 +836,19 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                 {/* Middle Row: Enrolled Groups & Private Lessons */}
                 {(studentGroups.length > 0 || privateEnrollments.length > 0) && (
-                  <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-[#E8E7FF]/80">
+                  <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-[#EADBC7]/80">
                     {/* Regular Groups */}
                     {studentGroups.map(({ group, enrollment }) => (
                       <span
                         key={enrollment.id}
-                        className="text-[11px] font-bold bg-[#F6F7FC] border border-[#E8E7FF] text-[#191A2E] px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs"
+                        className="text-[11px] font-bold bg-[#F8F2EA] border border-[#EADBC7] text-[#2F2F2F] px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs"
                       >
                         <span
                           className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
-                          style={{ backgroundColor: group.accentColor || '#7657F6' }}
+                          style={{ backgroundColor: group.accentColor || '#6B1E2B' }}
                         />
                         <span>{group.name}</span>
-                        <span className="text-[#74778F] font-normal">
+                        <span className="text-[#69493C] font-normal">
                           ({enrollment.customPrice || group.defaultPrice || 0} {t('currency')})
                         </span>
                       </span>
@@ -858,11 +858,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     {privateEnrollments.map(({ group, enrollment }) => (
                       <span
                         key={enrollment.id}
-                        className="text-[11px] font-bold bg-[#FFF1F3] border border-[#FECDD3] text-[#FF647C] px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs"
+                        className="text-[11px] font-bold bg-[#F8F2EA] border border-[#B6A89C] text-[#B56B45] px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs"
                       >
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-[#FF647C] shadow-xs" />
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-[#B56B45] shadow-xs" />
                         <span>{isEn ? 'Private Lesson' : 'درس خاص'} {group?.subject ? `(${group.subject})` : ''}</span>
-                        <span className="text-[#FF647C]/85 font-normal">
+                        <span className="text-[#B56B45]/85 font-normal">
                           ({enrollment.customPrice || enrollment.hourlyRate || group?.defaultPrice || 0} {t('currency')})
                         </span>
                       </span>
@@ -871,33 +871,33 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 )}
 
                 {/* Bottom Row: Attendance Summary & Quick Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-[#E8E7FF]/70">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-[#EADBC7]/70">
                   {/* Attendance & Stats Mini-Pill */}
-                  <div className="flex items-center gap-2 text-xs text-[#74778F] font-medium flex-wrap">
+                  <div className="flex items-center gap-2 text-xs text-[#69493C] font-medium flex-wrap">
                     {attendancePercentage !== null ? (
-                      <div className="flex items-center gap-1.5 bg-[#F6F7FC] border border-[#E8E7FF] px-2.5 py-1 rounded-xl">
+                      <div className="flex items-center gap-1.5 bg-[#F8F2EA] border border-[#EADBC7] px-2.5 py-1 rounded-xl">
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 ${
                             attendancePercentage >= 85
-                              ? 'bg-emerald-500'
+                              ? 'bg-[#EADBC7]/650'
                               : attendancePercentage >= 70
-                              ? 'bg-amber-500'
-                              : 'bg-[#FF647C]'
+                              ? 'bg-[#EADBC7]/700'
+                              : 'bg-[#B56B45]'
                           }`}
                         />
-                        <span className="font-bold text-[#191A2E]">{attendancePercentage}% {isEn ? 'Attendance' : 'حضور'}</span>
-                        <span className="text-[#74778F] text-[11px]">
+                        <span className="font-bold text-[#2F2F2F]">{attendancePercentage}% {isEn ? 'Attendance' : 'حضور'}</span>
+                        <span className="text-[#69493C] text-[11px]">
                           ({presentCount} {isEn ? 'Present' : 'حضور'} • {absentCount} {isEn ? 'Absent' : 'غياب'})
                         </span>
                       </div>
                     ) : (
-                      <span className="text-[11px] text-[#74778F]">{isEn ? 'No sessions recorded yet' : 'لم يتم تسجيل حصص بعد'}</span>
+                      <span className="text-[11px] text-[#69493C]">{isEn ? 'No sessions recorded yet' : 'لم يتم تسجيل حصص بعد'}</span>
                     )}
 
                     {/* Parent details if available */}
                     {student.parentName && (
-                      <span className="text-[11px] text-[#74778F] flex items-center gap-1">
-                        <User className="w-3 h-3 text-[#7657F6]" />
+                      <span className="text-[11px] text-[#69493C] flex items-center gap-1">
+                        <User className="w-3 h-3 text-[#6B1E2B]" />
                         <span>{isEn ? 'Parent:' : 'ولي الأمر:'} {student.parentName}</span>
                       </span>
                     )}
@@ -910,7 +910,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       <a
                         href={`tel:${student.phone || student.parentPhone}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] hover:text-[#7657F6] border border-[#E8E7FF] transition-all cursor-pointer shadow-2xs"
+                        className="p-1.5 rounded-xl bg-[#F8F2EA] hover:bg-[#EADBC7] text-[#69493C] hover:text-[#6B1E2B] border border-[#EADBC7] transition-all cursor-pointer shadow-2xs"
                         title={isEn ? 'Quick Phone Call' : 'اتصال هاتفي سريع'}
                       >
                         <Phone className="w-3.5 h-3.5" />
@@ -923,7 +923,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 transition-all cursor-pointer shadow-2xs"
+                        className="p-1.5 rounded-xl bg-[#EADBC7]/65 hover:bg-[#EADBC7] text-[#B68A4C] border border-[#B68A4C]/50 transition-all cursor-pointer shadow-2xs"
                         title={isEn ? 'WhatsApp Message' : 'مراسلة واتساب'}
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
@@ -938,10 +938,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           e.stopPropagation();
                           onOpenAddPayment(student);
                         }}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#17163D] hover:text-[#7657F6] border border-[#E8E7FF] text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#F8F2EA] hover:bg-[#EADBC7] text-[#2F2F2F] hover:text-[#6B1E2B] border border-[#EADBC7] text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
                         title={isEn ? 'Record payment or fee' : 'تسجيل دفعة أو تحصيل مالي'}
                       >
-                        <CreditCard className="w-3.5 h-3.5 text-[#55C7E8]" />
+                        <CreditCard className="w-3.5 h-3.5 text-[#B68A4C]" />
                         <span>{isEn ? 'Payment' : 'دفعة'}</span>
                       </button>
                     )}
@@ -954,7 +954,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           e.stopPropagation();
                           onOpenEditStudent(student);
                         }}
-                        className="p-1.5 rounded-xl bg-[#F6F7FC] hover:bg-[#E8E7FF] text-[#74778F] hover:text-[#7657F6] border border-[#E8E7FF] transition-all cursor-pointer shadow-2xs active:scale-95"
+                        className="p-1.5 rounded-xl bg-[#F8F2EA] hover:bg-[#EADBC7] text-[#69493C] hover:text-[#6B1E2B] border border-[#EADBC7] transition-all cursor-pointer shadow-2xs active:scale-95"
                         title={isEn ? 'Edit student data' : 'تعديل بيانات الطالب'}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -968,7 +968,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         e.stopPropagation();
                         onOpenStudentProfile(student);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[#17163D] hover:bg-[#403B9C] text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
                     >
                       <span>{t('profile')}</span>
                       <ChevronIcon className="w-3.5 h-3.5" />
@@ -984,9 +984,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       {/* Floating Bottom Action Bar when students are selected in bulk mode */}
       {isSelectionMode && selectedCount > 0 && activeTabType === 'active' && (
         <div className="fixed bottom-20 inset-x-0 z-40 max-w-lg mx-auto px-4 pb-2 animate-in slide-in-from-bottom-3 duration-200">
-          <div className="bg-[#17163D] text-white p-3.5 rounded-2xl shadow-2xl flex items-center justify-between border border-[#403B9C]/40">
+          <div className="bg-[#6B1E2B] text-[#FAF7F2] p-3.5 rounded-2xl shadow-2xl flex items-center justify-between border border-[#5C4033]/40">
             <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF647C] to-[#7657F6] text-white flex items-center justify-center font-black text-xs shadow-md">
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] flex items-center justify-center font-black text-xs shadow-md">
                 {selectedCount}
               </span>
               <span className="font-bold text-xs sm:text-sm">
@@ -997,7 +997,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={handleBulkAddSession}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#FF647C] to-[#7657F6] text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#FF647C]/40 active:scale-95 transition-all cursor-pointer hover:brightness-105"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#B56B45]/40 active:scale-95 transition-all cursor-pointer hover:brightness-105"
             >
               <CalendarCheck2 className="w-4 h-4" />
               <span>{t('addBulkSession')} ({selectedCount})</span>

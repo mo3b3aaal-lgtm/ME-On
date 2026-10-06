@@ -1,7 +1,32 @@
-import React, { useState } from 'react';
-import { X, Calendar, Clock, BookOpen, Layers, CheckCircle2, Sparkles, Hash, AlignRight, Timer, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  X,
+  Calendar,
+  Clock,
+  BookOpen,
+  Layers,
+  CheckCircle2,
+  Sparkles,
+  Hash,
+  AlignRight,
+  Timer,
+  Check,
+  Plus,
+  Minus,
+  Zap,
+  Bookmark,
+  Calculator,
+  Tag,
+} from 'lucide-react';
 import { Student, Enrollment, Group } from '../types';
-import { db, roundMoney, multiplyMoney, divideMoney } from '../utils/storage';
+import {
+  db,
+  roundMoney,
+  multiplyMoney,
+  divideMoney,
+  formatMoney,
+  formatSessionQuantityDisplay,
+} from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
 
@@ -36,11 +61,13 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const allEnrollments = db.getEnrollments();
   const allGroups = db.getGroups();
 
-  const studentPrivateEnrollments = student ? allEnrollments.filter((enr) => {
-    if (enr.studentId !== student.id) return false;
-    const grp = allGroups.find((g) => g.id === enr.groupId);
-    return enr.serviceType === 'private' || grp?.type === 'private';
-  }) : [];
+  const studentPrivateEnrollments = student
+    ? allEnrollments.filter((enr) => {
+        if (enr.studentId !== student.id) return false;
+        const grp = allGroups.find((g) => g.id === enr.groupId);
+        return enr.serviceType === 'private' || grp?.type === 'private';
+      })
+    : [];
 
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string>(() => {
     return studentPrivateEnrollments[0]?.id || '';
@@ -50,6 +77,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const [startTime, setStartTime] = useState<string>(nowTime || '16:00');
   const [sessionCount, setSessionCount] = useState<number>(1);
   const [hours, setHours] = useState<number>(1.5);
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
+  const [customInput, setCustomInput] = useState<string>('1');
   const [attendanceType, setAttendanceType] = useState<'present' | 'absent_charged' | 'absent_free' | 'cancelled'>('present');
   const [absenceReason, setAbsenceReason] = useState<string>(PREDEFINED_REASONS[0]);
   const [customReason, setCustomReason] = useState<string>('');
@@ -58,7 +87,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Active private enrollment info
-  const activeEnrollment = studentPrivateEnrollments.find((e) => e.id === selectedEnrollmentId) || studentPrivateEnrollments[0];
+  const activeEnrollment =
+    studentPrivateEnrollments.find((e) => e.id === selectedEnrollmentId) || studentPrivateEnrollments[0];
   const activeGroup = activeEnrollment ? allGroups.find((g) => g.id === activeEnrollment.groupId) : undefined;
   const finSummary = activeEnrollment ? db.calculateEnrollmentFinancials(activeEnrollment.id) : undefined;
 
@@ -68,63 +98,170 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     activeGroup?.billingMode === 'hourly' ||
     activeGroup?.billingType === 'hourly';
 
-  const hourlyRate = activeEnrollment?.hourlyRate || activeGroup?.hourlyRate || activeEnrollment?.customPrice || 150;
+  const hourlyRate =
+    activeEnrollment?.hourlyRate ||
+    activeGroup?.hourlyRate ||
+    activeEnrollment?.customPrice ||
+    activeGroup?.defaultPrice ||
+    150;
 
   const isPackage =
-    !isHourly && (
-      activeEnrollment?.billingMode === 'package' ||
+    !isHourly &&
+    (activeEnrollment?.billingMode === 'package' ||
       activeEnrollment?.billingType === 'package' ||
       activeGroup?.billingMode === 'package' ||
-      activeGroup?.billingType === 'package'
-    );
+      activeGroup?.billingType === 'package');
 
   const isPrepaid =
     !isHourly &&
-    !isPackage && (
-      activeEnrollment?.billingMode === 'prepaid' ||
+    !isPackage &&
+    (activeEnrollment?.billingMode === 'prepaid' ||
       activeEnrollment?.billingType === 'prepaid' ||
-      (activeEnrollment?.billingType === 'per_session' && activeEnrollment?.billingMode !== 'postpaid')
-    );
+      (activeEnrollment?.billingType === 'per_session' && activeEnrollment?.billingMode !== 'postpaid'));
 
   const isPostpaid =
     !isHourly &&
-    !isPackage && (
-      activeEnrollment?.billingMode === 'postpaid' ||
-      activeEnrollment?.billingType === 'postpaid'
-    );
+    !isPackage &&
+    (activeEnrollment?.billingMode === 'postpaid' || activeEnrollment?.billingType === 'postpaid');
 
   const packageSessionsCount = isPackage
-    ? (activeEnrollment?.packageSessionsCount || activeGroup?.packageSessionsCount || 10)
-    : 10;
+    ? activeEnrollment?.packageSessionsCount || activeGroup?.packageSessionsCount || 8
+    : 8;
 
   const packageTotalPrice = isPackage
-    ? (activeEnrollment?.packagePrice ||
-       (activeGroup?.billingMode === 'package' || activeGroup?.billingType === 'package' ? activeGroup.defaultPrice : undefined) ||
-       activeEnrollment?.customPrice ||
-       1000)
-    : 1000;
+    ? activeEnrollment?.packagePrice ||
+      (activeGroup?.billingMode === 'package' || activeGroup?.billingType === 'package'
+        ? activeGroup.defaultPrice
+        : undefined) ||
+      activeEnrollment?.customPrice ||
+      800
+    : 800;
 
   // Effective Session Price
   const effectiveSessionPrice = isHourly
-    ? multiplyMoney(hours, hourlyRate)
+    ? hourlyRate
     : isPackage && packageSessionsCount > 0
     ? divideMoney(packageTotalPrice, packageSessionsCount)
-    : (activeEnrollment?.customPrice || activeGroup?.defaultPrice || 100);
+    : activeEnrollment?.customPrice || activeGroup?.defaultPrice || 100;
 
   const isCharged = attendanceType === 'present' || attendanceType === 'absent_charged';
 
-  // Total Session Value
+  // Smart Memory: Remember last quantity per student and billing mode
+  const memoryStorageKey = useMemo(() => {
+    if (!student) return null;
+    return `classy_smart_memory_quantity_${student.id}_${isHourly ? 'hourly' : 'lesson'}`;
+  }, [student, isHourly]);
+
+  const [rememberedQuantity, setRememberedQuantity] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (memoryStorageKey && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(memoryStorageKey);
+        if (saved) {
+          const parsed = parseFloat(saved);
+          if (!isNaN(parsed) && parsed > 0) {
+            setRememberedQuantity(parsed);
+          }
+        }
+      } catch (e) {}
+    }
+  }, [memoryStorageKey, isOpen]);
+
+  // Reset when opening
+  useEffect(() => {
+    if (isOpen) {
+      if (studentPrivateEnrollments.length > 0 && !selectedEnrollmentId) {
+        setSelectedEnrollmentId(studentPrivateEnrollments[0].id);
+      }
+      setDate(todayStr);
+      setStartTime(nowTime || '16:00');
+      setSessionCount(1);
+      setHours(1.5);
+      setCustomInput('1');
+      setIsCustomMode(false);
+      setNotes('');
+    }
+  }, [isOpen, studentPrivateEnrollments, selectedEnrollmentId, todayStr, nowTime]);
+
+  // Stepper handlers
+  const handleStepChange = (delta: number) => {
+    if (isHourly) {
+      const next = Math.max(0.5, roundMoney(hours + delta, 2));
+      setHours(next);
+      setCustomInput(String(next));
+      setIsCustomMode(![0.5, 1, 1.5, 2, 2.5, 3].includes(next));
+    } else {
+      const next = Math.max(0.5, roundMoney(sessionCount + delta, 2));
+      setSessionCount(next);
+      setCustomInput(String(next));
+      setIsCustomMode(![0.5, 1, 1.5, 2, 2.5, 3].includes(next));
+    }
+  };
+
+  const handleSelectPreset = (val: number) => {
+    if (isHourly) {
+      setHours(val);
+    } else {
+      setSessionCount(val);
+    }
+    setCustomInput(String(val));
+    setIsCustomMode(false);
+  };
+
+  const handleCustomChange = (valStr: string) => {
+    setCustomInput(valStr);
+    const parsed = parseFloat(valStr);
+    if (!isNaN(parsed) && parsed > 0) {
+      if (isHourly) {
+        setHours(parsed);
+      } else {
+        setSessionCount(parsed);
+      }
+    }
+  };
+
+  const handleApplySmartMemory = () => {
+    if (rememberedQuantity && rememberedQuantity > 0) {
+      if (isHourly) {
+        setHours(rememberedQuantity);
+      } else {
+        setSessionCount(rememberedQuantity);
+      }
+      setCustomInput(String(rememberedQuantity));
+      setIsCustomMode(![0.5, 1, 1.5, 2, 2.5, 3].includes(rememberedQuantity));
+    }
+  };
+
+  // Live Total Session Value
+  const selectedQuantity = isHourly ? hours : sessionCount;
   const totalSessionValue = isCharged
     ? isHourly
       ? multiplyMoney(hours, hourlyRate)
-      : multiplyMoney(Number(sessionCount) || 1, effectiveSessionPrice)
+      : multiplyMoney(sessionCount, effectiveSessionPrice)
     : 0;
+
+  // Package Remaining Projection
+  const packageProjection = useMemo(() => {
+    if (!isPackage || !finSummary) return null;
+    const baseUsed = finSummary.attendedSessionsCount || 0;
+    const beforeRemaining = Math.max(0, roundMoney(packageSessionsCount - baseUsed, 2));
+    const projectedUsed = roundMoney(baseUsed + (isCharged ? sessionCount : 0), 2);
+    const afterRemaining = Math.max(0, roundMoney(packageSessionsCount - projectedUsed, 2));
+    return {
+      beforeRemaining,
+      thisSessionUnits: sessionCount,
+      projectedUsed,
+      afterRemaining,
+      total: packageSessionsCount,
+    };
+  }, [isPackage, finSummary, sessionCount, packageSessionsCount, isCharged]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!student) return;
 
-    const count = Math.max(1, Math.floor(Number(sessionCount) || 1));
+    const count = isHourly ? 1 : Math.max(0.5, Number(sessionCount) || 1);
     setIsSubmitting(true);
 
     try {
@@ -142,9 +279,20 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
         targetEnrollmentId = created.enrollment.id;
       }
 
-      const finalReason = attendanceType === 'absent_free' || attendanceType === 'cancelled'
-        ? (absenceReason === (isEn ? 'Other Reason' : 'سبب آخر') ? (customReason.trim() || (isEn ? 'Other Reason' : 'سبب آخر')) : absenceReason)
-        : undefined;
+      const finalReason =
+        attendanceType === 'absent_free' || attendanceType === 'cancelled'
+          ? absenceReason === (isEn ? 'Other Reason' : 'سبب آخر')
+            ? customReason.trim() || (isEn ? 'Other Reason' : 'سبب آخر')
+            : absenceReason
+          : undefined;
+
+      // Save to Smart Memory
+      const qtyToSave = isHourly ? hours : sessionCount;
+      if (memoryStorageKey && typeof window !== 'undefined' && qtyToSave > 0) {
+        try {
+          localStorage.setItem(memoryStorageKey, String(qtyToSave));
+        } catch (e) {}
+      }
 
       db.recordPrivateSessionsForStudent({
         studentId: student.id,
@@ -167,7 +315,6 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
       onClose();
     } catch (err) {
       console.error('Error recording private sessions:', err);
-      alert(isEn ? 'An error occurred while saving. Please try again.' : 'حدث خطأ أثناء تسجيل الحصص. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
@@ -181,462 +328,442 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#6B1E2B]/70 backdrop-blur-md flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F6F7FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-        
-        {/* Signature Classy Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
-          <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Sparkles className="w-5 h-5 text-[#55C7E8]" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
-                {isEn ? 'Record Private Class' : 'تسجيل حصة Private'}
-              </h2>
-              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
-                {isEn ? 'Student:' : 'الطالب:'} <strong className="text-white font-black">{student.name}</strong>
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
-            title={t('close')}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 overflow-y-auto android-scrollbar flex-1 text-xs text-[#191A2E]">
-          
-          {/* If student has multiple private subjects/groups */}
-          {studentPrivateEnrollments.length > 1 && (
-            <div className="classy-card p-3.5 space-y-1.5">
-              <label className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-[#7657F6]" />
-                <span>{isEn ? 'Select Private Service / Subject:' : 'اختر المادة / الاشتراك الخاص:'}</span>
-              </label>
-              <select
-                value={selectedEnrollmentId}
-                onChange={(e) => setSelectedEnrollmentId(e.target.value)}
-                className="w-full classy-select"
-              >
-                {studentPrivateEnrollments.map((enr) => {
-                  const grp = allGroups.find((g) => g.id === enr.groupId);
-                  return (
-                    <option key={enr.id} value={enr.id}>
-                      {grp?.name || (isEn ? 'Private Lesson' : 'درس خاص')} ({enr.billingMode === 'hourly' ? (isEn ? 'Hourly' : 'بالساعة') : enr.billingMode === 'package' ? (isEn ? 'Package' : 'باقة') : enr.billingMode === 'postpaid' ? (isEn ? 'Postpaid' : 'آجل') : (isEn ? 'Prepaid' : 'مسبق')})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          )}
-
-          {/* Date & Time */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="classy-card p-3 space-y-1">
-              <label className="font-black text-xs text-[#17163D] flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#7657F6]" />
-                <span>{isEn ? 'Date:' : 'التاريخ:'}</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="classy-input font-bold"
-              />
-            </div>
-
-            <div className="classy-card p-3 space-y-1">
-              <label className="font-black text-xs text-[#17163D] flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-[#7657F6]" />
-                <span>{isEn ? 'Start Time:' : 'وقت البدء:'}</span>
-              </label>
-              <input
-                type="time"
-                required
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="classy-input font-bold"
-              />
-            </div>
-          </div>
-
-          {/* Duration in Hours (If Hourly) OR Session Count */}
-          {isHourly ? (
-            <div className="classy-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
-                  <Timer className="w-4 h-4 text-[#7657F6]" />
-                  <span>{isEn ? 'Duration in Hours:' : 'مدة الحصة بالساعات:'}</span>
-                </label>
-                <span className="text-xs font-black text-[#7657F6]">
-                  {hours} {isEn ? 'hours' : (hours === 1 ? 'ساعة' : hours === 2 ? 'ساعتان' : 'ساعة')}
-                </span>
+        <div className="bg-[#F8F2EA] border border-[#EADBC7] rounded-t-[32px] sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
+          {/* 1. Header with Smart Session Studio Badge */}
+          <div className="p-5 bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#6B1E2B] text-[#FAF7F2] flex items-center justify-between shrink-0 relative overflow-hidden shadow-sm">
+            <div className="flex items-center gap-3 relative z-10 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] flex items-center justify-center shrink-0 shadow-md shadow-[#B56B45]/20 border border-[#EADBC7]/25">
+                <Zap className="w-5 h-5 text-[#EADBC7] animate-pulse" />
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setHours((prev) => Math.max(0.25, Number((prev - 0.25).toFixed(2))))}
-                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="0.25"
-                  step="0.25"
-                  required
-                  value={hours}
-                  onChange={(e) => setHours(Math.max(0.25, parseFloat(e.target.value) || 1))}
-                  className="classy-input flex-1 text-center font-black text-base"
-                />
-                <button
-                  type="button"
-                  onClick={() => setHours((prev) => Number((prev + 0.25).toFixed(2)))}
-                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Quick presets for hours */}
-              <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                <span className="text-[11px] text-[#74778F] font-bold">{isEn ? 'Quick presets:' : 'خيارات سريعة:'}</span>
-                {[
-                  { val: 1, label: isEn ? '1 hr' : '1 س' },
-                  { val: 1.5, label: isEn ? '1.5 hrs' : '1.5 س (1:30)' },
-                  { val: 2, label: isEn ? '2 hrs' : '2 س' },
-                  { val: 2.5, label: isEn ? '2.5 hrs' : '2.5 س (2:30)' },
-                  { val: 3, label: isEn ? '3 hrs' : '3 س' },
-                ].map((preset) => (
-                  <button
-                    key={preset.val}
-                    type="button"
-                    onClick={() => setHours(preset.val)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer ${
-                      hours === preset.val
-                        ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-xs'
-                        : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]'
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="classy-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="font-black text-[#17163D] text-xs flex items-center gap-1.5">
-                  <Hash className="w-4 h-4 text-[#7657F6]" />
-                  <span>{isEn ? 'Session Count:' : 'عدد الحصص المسجلة:'}</span>
-                </label>
-                <span className="text-[11px] font-bold text-[#74778F]">{isEn ? '1 or more sessions' : 'حصة واحدة أو أكثر'}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSessionCount((prev) => Math.max(1, (Number(prev) || 1) - 1))}
-                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  required
-                  value={sessionCount}
-                  onChange={(e) => setSessionCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="classy-input flex-1 text-center font-black text-base"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSessionCount((prev) => (Number(prev) || 1) + 1)}
-                  className="w-10 h-10 rounded-xl bg-[#F6F7FC] border border-[#E8E7FF] font-black text-base text-[#17163D] hover:bg-[#E8E7FF] active:scale-95 transition-all flex items-center justify-center cursor-pointer"
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Quick Presets for Sessions */}
-              <div className="flex items-center gap-1.5 pt-1">
-                <span className="text-[11px] text-[#74778F] font-bold">{isEn ? 'Quick Select:' : 'اختيار سريع:'}</span>
-                {[1, 2, 3, 4].map((cnt) => (
-                  <button
-                    key={cnt}
-                    type="button"
-                    onClick={() => setSessionCount(cnt)}
-                    className={`px-3 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer ${
-                      sessionCount === cnt
-                        ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-xs'
-                        : 'bg-[#F6F7FC] text-[#74778F] border-[#E8E7FF] hover:bg-[#E8E7FF]'
-                    }`}
-                  >
-                    {cnt} {isEn ? (cnt === 1 ? 'class' : 'classes') : (cnt === 1 ? 'حصة' : 'حصص')}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Attendance Status Selection */}
-          <div className="classy-card p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-black text-[#17163D] text-xs">{isEn ? 'Attendance Status:' : 'حالة الحضور والاحتساب:'}</span>
-              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                isCharged ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]' : 'bg-[#F6F7FC] text-[#74778F] border border-[#E8E7FF]'
-              }`}>
-                {isCharged ? (isEn ? 'Charged (Consumes Credit)' : 'محسوبة (تستهلك رصيد)') : (isEn ? 'Exempt (Free)' : 'غير محسوبة (معفية)')}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setAttendanceType('present')}
-                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
-                  attendanceType === 'present'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
-                }`}
-              >
-                <span>{isEn ? '✓ Present' : '✓ حاضر (مستهلكة)'}</span>
-                <span className={`text-[10px] ${attendanceType === 'present' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  {isEn ? 'Attended' : 'حضور فعلي'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAttendanceType('absent_charged')}
-                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
-                  attendanceType === 'absent_charged'
-                    ? 'bg-[#FF647C] text-white border-[#FF647C] shadow-sm'
-                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#FFF1F3]'
-                }`}
-              >
-                <span>{isEn ? '⚠️ Absent (Charged)' : '⚠️ غائب (محسوبة)'}</span>
-                <span className={`text-[10px] ${attendanceType === 'absent_charged' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  {isEn ? 'Unexcused absence' : 'غياب بدون عذر'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAttendanceType('absent_free')}
-                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
-                  attendanceType === 'absent_free'
-                    ? 'bg-[#17163D] text-white border-[#17163D] shadow-sm'
-                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
-                }`}
-              >
-                <span>{isEn ? 'ℹ️ Absent (Free)' : 'ℹ️ غائب (غير محسوبة)'}</span>
-                <span className={`text-[10px] ${attendanceType === 'absent_free' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  {isEn ? 'Excused absence' : 'غياب بعذر معفى'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAttendanceType('cancelled')}
-                className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all flex flex-col items-center gap-0.5 cursor-pointer ${
-                  attendanceType === 'cancelled'
-                    ? 'bg-[#403B9C] text-white border-[#403B9C] shadow-sm'
-                    : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
-                }`}
-              >
-                <span>{isEn ? '🚫 Cancelled' : '🚫 حصة ملغاة'}</span>
-                <span className={`text-[10px] ${attendanceType === 'cancelled' ? 'text-white/85' : 'text-[#74778F]'}`}>
-                  {isEn ? 'Pre-cancelled' : 'إلغاء مسبق'}
-                </span>
-              </button>
-            </div>
-
-            {/* Absence / Cancellation Reason Selector */}
-            {(attendanceType === 'absent_free' || attendanceType === 'cancelled') && (
-              <div className="pt-2 border-t border-[#E8E7FF] space-y-2 animate-in fade-in duration-150">
-                <label className="text-[11px] font-black text-[#17163D] block">
-                  {isEn ? 'Reason:' : `سبب ${attendanceType === 'cancelled' ? 'الإلغاء' : 'الغياب المعفى'}:`}
-                </label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {PREDEFINED_REASONS.map((rsn) => (
-                    <button
-                      key={rsn}
-                      type="button"
-                      onClick={() => setAbsenceReason(rsn)}
-                      className={`py-1.5 px-2 rounded-xl text-[11px] font-black border transition-all cursor-pointer ${
-                        absenceReason === rsn
-                          ? 'bg-[#17163D] text-white border-[#17163D] shadow-xs'
-                          : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
-                      }`}
-                    >
-                      {rsn}
-                    </button>
-                  ))}
-                </div>
-                {absenceReason === (isEn ? 'Other Reason' : 'سبب آخر') && (
-                  <input
-                    type="text"
-                    placeholder={isEn ? 'Write detailed reason...' : 'اكتب سبب الإلغاء أو الغياب...'}
-                    value={customReason}
-                    onChange={(e) => setCustomReason(e.target.value)}
-                    className="classy-input mt-1"
-                  />
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Pricing & Financial Calculation Preview Card */}
-          <div className="classy-card p-4 space-y-3">
-            {isHourly ? (
-              <>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">{isEn ? 'Billing Mode:' : 'نظام المحاسبة:'}</span>
-                  <span className="font-black text-[#7657F6] px-2.5 py-0.5 rounded-full bg-[#E8E7FF]">
-                    {isEn ? 'Hourly Billing' : 'محاسبة بالساعة (Hourly)'}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-black text-[#FAF7F2] tracking-tight truncate">
+                    {isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
+                  </h2>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FAF7F2]/20 text-[#FAF7F2] border border-[#EADBC7]/30">
+                    {isHourly ? (isEn ? 'Hourly' : 'ساعات') : (isEn ? 'Lessons' : 'حصص')}
                   </span>
                 </div>
+                <p className="text-xs text-[#EADBC7]/85 font-medium truncate">
+                  {isEn ? 'Student:' : 'الطالب:'} <strong className="text-[#FAF7F2] font-black">{student.name}</strong>
+                </p>
+              </div>
+            </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">{isEn ? 'Hourly Rate:' : 'سعر الساعة:'}</span>
-                  <strong className="text-[#191A2E] font-black">{hourlyRate} {t('currency')} / hr</strong>
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">{isEn ? 'Duration:' : 'مدة الحصة:'}</span>
-                  <strong className="text-[#191A2E] font-black">{hours} {isEn ? 'hours' : 'ساعة'}</strong>
-                </div>
-
-                <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
-                  <div>
-                    <span className="font-black text-xs text-[#17163D] block">{isEn ? 'Total Class Value:' : 'إجمالي قيمة الحصة:'}</span>
-                    <span className="text-[10px] text-[#74778F] font-medium">{hours} hrs × {hourlyRate} {t('currency')}</span>
-                  </div>
-                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} {t('currency')}</span>
-                </div>
-              </>
-            ) : isPackage ? (
-              <>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">{isEn ? 'Billing Mode:' : 'نظام المحاسبة:'}</span>
-                  <span className="font-black text-[#7657F6] px-2.5 py-0.5 rounded-full bg-[#E8E7FF]">
-                    {isEn ? 'Session Package' : 'باقة حصص (Package)'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 p-2.5 bg-[#F6F7FC] rounded-2xl text-xs border border-[#E8E7FF]">
-                  <div>
-                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">{isEn ? 'Package Total:' : 'إجمالي الباقة:'}</span>
-                    <strong className="text-[#191A2E] font-black text-xs">{packageTotalPrice} {t('currency')}</strong>
-                  </div>
-                  <div>
-                    <span className="text-[#74778F] font-bold block text-[10px] mb-0.5">{isEn ? 'Package Sessions:' : 'عدد حصص الباقة:'}</span>
-                    <strong className="text-[#191A2E] font-black text-xs">{packageSessionsCount} {isEn ? 'sessions' : 'حصص'}</strong>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-[#74778F] font-bold">{isEn ? 'Effective Per Session:' : 'سعر الحصة الفعلي:'}</span>
-                  <strong className="text-[#191A2E] font-black text-sm text-emerald-600">{effectiveSessionPrice} {t('currency')}</strong>
-                </div>
-
-                <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
-                  <div>
-                    <span className="font-black text-xs text-[#17163D] block">{isEn ? 'Total Sessions Value:' : 'إجمالي قيمة الحصص:'}</span>
-                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} {t('currency')}</span>
-                  </div>
-                  <span className="text-base font-black text-[#7657F6]">{totalSessionValue} {t('currency')}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">{isEn ? 'Billing Mode:' : 'نظام المحاسبة:'}</span>
-                  <span className="font-black text-[#17163D] px-2 py-0.5 rounded-lg bg-[#F6F7FC]">
-                    {isPostpaid ? (isEn ? 'Postpaid' : 'دفع آجل (Postpaid)') : (isEn ? 'Prepaid' : 'دفع مسبق (Prepaid)')}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#74778F] font-bold">{isEn ? 'Session Price:' : 'سعر الحصة:'}</span>
-                  <strong className="text-[#191A2E] font-black">{effectiveSessionPrice} {t('currency')}</strong>
-                </div>
-
-                <div className="pt-2 border-t border-[#E8E7FF] flex items-center justify-between">
-                  <div>
-                    <span className="font-black text-xs text-[#17163D] block">{isEn ? 'Total Value:' : 'إجمالي القيمة:'}</span>
-                    <span className="text-[10px] text-[#74778F] font-medium">{sessionCount} × {effectiveSessionPrice} {t('currency')}</span>
-                  </div>
-                  <span className="text-sm font-black text-[#7657F6]">{totalSessionValue} {t('currency')}</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Optional Title */}
-          <div className="classy-card p-3.5 space-y-1.5">
-            <label className="font-black text-xs text-[#17163D] flex items-center gap-1.5">
-              <AlignRight className="w-3.5 h-3.5 text-[#7657F6]" />
-              <span>{isEn ? 'Topic / Class Title (Optional):' : 'عنوان أو موضوع الحصة (اختياري):'}</span>
-            </label>
-            <input
-              type="text"
-              placeholder={isEn ? 'e.g. Chapter 1 Revision' : 'مثال: مراجعة الوحدة الأولى / حل تدريبات'}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="classy-input"
-            />
-          </div>
-
-          {/* Optional Notes */}
-          <div className="classy-card p-3.5 space-y-1.5">
-            <label className="font-black text-xs text-[#17163D]">
-              {isEn ? 'Class Notes (Optional):' : 'ملاحظات الحصة (اختياري):'}
-            </label>
-            <textarea
-              rows={2}
-              placeholder={isEn ? 'Any notes regarding student performance...' : 'أي ملاحظات خاصة بأداء الطالب أو الحصة...'}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="classy-textarea"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs hover:bg-[#F6F7FC] transition-colors cursor-pointer"
+              className="p-2 rounded-2xl bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 text-[#FAF7F2] border border-[#EADBC7]/20 transition-all cursor-pointer relative z-10 active:scale-95"
             >
-              {t('cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#7657F6]/30 active:scale-95 transition-all disabled:opacity-50 cursor-pointer hover:brightness-105"
-            >
-              <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
-              <span>{isHourly ? (isEn ? `Confirm (${hours} hrs) Private` : `تأكيد تسجيل (${hours} س) Private`) : (isEn ? `Confirm (${sessionCount}) Private Class` : `تأكيد تسجيل (${sessionCount}) حصة Private`)}</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-        </form>
+          {/* 2. Scrollable Body */}
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#2F2F2F]">
+            {/* Service / Enrollment Selector (If student has multiple private subjects) */}
+            {studentPrivateEnrollments.length > 1 && (
+              <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] space-y-1.5 shadow-2xs">
+                <label className="font-bold text-[#69493C] text-[11px] flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[#6B1E2B]" />
+                  <span>{isEn ? 'Private Subject / Service:' : 'المادة / الخدمة الخاصة:'}</span>
+                </label>
+                <select
+                  value={selectedEnrollmentId}
+                  onChange={(e) => setSelectedEnrollmentId(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-[#F8F2EA] border border-[#EADBC7] font-black text-xs text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B]"
+                >
+                  {studentPrivateEnrollments.map((enr) => {
+                    const grp = allGroups.find((g) => g.id === enr.groupId);
+                    return (
+                      <option key={enr.id} value={enr.id}>
+                        {grp?.name || (isEn ? 'Private Lesson' : 'درس خاص')} - {enr.customPrice} {t('currency')}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
+
+            {/* Smart Memory Suggestion Banner */}
+            {rememberedQuantity !== null && rememberedQuantity > 0 && rememberedQuantity !== selectedQuantity && (
+              <div className="p-2.5 rounded-2xl bg-gradient-to-r from-[#F8F2EA] to-[#F8F2EA]/50 border border-[#EADBC7]/80 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Bookmark className="w-4 h-4 text-[#B56B45] shrink-0" />
+                  <span className="text-[11px] text-[#2F2F2F] font-bold truncate">
+                    {isEn ? 'Last used quantity:' : 'الكمية السابقة:'}
+                    <strong className="ms-1 text-[#B56B45] font-black">
+                      {formatSessionQuantityDisplay(
+                        isHourly ? { hours: rememberedQuantity, isHourly: true } : { sessionUnits: rememberedQuantity, isHourly: false },
+                        isRTL
+                      )}
+                    </strong>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplySmartMemory}
+                  className="px-2.5 py-1 rounded-xl bg-[#EADBC7]/700 hover:bg-[#B56B45] text-[#FAF7F2] text-[10px] font-black shrink-0 transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  {isEn ? 'Repeat Last' : 'تكرار السابقة'}
+                </button>
+              </div>
+            )}
+
+            {/* Date & Time Row */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] space-y-1">
+                <label className="font-bold text-[11px] text-[#69493C] flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-[#6B1E2B]" />
+                  <span>{isEn ? 'Date:' : 'التاريخ:'}</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full p-2 rounded-xl bg-[#F8F2EA] border border-[#EADBC7] font-black text-xs text-[#2F2F2F] focus:outline-none"
+                />
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] space-y-1">
+                <label className="font-bold text-[11px] text-[#69493C] flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-[#6B1E2B]" />
+                  <span>{isEn ? 'Start Time:' : 'وقت البدء:'}</span>
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full p-2 rounded-xl bg-[#F8F2EA] border border-[#EADBC7] font-black text-xs text-[#2F2F2F] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* A. INTERACTIVE QUANTITY CONTROLLER */}
+            <div className="p-4 sm:p-5 rounded-3xl bg-[#FAF7F2] border border-[#EADBC7] shadow-xs space-y-4 text-center relative overflow-hidden">
+              <span className="text-[11px] font-black text-[#69493C] block uppercase tracking-wider">
+                {isHourly
+                  ? (isEn ? 'Session Duration (Hours)' : 'مدة الحصة الفعلية (بالساعات)')
+                  : (isEn ? 'Lesson Intake Quantity' : 'كمية الحصص المنفذة')}
+              </span>
+
+              {/* Central Hero Controller */}
+              <div className="flex items-center justify-center gap-4 sm:gap-6 py-2">
+                <button
+                  type="button"
+                  onClick={() => handleStepChange(-0.5)}
+                  disabled={selectedQuantity <= 0.5}
+                  className="w-12 h-12 rounded-2xl bg-[#F8F2EA] hover:bg-[#EADBC7] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border border-[#EADBC7] flex items-center justify-center text-[#2F2F2F] font-black transition-all shadow-2xs cursor-pointer"
+                  title="- 0.5"
+                >
+                  <Minus className="w-5 h-5 text-[#6B1E2B]" />
+                </button>
+
+                <div className="min-w-[150px] p-3.5 rounded-3xl bg-gradient-to-b from-[#F8F2EA] to-[#EADBC7]/40 border border-[#6B1E2B]/30 shadow-inner">
+                  <div className="text-3xl sm:text-4xl font-black text-[#2F2F2F] tracking-tight">
+                    {selectedQuantity}
+                  </div>
+                  <div className="text-xs font-black text-[#6B1E2B] mt-0.5">
+                    {formatSessionQuantityDisplay(
+                      isHourly ? { hours: selectedQuantity, isHourly: true } : { sessionUnits: selectedQuantity, isHourly: false },
+                      isRTL
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleStepChange(0.5)}
+                  className="w-12 h-12 rounded-2xl bg-[#F8F2EA] hover:bg-[#EADBC7] active:scale-95 border border-[#EADBC7] flex items-center justify-center text-[#2F2F2F] font-black transition-all shadow-2xs cursor-pointer"
+                  title="+ 0.5"
+                >
+                  <Plus className="w-5 h-5 text-[#6B1E2B]" />
+                </button>
+              </div>
+
+              {/* Quick Segmented Presets */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {[0.5, 1, 1.5, 2, 2.5, 3].map((val) => {
+                  const isSel = !isCustomMode && selectedQuantity === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => handleSelectPreset(val)}
+                      className={`py-2 px-1 rounded-2xl font-black text-xs transition-all border cursor-pointer ${
+                        isSel
+                          ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-md shadow-[#5C4033]/20 scale-[1.02]'
+                          : 'bg-[#F8F2EA] text-[#69493C] border-[#EADBC7] hover:border-[#6B1E2B]/40 hover:text-[#2F2F2F]'
+                      }`}
+                    >
+                      {val} {isHourly ? (isEn ? 'h' : 'س') : (isEn ? 'L' : 'ح')}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Value Mode */}
+              <div className="pt-2 border-t border-[#EADBC7]/60 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomMode(!isCustomMode)}
+                  className={`text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    isCustomMode ? 'text-[#6B1E2B]' : 'text-[#69493C] hover:text-[#2F2F2F]'
+                  }`}
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>{isEn ? 'Custom Value Input' : 'إدخال كمية مخصصة'}</span>
+                </button>
+
+                {isCustomMode && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0.25"
+                      max="24"
+                      value={customInput}
+                      onChange={(e) => handleCustomChange(e.target.value)}
+                      placeholder="e.g. 1.25"
+                      className="w-24 p-1.5 text-center rounded-xl bg-[#F8F2EA] border border-[#6B1E2B] font-black text-xs text-[#2F2F2F] focus:outline-none"
+                    />
+                    <span className="text-[11px] font-bold text-[#69493C]">
+                      {isHourly ? (isEn ? 'hours' : 'ساعة') : (isEn ? 'lessons' : 'حصة')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Attendance Status Selection */}
+            <div className="p-4 rounded-3xl bg-[#FAF7F2] border border-[#EADBC7] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-[#2F2F2F] text-xs">{isEn ? 'Attendance Status:' : 'حالة الحضور والاحتساب:'}</span>
+                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                  isCharged ? 'bg-[#F8F2EA] text-[#5C4033] border border-[#B68A4C]' : 'bg-[#F8F2EA] text-[#69493C] border border-[#EADBC7]'
+                }`}>
+                  {isCharged ? (isEn ? 'Charged (Consumes Credit)' : 'محسوبة (تستهلك رصيد)') : (isEn ? 'Exempt (Free)' : 'غير محسوبة (معفية)')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAttendanceType('present')}
+                  className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
+                    attendanceType === 'present'
+                      ? 'bg-[#5C4033] text-[#FAF7F2] border-[#5C4033] shadow-sm'
+                      : 'bg-[#F8F2EA] text-[#2F2F2F] border-[#EADBC7]'
+                  }`}
+                >
+                  ✓ {isEn ? 'Present' : 'حاضر (مستهلكة)'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAttendanceType('absent_charged')}
+                  className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
+                    attendanceType === 'absent_charged'
+                      ? 'bg-[#B56B45] text-[#FAF7F2] border-[#B56B45] shadow-sm'
+                      : 'bg-[#F8F2EA] text-[#2F2F2F] border-[#EADBC7]'
+                  }`}
+                >
+                  ⚠️ {isEn ? 'Absent (Charged)' : 'غائب (محسوبة)'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAttendanceType('absent_free')}
+                  className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
+                    attendanceType === 'absent_free'
+                      ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-sm'
+                      : 'bg-[#F8F2EA] text-[#2F2F2F] border-[#EADBC7]'
+                  }`}
+                >
+                  ℹ️ {isEn ? 'Absent (Free)' : 'غائب (غير محسوبة)'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAttendanceType('cancelled')}
+                  className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
+                    attendanceType === 'cancelled'
+                      ? 'bg-[#69493C] text-[#FAF7F2] border-[#69493C] shadow-sm'
+                      : 'bg-[#F8F2EA] text-[#2F2F2F] border-[#EADBC7]'
+                  }`}
+                >
+                  ✕ {isEn ? 'Cancelled' : 'حصة ملغاة'}
+                </button>
+              </div>
+            </div>
+
+            {/* B. LIVE FINANCIAL IMPACT PANEL */}
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-[#FAF7F2] via-[#F8F2EA] to-[#FAF7F2] border border-[#EADBC7] shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-[#EADBC7] pb-2">
+                <div className="flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-[#6B1E2B]" />
+                  <span className="font-black text-xs text-[#2F2F2F]">
+                    {isEn ? 'Live Financial Impact' : 'الأثر المالي المباشر'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7] text-[#5C4033]">
+                  {isPrepaid
+                    ? (isEn ? 'Prepaid (Auto-settled)' : 'مسبق (تسوية فورية)')
+                    : isPackage
+                    ? (isEn ? 'Package Consumption' : 'خصم من الباقة')
+                    : isHourly
+                    ? (isEn ? 'Hourly Rate' : 'حساب بالساعة')
+                    : (isEn ? 'Postpaid Session' : 'حساب بالحصة')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-start">
+                <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] space-y-0.5">
+                  <span className="text-[10px] text-[#69493C] block font-bold">
+                    {isHourly ? (isEn ? 'Hourly Rate' : 'سعر الساعة') : (isEn ? 'Price / Lesson' : 'سعر الحصة')}
+                  </span>
+                  <strong className="text-sm font-black text-[#2F2F2F] block">
+                    {effectiveSessionPrice} {t('currency')}
+                  </strong>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] space-y-0.5">
+                  <span className="text-[10px] text-[#69493C] block font-bold">
+                    {isEn ? 'Session Total' : 'إجمالي قيمة الحصة'}
+                  </span>
+                  <strong className="text-sm font-black text-[#5C4033] block">
+                    {totalSessionValue} {t('currency')}
+                  </strong>
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] space-y-0.5">
+                  <span className="text-[10px] text-[#69493C] block font-bold">
+                    {isEn ? 'Outstanding Dues' : 'الرصيد المتبقي على الطالب'}
+                  </span>
+                  <strong
+                    className={`text-sm font-black block ${
+                      (finSummary?.remaining || 0) > 0 ? 'text-[#B56B45]' : 'text-[#5C4033]'
+                    }`}
+                  >
+                    {finSummary?.remaining || 0} {t('currency')}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* C. BEFORE & AFTER PACKAGE PROGRESS */}
+            {packageProjection && (
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#6B1E2B]/5 via-[#F8F2EA] to-[#B68A4C]/5 border border-[#6B1E2B]/30 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-[#6B1E2B]" />
+                    <span className="font-black text-xs text-[#2F2F2F]">
+                      {isEn ? 'Package Progress (Before & After)' : 'تطور رصيد الباقة (قبل وبعد الرصد)'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#EADBC7] text-[#6B1E2B]">
+                    {packageProjection.total} {isEn ? 'Lessons Package' : 'حصص في الباقة'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+                  <div className="p-2.5 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] space-y-1">
+                    <span className="text-[10px] font-bold text-[#69493C] block">
+                      {isEn ? 'Before' : 'قبل الرصد'}
+                    </span>
+                    <strong className="text-xs font-black text-[#2F2F2F] block">
+                      {packageProjection.beforeRemaining} {isEn ? 'rem.' : 'متبقية'}
+                    </strong>
+                  </div>
+
+                  <div className="p-2.5 rounded-2xl bg-[#6B1E2B]/10 border border-[#6B1E2B]/40 space-y-1">
+                    <span className="text-[10px] font-bold text-[#6B1E2B] block">
+                      {isEn ? 'This Session' : 'هذه الحصة'}
+                    </span>
+                    <strong className="text-xs font-black text-[#6B1E2B] block">
+                      -{packageProjection.thisSessionUnits} {isEn ? 'lessons' : 'حصة'}
+                    </strong>
+                  </div>
+
+                  <div className="p-2.5 rounded-2xl bg-[#EADBC7]/65 border border-[#B68A4C]/50 space-y-1">
+                    <span className="text-[10px] font-bold text-[#5C4033] block">
+                      {isEn ? 'After' : 'بعد الرصد'}
+                    </span>
+                    <strong className="text-xs font-black text-[#5C4033] block">
+                      {packageProjection.afterRemaining} {isEn ? 'rem.' : 'متبقية'}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <div className="h-2.5 w-full bg-[#EADBC7] rounded-full overflow-hidden flex">
+                    <div
+                      style={{
+                        width: `${Math.min(100, (packageProjection.projectedUsed / packageProjection.total) * 100)}%`,
+                      }}
+                      className="bg-gradient-to-r from-[#6B1E2B] to-[#B56B45] h-full transition-all duration-300"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-[#69493C] font-bold">
+                    <span>{packageProjection.projectedUsed} {isEn ? 'consumed' : 'مستهلك'}</span>
+                    <span>{packageProjection.afterRemaining} {isEn ? 'remaining' : 'متبقي'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Optional Notes */}
+            <div className="space-y-1">
+              <label className="block text-[11px] font-bold text-[#69493C]">
+                {isEn ? 'Notes (Optional):' : 'ملاحظات (اختياري):'}
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={isEn ? 'Topics covered, homework, remarks...' : 'الموضوعات المغطاة، الواجب، ملاحظات المعلم...'}
+                className="w-full p-2.5 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] text-xs font-medium text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] resize-none h-16"
+              />
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-2 pt-3 flex items-center justify-between gap-3 border-t border-[#EADBC7]">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-2xl bg-[#F8F2EA] hover:bg-[#EADBC7] text-[#69493C] font-bold text-xs cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] hover:from-[#5C4033] hover:to-[#5C4033] text-[#FAF7F2] font-black text-xs sm:text-sm shadow-md shadow-[#6B1E2B]/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                <span>
+                  {isSubmitting
+                    ? (isEn ? 'Saving...' : 'جاري الحفظ...')
+                    : isEn
+                    ? `Save & Confirm (${formatSessionQuantityDisplay(
+                        isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
+                        isRTL
+                      )})`
+                    : `حفظ وتأكيد (${formatSessionQuantityDisplay(
+                        isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
+                        isRTL
+                      )})`}
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
     </ModalPortal>
   );
 };

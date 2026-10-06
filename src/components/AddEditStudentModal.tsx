@@ -51,14 +51,14 @@ interface ScheduleSlotItem {
 }
 
 const AVATAR_COLORS = [
-  '#17163D', // Midnight indigo
-  '#403B9C', // Royal indigo
-  '#7657F6', // Vibrant violet
-  '#FF647C', // Coral rose
-  '#55C7E8', // Cyan
-  '#10B981', // Emerald
-  '#F59E0B', // Warm amber
-  '#64748B', // Slate
+  '#6B1E2B', // Burgundy (Antique Brocade)
+  '#B68A4C', // Bronze (Antique Brocade)
+  '#B56B45', // Copper (Copper Cashmere)
+  '#5C4033', // Walnut (Antique Brocade)
+  '#69493C', // Warm Walnut (Copper Cashmere)
+  '#2F2F2F', // Charcoal (Copper Cashmere)
+  '#B6A89C', // Soft Taupe (Antique Brocade)
+  '#581822', // Deep Burgundy
 ];
 
 export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
@@ -482,22 +482,22 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17163D]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#6B1E2B]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#F5F6FC] border border-[#E8E7FF] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-[#FAF7F2] border border-[#EADBC7] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Modal Signature Header */}
-        <div className="p-4 sm:p-5 flex items-center justify-between border-b border-[#E8E7FF] bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white relative overflow-hidden">
+        <div className="p-4 sm:p-5 flex items-center justify-between border-b border-[#EADBC7] bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] text-[#FAF7F2] relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <UserPlus className="w-5 h-5 text-[#55C7E8]" />
+            <div className="w-10 h-10 rounded-2xl bg-[#FAF7F2]/15 backdrop-blur-md border border-[#EADBC7]/25 text-[#FAF7F2] flex items-center justify-center shrink-0 shadow-sm">
+              <UserPlus className="w-5 h-5 text-[#B68A4C]" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
+              <h2 className="text-base sm:text-lg font-black text-[#FAF7F2] tracking-tight truncate">
                 {editingStudent ? t('editStudent') : t('newStudent')}
               </h2>
-              <p className="text-xs text-[#E8E7FF]/85 font-medium truncate">
+              <p className="text-xs text-[#EADBC7]/85 font-medium truncate">
                 {editingStudent ? 'تحديث وتعديل ملف الطالب واشتراكاته' : t('studentsSubtitle')}
               </p>
             </div>
@@ -506,23 +506,23 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer relative z-10 active:scale-95"
+            className="p-2 rounded-2xl bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 text-[#FAF7F2] border border-[#EADBC7]/20 transition-all cursor-pointer relative z-10 active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Form Content */}
-        <form onSubmit={handleSave} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#191A2E]">
+        <form onSubmit={handleSave} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#2F2F2F]">
           
           {/* SECTION: Profile Photo, Achievement Frame & Avatar Color */}
           <div className="classy-card p-4 space-y-3.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="font-black text-[#17163D] text-xs sm:text-sm flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[#7657F6]" />
+              <label className="font-black text-[#2F2F2F] text-xs sm:text-sm flex items-center gap-2">
+                <Camera className="w-4 h-4 text-[#6B1E2B]" />
                 <span>{t('profilePhoto')}</span>
               </label>
-              <span className="text-[11px] text-[#74778F] font-medium">{t('photoOptionalTip')}</span>
+              <span className="text-[11px] text-[#69493C] font-medium">{t('photoOptionalTip')}</span>
             </div>
 
             <div className="flex items-center gap-4">
@@ -556,9 +556,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isCompressingPhoto}
-                    className="px-3.5 py-2 rounded-xl bg-[#7657F6] hover:bg-[#403B9C] text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-black text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5 text-white" />
+                    <Upload className="w-3.5 h-3.5 text-[#FAF7F2]" />
                     <span>{isCompressingPhoto ? '...' : profilePhoto ? t('changePhotoBtn') : t('uploadPhotoBtn')}</span>
                   </button>
 
@@ -566,7 +566,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
-                      className="px-3 py-2 rounded-xl bg-[#FFF1F3] text-[#FF647C] border border-[#FECDD3] hover:bg-[#FF647C] hover:text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-[#F8F2EA] text-[#B56B45] border border-[#B6A89C] hover:bg-[#B56B45] hover:text-[#FAF7F2] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>{t('removePhotoBtn')}</span>
@@ -575,8 +575,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 </div>
 
                 {/* Avatar Color Picker for Fallback */}
-                <div className="space-y-1.5 pt-2 border-t border-[#E8E7FF]">
-                  <span className="text-[11px] text-[#74778F] block font-bold">{t('fallbackColorLabel')}:</span>
+                <div className="space-y-1.5 pt-2 border-t border-[#EADBC7]">
+                  <span className="text-[11px] text-[#69493C] block font-bold">{t('fallbackColorLabel')}:</span>
                   <div className="flex items-center gap-2 flex-wrap">
                     {AVATAR_COLORS.map((c) => (
                       <button
@@ -584,7 +584,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                         type="button"
                         onClick={() => setAvatarColor(c)}
                         className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer ${
-                          avatarColor === c ? 'scale-115 border-[#17163D] shadow-sm' : 'border-transparent'
+                          avatarColor === c ? 'scale-115 border-[#6B1E2B] shadow-sm' : 'border-transparent'
                         }`}
                         style={{ backgroundColor: c }}
                       />
@@ -595,7 +595,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             </div>
 
             {/* Achievement Frame Selector */}
-            <div className="pt-2.5 border-t border-[#E8E7FF]">
+            <div className="pt-2.5 border-t border-[#EADBC7]">
               <AchievementFrameSelector
                 selectedFrame={achievementFrame}
                 onSelectFrame={(frame) => setAchievementFrame(frame)}
@@ -606,41 +606,41 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           {/* Basic Student Info Card */}
           <div className="classy-card p-4 space-y-3 shadow-sm">
             <div>
-              <label className="block text-xs font-black text-[#17163D] mb-1">
+              <label className="block text-xs font-black text-[#2F2F2F] mb-1">
                 {t('studentName')} *
               </label>
               <div className="relative">
-                <User className={`w-4 h-4 text-[#74778F] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
+                <User className={`w-4 h-4 text-[#69493C] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
                 <input
                   type="text"
                   required
                   placeholder="مثال: أحمد محمد علي"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-bold transition-all`}
+                  className={`w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#2F2F2F] placeholder-[#69493C]/60 focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-bold transition-all`}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-black text-[#17163D] mb-1">
+                <label className="block text-xs font-black text-[#2F2F2F] mb-1">
                   {t('studentPhone')}
                 </label>
                 <div className="relative">
-                  <Phone className={`w-4 h-4 text-[#74778F] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
+                  <Phone className={`w-4 h-4 text-[#69493C] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
                   <input
                     type="tel"
                     placeholder="010XXXXXXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className={`w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all`}
+                    className={`w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#2F2F2F] placeholder-[#69493C]/60 focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-medium transition-all`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-black text-[#17163D] mb-1">
+                <label className="block text-xs font-black text-[#2F2F2F] mb-1">
                   {t('schoolNameLabel')}
                 </label>
                 <input
@@ -648,7 +648,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                   placeholder="مثال: مدرسة المتفوقين الثانوية"
                   value={school}
                   onChange={(e) => setSchool(e.target.value)}
-                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl px-3.5 py-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
+                  className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl px-3.5 py-3 text-xs sm:text-sm text-[#2F2F2F] placeholder-[#69493C]/60 focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-medium transition-all"
                 />
               </div>
             </div>
@@ -656,13 +656,13 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
           {/* Educational Stage & Grade Level Card */}
           <div className="classy-card p-4 space-y-3 shadow-sm">
-            <label className="block text-xs font-black text-[#17163D] flex items-center gap-2">
-              <GraduationCap className="w-4 h-4 text-[#7657F6]" />
+            <label className="block text-xs font-black text-[#2F2F2F] flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-[#6B1E2B]" />
               <span>{t('gradeLevel')}</span>
             </label>
 
             {/* Stage Selector Tabs */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl">
               {GRADE_STAGES.map((stg) => (
                 <button
                   key={stg.id}
@@ -670,8 +670,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                   onClick={() => handleStageChange(stg.id)}
                   className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                     selectedStageId === stg.id
-                      ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
-                      : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                      ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-xs'
+                      : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                   }`}
                 >
                   {language === 'ar' ? stg.nameAr : stg.nameEn}
@@ -691,8 +691,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                     onClick={() => setGradeLevel(gradeName)}
                     className={`p-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#7657F6] text-white border-[#7657F6] shadow-sm'
-                        : 'bg-[#F6F7FC] text-[#191A2E] border-[#E8E7FF] hover:bg-[#E8E7FF]/40'
+                        ? 'bg-[#6B1E2B] text-[#FAF7F2] border-[#6B1E2B] shadow-sm'
+                        : 'bg-[#F8F2EA] text-[#2F2F2F] border-[#EADBC7] hover:bg-[#EADBC7]/40'
                     }`}
                   >
                     {getLocalizedStageName(gradeName, language)}
@@ -704,31 +704,31 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
           {/* Guardian / Parent Card */}
           <div className="classy-card p-4 space-y-3 shadow-sm">
-            <label className="block text-xs font-black text-[#17163D] flex items-center gap-2">
-              <User className="w-4 h-4 text-[#7657F6]" />
+            <label className="block text-xs font-black text-[#2F2F2F] flex items-center gap-2">
+              <User className="w-4 h-4 text-[#6B1E2B]" />
               <span>بيانات ولي الأمر والتواصل</span>
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('parentName')}</label>
+                <label className="block text-[11px] font-bold text-[#69493C] mb-1">{t('parentName')}</label>
                 <input
                   type="text"
                   placeholder="مثال: محمود علي"
                   value={parentName}
                   onChange={(e) => setParentName(e.target.value)}
-                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
+                  className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#2F2F2F] placeholder-[#69493C]/60 focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-medium transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('parentPhone')}</label>
+                <label className="block text-[11px] font-bold text-[#69493C] mb-1">{t('parentPhone')}</label>
                 <input
                   type="tel"
                   placeholder="010XXXXXXXX"
                   value={parentPhone}
                   onChange={(e) => setParentPhone(e.target.value)}
-                  className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
+                  className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#2F2F2F] placeholder-[#69493C]/60 focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-medium transition-all"
                 />
               </div>
             </div>
@@ -737,22 +737,22 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           {/* Subscriptions Card */}
           <div className="classy-card p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="text-xs sm:text-sm font-black text-[#17163D] flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[#7657F6]" />
+              <label className="text-xs sm:text-sm font-black text-[#2F2F2F] flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#6B1E2B]" />
                 <span>{t('subscriptionTypeLabel')}</span>
               </label>
-              <span className="text-[11px] text-[#74778F] font-bold">{t('flexibleEnrollmentSupport')}</span>
+              <span className="text-[11px] text-[#69493C] font-bold">{t('flexibleEnrollmentSupport')}</span>
             </div>
 
             {/* Subscription Type Selector */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl">
               <button
                 type="button"
                 onClick={() => setSubscriptionMode('group')}
                 className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'group'
-                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
-                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-xs'
+                    : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                 }`}
               >
                 {t('groupTypeGroup')}
@@ -762,8 +762,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 onClick={() => setSubscriptionMode('private')}
                 className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'private'
-                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
-                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-xs'
+                    : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                 }`}
               >
                 {t('groupTypePrivate')}
@@ -773,8 +773,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 onClick={() => setSubscriptionMode('both')}
                 className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'both'
-                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
-                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-xs'
+                    : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                 }`}
               >
                 {t('bothTypes')}
@@ -784,8 +784,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                 onClick={() => setSubscriptionMode('none')}
                 className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
                   subscriptionMode === 'none'
-                    ? 'bg-gradient-to-r from-[#17163D] to-[#403B9C] text-white shadow-xs'
-                    : 'text-[#74778F] hover:bg-[#E8E7FF]/40'
+                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-xs'
+                    : 'text-[#69493C] hover:bg-[#EADBC7]/40'
                 }`}
               >
                 {t('unassigned')}
@@ -794,13 +794,13 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
             {/* 1. Group Selection when 'group' or 'both' */}
             {(subscriptionMode === 'group' || subscriptionMode === 'both') && (
-              <div className="space-y-2 pt-2 border-t border-[#E8E7FF]">
-                <span className="text-xs font-bold text-[#191A2E] block">
+              <div className="space-y-2 pt-2 border-t border-[#EADBC7]">
+                <span className="text-xs font-bold text-[#2F2F2F] block">
                   {t('selectGroupsPrompt')}:
                 </span>
 
                 {regularGroups.length === 0 ? (
-                  <p className="text-xs text-[#74778F] p-3 bg-[#F6F7FC] rounded-2xl text-center font-medium">
+                  <p className="text-xs text-[#69493C] p-3 bg-[#F8F2EA] rounded-2xl text-center font-medium">
                     {t('noGroupsRegisteredYet')}
                   </p>
                 ) : (
@@ -813,27 +813,27 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                           onClick={() => toggleGroup(grp.id)}
                           className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
                             isChecked
-                              ? 'bg-[#E8E7FF]/40 border-[#7657F6] text-[#17163D]'
-                              : 'bg-[#F6F7FC] border-[#E8E7FF] text-[#74778F] hover:bg-[#E8E7FF]/20'
+                              ? 'bg-[#EADBC7]/40 border-[#6B1E2B] text-[#2F2F2F]'
+                              : 'bg-[#F8F2EA] border-[#EADBC7] text-[#69493C] hover:bg-[#EADBC7]/20'
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
                             <div
                               className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
                                 isChecked
-                                  ? 'bg-[#7657F6] border-[#7657F6] text-white shadow-xs'
-                                  : 'border-[#D8D5FB] bg-white'
+                                  ? 'bg-[#6B1E2B] border-[#6B1E2B] text-[#FAF7F2] shadow-xs'
+                                  : 'border-[#B6A89C] bg-[#FAF7F2]'
                               }`}
                             >
                               {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                             </div>
-                            <span className="font-bold text-xs sm:text-sm text-[#191A2E]">{grp.name}</span>
-                            <span className="text-[11px] text-[#74778F]">
+                            <span className="font-bold text-xs sm:text-sm text-[#2F2F2F]">{grp.name}</span>
+                            <span className="text-[11px] text-[#69493C]">
                               ({grp.subject} • {getLocalizedStageName(grp.gradeLevel, language)})
                             </span>
                           </div>
 
-                          <span className="text-xs font-black text-[#7657F6]">
+                          <span className="text-xs font-black text-[#6B1E2B]">
                             {grp.defaultPrice} {t('currency')}
                           </span>
                         </div>
@@ -846,9 +846,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
             {/* 2. Private Lesson Configuration when 'private' or 'both' */}
             {(subscriptionMode === 'private' || subscriptionMode === 'both') && (
-              <div className="space-y-2.5 pt-2 border-t border-[#E8E7FF]">
+              <div className="space-y-2.5 pt-2 border-t border-[#EADBC7]">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#FF647C] flex items-center gap-1.5">
+                  <span className="text-xs font-black text-[#B56B45] flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4" />
                     <span>{t('privateLessonSetupTitle')}</span>
                   </span>
@@ -856,22 +856,22 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('subjectNameLabel')} *</label>
+                    <label className="block text-[11px] font-bold text-[#69493C] mb-1">{t('subjectNameLabel')} *</label>
                     <input
                       type="text"
                       value={privateSubject}
                       onChange={(e) => setPrivateSubject(e.target.value)}
                       placeholder="مثال: الفيزياء"
-                      className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white"
+                      className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl p-2.5 text-xs font-bold text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-[#74778F] mb-1">{t('billingType')}</label>
+                    <label className="block text-[11px] font-bold text-[#69493C] mb-1">{t('billingType')}</label>
                     <select
                       value={privateBillingMode}
                       onChange={(e) => setPrivateBillingMode(e.target.value as BillingMode)}
-                      className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white cursor-pointer"
+                      className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl p-2.5 text-xs font-bold text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] cursor-pointer"
                     >
                       <option value="prepaid">{t('billingPrepaid')}</option>
                       <option value="postpaid">{t('billingPostpaid')}</option>
@@ -883,18 +883,18 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
                   {privateBillingMode === 'hourly' ? (
                     <div>
-                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">سعر الساعة *</label>
+                      <label className="block text-[11px] font-bold text-[#69493C] mb-1">سعر الساعة *</label>
                       <input
                         type="number"
                         min="0"
                         value={privateHourlyRate}
                         onChange={(e) => setPrivateHourlyRate(Number(e.target.value))}
-                        className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white"
+                        className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl p-2.5 text-xs font-bold text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2]"
                       />
                     </div>
                   ) : privateBillingMode !== 'package' ? (
                     <div>
-                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">
+                      <label className="block text-[11px] font-bold text-[#69493C] mb-1">
                         {privateBillingMode === 'monthly' ? 'سعر الاشتراك الشهري' : 'سعر الحصة'} *
                       </label>
                       <input
@@ -902,32 +902,32 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                         min="0"
                         value={privatePrice}
                         onChange={(e) => setPrivatePrice(Number(e.target.value))}
-                        className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-2.5 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#7657F6] focus:bg-white"
+                        className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl p-2.5 text-xs font-bold text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2]"
                       />
                     </div>
                   ) : null}
                 </div>
 
                 {privateBillingMode === 'package' && (
-                  <div className="grid grid-cols-2 gap-2.5 p-3 bg-[#F0FAFD] border border-[#BAE6FD] rounded-2xl">
+                  <div className="grid grid-cols-2 gap-2.5 p-3 bg-[#F8F2EA] border border-[#B68A4C] rounded-2xl">
                     <div>
-                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">عدد حصص الباقة *</label>
+                      <label className="block text-[11px] font-bold text-[#69493C] mb-1">عدد حصص الباقة *</label>
                       <input
                         type="number"
                         min="1"
                         value={privatePackageSessions}
                         onChange={(e) => setPrivatePackageSessions(Number(e.target.value))}
-                        className="w-full bg-white border border-[#BAE6FD] rounded-xl p-2 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#55C7E8]"
+                        className="w-full bg-[#FAF7F2] border border-[#B68A4C] rounded-xl p-2 text-xs font-bold text-[#2F2F2F] focus:outline-none focus:border-[#B68A4C]"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-[#74778F] mb-1">سعر الباقة الإجمالي *</label>
+                      <label className="block text-[11px] font-bold text-[#69493C] mb-1">سعر الباقة الإجمالي *</label>
                       <input
                         type="number"
                         min="0"
                         value={privatePackagePrice}
                         onChange={(e) => setPrivatePackagePrice(Number(e.target.value))}
-                        className="w-full bg-white border border-[#BAE6FD] rounded-xl p-2 text-xs font-bold text-[#191A2E] focus:outline-none focus:border-[#55C7E8]"
+                        className="w-full bg-[#FAF7F2] border border-[#B68A4C] rounded-xl p-2 text-xs font-bold text-[#2F2F2F] focus:outline-none focus:border-[#B68A4C]"
                       />
                     </div>
                   </div>
@@ -939,11 +939,11 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           {/* Student Schedule Management Card */}
           <div className="classy-card p-4 space-y-3.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="text-xs sm:text-sm font-black text-[#17163D] flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#7657F6]" />
+              <label className="text-xs sm:text-sm font-black text-[#2F2F2F] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#6B1E2B]" />
                 <span>{t('studentSchedule')}</span>
               </label>
-              <span className="text-[11px] text-[#74778F] font-bold">
+              <span className="text-[11px] text-[#69493C] font-bold">
                 {scheduleSlots.length} {t('weeklyClassesCount')}
               </span>
             </div>
@@ -953,14 +953,14 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
               {scheduleSlots.map((slot) => (
                 <div
                   key={slot.id}
-                  className="p-2.5 rounded-2xl bg-[#F6F7FC] border border-[#E8E7FF] flex items-center gap-2"
+                  className="p-2.5 rounded-2xl bg-[#F8F2EA] border border-[#EADBC7] flex items-center gap-2"
                 >
                   {/* Day Selector */}
                   <div className="flex-1">
                     <select
                       value={slot.day}
                       onChange={(e) => handleSlotDayChange(slot.id, e.target.value)}
-                      className="w-full bg-white border border-[#E8E7FF] rounded-xl px-2.5 py-2 text-xs font-black text-[#191A2E] focus:outline-none focus:border-[#7657F6] cursor-pointer"
+                      className="w-full bg-[#FAF7F2] border border-[#EADBC7] rounded-xl px-2.5 py-2 text-xs font-black text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] cursor-pointer"
                     >
                       {CANONICAL_WEEKDAY_KEYS.map((dayKey) => (
                         <option key={dayKey} value={dayKey}>
@@ -976,7 +976,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                       type="time"
                       value={slot.time}
                       onChange={(e) => handleSlotTimeChange(slot.id, e.target.value)}
-                      className="w-full bg-white border border-[#E8E7FF] rounded-xl px-2.5 py-2 text-xs font-black text-[#191A2E] focus:outline-none focus:border-[#7657F6] text-center"
+                      className="w-full bg-[#FAF7F2] border border-[#EADBC7] rounded-xl px-2.5 py-2 text-xs font-black text-[#2F2F2F] focus:outline-none focus:border-[#6B1E2B] text-center"
                     />
                   </div>
 
@@ -985,7 +985,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
                     type="button"
                     onClick={() => handleRemoveScheduleSlot(slot.id)}
                     disabled={scheduleSlots.length <= 1}
-                    className="p-2 rounded-xl bg-[#FFF1F3] hover:bg-[#FFE4E6] text-[#FF647C] border border-[#FECDD3] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                    className="p-2 rounded-xl bg-[#F8F2EA] hover:bg-[#EADBC7] text-[#B56B45] border border-[#B6A89C] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
                     title={t('removeSlot')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -998,7 +998,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             <button
               type="button"
               onClick={handleAddScheduleSlot}
-              className="w-full py-2.5 px-3 rounded-xl border border-dashed border-[#7657F6]/40 bg-[#E8E7FF]/20 hover:bg-[#E8E7FF]/40 text-[#7657F6] font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+              className="w-full py-2.5 px-3 rounded-xl border border-dashed border-[#6B1E2B]/40 bg-[#EADBC7]/20 hover:bg-[#EADBC7]/40 text-[#6B1E2B] font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
             >
               <Plus className="w-4 h-4" />
               <span>{t('addScheduleSlot')}</span>
@@ -1007,13 +1007,13 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
           {/* Notes Card */}
           <div className="classy-card p-4 space-y-2 shadow-sm">
-            <label className="block text-xs font-black text-[#17163D]">{t('notes')}</label>
+            <label className="block text-xs font-black text-[#2F2F2F]">{t('notes')}</label>
             <textarea
               rows={2}
               placeholder={t('notesPlaceholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-[#F6F7FC] border border-[#E8E7FF] rounded-2xl p-3 text-xs sm:text-sm text-[#191A2E] placeholder-[#74778F]/60 focus:outline-none focus:border-[#7657F6] focus:bg-white font-medium transition-all"
+              className="w-full bg-[#F8F2EA] border border-[#EADBC7] rounded-2xl p-3 text-xs sm:text-sm text-[#2F2F2F] placeholder-[#69493C]/60 focus:outline-none focus:border-[#6B1E2B] focus:bg-[#FAF7F2] font-medium transition-all"
             />
           </div>
 
@@ -1022,15 +1022,15 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 px-4 rounded-2xl border border-[#E8E7FF] bg-white text-[#74778F] font-black text-xs sm:text-sm hover:bg-[#F6F7FC] transition-all cursor-pointer"
+              className="flex-1 py-3 px-4 rounded-2xl border border-[#EADBC7] bg-[#FAF7F2] text-[#69493C] font-black text-xs sm:text-sm hover:bg-[#F8F2EA] transition-all cursor-pointer"
             >
               {t('cancel')}
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#17163D] via-[#403B9C] to-[#7657F6] text-white font-black text-xs sm:text-sm shadow-lg shadow-[#7657F6]/30 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:brightness-105"
+              className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] text-[#FAF7F2] font-black text-xs sm:text-sm shadow-lg shadow-[#6B1E2B]/30 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:brightness-105"
             >
-              <Check className="w-4 h-4 text-[#55C7E8] stroke-[3]" />
+              <Check className="w-4 h-4 text-[#B68A4C] stroke-[3]" />
               <span>{editingStudent ? t('saveChanges') : t('save')}</span>
             </button>
           </div>

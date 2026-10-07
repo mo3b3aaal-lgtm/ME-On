@@ -4,221 +4,226 @@
   --font-sans: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* =========================================================================
-     CLASSY DUAL LUXURY MASTER PALETTE — TAILWIND THEME OVERRIDES
-     Strictly derived from PALETTE 01 (Antique Brocade) & PALETTE 02 (Copper Cashmere)
-     PALETTE 01: Burgundy #6B1E2B | Bronze #B68A4C | Cream #F8F2EA | Walnut #5C4033 | Soft Taupe #B6A89C
-     PALETTE 02: Copper #B56B45   | Walnut #69493C | Sand #EADBC7  | Ivory #FAF7F2  | Charcoal #2F2F2F
+     CLASSY SAPPHIRE ESTATE DESIGN SYSTEM — TAILWIND THEME OVERRIDES
+     Strictly derived from the 5 Official Sapphire Estate Colors:
+     PRIMARY BLUE (SAPPHIRE): #0A3D62
+     DARK BLUE (NAVY):        #16324F
+     STEEL GREY:              #6F7882
+     SILVER:                  #C7CDD3
+     WHITE:                   #FFFFFF
      ========================================================================= */
 
-  /* Positive / Success -> Warm Bronze (#B68A4C) & Cream/Sand/Walnut */
-  --color-emerald-50: #F8F2EA;
-  --color-emerald-100: #EADBC7;
-  --color-emerald-200: #DBC39E;
-  --color-emerald-300: #CCA974;
-  --color-emerald-400: #C0985E;
-  --color-emerald-500: #B68A4C;
-  --color-emerald-600: #9A713B;
-  --color-emerald-700: #5C4033;
-  --color-emerald-800: #4B3328;
-  --color-emerald-900: #2F2F2F;
-  --color-emerald-950: #241C18;
+  /* Sapphire Estate Core Palette Tokens */
+  --color-sapphire: #0A3D62;
+  --color-navy: #16324F;
+  --color-steel: #6F7882;
+  --color-silver: #C7CDD3;
+  --color-white: #FFFFFF;
 
-  --color-green-50: #F8F2EA;
-  --color-green-100: #EADBC7;
-  --color-green-200: #DBC39E;
-  --color-green-300: #CCA974;
-  --color-green-400: #C0985E;
-  --color-green-500: #B68A4C;
-  --color-green-600: #9A713B;
-  --color-green-700: #5C4033;
-  --color-green-800: #4B3328;
-  --color-green-900: #2F2F2F;
+  /* Remap all Tailwind color scales to Sapphire Estate Tokens so no default Tailwind color ever leaks */
+  --color-emerald-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-emerald-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-emerald-200: #C7CDD3;
+  --color-emerald-300: color-mix(in srgb, #6F7882 45%, #C7CDD3);
+  --color-emerald-400: #6F7882;
+  --color-emerald-500: #0A3D62;
+  --color-emerald-600: #0A3D62;
+  --color-emerald-700: #16324F;
+  --color-emerald-800: #16324F;
+  --color-emerald-900: #16324F;
+  --color-emerald-950: #16324F;
 
-  --color-teal-50: #F8F2EA;
-  --color-teal-100: #EADBC7;
-  --color-teal-200: #DBC39E;
-  --color-teal-300: #CCA974;
-  --color-teal-400: #C0985E;
-  --color-teal-500: #B68A4C;
-  --color-teal-600: #9A713B;
-  --color-teal-700: #5C4033;
-  --color-teal-800: #4B3328;
-  --color-teal-900: #2F2F2F;
+  --color-green-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-green-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-green-200: #C7CDD3;
+  --color-green-300: color-mix(in srgb, #6F7882 45%, #C7CDD3);
+  --color-green-400: #6F7882;
+  --color-green-500: #0A3D62;
+  --color-green-600: #0A3D62;
+  --color-green-700: #16324F;
+  --color-green-800: #16324F;
+  --color-green-900: #16324F;
 
-  /* Warning / Pending -> Copper (#B56B45) & Sand/Walnut */
-  --color-amber-50: #F8F2EA;
-  --color-amber-100: #EADBC7;
-  --color-amber-200: #DFBEAC;
-  --color-amber-300: #D19C80;
-  --color-amber-400: #C38362;
-  --color-amber-500: #B56B45;
-  --color-amber-600: #9B5735;
-  --color-amber-700: #69493C;
-  --color-amber-800: #5C4033;
-  --color-amber-900: #2F2F2F;
-  --color-amber-950: #241C18;
+  --color-teal-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-teal-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-teal-200: #C7CDD3;
+  --color-teal-300: color-mix(in srgb, #6F7882 45%, #C7CDD3);
+  --color-teal-400: #6F7882;
+  --color-teal-500: #0A3D62;
+  --color-teal-600: #0A3D62;
+  --color-teal-700: #16324F;
+  --color-teal-800: #16324F;
+  --color-teal-900: #16324F;
 
-  --color-yellow-50: #FAF7F2;
-  --color-yellow-100: #EADBC7;
-  --color-yellow-200: #DBC39E;
-  --color-yellow-300: #CCA974;
-  --color-yellow-400: #B68A4C;
-  --color-yellow-500: #B56B45;
-  --color-yellow-600: #9A713B;
-  --color-yellow-700: #69493C;
-  --color-yellow-800: #5C4033;
-  --color-yellow-900: #2F2F2F;
+  --color-amber-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --color-amber-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
+  --color-amber-200: #C7CDD3;
+  --color-amber-300: color-mix(in srgb, #6F7882 50%, #C7CDD3);
+  --color-amber-400: #6F7882;
+  --color-amber-500: #6F7882;
+  --color-amber-600: #0A3D62;
+  --color-amber-700: #16324F;
+  --color-amber-800: #16324F;
+  --color-amber-900: #16324F;
+  --color-amber-950: #16324F;
 
-  --color-orange-50: #F8F2EA;
-  --color-orange-100: #EADBC7;
-  --color-orange-200: #DFBEAC;
-  --color-orange-300: #D19C80;
-  --color-orange-400: #C38362;
-  --color-orange-500: #B56B45;
-  --color-orange-600: #9B5735;
-  --color-orange-700: #69493C;
-  --color-orange-800: #5C4033;
-  --color-orange-900: #2F2F2F;
+  --color-yellow-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --color-yellow-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
+  --color-yellow-200: #C7CDD3;
+  --color-yellow-300: #6F7882;
+  --color-yellow-400: #6F7882;
+  --color-yellow-500: #0A3D62;
+  --color-yellow-600: #0A3D62;
+  --color-yellow-700: #16324F;
+  --color-yellow-800: #16324F;
+  --color-yellow-900: #16324F;
 
-  /* Danger / Alert / Important -> Burgundy (#6B1E2B) */
-  --color-rose-50: #F6ECEE;
-  --color-rose-100: #EBD8DC;
-  --color-rose-200: #D7B2B9;
-  --color-rose-300: #BC838D;
-  --color-rose-400: #9E5461;
-  --color-rose-500: #843342;
-  --color-rose-600: #6B1E2B;
-  --color-rose-700: #581823;
-  --color-rose-800: #47131C;
-  --color-rose-900: #360E15;
-  --color-rose-950: #24090E;
+  --color-orange-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --color-orange-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
+  --color-orange-200: #C7CDD3;
+  --color-orange-300: #6F7882;
+  --color-orange-400: #6F7882;
+  --color-orange-500: #0A3D62;
+  --color-orange-600: #0A3D62;
+  --color-orange-700: #16324F;
+  --color-orange-800: #16324F;
+  --color-orange-900: #16324F;
 
-  --color-red-50: #F6ECEE;
-  --color-red-100: #EBD8DC;
-  --color-red-200: #D7B2B9;
-  --color-red-300: #BC838D;
-  --color-red-400: #9E5461;
-  --color-red-500: #843342;
-  --color-red-600: #6B1E2B;
-  --color-red-700: #581823;
-  --color-red-800: #47131C;
-  --color-red-900: #360E15;
-  --color-red-950: #24090E;
+  --color-rose-50: color-mix(in srgb, #C7CDD3 22%, #FFFFFF);
+  --color-rose-100: color-mix(in srgb, #C7CDD3 42%, #FFFFFF);
+  --color-rose-200: #C7CDD3;
+  --color-rose-300: #6F7882;
+  --color-rose-400: #6F7882;
+  --color-rose-500: #0A3D62;
+  --color-rose-600: #16324F;
+  --color-rose-700: #16324F;
+  --color-rose-800: #16324F;
+  --color-rose-900: #16324F;
+  --color-rose-950: #16324F;
 
-  --color-pink-50: #F6ECEE;
-  --color-pink-100: #EBD8DC;
-  --color-pink-200: #D7B2B9;
-  --color-pink-300: #BC838D;
-  --color-pink-400: #9E5461;
-  --color-pink-500: #6B1E2B;
-  --color-pink-600: #581823;
-  --color-pink-700: #47131C;
-  --color-pink-800: #360E15;
-  --color-pink-900: #24090E;
+  --color-red-50: color-mix(in srgb, #C7CDD3 22%, #FFFFFF);
+  --color-red-100: color-mix(in srgb, #C7CDD3 42%, #FFFFFF);
+  --color-red-200: #C7CDD3;
+  --color-red-300: #6F7882;
+  --color-red-400: #6F7882;
+  --color-red-500: #0A3D62;
+  --color-red-600: #16324F;
+  --color-red-700: #16324F;
+  --color-red-800: #16324F;
+  --color-red-900: #16324F;
+  --color-red-950: #16324F;
 
-  /* Brand / Primary Remap -> Burgundy (#6B1E2B) & Walnut (#5C4033) */
-  --color-indigo-50: #F8F2EA;
-  --color-indigo-100: #EADBC7;
-  --color-indigo-200: #D7C6B8;
-  --color-indigo-300: #B6A89C;
-  --color-indigo-400: #8F6858;
-  --color-indigo-500: #6B1E2B;
-  --color-indigo-600: #6B1E2B;
-  --color-indigo-700: #581823;
-  --color-indigo-800: #5C4033;
-  --color-indigo-900: #2F2F2F;
-  --color-indigo-950: #241C18;
+  --color-pink-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --color-pink-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
+  --color-pink-200: #C7CDD3;
+  --color-pink-300: #6F7882;
+  --color-pink-400: #6F7882;
+  --color-pink-500: #0A3D62;
+  --color-pink-600: #16324F;
+  --color-pink-700: #16324F;
+  --color-pink-800: #16324F;
+  --color-pink-900: #16324F;
 
-  --color-violet-50: #F8F2EA;
-  --color-violet-100: #EADBC7;
-  --color-violet-200: #D7C6B8;
-  --color-violet-300: #B6A89C;
-  --color-violet-400: #B68A4C;
-  --color-violet-500: #6B1E2B;
-  --color-violet-600: #6B1E2B;
-  --color-violet-700: #5C4033;
-  --color-violet-800: #4B3328;
-  --color-violet-900: #2F2F2F;
+  --color-indigo-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-indigo-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-indigo-200: #C7CDD3;
+  --color-indigo-300: #6F7882;
+  --color-indigo-400: #6F7882;
+  --color-indigo-500: #0A3D62;
+  --color-indigo-600: #0A3D62;
+  --color-indigo-700: #16324F;
+  --color-indigo-800: #16324F;
+  --color-indigo-900: #16324F;
+  --color-indigo-950: #16324F;
 
-  --color-purple-50: #F8F2EA;
-  --color-purple-100: #EADBC7;
-  --color-purple-200: #D7C6B8;
-  --color-purple-300: #B6A89C;
-  --color-purple-400: #B68A4C;
-  --color-purple-500: #6B1E2B;
-  --color-purple-600: #6B1E2B;
-  --color-purple-700: #5C4033;
-  --color-purple-800: #4B3328;
-  --color-purple-900: #2F2F2F;
+  --color-violet-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-violet-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-violet-200: #C7CDD3;
+  --color-violet-300: #6F7882;
+  --color-violet-400: #6F7882;
+  --color-violet-500: #0A3D62;
+  --color-violet-600: #0A3D62;
+  --color-violet-700: #16324F;
+  --color-violet-800: #16324F;
+  --color-violet-900: #16324F;
 
-  /* Secondary / Accent Remap -> Walnut (#69493C) & Bronze (#B68A4C) */
-  --color-blue-50: #F8F2EA;
-  --color-blue-100: #EADBC7;
-  --color-blue-200: #D7C6B8;
-  --color-blue-300: #B6A89C;
-  --color-blue-400: #B68A4C;
-  --color-blue-500: #69493C;
-  --color-blue-600: #5C4033;
-  --color-blue-700: #4B3328;
-  --color-blue-800: #3B281F;
-  --color-blue-900: #2F2F2F;
+  --color-purple-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-purple-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-purple-200: #C7CDD3;
+  --color-purple-300: #6F7882;
+  --color-purple-400: #6F7882;
+  --color-purple-500: #0A3D62;
+  --color-purple-600: #0A3D62;
+  --color-purple-700: #16324F;
+  --color-purple-800: #16324F;
+  --color-purple-900: #16324F;
 
-  --color-sky-50: #F8F2EA;
-  --color-sky-100: #EADBC7;
-  --color-sky-200: #DBC39E;
-  --color-sky-300: #CCA974;
-  --color-sky-400: #B68A4C;
-  --color-sky-500: #B68A4C;
-  --color-sky-600: #69493C;
-  --color-sky-700: #5C4033;
-  --color-sky-800: #4B3328;
-  --color-sky-900: #2F2F2F;
+  --color-blue-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-blue-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-blue-200: #C7CDD3;
+  --color-blue-300: #6F7882;
+  --color-blue-400: #6F7882;
+  --color-blue-500: #0A3D62;
+  --color-blue-600: #0A3D62;
+  --color-blue-700: #16324F;
+  --color-blue-800: #16324F;
+  --color-blue-900: #16324F;
 
-  --color-cyan-50: #F8F2EA;
-  --color-cyan-100: #EADBC7;
-  --color-cyan-200: #DBC39E;
-  --color-cyan-300: #CCA974;
-  --color-cyan-400: #B68A4C;
-  --color-cyan-500: #B68A4C;
-  --color-cyan-600: #69493C;
-  --color-cyan-700: #5C4033;
-  --color-cyan-800: #4B3328;
-  --color-cyan-900: #2F2F2F;
+  --color-sky-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-sky-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-sky-200: #C7CDD3;
+  --color-sky-300: #6F7882;
+  --color-sky-400: #6F7882;
+  --color-sky-500: #0A3D62;
+  --color-sky-600: #0A3D62;
+  --color-sky-700: #16324F;
+  --color-sky-800: #16324F;
+  --color-sky-900: #16324F;
 
-  /* Warm Neutrals -> Ivory, Cream, Sand, Soft Taupe, Walnut, Charcoal */
-  --color-slate-50: #FAF7F2;
-  --color-slate-100: #F8F2EA;
-  --color-slate-200: #EADBC7;
-  --color-slate-300: #B6A89C;
-  --color-slate-400: #9A887B;
-  --color-slate-500: #69493C;
-  --color-slate-600: #5C4033;
-  --color-slate-700: #4B3328;
-  --color-slate-800: #382922;
-  --color-slate-900: #2F2F2F;
-  --color-slate-950: #221E1D;
+  --color-cyan-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
+  --color-cyan-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
+  --color-cyan-200: #C7CDD3;
+  --color-cyan-300: #6F7882;
+  --color-cyan-400: #6F7882;
+  --color-cyan-500: #0A3D62;
+  --color-cyan-600: #0A3D62;
+  --color-cyan-700: #16324F;
+  --color-cyan-800: #16324F;
+  --color-cyan-900: #16324F;
 
-  --color-gray-50: #FAF7F2;
-  --color-gray-100: #F8F2EA;
-  --color-gray-200: #EADBC7;
-  --color-gray-300: #B6A89C;
-  --color-gray-400: #9A887B;
-  --color-gray-500: #69493C;
-  --color-gray-600: #5C4033;
-  --color-gray-700: #4B3328;
-  --color-gray-800: #382922;
-  --color-gray-900: #2F2F2F;
+  --color-slate-50: #FFFFFF;
+  --color-slate-100: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --color-slate-200: #C7CDD3;
+  --color-slate-300: #C7CDD3;
+  --color-slate-400: #6F7882;
+  --color-slate-500: #6F7882;
+  --color-slate-600: #6F7882;
+  --color-slate-700: #16324F;
+  --color-slate-800: #16324F;
+  --color-slate-900: #16324F;
+  --color-slate-950: #16324F;
 
-  --color-zinc-50: #FAF7F2;
-  --color-zinc-100: #F8F2EA;
-  --color-zinc-200: #EADBC7;
-  --color-zinc-300: #B6A89C;
-  --color-zinc-400: #9A887B;
-  --color-zinc-500: #69493C;
-  --color-zinc-600: #5C4033;
-  --color-zinc-700: #4B3328;
-  --color-zinc-800: #382922;
-  --color-zinc-900: #2F2F2F;
+  --color-gray-50: #FFFFFF;
+  --color-gray-100: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --color-gray-200: #C7CDD3;
+  --color-gray-300: #C7CDD3;
+  --color-gray-400: #6F7882;
+  --color-gray-500: #6F7882;
+  --color-gray-600: #6F7882;
+  --color-gray-700: #16324F;
+  --color-gray-800: #16324F;
+  --color-gray-900: #16324F;
+
+  --color-zinc-50: #FFFFFF;
+  --color-zinc-100: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --color-zinc-200: #C7CDD3;
+  --color-zinc-300: #C7CDD3;
+  --color-zinc-400: #6F7882;
+  --color-zinc-500: #6F7882;
+  --color-zinc-600: #6F7882;
+  --color-zinc-700: #16324F;
+  --color-zinc-800: #16324F;
+  --color-zinc-900: #16324F;
 }
 
 @layer base {
@@ -228,8 +233,8 @@
 
   body {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #FAF7F2;
-    color: #2F2F2F;
+    background-color: #FFFFFF;
+    color: #16324F;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
@@ -238,151 +243,162 @@
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', sans-serif;
     font-weight: 700;
-    color: #2F2F2F;
+    color: #16324F;
     letter-spacing: -0.02em;
   }
 }
 
 /* ==========================================================================
-   CLASSY UNIFIED LUXURY DESIGN TOKENS (Single Source of Truth)
+   CLASSY SAPPHIRE ESTATE DESIGN TOKENS (Single Source of Truth)
+   Official Palette:
+   - PRIMARY BLUE (SAPPHIRE): #0A3D62
+   - DARK BLUE (NAVY):        #16324F
+   - STEEL GREY:              #6F7882
+   - SILVER:                  #C7CDD3
+   - WHITE:                   #FFFFFF
    ========================================================================== */
 :root {
-  /* Master Luxury Semantic Tokens */
-  --classy-background: #FAF7F2;
-  --classy-background-secondary: #F8F2EA;
-  --classy-surface: #F8F2EA;
-  --classy-surface-elevated: #FAF7F2;
-  --classy-surface-sand: #EADBC7;
+  /* Core Brand & Structural Tokens */
+  --classy-primary: #0A3D62;
+  --classy-primary-hover: color-mix(in srgb, #0A3D62 82%, #16324F);
+  --classy-primary-active: #16324F;
 
-  --classy-primary: #6B1E2B;
-  --classy-primary-hover: #581823;
-  --classy-primary-active: #47131C;
+  --classy-navy: #16324F;
+  --classy-steel: #6F7882;
+  --classy-silver: #C7CDD3;
+  --classy-white: #FFFFFF;
 
-  --classy-secondary: #5C4033;
-  --classy-secondary-warm: #69493C;
-  --classy-accent: #B68A4C;
-  --classy-accent-secondary: #B56B45;
+  /* Background & Surface Tokens */
+  --classy-background: #FFFFFF;
+  --classy-background-secondary: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --classy-surface: #FFFFFF;
+  --classy-surface-elevated: color-mix(in srgb, #C7CDD3 16%, #FFFFFF);
 
-  --classy-text-primary: #2F2F2F;
-  --classy-text-secondary: #5C4033;
-  --classy-text-muted: #69493C;
-  --classy-text-subtle: #B6A89C;
+  /* Accent & Secondary Tokens */
+  --classy-secondary: #6F7882;
+  --classy-accent: #0A3D62;
+  --classy-accent-secondary: #16324F;
 
-  --classy-border: #B6A89C;
-  --classy-border-soft: #EADBC7;
+  /* Typography Tokens */
+  --classy-text-primary: #16324F;
+  --classy-text-secondary: #6F7882;
+  --classy-text-muted: #6F7882;
+  --classy-text-on-primary: #FFFFFF;
 
-  --classy-badge-bg: #EADBC7;
-  --classy-badge-text: #5C4033;
+  /* Border & Divider Tokens */
+  --classy-border: #C7CDD3;
+  --classy-divider: color-mix(in srgb, #C7CDD3 55%, #FFFFFF);
 
-  --classy-positive: #B68A4C;
-  --classy-warning: #B56B45;
-  --classy-danger: #6B1E2B;
-  --classy-neutral: #69493C;
+  /* Semantic State Tokens (Strictly Sapphire Estate Palette) */
+  --classy-success: #0A3D62;
+  --classy-warning: #6F7882;
+  --classy-danger: #16324F;
+  --classy-info: #0A3D62;
+  --classy-disabled: #C7CDD3;
 
-  /* Mapped Legacy Token Aliases */
-  --color-midnight: #6B1E2B;
-  --color-royal: #5C4033;
-  --color-violet: #6B1E2B;
-  --color-lavender: #EADBC7;
-  --color-coral: #B56B45;
-  --color-cyan: #B68A4C;
-  --color-canvas: #FAF7F2;
-  --color-surface: #F8F2EA;
-  --color-text-main: #2F2F2F;
-  --color-text-muted: #69493C;
-  --color-border-subtle: #EADBC7;
+  /* Legacy Alias Mappings -> Strictly Sapphire Estate */
+  --color-midnight: #16324F;
+  --color-royal: #0A3D62;
+  --color-violet: #0A3D62;
+  --color-lavender: #C7CDD3;
+  --color-coral: #16324F;
+  --color-cyan: #0A3D62;
+  --color-canvas: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-text-main: #16324F;
+  --color-text-muted: #6F7882;
+  --color-border-subtle: #C7CDD3;
 
-  /* Semantic Status Tokens (Strictly Luxury Master Palette) */
-  --status-success: #B68A4C;
-  --status-success-bg: #F8F2EA;
-  --status-success-border: #B68A4C;
-  --status-warning: #B56B45;
-  --status-warning-bg: #F8F2EA;
-  --status-warning-border: #B56B45;
-  --status-danger: #6B1E2B;
-  --status-danger-bg: #F6ECEE;
-  --status-danger-border: #BC838D;
-  --status-info: #69493C;
-  --status-info-bg: #EADBC7;
-  --status-info-border: #B6A89C;
+  --status-success: #0A3D62;
+  --status-success-bg: color-mix(in srgb, #0A3D62 8%, #FFFFFF);
+  --status-success-border: #C7CDD3;
+  --status-warning: #6F7882;
+  --status-warning-bg: color-mix(in srgb, #C7CDD3 25%, #FFFFFF);
+  --status-warning-border: #C7CDD3;
+  --status-danger: #16324F;
+  --status-danger-bg: color-mix(in srgb, #16324F 8%, #FFFFFF);
+  --status-danger-border: #C7CDD3;
+  --status-info: #0A3D62;
+  --status-info-bg: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
+  --status-info-border: #C7CDD3;
 }
 
 /* ==========================================================================
    CARDS & SURFACES
    ========================================================================== */
 .classy-card {
-  background-color: #F8F2EA;
+  background-color: #FFFFFF;
   border-radius: 22px;
-  border: 1px solid rgba(182, 168, 156, 0.55);
-  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.08), 0 1px 3px rgba(47, 47, 47, 0.03);
+  border: 1px solid #C7CDD3;
+  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.06), 0 1px 3px rgba(22, 50, 79, 0.03);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .classy-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -6px rgba(107, 30, 43, 0.14), 0 2px 8px -1px rgba(92, 64, 51, 0.06);
-  border-color: #B68A4C;
+  box-shadow: 0 12px 28px -6px rgba(10, 61, 98, 0.14), 0 2px 8px -1px rgba(22, 50, 79, 0.06);
+  border-color: #0A3D62;
 }
 
 .classy-subtle-card {
-  background-color: #FAF7F2;
+  background-color: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
   border-radius: 18px;
-  border: 1px solid #EADBC7;
+  border: 1px solid #C7CDD3;
   padding: 0.875rem;
 }
 
 .classy-lavender-card {
-  background: linear-gradient(135deg, #FAF7F2 0%, #F8F2EA 55%, #EADBC7 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 22%, #FFFFFF) 100%);
   border-radius: 22px;
-  border: 1px solid rgba(182, 168, 156, 0.6);
-  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.09);
+  border: 1px solid #C7CDD3;
+  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.07);
 }
 
 .classy-rose-card {
-  background: linear-gradient(135deg, #FAF7F2 0%, #F5E9EB 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 24%, #FFFFFF) 100%);
   border-radius: 22px;
-  border: 1px solid rgba(107, 30, 43, 0.25);
-  box-shadow: 0 4px 20px -4px rgba(107, 30, 43, 0.09);
+  border: 1px solid #C7CDD3;
+  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.07);
 }
 
 .classy-cyan-card {
-  background: linear-gradient(135deg, #FAF7F2 0%, #EADBC7 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 20%, #FFFFFF) 100%);
   border-radius: 22px;
-  border: 1px solid rgba(182, 138, 76, 0.4);
-  box-shadow: 0 4px 20px -4px rgba(182, 138, 76, 0.1);
+  border: 1px solid #C7CDD3;
+  box-shadow: 0 4px 20px -4px rgba(10, 61, 98, 0.08);
 }
 
 .classy-mint-card {
-  background: linear-gradient(135deg, #FAF7F2 0%, #F8F2EA 60%, #EADBC7 100%);
+  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 18%, #FFFFFF) 100%);
   border-radius: 22px;
-  border: 1px solid rgba(182, 138, 76, 0.45);
-  box-shadow: 0 4px 20px -4px rgba(182, 138, 76, 0.1);
+  border: 1px solid #C7CDD3;
+  box-shadow: 0 4px 20px -4px rgba(10, 61, 98, 0.08);
 }
 
-/* Executive Luxury Burgundy & Walnut Card */
+/* Executive Sapphire & Navy Card */
 .classy-dark-card {
-  background: linear-gradient(135deg, #6B1E2B 0%, #5C4033 55%, #69493C 100%);
+  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
   border-radius: 26px;
-  border: 1px solid rgba(182, 138, 76, 0.35);
-  box-shadow: 0 16px 36px -8px rgba(92, 64, 51, 0.35);
-  color: #FAF7F2;
+  border: 1px solid rgba(199, 205, 211, 0.3);
+  box-shadow: 0 16px 36px -8px rgba(22, 50, 79, 0.32);
+  color: #FFFFFF;
 }
 
 /* ==========================================================================
    BUTTONS
    ========================================================================== */
 .btn-primary {
-  background: linear-gradient(135deg, #6B1E2B 0%, #5C4033 100%);
-  color: #FAF7F2;
+  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
+  color: #FFFFFF;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 4px 14px -2px rgba(107, 30, 43, 0.35);
+  box-shadow: 0 4px 14px -2px rgba(10, 61, 98, 0.3);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 22px -2px rgba(107, 30, 43, 0.45);
+  box-shadow: 0 8px 22px -2px rgba(10, 61, 98, 0.4);
   filter: brightness(1.06);
 }
 
@@ -391,18 +407,18 @@
 }
 
 .btn-secondary {
-  background-color: #FAF7F2;
-  color: #5C4033;
-  border: 1px solid #B6A89C;
+  background-color: #FFFFFF;
+  color: #16324F;
+  border: 1px solid #C7CDD3;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(92, 64, 51, 0.06);
+  box-shadow: 0 2px 6px rgba(22, 50, 79, 0.05);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-secondary:hover {
-  background-color: #EADBC7;
-  border-color: #B68A4C;
+  background-color: color-mix(in srgb, #C7CDD3 25%, #FFFFFF);
+  border-color: #0A3D62;
   transform: translateY(-1px);
 }
 
@@ -411,17 +427,17 @@
 }
 
 .btn-violet {
-  background: linear-gradient(135deg, #6B1E2B 0%, #581823 100%);
-  color: #FAF7F2;
+  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
+  color: #FFFFFF;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 6px 18px -3px rgba(107, 30, 43, 0.35);
+  box-shadow: 0 6px 18px -3px rgba(10, 61, 98, 0.32);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-violet:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -2px rgba(107, 30, 43, 0.45);
+  box-shadow: 0 10px 24px -2px rgba(10, 61, 98, 0.42);
   filter: brightness(1.05);
 }
 
@@ -430,17 +446,17 @@
 }
 
 .btn-coral {
-  background: linear-gradient(135deg, #B56B45 0%, #6B1E2B 100%);
-  color: #FAF7F2;
+  background: linear-gradient(135deg, #16324F 0%, #0A3D62 100%);
+  color: #FFFFFF;
   border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 6px 18px -3px rgba(181, 107, 69, 0.35);
+  box-shadow: 0 6px 18px -3px rgba(22, 50, 79, 0.32);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-coral:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -2px rgba(181, 107, 69, 0.45);
+  box-shadow: 0 10px 24px -2px rgba(22, 50, 79, 0.42);
   filter: brightness(1.05);
 }
 
@@ -455,13 +471,13 @@
 .classy-select,
 .classy-textarea {
   width: 100%;
-  background-color: #FAF7F2;
-  border: 1px solid #B6A89C;
+  background-color: #FFFFFF;
+  border: 1px solid #C7CDD3;
   border-radius: 16px;
   padding: 0.625rem 0.875rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #2F2F2F;
+  color: #16324F;
   transition: all 0.2s ease;
 }
 
@@ -469,14 +485,14 @@
 .classy-select:focus,
 .classy-textarea:focus {
   outline: none;
-  border-color: #6B1E2B;
-  background-color: #FAF7F2;
-  box-shadow: 0 0 0 3px rgba(107, 30, 43, 0.14);
+  border-color: #0A3D62;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(10, 61, 98, 0.14);
 }
 
 .classy-input::placeholder,
 .classy-textarea::placeholder {
-  color: rgba(105, 73, 60, 0.65);
+  color: #6F7882;
   font-weight: 500;
 }
 
@@ -484,7 +500,7 @@
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #5C4033;
+  color: #16324F;
   margin-bottom: 0.375rem;
 }
 
@@ -492,9 +508,9 @@
    SEMANTIC BADGES
    ========================================================================== */
 .badge-success {
-  background-color: rgba(182, 138, 76, 0.16);
-  color: #5C4033;
-  border: 1px solid rgba(182, 138, 76, 0.45);
+  background-color: rgba(10, 61, 98, 0.1);
+  color: #0A3D62;
+  border: 1px solid rgba(10, 61, 98, 0.28);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -502,9 +518,9 @@
 }
 
 .badge-warning {
-  background-color: rgba(181, 107, 69, 0.16);
-  color: #69493C;
-  border: 1px solid rgba(181, 107, 69, 0.45);
+  background-color: rgba(199, 205, 211, 0.35);
+  color: #16324F;
+  border: 1px solid #C7CDD3;
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -512,9 +528,9 @@
 }
 
 .badge-danger {
-  background-color: rgba(107, 30, 43, 0.12);
-  color: #6B1E2B;
-  border: 1px solid rgba(107, 30, 43, 0.32);
+  background-color: rgba(22, 50, 79, 0.1);
+  color: #16324F;
+  border: 1px solid rgba(22, 50, 79, 0.3);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -522,9 +538,9 @@
 }
 
 .badge-info {
-  background-color: #EADBC7;
-  color: #5C4033;
-  border: 1px solid #B6A89C;
+  background-color: rgba(199, 205, 211, 0.28);
+  color: #0A3D62;
+  border: 1px solid #C7CDD3;
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -532,9 +548,9 @@
 }
 
 .badge-primary {
-  background-color: rgba(107, 30, 43, 0.12);
-  color: #6B1E2B;
-  border: 1px solid rgba(107, 30, 43, 0.28);
+  background-color: rgba(10, 61, 98, 0.1);
+  color: #0A3D62;
+  border: 1px solid rgba(10, 61, 98, 0.25);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -545,26 +561,26 @@
    ICON BOX CONTAINERS
    ========================================================================== */
 .icon-box-violet {
-  background-color: #EADBC7;
-  color: #6B1E2B;
+  background-color: rgba(10, 61, 98, 0.1);
+  color: #0A3D62;
   border-radius: 16px;
 }
 
 .icon-box-coral {
-  background-color: rgba(181, 107, 69, 0.15);
-  color: #B56B45;
+  background-color: rgba(22, 50, 79, 0.1);
+  color: #16324F;
   border-radius: 16px;
 }
 
 .icon-box-cyan {
-  background-color: rgba(182, 138, 76, 0.18);
-  color: #5C4033;
+  background-color: rgba(199, 205, 211, 0.35);
+  color: #0A3D62;
   border-radius: 16px;
 }
 
 .icon-box-midnight {
-  background-color: rgba(92, 64, 51, 0.12);
-  color: #5C4033;
+  background-color: rgba(111, 120, 130, 0.14);
+  color: #16324F;
   border-radius: 16px;
 }
 
@@ -572,8 +588,8 @@
    SEGMENTED CONTROLS / TABS
    ========================================================================== */
 .classy-segment {
-  background-color: #FAF7F2;
-  border: 1px solid #EADBC7;
+  background-color: color-mix(in srgb, #C7CDD3 22%, #FFFFFF);
+  border: 1px solid #C7CDD3;
   border-radius: 18px;
   padding: 0.25rem;
   display: flex;
@@ -593,19 +609,19 @@
 }
 
 .classy-segment-btn-active {
-  background-color: #6B1E2B;
-  color: #FAF7F2;
-  box-shadow: 0 4px 10px rgba(107, 30, 43, 0.25);
+  background-color: #0A3D62;
+  color: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(10, 61, 98, 0.25);
 }
 
 .classy-segment-btn-inactive {
-  color: #69493C;
+  color: #6F7882;
   background-color: transparent;
 }
 
 .classy-segment-btn-inactive:hover {
-  color: #2F2F2F;
-  background-color: rgba(234, 219, 199, 0.55);
+  color: #16324F;
+  background-color: #FFFFFF;
 }
 
 /* ==========================================================================
@@ -619,19 +635,19 @@
   width: 56px;
   height: 56px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #6B1E2B 0%, #B68A4C 100%);
-  color: #FAF7F2;
+  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
+  color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 28px -4px rgba(107, 30, 43, 0.45), 0 4px 10px rgba(182, 138, 76, 0.3);
+  box-shadow: 0 12px 28px -4px rgba(10, 61, 98, 0.42), 0 4px 10px rgba(22, 50, 79, 0.25);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 
 .classy-fab:hover {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 16px 34px -4px rgba(107, 30, 43, 0.55);
+  box-shadow: 0 16px 34px -4px rgba(10, 61, 98, 0.52);
 }
 
 .classy-fab:active {
@@ -642,25 +658,25 @@
    BACKWARD COMPATIBILITY ALIASES
    ========================================================================== */
 .neu-card, .royal-card {
-  background-color: #F8F2EA;
+  background-color: #FFFFFF;
   border-radius: 22px;
-  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.08);
-  border: 1px solid #EADBC7;
+  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.06);
+  border: 1px solid #C7CDD3;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .neu-card-hover:hover, .royal-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(107, 30, 43, 0.14);
-  border-color: #B68A4C;
+  box-shadow: 0 12px 28px -4px rgba(10, 61, 98, 0.14);
+  border-color: #0A3D62;
 }
 
 .bento-stat-card {
-  background-color: #F8F2EA;
+  background-color: #FFFFFF;
   border-radius: 22px;
   padding: 1.25rem;
-  box-shadow: 0 4px 20px -4px rgba(92, 64, 51, 0.08);
-  border: 1px solid #EADBC7;
+  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.06);
+  border: 1px solid #C7CDD3;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -671,8 +687,8 @@
 
 .bento-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(107, 30, 43, 0.14);
-  border-color: #B68A4C;
+  box-shadow: 0 12px 28px -4px rgba(10, 61, 98, 0.14);
+  border-color: #0A3D62;
 }
 
 /* ==========================================================================
@@ -751,11 +767,11 @@
   background: transparent;
 }
 .android-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(182, 168, 156, 0.45);
+  background: rgba(199, 205, 211, 0.75);
   border-radius: 9999px;
 }
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(107, 30, 43, 0.55);
+  background: rgba(10, 61, 98, 0.55);
 }
 
 /* ==========================================================================
@@ -783,7 +799,7 @@ button, a, input, select, textarea, [role="button"], .interactive-touch {
 .modal-drag-handle {
   width: 40px;
   height: 5px;
-  background-color: #B6A89C;
+  background-color: #C7CDD3;
   border-radius: 9999px;
   margin: 0 auto;
   cursor: grab;
@@ -791,7 +807,7 @@ button, a, input, select, textarea, [role="button"], .interactive-touch {
 }
 
 .modal-drag-handle:active {
-  background-color: #6B1E2B;
+  background-color: #0A3D62;
   transform: scaleX(1.2);
 }
 
@@ -810,4 +826,3 @@ button, a, input, select, textarea, [role="button"], .interactive-touch {
   transform: scale(0.96);
   opacity: 0.9;
 }
-

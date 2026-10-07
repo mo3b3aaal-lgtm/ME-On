@@ -290,22 +290,22 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
   return (
     <div
       {...calendarSwipeGestures}
-      className="space-y-3.5 text-[#2F2F2F] select-none-touch"
+      className="space-y-3.5 text-[#16324F] select-none-touch"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* 1. COMPACT & CLEAN TOP TOOLBAR */}
-      <div className="bg-[#FAF7F2] rounded-2xl p-3.5 sm:p-4 border border-[#EADBC7]/80 shadow-xs space-y-3">
+      <div className="bg-[#FFFFFF] rounded-2xl p-3.5 sm:p-4 border border-[#C7CDD3]/80 shadow-xs space-y-3">
         {/* Row 1: Mode Switcher & Date Stepper */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
           {/* Segmented View Mode Tabs */}
-          <div className="flex items-center bg-[#EADBC7]/70 p-1 rounded-xl border border-[#EADBC7]/60 w-full sm:w-auto">
+          <div className="flex items-center bg-[#C7CDD3]/70 p-1 rounded-xl border border-[#C7CDD3]/60 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setViewMode('week')}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 viewMode === 'week'
-                  ? 'bg-[#FAF7F2] text-[#6B1E2B] shadow-xs font-black'
-                  : 'text-[#69493C] hover:text-[#2F2F2F]'
+                  ? 'bg-[#FFFFFF] text-[#0A3D62] shadow-xs font-black'
+                  : 'text-[#6F7882] hover:text-[#16324F]'
               }`}
             >
               <CalendarRange className="w-3.5 h-3.5" />
@@ -317,8 +317,8 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
               onClick={() => setViewMode('month')}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 viewMode === 'month'
-                  ? 'bg-[#FAF7F2] text-[#6B1E2B] shadow-xs font-black'
-                  : 'text-[#69493C] hover:text-[#2F2F2F]'
+                  ? 'bg-[#FFFFFF] text-[#0A3D62] shadow-xs font-black'
+                  : 'text-[#6F7882] hover:text-[#16324F]'
               }`}
             >
               <CalendarDays className="w-3.5 h-3.5" />
@@ -330,8 +330,8 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
               onClick={() => setViewMode('year')}
               className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 viewMode === 'year'
-                  ? 'bg-[#FAF7F2] text-[#6B1E2B] shadow-xs font-black'
-                  : 'text-[#69493C] hover:text-[#2F2F2F]'
+                  ? 'bg-[#FFFFFF] text-[#0A3D62] shadow-xs font-black'
+                  : 'text-[#6F7882] hover:text-[#16324F]'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -341,24 +341,24 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
 
           {/* Stepper + Today + Add */}
           <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="flex items-center bg-[#F8F2EA] border border-[#EADBC7] rounded-xl p-0.5">
+            <div className="flex items-center bg-[#C7CDD3]/15 border border-[#C7CDD3] rounded-xl p-0.5">
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-[#69493C] hover:text-[#6B1E2B] hover:bg-[#FAF7F2] transition-all cursor-pointer"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-[#6F7882] hover:text-[#0A3D62] hover:bg-[#FFFFFF] transition-all cursor-pointer"
                 title={isEn ? 'Previous Month' : 'الشهر السابق'}
               >
                 {isRTL ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
               </button>
 
-              <span className="px-2.5 py-0.5 text-xs font-bold text-[#2F2F2F] whitespace-nowrap">
+              <span className="px-2.5 py-0.5 text-xs font-bold text-[#16324F] whitespace-nowrap">
                 {monthNames[selectedMonthIdx]} {selectedYear}
               </span>
 
               <button
                 type="button"
                 onClick={handleNextMonth}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-[#69493C] hover:text-[#6B1E2B] hover:bg-[#FAF7F2] transition-all cursor-pointer"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-[#6F7882] hover:text-[#0A3D62] hover:bg-[#FFFFFF] transition-all cursor-pointer"
                 title={isEn ? 'Next Month' : 'الشهر القادم'}
               >
                 {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -370,18 +370,18 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
               onClick={handleJumpToToday}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border cursor-pointer ${
                 selectedDateStr === todayStr
-                  ? 'bg-[#EADBC7]/65 border-[#EADBC7] text-[#6B1E2B]'
-                  : 'bg-[#FAF7F2] border-[#EADBC7] text-[#69493C] hover:bg-[#F8F2EA]'
+                  ? 'bg-[#C7CDD3]/65 border-[#C7CDD3] text-[#0A3D62]'
+                  : 'bg-[#FFFFFF] border-[#C7CDD3] text-[#6F7882] hover:bg-[#C7CDD3]/25'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#B68A4C]" />
+              <Sparkles className="w-3.5 h-3.5 text-[#C7CDD3]" />
               <span>{isEn ? 'Today' : 'اليوم'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => onOpenAddSession(undefined, selectedDateStr)}
-              className="px-3 py-1.5 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="px-3 py-1.5 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{isEn ? 'New Class' : 'حصة جديدة'}</span>
@@ -390,13 +390,13 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
         </div>
 
         {/* Row 2: Group Filter */}
-        <div className="pt-2 border-t border-[#EADBC7]/70 flex items-center justify-between">
+        <div className="pt-2 border-t border-[#C7CDD3]/70 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#69493C] font-medium">{isEn ? 'Filter by group:' : 'تصفية بالمجموعة:'}</span>
+            <span className="text-xs text-[#6F7882] font-medium">{isEn ? 'Filter by group:' : 'تصفية بالمجموعة:'}</span>
             <select
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="bg-[#F8F2EA] border border-[#EADBC7] rounded-lg px-2.5 py-1 text-xs text-[#2F2F2F] font-bold focus:outline-none focus:border-[#6B1E2B] cursor-pointer"
+              className="bg-[#C7CDD3]/15 border border-[#C7CDD3] rounded-lg px-2.5 py-1 text-xs text-[#16324F] font-bold focus:outline-none focus:border-[#0A3D62] cursor-pointer"
             >
               <option value="all">{isEn ? 'All Groups & Lessons' : 'جميع المجموعات والدروس'}</option>
               {groups.map((g) => (
@@ -407,7 +407,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
             </select>
           </div>
 
-          <span className="text-xs text-[#B6A89C]">
+          <span className="text-xs text-[#6F7882]">
             {isEn
               ? `${selectedDateAgenda.items.length} classes on ${selectedDateAgenda.formattedDisplayDate}`
               : `${selectedDateAgenda.items.length} حصص في ${selectedDateAgenda.formattedDisplayDate}`}
@@ -421,7 +421,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
       {viewMode === 'week' && (
         <div className="space-y-3">
           {/* 7 Days Horizontal Bar (Sat-Fri) */}
-          <div className="bg-[#FAF7F2] rounded-2xl p-2.5 border border-[#EADBC7]/80 shadow-xs">
+          <div className="bg-[#FFFFFF] rounded-2xl p-2.5 border border-[#C7CDD3]/80 shadow-xs">
             <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
               {currentWeekDays.map((wDay, idx) => {
                 const dAgenda = getDetailedAgendaForDate(
@@ -441,13 +441,13 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                     onClick={() => setSelectedDateStr(wDay.dateStr)}
                     className={`py-2 px-1 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                       wDay.isSelected
-                        ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-xs font-black'
+                        ? 'bg-[#0A3D62] text-[#FFFFFF] shadow-xs font-black'
                         : wDay.isToday
-                        ? 'bg-[#EADBC7]/65 text-[#2F2F2F] border border-[#EADBC7]'
-                        : 'bg-[#F8F2EA] hover:bg-[#EADBC7]/70 text-[#69493C]'
+                        ? 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#C7CDD3]'
+                        : 'bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#6F7882]'
                     }`}
                   >
-                    <span className={`text-[10px] ${wDay.isSelected ? 'text-[#EADBC7]' : 'text-[#69493C]'}`}>
+                    <span className={`text-[10px] ${wDay.isSelected ? 'text-[#C7CDD3]' : 'text-[#6F7882]'}`}>
                       {wDay.dayName}
                     </span>
                     <span className="text-sm font-black">
@@ -455,10 +455,10 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                     </span>
                     <span className={`text-[9px] px-1.5 py-0.2 rounded-md ${
                       wDay.isSelected
-                        ? 'bg-[#FAF7F2]/20 text-[#FAF7F2]'
+                        ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
                         : count > 0
-                        ? 'text-[#6B1E2B] font-bold'
-                        : 'text-[#B6A89C] opacity-60'
+                        ? 'text-[#0A3D62] font-bold'
+                        : 'text-[#6F7882] opacity-60'
                     }`}>
                       {count > 0 ? (isEn ? `${count} cl` : `${count} ح`) : '-'}
                     </span>
@@ -472,11 +472,11 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
           <div className="space-y-2.5">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-black text-[#2F2F2F]">
+                <h3 className="text-sm font-black text-[#16324F]">
                   {isEn ? `Classes on ${selectedDateAgenda.formattedDisplayDate}` : `حصص يوم ${selectedDateAgenda.formattedDisplayDate}`}
                 </h3>
                 {selectedDateAgenda.isToday && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#EADBC7]/65 text-[#6B1E2B] font-bold text-[10px]">
+                  <span className="px-2 py-0.5 rounded-full bg-[#C7CDD3]/65 text-[#0A3D62] font-bold text-[10px]">
                     {isEn ? 'Today' : 'اليوم'}
                   </span>
                 )}
@@ -484,7 +484,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenAddSession(undefined, selectedDateStr)}
-                className="text-xs font-bold text-[#6B1E2B] hover:text-[#5C4033] flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold text-[#0A3D62] hover:text-[#16324F] flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{isEn ? 'Add class for this date' : 'إضافة حصة لهذا اليوم'}</span>
@@ -492,18 +492,18 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
             </div>
 
             {selectedDateAgenda.items.length === 0 ? (
-              <div className="bg-[#FAF7F2] rounded-2xl p-8 border border-[#EADBC7]/80 text-center space-y-2 flex flex-col items-center">
-                <Calendar className="w-8 h-8 text-[#EADBC7]" />
-                <p className="text-xs font-bold text-[#2F2F2F]">
+              <div className="bg-[#FFFFFF] rounded-2xl p-8 border border-[#C7CDD3]/80 text-center space-y-2 flex flex-col items-center">
+                <Calendar className="w-8 h-8 text-[#C7CDD3]" />
+                <p className="text-xs font-bold text-[#16324F]">
                   {isEn ? 'No scheduled classes on this day' : 'لا توجد حصص مجدولة أو مسجلة في هذا اليوم'}
                 </p>
-                <p className="text-[11px] text-[#B6A89C]">
+                <p className="text-[11px] text-[#6F7882]">
                   {isEn ? 'You can schedule a new group or private class directly' : 'يمكنك جدولة حصة خاصة أو جماعية جديدة لهذا اليوم مباشرة'}
                 </p>
                 <button
                   type="button"
                   onClick={() => onOpenAddSession(undefined, selectedDateStr)}
-                  className="mt-1 px-3.5 py-1.5 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                  className="mt-1 px-3.5 py-1.5 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-bold text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{isEn ? 'Schedule New Class' : 'جدولة حصة جديدة'}</span>
@@ -517,22 +517,22 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className={`bg-[#FAF7F2] rounded-2xl p-3.5 border transition-all shadow-xs space-y-2.5 ${
+                      className={`bg-[#FFFFFF] rounded-2xl p-3.5 border transition-all shadow-xs space-y-2.5 ${
                         item.status === 'cancelled'
-                          ? 'border-[#6B1E2B]/30 bg-[#6B1E2B]/30'
+                          ? 'border-[#0A3D62]/30 bg-[#0A3D62]/30'
                           : item.status === 'completed'
-                          ? 'border-[#B68A4C]/50'
-                          : 'border-[#EADBC7]/80 hover:border-[#B6A89C]'
+                          ? 'border-[#0A3D62]/50'
+                          : 'border-[#C7CDD3]/80 hover:border-[#6F7882]'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         {/* Time & Title */}
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="text-center shrink-0 min-w-[50px] bg-[#F8F2EA] border border-[#EADBC7] rounded-xl px-2 py-1.5">
-                            <span className="text-xs font-black text-[#2F2F2F] block leading-tight">
+                          <div className="text-center shrink-0 min-w-[50px] bg-[#C7CDD3]/15 border border-[#C7CDD3] rounded-xl px-2 py-1.5">
+                            <span className="text-xs font-black text-[#16324F] block leading-tight">
                               {item.formattedTime || item.startTime || (isEn ? 'Flexible' : 'وقت مرن')}
                             </span>
-                            <span className="text-[9px] font-bold text-[#69493C] block mt-0.5">
+                            <span className="text-[9px] font-bold text-[#6F7882] block mt-0.5">
                               {item.isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
                             </span>
                           </div>
@@ -541,16 +541,16 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                             <div className="flex items-center gap-2">
                               <span
                                 className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: item.accentColor || '#6B1E2B' }}
+                                style={{ backgroundColor: item.accentColor || '#0A3D62' }}
                               />
-                              <h4 className="font-bold text-sm text-[#2F2F2F] truncate">
+                              <h4 className="font-bold text-sm text-[#16324F] truncate">
                                 {item.isPrivate
                                   ? (item.studentName ? (isEn ? `Private — ${item.studentName}` : `خاص — ${item.studentName}`) : (isEn ? 'Private Lesson' : 'درس خاص'))
                                   : item.groupName}
                               </h4>
                             </div>
 
-                            <div className="flex items-center gap-2 text-xs text-[#69493C] flex-wrap font-medium">
+                            <div className="flex items-center gap-2 text-xs text-[#6F7882] flex-wrap font-medium">
                               <span>{item.isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (item.subject || (isEn ? 'General' : 'عام'))}</span>
                               {item.stageOrGrade && (
                                 <>
@@ -570,18 +570,18 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
 
                         {/* Dynamic Semantic Status Badge */}
                         {item.status === 'completed' ? (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7]/65 text-[#5C4033] border border-[#B68A4C]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                            <CheckCircle2 className="w-3 h-3 text-[#B68A4C]" />
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                            <CheckCircle2 className="w-3 h-3 text-[#0A3D62]" />
                             <span>{t('completed')}</span>
                           </span>
                         ) : item.status === 'cancelled' ? (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EA] text-[#B56B45] border border-[#B6A89C] inline-flex items-center gap-1 shadow-2xs shrink-0">
-                            <AlertCircle className="w-3 h-3 text-[#B56B45]" />
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3] inline-flex items-center gap-1 shadow-2xs shrink-0">
+                            <AlertCircle className="w-3 h-3 text-[#16324F]" />
                             <span>{t('cancelled')}</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#EADBC7]/70 text-[#5C4033] border border-[#B56B45]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                            <Clock className="w-3 h-3 text-[#B56B45]" />
+                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#C7CDD3]/70 text-[#16324F] border border-[#16324F]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                            <Clock className="w-3 h-3 text-[#16324F]" />
                             <span>{t('scheduled')}</span>
                           </span>
                         )}
@@ -589,20 +589,20 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
 
                       {/* Attendance info for completed sessions */}
                       {item.hasRecordedAttendance && (
-                        <div className="text-xs text-[#69493C] font-medium flex items-center gap-2 pt-1 border-t border-[#EADBC7]/70">
-                          <span className="text-[#5C4033] font-bold">{t('present')}: {item.presentCount}</span>
+                        <div className="text-xs text-[#6F7882] font-medium flex items-center gap-2 pt-1 border-t border-[#C7CDD3]/70">
+                          <span className="text-[#16324F] font-bold">{t('present')}: {item.presentCount}</span>
                           {item.absentChargedCount > 0 && (
-                            <span className="text-[#6B1E2B]">· {t('absentCharged')}: {item.absentChargedCount}</span>
+                            <span className="text-[#0A3D62]">· {t('absentCharged')}: {item.absentChargedCount}</span>
                           )}
                           {item.absentFreeCount > 0 && (
-                            <span className="text-[#B6A89C]">· {t('absentExcused')}: {item.absentFreeCount}</span>
+                            <span className="text-[#6F7882]">· {t('absentExcused')}: {item.absentFreeCount}</span>
                           )}
                         </div>
                       )}
 
                       {/* Action buttons */}
-                      <div className="flex items-center justify-between pt-1 border-t border-[#EADBC7]/70">
-                        <span className="text-[11px] text-[#B6A89C]">
+                      <div className="flex items-center justify-between pt-1 border-t border-[#C7CDD3]/70">
+                        <span className="text-[11px] text-[#6F7882]">
                           {isRecorded ? (isEn ? 'Recorded Class' : 'حصة مسجلة بالسجل') : (isEn ? 'Recurring Scheduled Class' : 'حصة أسبوعية مجدولة')}
                         </span>
 
@@ -612,7 +612,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onOpenAttendanceModal(item.session!)}
-                                className="px-3 py-1 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                                className="px-3 py-1 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 <span>{item.hasRecordedAttendance ? (isEn ? 'Edit Attendance' : 'تعديل الحضور') : (isEn ? 'Take Attendance' : 'رصد الحضور')}</span>
@@ -621,7 +621,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onEditSession(item.session!)}
-                                className="p-1.5 rounded-xl bg-[#EADBC7]/70 text-[#69493C] hover:bg-[#B6A89C]/50 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-xl bg-[#C7CDD3]/70 text-[#6F7882] hover:bg-[#C7CDD3]/50 transition-colors cursor-pointer"
                                 title={t('edit')}
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -630,7 +630,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleDeleteSession(item.session!)}
-                                className="p-1.5 rounded-xl bg-[#6B1E2B]/10 text-[#6B1E2B] hover:bg-[#6B1E2B]/15 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-xl bg-[#0A3D62]/10 text-[#0A3D62] hover:bg-[#0A3D62]/15 transition-colors cursor-pointer"
                                 title={t('delete')}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -640,7 +640,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                             <button
                               type="button"
                               onClick={() => handleStartRecurringClass(item)}
-                              className="px-3.5 py-1.5 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                              className="px-3.5 py-1.5 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>{isEn ? 'Take Attendance & Start Class' : 'رصد الحضور وبدء الحصة'}</span>
@@ -660,13 +660,13 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
       {/* --- B. MONTH VIEW --- */}
       {viewMode === 'month' && (
         <div className="space-y-3">
-          <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EADBC7]/80 shadow-xs space-y-3">
+          <div className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#C7CDD3]/80 shadow-xs space-y-3">
             {/* Weekday headers */}
             <div className="grid grid-cols-7 gap-1 text-center">
               {weekdayHeaders.map((wHeader, wIdx) => (
                 <div
                   key={wIdx}
-                  className="text-xs font-bold text-[#69493C] py-1.5 bg-[#F8F2EA] rounded-lg"
+                  className="text-xs font-bold text-[#6F7882] py-1.5 bg-[#C7CDD3]/15 rounded-lg"
                 >
                   {wHeader}
                 </div>
@@ -686,22 +686,22 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                     onClick={() => handleSelectDay(cell)}
                     className={`min-h-[58px] sm:min-h-[72px] p-1.5 rounded-xl border text-right flex flex-col justify-between transition-all cursor-pointer ${
                       !cell.isCurrentMonth
-                        ? 'border-[#EADBC7]/70 bg-[#F8F2EA]/40 opacity-30 pointer-events-none'
+                        ? 'border-[#C7CDD3]/70 bg-[#C7CDD3]/15 opacity-30 pointer-events-none'
                         : isSelected
-                        ? 'border-[#6B1E2B] bg-[#EADBC7]/70 ring-2 ring-[#6B1E2B]/20'
+                        ? 'border-[#0A3D62] bg-[#C7CDD3]/70 ring-2 ring-[#0A3D62]/20'
                         : cell.isToday
-                        ? 'border-[#B6A89C] bg-[#EADBC7]/30'
-                        : 'border-[#EADBC7]/70 bg-[#FAF7F2] hover:border-[#B6A89C]'
+                        ? 'border-[#C7CDD3] bg-[#C7CDD3]/30'
+                        : 'border-[#C7CDD3]/70 bg-[#FFFFFF] hover:border-[#6F7882]'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <span
                         className={`text-xs font-black rounded-md w-5 h-5 flex items-center justify-center ${
                           cell.isToday
-                            ? 'bg-[#6B1E2B] text-[#FAF7F2]'
+                            ? 'bg-[#0A3D62] text-[#FFFFFF]'
                             : isSelected
-                            ? 'bg-[#2F2F2F] text-[#FAF7F2]'
-                            : 'text-[#2F2F2F]'
+                            ? 'bg-[#16324F] text-[#FFFFFF]'
+                            : 'text-[#16324F]'
                         }`}
                       >
                         {cell.dayNumber}
@@ -710,7 +710,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
 
                     {cell.isCurrentMonth && hasClasses && (
                       <div className="mt-1">
-                        <span className="px-1.5 py-0.5 rounded-md bg-[#EADBC7]/65 text-[#6B1E2B] text-[10px] font-bold block truncate">
+                        <span className="px-1.5 py-0.5 rounded-md bg-[#C7CDD3]/65 text-[#0A3D62] text-[10px] font-bold block truncate">
                           {cell.classCount} {isEn ? 'classes' : 'حصة'}
                         </span>
                       </div>
@@ -722,44 +722,44 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
           </div>
 
           {/* Selected Date Summary below Month Grid */}
-          <div className="bg-[#FAF7F2] rounded-2xl p-4 border border-[#EADBC7]/80 shadow-xs space-y-2">
+          <div className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#C7CDD3]/80 shadow-xs space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black text-[#2F2F2F]">
+              <h4 className="text-xs font-black text-[#16324F]">
                 {isEn ? `Classes on ${selectedDateAgenda.formattedDisplayDate}` : `حصص يوم ${selectedDateAgenda.formattedDisplayDate}`} ({selectedDateAgenda.items.length})
               </h4>
               <button
                 type="button"
                 onClick={() => setViewMode('week')}
-                className="text-xs text-[#6B1E2B] font-bold hover:underline cursor-pointer"
+                className="text-xs text-[#0A3D62] font-bold hover:underline cursor-pointer"
               >
                 {isEn ? 'Open Day Agenda →' : 'فتح تفاصيل اليوم في الأجندة ←'}
               </button>
             </div>
 
             {selectedDateAgenda.items.length === 0 ? (
-              <p className="text-xs text-[#B6A89C] py-2">{isEn ? 'No scheduled classes on this day' : 'لا توجد حصص مجدولة لهذا اليوم'}</p>
+              <p className="text-xs text-[#6F7882] py-2">{isEn ? 'No scheduled classes on this day' : 'لا توجد حصص مجدولة لهذا اليوم'}</p>
             ) : (
               <div className="space-y-1.5">
                 {selectedDateAgenda.items.map((it) => (
-                  <div key={it.id} className="p-2.5 rounded-xl bg-[#F8F2EA] border border-[#EADBC7]/70 flex items-center justify-between text-xs">
+                  <div key={it.id} className="p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3]/70 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: it.accentColor || '#6B1E2B' }} />
-                      <span className="font-bold text-[#2F2F2F] truncate">{it.isPrivate ? it.studentName : it.groupName}</span>
-                      <span className="text-[#B6A89C] text-[11px]">({it.formattedTime || it.startTime || (isEn ? 'Flexible' : 'وقت مرن')})</span>
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: it.accentColor || '#0A3D62' }} />
+                      <span className="font-bold text-[#16324F] truncate">{it.isPrivate ? it.studentName : it.groupName}</span>
+                      <span className="text-[#6F7882] text-[11px]">({it.formattedTime || it.startTime || (isEn ? 'Flexible' : 'وقت مرن')})</span>
                     </div>
                     {it.status === 'completed' ? (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#EADBC7]/65 text-[#5C4033] border border-[#B68A4C]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                        <CheckCircle2 className="w-2.5 h-2.5 text-[#B68A4C]" />
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-[#0A3D62]" />
                         <span>{t('completed')}</span>
                       </span>
                     ) : it.status === 'cancelled' ? (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EA] text-[#B56B45] border border-[#B6A89C] inline-flex items-center gap-1 shadow-2xs shrink-0">
-                        <AlertCircle className="w-2.5 h-2.5 text-[#B56B45]" />
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3] inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <AlertCircle className="w-2.5 h-2.5 text-[#16324F]" />
                         <span>{t('cancelled')}</span>
                       </span>
                     ) : (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#EADBC7]/70 text-[#5C4033] border border-[#B56B45]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                        <Clock className="w-2.5 h-2.5 text-[#B56B45]" />
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C7CDD3]/70 text-[#16324F] border border-[#16324F]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                        <Clock className="w-2.5 h-2.5 text-[#16324F]" />
                         <span>{t('scheduled')}</span>
                       </span>
                     )}
@@ -791,13 +791,13 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                   setSelectedMonthIdx(monthIdx);
                   setViewMode('month');
                 }}
-                className={`bg-[#FAF7F2] rounded-2xl p-3 border cursor-pointer hover:border-[#B68A4C] transition-all shadow-xs ${
-                  isCurrentMonth ? 'border-[#B68A4C] ring-2 ring-[#EADBC7]' : 'border-[#EADBC7]/80'
+                className={`bg-[#FFFFFF] rounded-2xl p-3 border cursor-pointer hover:border-[#0A3D62] transition-all shadow-xs ${
+                  isCurrentMonth ? 'border-[#0A3D62] ring-2 ring-[#C7CDD3]' : 'border-[#C7CDD3]/80'
                 }`}
               >
-                <div className="flex items-center justify-between pb-1.5 border-b border-[#EADBC7]/70">
-                  <h4 className="font-bold text-xs text-[#2F2F2F]">{monthName}</h4>
-                  <span className="text-[10px] text-[#B6A89C] font-bold">
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#C7CDD3]/70">
+                  <h4 className="font-bold text-xs text-[#16324F]">{monthName}</h4>
+                  <span className="text-[10px] text-[#6F7882] font-bold">
                     {monthClassCount > 0 ? (isEn ? `${monthClassCount} classes` : `${monthClassCount} حصة`) : '-'}
                   </span>
                 </div>
@@ -810,10 +810,10 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                         !cell.isCurrentMonth
                           ? 'opacity-10'
                           : cell.isToday
-                          ? 'bg-[#6B1E2B] text-[#FAF7F2] font-bold'
+                          ? 'bg-[#0A3D62] text-[#FFFFFF] font-bold'
                           : cell.classCount > 0
-                          ? 'bg-[#EADBC7]/65 text-[#6B1E2B] font-bold'
-                          : 'text-[#69493C]'
+                          ? 'bg-[#C7CDD3]/65 text-[#0A3D62] font-bold'
+                          : 'text-[#6F7882]'
                       }`}
                     >
                       {cell.dayNumber}

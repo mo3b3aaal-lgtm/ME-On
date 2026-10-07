@@ -373,62 +373,62 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
     };
   }, [filteredData]);
 
-  // Custom Luxury Tooltip
+  // Custom Sapphire Estate Tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data: AttendanceDataPoint = payload[0].payload;
       return (
         <div
-          className="bg-[#5C4033]/95 backdrop-blur-md text-[#FAF7F2] p-3.5 rounded-2xl shadow-2xl border border-[#B68A4C]/40 text-xs space-y-2 z-50 min-w-[180px]"
+          className="bg-[#16324F]/95 backdrop-blur-md text-[#FFFFFF] p-3.5 rounded-2xl shadow-2xl border border-[#C7CDD3]/40 text-xs space-y-2 z-50 min-w-[180px]"
           dir={isRTL ? 'rtl' : 'ltr'}
         >
-          <div className="flex items-center justify-between gap-2 border-b border-[#EADBC7]/20 pb-1.5">
-            <span className="font-black text-sm text-[#B68A4C]">{data.fullDateLabel}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EADBC7]/20 text-[#F8F2EA] font-bold">
+          <div className="flex items-center justify-between gap-2 border-b border-[#C7CDD3]/20 pb-1.5">
+            <span className="font-black text-sm text-[#FFFFFF]">{data.fullDateLabel}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#C7CDD3]/20 text-[#FFFFFF] font-bold">
               {data.sessionsCount} {isEn ? 'sessions' : 'حصص'}
             </span>
           </div>
 
           <div className="space-y-1.5 pt-0.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[#EADBC7]/90 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[#B68A4C]" />
+              <span className="text-[#C7CDD3] flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#FFFFFF]" />
                 <span>{isEn ? 'Commitment Rate:' : 'نسبة الحضور:'}</span>
               </span>
-              <strong className="font-black text-[#B68A4C] text-sm">{data.rate}%</strong>
+              <strong className="font-black text-[#FFFFFF] text-sm">{data.rate}%</strong>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[#EADBC7]/90 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[#B56B45]" />
+              <span className="text-[#C7CDD3] flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#C7CDD3]" />
                 <span>{isEn ? 'Present / Late:' : 'حضور / تأخير:'}</span>
               </span>
-              <span className="font-bold text-[#FAF7F2]">
-                {data.attended} <span className="text-[10px] text-[#EADBC7]/75">({data.present} + {data.late})</span>
+              <span className="font-bold text-[#FFFFFF]">
+                {data.attended} <span className="text-[10px] text-[#C7CDD3]">({data.present} + {data.late})</span>
               </span>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[#EADBC7]/90 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-[#6B1E2B]" />
+              <span className="text-[#C7CDD3] flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#6F7882]" />
                 <span>{isEn ? 'Charged Absence:' : 'غياب محسوب:'}</span>
               </span>
-              <span className="font-bold text-[#EADBC7]">{data.absentCharged}</span>
+              <span className="font-bold text-[#C7CDD3]">{data.absentCharged}</span>
             </div>
 
             {data.absentExcused > 0 && (
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[#EADBC7]/90 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-[#B6A89C]" />
+                <span className="text-[#C7CDD3] flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-[#C7CDD3]" />
                   <span>{isEn ? 'Excused Absence:' : 'غياب معفى:'}</span>
                 </span>
-                <span className="font-bold text-[#EADBC7]">{data.absentExcused}</span>
+                <span className="font-bold text-[#C7CDD3]">{data.absentExcused}</span>
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 pt-1 border-t border-[#EADBC7]/15 text-[11px]">
-              <span className="text-[#EADBC7]/75">{isEn ? 'Total Expected:' : 'إجمالي الطلاب:'}</span>
-              <strong className="text-[#FAF7F2]">{data.totalExpected}</strong>
+            <div className="flex items-center justify-between gap-3 pt-1 border-t border-[#C7CDD3]/20 text-[11px]">
+              <span className="text-[#C7CDD3]">{isEn ? 'Total Expected:' : 'إجمالي الطلاب:'}</span>
+              <strong className="text-[#FFFFFF]">{data.totalExpected}</strong>
             </div>
           </div>
         </div>
@@ -438,28 +438,28 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
   };
 
   return (
-    <div className="classy-card p-4 bg-[#FAF7F2] space-y-4 relative overflow-hidden">
+    <div className="classy-card p-4 bg-[#FFFFFF] space-y-4 relative overflow-hidden">
       {/* Background ambient lighting */}
-      <div className="absolute top-0 right-1/4 w-72 h-72 bg-[#B68A4C]/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 right-1/4 w-72 h-72 bg-[#0A3D62]/5 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* 1. Header with Title & Controls */}
       <div className="space-y-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#6B1E2B] via-[#B56B45] to-[#B68A4C] p-0.5 shadow-md shadow-[#5C4033]/20 shrink-0">
-            <div className="w-full h-full rounded-[14px] bg-[#5C4033] flex items-center justify-center text-[#FAF7F2]">
-              <Activity className="w-5 h-5 text-[#B68A4C]" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#0A3D62] to-[#16324F] p-0.5 shadow-md shadow-[#16324F]/15 shrink-0">
+            <div className="w-full h-full rounded-[14px] bg-[#0A3D62] flex items-center justify-center text-[#FFFFFF]">
+              <Activity className="w-5 h-5 text-[#FFFFFF]" />
             </div>
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="text-xs sm:text-sm font-black text-[#2F2F2F] truncate">
+              <h3 className="text-xs sm:text-sm font-black text-[#16324F] truncate">
                 {isEn ? 'Student Attendance Trends' : 'مؤشرات ومنحنيات التزام الطلاب'}
               </h3>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#EADBC7] text-[#5C4033] border border-[#B6A89C] shrink-0">
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C7CDD3]/25 text-[#16324F] border border-[#C7CDD3] shrink-0">
                 {filteredData.length} {timeGrouping === 'monthly' ? (isEn ? 'Months' : 'أشهر') : timeGrouping === 'weekly' ? (isEn ? 'Weeks' : 'أسابيع') : (isEn ? 'Sessions' : 'حصص')}
               </span>
             </div>
-            <p className="text-[11px] text-[#69493C] font-medium truncate">
+            <p className="text-[11px] text-[#6F7882] font-medium truncate">
               {isEn ? 'Visual historical analysis of attendance rates and commitment' : 'تحليل بياني زمني لمعدلات الحضور ونسبة التزام الطلاب'}
             </p>
           </div>
@@ -472,7 +472,7 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
             <select
               value={activeGroupFilter}
               onChange={(e) => setActiveGroupFilter(e.target.value)}
-              className="w-full bg-[#F8F2EA] hover:bg-[#EADBC7]/60 border border-[#B6A89C] rounded-xl px-2.5 py-2 text-xs text-[#2F2F2F] font-bold focus:outline-none focus:border-[#B68A4C] cursor-pointer transition-colors"
+              className="w-full bg-[#FFFFFF] hover:bg-[#C7CDD3]/20 border border-[#C7CDD3] rounded-xl px-2.5 py-2 text-xs text-[#16324F] font-bold focus:outline-none focus:border-[#0A3D62] cursor-pointer transition-colors"
             >
               <option value="all">{isEn ? 'All Groups & Services' : 'كافة المجموعات والخدمات'}</option>
               {groups.map((g) => (
@@ -485,14 +485,14 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
 
           <div className="grid grid-cols-2 gap-1.5">
             {/* Grouping Selector */}
-            <div className="grid grid-cols-3 bg-[#EADBC7]/60 p-1 rounded-xl border border-[#B6A89C]/60">
+            <div className="grid grid-cols-3 bg-[#C7CDD3]/25 p-1 rounded-xl border border-[#C7CDD3]">
               <button
                 type="button"
                 onClick={() => setTimeGrouping('session')}
                 className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center truncate ${
                   timeGrouping === 'session'
-                    ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-2xs'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-[#0A3D62] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 {isEn ? 'Daily' : 'يومي'}
@@ -502,8 +502,8 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
                 onClick={() => setTimeGrouping('weekly')}
                 className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center truncate ${
                   timeGrouping === 'weekly'
-                    ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-2xs'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-[#0A3D62] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 {isEn ? 'Weekly' : 'أسبوعي'}
@@ -513,8 +513,8 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
                 onClick={() => setTimeGrouping('monthly')}
                 className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center truncate ${
                   timeGrouping === 'monthly'
-                    ? 'bg-[#6B1E2B] text-[#FAF7F2] shadow-2xs'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-[#0A3D62] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 {isEn ? 'Monthly' : 'شهري'}
@@ -522,14 +522,14 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
             </div>
 
             {/* Metric Mode Selector */}
-            <div className="grid grid-cols-3 bg-[#EADBC7]/60 p-1 rounded-xl border border-[#B6A89C]/60">
+            <div className="grid grid-cols-3 bg-[#C7CDD3]/25 p-1 rounded-xl border border-[#C7CDD3]">
               <button
                 type="button"
                 onClick={() => setMetricMode('rate')}
                 className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center truncate ${
                   metricMode === 'rate'
-                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-2xs'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 {isEn ? 'Rate %' : 'النسبة %'}
@@ -539,8 +539,8 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
                 onClick={() => setMetricMode('counts')}
                 className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center truncate ${
                   metricMode === 'counts'
-                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-2xs'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 {isEn ? 'Counts' : 'الأعداد'}
@@ -550,8 +550,8 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
                 onClick={() => setMetricMode('all')}
                 className={`py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center truncate ${
                   metricMode === 'all'
-                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-2xs'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 {isEn ? 'Both' : 'شامل'}
@@ -563,25 +563,25 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
 
       {/* 2. Key Trend Indicators (2x2 Square Bento Grid like Dashboard) */}
       <div className="grid grid-cols-2 gap-2.5 pt-1">
-        <div className="bg-[#F8F2EA] p-3.5 rounded-2xl border border-[#EADBC7] flex flex-col justify-between min-h-[86px]">
-          <div className="flex items-center justify-between text-[#69493C] text-[11px] font-bold">
+        <div className="bg-[#C7CDD3]/15 p-3.5 rounded-2xl border border-[#C7CDD3] flex flex-col justify-between min-h-[86px]">
+          <div className="flex items-center justify-between text-[#6F7882] text-[11px] font-bold">
             <span className="truncate">{isEn ? 'Average Rate' : 'متوسط الالتزام'}</span>
-            <Award className="w-3.5 h-3.5 text-[#B68A4C] shrink-0" />
+            <Award className="w-3.5 h-3.5 text-[#0A3D62] shrink-0" />
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <strong className={`text-lg font-black ${stats.avgRate >= 85 ? 'text-[#5C4033]' : stats.avgRate >= 70 ? 'text-[#B56B45]' : 'text-[#6B1E2B]'}`}>
+            <strong className={`text-lg font-black ${stats.avgRate >= 85 ? 'text-[#0A3D62]' : stats.avgRate >= 70 ? 'text-[#6F7882]' : 'text-[#16324F]'}`}>
               {stats.avgRate}%
             </strong>
             {stats.trendDelta !== 0 && (
               <span
                 className={`text-[10px] font-bold flex items-center gap-0.5 ${
-                  stats.trendDelta > 0 ? 'text-[#5C4033]' : 'text-[#6B1E2B]'
+                  stats.trendDelta > 0 ? 'text-[#0A3D62]' : 'text-[#16324F]'
                 }`}
               >
                 {stats.trendDelta > 0 ? (
-                  <TrendingUp className="w-3 h-3 text-[#B68A4C]" />
+                  <TrendingUp className="w-3 h-3 text-[#0A3D62]" />
                 ) : (
-                  <TrendingDown className="w-3 h-3 text-[#6B1E2B]" />
+                  <TrendingDown className="w-3 h-3 text-[#16324F]" />
                 )}
                 <span>{stats.trendDelta > 0 ? `+${stats.trendDelta}%` : `${stats.trendDelta}%`}</span>
               </span>
@@ -589,46 +589,46 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
           </div>
         </div>
 
-        <div className="bg-[#F8F2EA] p-3.5 rounded-2xl border border-[#EADBC7] flex flex-col justify-between min-h-[86px]">
-          <div className="flex items-center justify-between text-[#69493C] text-[11px] font-bold">
+        <div className="bg-[#C7CDD3]/15 p-3.5 rounded-2xl border border-[#C7CDD3] flex flex-col justify-between min-h-[86px]">
+          <div className="flex items-center justify-between text-[#6F7882] text-[11px] font-bold">
             <span className="truncate">{isEn ? 'Total Attendances' : 'إجمالي الحضور'}</span>
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#B68A4C] shrink-0" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#0A3D62] shrink-0" />
           </div>
-          <strong className="text-lg font-black text-[#5C4033] block truncate mt-1">
-            {stats.totalAttended} <span className="text-[10px] text-[#69493C] font-medium">{isEn ? 'students' : 'طالب'}</span>
+          <strong className="text-lg font-black text-[#0A3D62] block truncate mt-1">
+            {stats.totalAttended} <span className="text-[10px] text-[#6F7882] font-medium">{isEn ? 'students' : 'طالب'}</span>
           </strong>
         </div>
 
-        <div className="bg-[#F8F2EA] p-3.5 rounded-2xl border border-[#EADBC7] flex flex-col justify-between min-h-[86px]">
-          <div className="flex items-center justify-between text-[#69493C] text-[11px] font-bold">
+        <div className="bg-[#C7CDD3]/15 p-3.5 rounded-2xl border border-[#C7CDD3] flex flex-col justify-between min-h-[86px]">
+          <div className="flex items-center justify-between text-[#6F7882] text-[11px] font-bold">
             <span className="truncate">{isEn ? 'Total Absences' : 'إجمالي الغياب'}</span>
-            <XCircle className="w-3.5 h-3.5 text-[#6B1E2B] shrink-0" />
+            <XCircle className="w-3.5 h-3.5 text-[#16324F] shrink-0" />
           </div>
-          <strong className="text-lg font-black text-[#6B1E2B] block truncate mt-1">
-            {stats.totalAbsent} <span className="text-[10px] text-[#69493C] font-medium">{isEn ? 'times' : 'حالة'}</span>
+          <strong className="text-lg font-black text-[#16324F] block truncate mt-1">
+            {stats.totalAbsent} <span className="text-[10px] text-[#6F7882] font-medium">{isEn ? 'times' : 'حالة'}</span>
           </strong>
         </div>
 
-        <div className="bg-[#F8F2EA] p-3.5 rounded-2xl border border-[#EADBC7] flex flex-col justify-between min-h-[86px]">
-          <div className="flex items-center justify-between text-[#69493C] text-[11px] font-bold">
+        <div className="bg-[#C7CDD3]/15 p-3.5 rounded-2xl border border-[#C7CDD3] flex flex-col justify-between min-h-[86px]">
+          <div className="flex items-center justify-between text-[#6F7882] text-[11px] font-bold">
             <span className="truncate">{isEn ? 'Peak Attendance' : 'أعلى نسبة حضور'}</span>
-            <Sparkles className="w-3.5 h-3.5 text-[#B56B45] shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-[#0A3D62] shrink-0" />
           </div>
-          <strong className="text-lg font-black text-[#2F2F2F] block truncate mt-1">
-            {stats.peakRate}% <span className="text-[10px] text-[#69493C] font-medium">({stats.peakDate || (isEn ? 'Latest' : 'المسجل')})</span>
+          <strong className="text-lg font-black text-[#16324F] block truncate mt-1">
+            {stats.peakRate}% <span className="text-[10px] text-[#6F7882] font-medium">({stats.peakDate || (isEn ? 'Latest' : 'المسجل')})</span>
           </strong>
         </div>
       </div>
 
       {/* 3. Recharts Line / Area Chart Visualization */}
       {filteredData.length === 0 ? (
-        <div className="p-8 sm:p-12 text-center text-[#69493C] space-y-3 flex flex-col items-center justify-center bg-[#F8F2EA] rounded-2xl border border-[#EADBC7]">
-          <div className="w-12 h-12 rounded-2xl bg-[#FAF7F2] flex items-center justify-center text-[#6B1E2B] shadow-xs border border-[#EADBC7]">
+        <div className="p-8 sm:p-12 text-center text-[#6F7882] space-y-3 flex flex-col items-center justify-center bg-[#C7CDD3]/15 rounded-2xl border border-[#C7CDD3]">
+          <div className="w-12 h-12 rounded-2xl bg-[#FFFFFF] flex items-center justify-center text-[#0A3D62] shadow-xs border border-[#C7CDD3]">
             <Calendar className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h4 className="font-black text-sm text-[#2F2F2F]">{isEn ? 'No attendance records for this timeframe' : 'لا توجد بيانات حضور مسجلة في هذا النطاق'}</h4>
-            <p className="text-xs text-[#69493C]">{isEn ? 'Record attendance in your sessions to generate live trendline analytics.' : 'قم بتسجيل حضور وغياب الحصص لتوليد المنحنيات البيانية التفاعلية.'}</p>
+            <h4 className="font-black text-sm text-[#16324F]">{isEn ? 'No attendance records for this timeframe' : 'لا توجد بيانات حضور مسجلة في هذا النطاق'}</h4>
+            <p className="text-xs text-[#6F7882]">{isEn ? 'Record attendance in your sessions to generate live trendline analytics.' : 'قم بتسجيل حضور وغياب الحصص لتوليد المنحنيات البيانية التفاعلية.'}</p>
           </div>
         </div>
       ) : (
@@ -641,36 +641,36 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
               >
                 <defs>
                   <linearGradient id="rateGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6B1E2B" stopOpacity={0.38} />
-                    <stop offset="95%" stopColor="#B68A4C" stopOpacity={0.02} />
+                    <stop offset="5%" stopColor="#0A3D62" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#C7CDD3" stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EADBC7" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#C7CDD3" vertical={false} />
                 <XAxis
                   dataKey="displayLabel"
-                  stroke="#69493C"
+                  stroke="#6F7882"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#B6A89C' }}
+                  axisLine={{ stroke: '#C7CDD3' }}
                 />
                 <YAxis
                   domain={[0, 100]}
-                  stroke="#69493C"
+                  stroke="#6F7882"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#B6A89C' }}
+                  axisLine={{ stroke: '#C7CDD3' }}
                   tickFormatter={(val) => `${val}%`}
                   orientation={isRTL ? 'right' : 'left'}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine
                   y={85}
-                  stroke="#B68A4C"
+                  stroke="#6F7882"
                   strokeDasharray="4 4"
                   strokeWidth={1.5}
                   label={{
                     value: isEn ? '85% Target' : 'الهدف 85%',
-                    fill: '#5C4033',
+                    fill: '#16324F',
                     fontSize: 10,
                     position: 'insideTopRight',
                   }}
@@ -679,11 +679,11 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
                   type="monotone"
                   dataKey="rate"
                   name={isEn ? 'Attendance Rate' : 'نسبة الحضور'}
-                  stroke="#6B1E2B"
+                  stroke="#0A3D62"
                   strokeWidth={3}
                   fillOpacity={1}
                   fill="url(#rateGradient)"
-                  activeDot={{ r: 6, fill: '#6B1E2B', stroke: '#B68A4C', strokeWidth: 3 }}
+                  activeDot={{ r: 6, fill: '#0A3D62', stroke: '#C7CDD3', strokeWidth: 3 }}
                 />
               </AreaChart>
             ) : metricMode === 'counts' ? (
@@ -691,59 +691,59 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
                 data={filteredData}
                 margin={{ top: 10, right: 10, left: isRTL ? 10 : -20, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#EADBC7" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#C7CDD3" vertical={false} />
                 <XAxis
                   dataKey="displayLabel"
-                  stroke="#69493C"
+                  stroke="#6F7882"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#B6A89C' }}
+                  axisLine={{ stroke: '#C7CDD3' }}
                 />
                 <YAxis
-                  stroke="#69493C"
+                  stroke="#6F7882"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#B6A89C' }}
+                  axisLine={{ stroke: '#C7CDD3' }}
                   orientation={isRTL ? 'right' : 'left'}
                   allowDecimals={false}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
                   wrapperStyle={{ fontSize: 11, paddingTop: 10 }}
-                  formatter={(value) => <span className="text-[#2F2F2F] font-bold">{value}</span>}
+                  formatter={(value) => <span className="text-[#16324F] font-bold">{value}</span>}
                 />
                 <Line
                   type="monotone"
                   dataKey="attended"
                   name={isEn ? 'Present / Late' : 'حضور / تأخير'}
-                  stroke="#B68A4C"
+                  stroke="#0A3D62"
                   strokeWidth={2.5}
-                  dot={{ r: 4, fill: '#B68A4C' }}
-                  activeDot={{ r: 6, stroke: '#B68A4C', strokeWidth: 2 }}
+                  dot={{ r: 4, fill: '#0A3D62' }}
+                  activeDot={{ r: 6, stroke: '#0A3D62', strokeWidth: 2 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="absentCharged"
                   name={isEn ? 'Charged Absence' : 'غياب محسوب'}
-                  stroke="#6B1E2B"
+                  stroke="#16324F"
                   strokeWidth={2.5}
-                  dot={{ r: 4, fill: '#6B1E2B' }}
-                  activeDot={{ r: 6, stroke: '#6B1E2B', strokeWidth: 2 }}
+                  dot={{ r: 4, fill: '#16324F' }}
+                  activeDot={{ r: 6, stroke: '#16324F', strokeWidth: 2 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="absentExcused"
                   name={isEn ? 'Excused Absence' : 'غياب معفى'}
-                  stroke="#B56B45"
+                  stroke="#6F7882"
                   strokeWidth={2}
                   strokeDasharray="4 4"
-                  dot={{ r: 3, fill: '#B56B45' }}
+                  dot={{ r: 3, fill: '#6F7882' }}
                 />
                 <Line
                   type="monotone"
                   dataKey="totalExpected"
                   name={isEn ? 'Total Expected' : 'إجمالي المقيدين'}
-                  stroke="#5C4033"
+                  stroke="#C7CDD3"
                   strokeWidth={1.5}
                   strokeDasharray="2 2"
                   dot={false}
@@ -754,65 +754,65 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
                 data={filteredData}
                 margin={{ top: 10, right: 10, left: isRTL ? 10 : -20, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#EADBC7" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#C7CDD3" vertical={false} />
                 <XAxis
                   dataKey="displayLabel"
-                  stroke="#69493C"
+                  stroke="#6F7882"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#B6A89C' }}
+                  axisLine={{ stroke: '#C7CDD3' }}
                 />
                 <YAxis
                   yAxisId="left"
                   domain={[0, 100]}
-                  stroke="#6B1E2B"
+                  stroke="#0A3D62"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#B6A89C' }}
+                  axisLine={{ stroke: '#C7CDD3' }}
                   tickFormatter={(val) => `${val}%`}
                   orientation={isRTL ? 'right' : 'left'}
                 />
                 <YAxis
                   yAxisId="right"
-                  stroke="#B68A4C"
+                  stroke="#6F7882"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#B6A89C' }}
+                  axisLine={{ stroke: '#C7CDD3' }}
                   orientation={isRTL ? 'left' : 'right'}
                   allowDecimals={false}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
                   wrapperStyle={{ fontSize: 11, paddingTop: 10 }}
-                  formatter={(value) => <span className="text-[#2F2F2F] font-bold">{value}</span>}
+                  formatter={(value) => <span className="text-[#16324F] font-bold">{value}</span>}
                 />
                 <Line
                   yAxisId="left"
                   type="monotone"
                   dataKey="rate"
                   name={isEn ? 'Attendance Rate %' : 'نسبة الالتزام %'}
-                  stroke="#6B1E2B"
+                  stroke="#0A3D62"
                   strokeWidth={3}
-                  dot={{ r: 4, fill: '#6B1E2B' }}
-                  activeDot={{ r: 6, stroke: '#B68A4C', strokeWidth: 2 }}
+                  dot={{ r: 4, fill: '#0A3D62' }}
+                  activeDot={{ r: 6, stroke: '#16324F', strokeWidth: 2 }}
                 />
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="attended"
                   name={isEn ? 'Present Count' : 'عدد الحاضرين'}
-                  stroke="#B68A4C"
+                  stroke="#16324F"
                   strokeWidth={2}
-                  dot={{ r: 3, fill: '#B68A4C' }}
+                  dot={{ r: 3, fill: '#16324F' }}
                 />
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="absentTotal"
                   name={isEn ? 'Total Absences' : 'إجمالي الغياب'}
-                  stroke="#B56B45"
+                  stroke="#6F7882"
                   strokeWidth={2}
-                  dot={{ r: 3, fill: '#B56B45' }}
+                  dot={{ r: 3, fill: '#6F7882' }}
                 />
               </LineChart>
             )}
@@ -821,23 +821,23 @@ export const AttendanceTrendsChart: React.FC<AttendanceTrendsChartProps> = ({
       )}
 
       {/* 4. Legend & Info Footer */}
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#EADBC7] text-[11px] text-[#69493C] flex-wrap">
+      <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#C7CDD3] text-[11px] text-[#6F7882] flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="flex items-center gap-1.5 font-medium">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#B68A4C] inline-block" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0A3D62] inline-block" />
             <span>{isEn ? '≥85% Optimal Attendance' : '≥85% معدل حضور ممتاز'}</span>
           </span>
           <span className="flex items-center gap-1.5 font-medium">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#B56B45] inline-block" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#6F7882] inline-block" />
             <span>{isEn ? '70-84% Moderate Commitment' : '70-84% التزام متوسط'}</span>
           </span>
           <span className="flex items-center gap-1.5 font-medium">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#6B1E2B] inline-block" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#16324F] inline-block" />
             <span>{isEn ? '<70% Needs Follow-up' : '<70% بحاجة لمتابعة عاجلة'}</span>
           </span>
         </div>
 
-        <span className="text-[10px] font-bold bg-[#F8F2EA] px-2 py-0.5 rounded-lg border border-[#EADBC7]">
+        <span className="text-[10px] font-bold bg-[#C7CDD3]/20 px-2 py-0.5 rounded-lg border border-[#C7CDD3]">
           {isEn ? 'Interactive Charts powered by Recharts' : 'رسوم بيانية تفاعلية مدعومة بـ Recharts'}
         </span>
       </div>

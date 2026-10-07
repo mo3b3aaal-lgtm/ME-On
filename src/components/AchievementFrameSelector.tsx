@@ -31,7 +31,7 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
   onSelectFrame,
   studentName,
   profilePhoto,
-  avatarColor = '#6B1E2B',
+  avatarColor = '#0A3D62',
   className = '',
 }) => {
   const { language } = useTranslation();
@@ -51,8 +51,8 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
       <div
         className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row items-center gap-4 ${
           isNoFrame
-            ? 'bg-[#FAF7F2] border-[#EADBC7]'
-            : 'bg-gradient-to-br from-[#EADBC7]/60 via-[#FAF7F2] to-[#F8F2EA] border-[#B68A4C]/50 shadow-md'
+            ? 'bg-[#FFFFFF] border-[#C7CDD3]'
+            : 'bg-gradient-to-br from-[#C7CDD3]/60 via-[#FFFFFF] to-[#FFFFFF] border-[#0A3D62]/50 shadow-md'
         }`}
       >
         {/* Large Live Avatar Preview */}
@@ -73,18 +73,18 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
             <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-black tracking-wide ${
                 isNoFrame
-                  ? 'bg-[#EADBC7] text-[#69493C]'
-                  : 'bg-[#6B1E2B]/12 text-[#6B1E2B] border border-[#6B1E2B]/30'
+                  ? 'bg-[#C7CDD3]/25 text-[#6F7882]'
+                  : 'bg-[#0A3D62]/12 text-[#0A3D62] border border-[#0A3D62]/30'
               }`}
             >
               {activeFrameInfo.tierLabel[langKey]}
             </span>
-            <h4 className="text-base font-black text-[#2F2F2F] truncate">
+            <h4 className="text-base font-black text-[#16324F] truncate">
               {activeFrameInfo.name[langKey]}
             </h4>
           </div>
 
-          <p className="text-xs text-[#69493C] line-clamp-2 leading-relaxed">
+          <p className="text-xs text-[#6F7882] line-clamp-2 leading-relaxed">
             {activeFrameInfo.desc[langKey]}
           </p>
 
@@ -92,7 +92,7 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
             <button
               type="button"
               onClick={() => onSelectFrame('none')}
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#69493C] hover:text-[#6B1E2B] transition-colors mt-1 cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#6F7882] hover:text-[#0A3D62] transition-colors mt-1 cursor-pointer"
             >
               <X className="w-3 h-3" />
               <span>{isEn ? 'Remove frame (Reset to default)' : 'إزالة الإطار (العودة للافتراضي)'}</span>
@@ -102,7 +102,7 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
       </div>
 
       {/* Frame Selection Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[340px] overflow-y-auto p-1 rounded-2xl border border-[#EADBC7] bg-[#FAF7F2]">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[340px] overflow-y-auto p-1 rounded-2xl border border-[#C7CDD3] bg-[#FFFFFF]">
         {SELECTABLE_FRAMES.map((frameId) => {
           const info = ACHIEVEMENT_FRAME_INFO[frameId] || ACHIEVEMENT_FRAME_INFO.none;
           const isSelected =
@@ -119,13 +119,13 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
               onClick={() => onSelectFrame(frameId)}
               className={`relative p-3 rounded-2xl border text-start transition-all flex flex-col items-center justify-between gap-2.5 group cursor-pointer ${
                 isSelected
-                  ? 'bg-[#F8F2EA] border-[#6B1E2B] ring-2 ring-[#6B1E2B]/20 shadow-md scale-[1.02]'
-                  : 'bg-[#FAF7F2] border-[#EADBC7] hover:border-[#B68A4C] hover:bg-[#F8F2EA] hover:shadow-xs'
+                  ? 'bg-[#C7CDD3]/15 border-[#0A3D62] ring-2 ring-[#0A3D62]/20 shadow-md scale-[1.02]'
+                  : 'bg-[#FFFFFF] border-[#C7CDD3] hover:border-[#0A3D62] hover:bg-[#C7CDD3]/25 hover:shadow-xs'
               }`}
             >
               {/* Selected Checkmark Badge */}
               {isSelected && (
-                <div className="absolute top-2 end-2 w-5 h-5 rounded-full bg-[#6B1E2B] text-[#FAF7F2] flex items-center justify-center shadow-xs">
+                <div className="absolute top-2 end-2 w-5 h-5 rounded-full bg-[#0A3D62] text-[#FFFFFF] flex items-center justify-center shadow-xs">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </div>
               )}
@@ -144,10 +144,10 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
 
               {/* Card Meta & Labels */}
               <div className="w-full text-center space-y-0.5">
-                <span className="text-[10px] font-extrabold text-[#69493C] block uppercase tracking-wider">
+                <span className="text-[10px] font-extrabold text-[#6F7882] block uppercase tracking-wider">
                   {info.tierLabel[langKey]}
                 </span>
-                <p className="text-xs font-bold text-[#2F2F2F] truncate w-full group-hover:text-[#6B1E2B] transition-colors">
+                <p className="text-xs font-bold text-[#16324F] truncate w-full group-hover:text-[#0A3D62] transition-colors">
                   {info.name[langKey]}
                 </p>
               </div>

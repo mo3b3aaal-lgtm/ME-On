@@ -98,7 +98,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   );
 
   const isPrivate = group?.type === 'private';
-  const themeColor = group?.accentColor || (isPrivate ? '#B56B45' : '#6B1E2B');
+  const themeColor = group?.accentColor || (isPrivate ? '#16324F' : '#0A3D62');
 
   const todayArabicDay = getArabicDayForDate(new Date());
 
@@ -141,41 +141,41 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#6B1E2B]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#0A3D62]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#FAF7F2] border border-[#EADBC7] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-[#FFFFFF] border border-[#C7CDD3] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
           {/* =========================================================================
               1. Hero Header Section
               ========================================================================= */}
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#6B1E2B] via-[#5C4033] to-[#69493C] text-[#FAF7F2] relative overflow-hidden">
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#0A3D62] via-[#16324F] to-[#6F7882] text-[#FFFFFF] relative overflow-hidden">
             {/* Ambient Background Glows */}
-            <div className="absolute -top-10 -right-10 w-44 h-44 bg-[#6B1E2B]/30 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-[#B56B45]/25 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-10 -right-10 w-44 h-44 bg-[#0A3D62]/30 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-[#16324F]/25 rounded-full blur-2xl pointer-events-none" />
 
             <button
               onClick={onClose}
-              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-2xl bg-[#FAF7F2]/10 hover:bg-[#FAF7F2]/20 text-[#FAF7F2] transition-colors cursor-pointer z-10`}
+              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] transition-colors cursor-pointer z-10`}
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className={`flex items-start gap-3.5 relative z-10 ${isRTL ? 'pl-10' : 'pr-10'}`}>
               <div
-                className="w-13 h-13 rounded-2xl flex items-center justify-center font-bold text-[#FAF7F2] text-xl shadow-lg shrink-0 border border-[#EADBC7]/25 mt-0.5"
+                className="w-13 h-13 rounded-2xl flex items-center justify-center font-bold text-[#FFFFFF] text-xl shadow-lg shrink-0 border border-[#C7CDD3]/25 mt-0.5"
                 style={{ backgroundColor: themeColor }}
               >
-                {isPrivate ? <Zap className="w-6 h-6 text-[#FAF7F2]" /> : <Layers className="w-6 h-6 text-[#FAF7F2]" />}
+                {isPrivate ? <Zap className="w-6 h-6 text-[#FFFFFF]" /> : <Layers className="w-6 h-6 text-[#FFFFFF]" />}
               </div>
 
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg font-black text-[#FAF7F2] tracking-tight truncate">{group.name}</h2>
-                  <span className="text-[10px] font-black bg-[#FAF7F2]/20 text-[#FAF7F2] px-2.5 py-0.5 rounded-full border border-[#EADBC7]/25 shadow-xs">
+                  <h2 className="text-lg font-black text-[#FFFFFF] tracking-tight truncate">{group.name}</h2>
+                  <span className="text-[10px] font-black bg-[#FFFFFF]/20 text-[#FFFFFF] px-2.5 py-0.5 rounded-full border border-[#C7CDD3]/25 shadow-xs">
                     {isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Study Group' : 'مجموعة دراسية')}
                   </span>
                 </div>
-                <p className="text-xs text-[#EADBC7]/90 font-medium truncate">
+                <p className="text-xs text-[#C7CDD3]/90 font-medium truncate">
                   {group.subject} • {getLocalizedStageName(group.gradeLevel)}
                   {group.roomOrLocation ? ` • ${group.roomOrLocation}` : ''}
                 </p>
@@ -184,24 +184,24 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
 
             {/* Quick Metrics Bento Strip */}
             <div className="grid grid-cols-4 gap-2 mt-4 text-center relative z-10">
-              <div className="p-2 rounded-xl bg-[#FAF7F2]/10 border border-[#EADBC7]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#FAF7F2]">{enrolledStudents.length}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#EADBC7]/80">{isEn ? 'Students' : 'الطلاب'}</p>
+              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#C7CDD3]/20 backdrop-blur-xs">
+                <p className="text-sm sm:text-base font-black text-[#FFFFFF]">{enrolledStudents.length}</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#C7CDD3]/80">{isEn ? 'Students' : 'الطلاب'}</p>
               </div>
 
-              <div className="p-2 rounded-xl bg-[#FAF7F2]/10 border border-[#EADBC7]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#B68A4C]">{stats.completedSessions}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#EADBC7]/80">{isEn ? 'Sessions' : 'الحصص'}</p>
+              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#C7CDD3]/20 backdrop-blur-xs">
+                <p className="text-sm sm:text-base font-black text-[#FFFFFF]">{stats.completedSessions}</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#C7CDD3]/80">{isEn ? 'Sessions' : 'الحصص'}</p>
               </div>
 
-              <div className="p-2 rounded-xl bg-[#FAF7F2]/10 border border-[#EADBC7]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#EADBC7]">{stats.attendanceRate}%</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#EADBC7]/80">{isEn ? 'Attendance' : 'الالتزام'}</p>
+              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#C7CDD3]/20 backdrop-blur-xs">
+                <p className="text-sm sm:text-base font-black text-[#C7CDD3]">{stats.attendanceRate}%</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#C7CDD3]/80">{isEn ? 'Attendance' : 'الالتزام'}</p>
               </div>
 
-              <div className="p-2 rounded-xl bg-[#FAF7F2]/10 border border-[#EADBC7]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#B56B45]">{group.defaultPrice} {t('currency')}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#EADBC7]/80 truncate">{billingLabel}</p>
+              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#C7CDD3]/20 backdrop-blur-xs">
+                <p className="text-sm sm:text-base font-black text-[#FFFFFF]">{group.defaultPrice} {t('currency')}</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-[#C7CDD3]/80 truncate">{billingLabel}</p>
               </div>
             </div>
           </div>
@@ -209,15 +209,15 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           {/* =========================================================================
               2. Sub-tab Navigation (Segmented Pill Bar)
               ========================================================================= */}
-          <div className="p-2 bg-[#F8F2EA] border-b border-[#EADBC7]">
-            <div className="classy-card p-1 flex items-center gap-1 bg-[#FAF7F2] border-[#EADBC7]">
+          <div className="p-2 bg-[#C7CDD3]/15 border-b border-[#C7CDD3]">
+            <div className="classy-card p-1 flex items-center gap-1 bg-[#FFFFFF] border-[#C7CDD3]">
               <button
                 type="button"
                 onClick={() => setActiveSubTab('students')}
                 className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeSubTab === 'students'
-                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-sm'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] shadow-sm'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -229,8 +229,8 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 onClick={() => setActiveSubTab('sessions')}
                 className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeSubTab === 'sessions'
-                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-sm'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] shadow-sm'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
@@ -242,8 +242,8 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 onClick={() => setActiveSubTab('stats')}
                 className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeSubTab === 'stats'
-                    ? 'bg-gradient-to-r from-[#6B1E2B] to-[#5C4033] text-[#FAF7F2] shadow-sm'
-                    : 'text-[#69493C] hover:text-[#2F2F2F]'
+                    ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] shadow-sm'
+                    : 'text-[#6F7882] hover:text-[#16324F]'
                 }`}
               >
                 <Activity className="w-3.5 h-3.5" />
@@ -255,19 +255,19 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           {/* =========================================================================
               3. Content Area
               ========================================================================= */}
-          <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#2F2F2F] bg-[#FAF7F2]">
+          <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#16324F] bg-[#FFFFFF]">
             {/* TAB 1: Enrolled Students */}
             {activeSubTab === 'students' && (
               <div className="space-y-3">
                 {/* Actions Bar */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-bold text-[#69493C]">{isEn ? 'Group Students' : 'قائمة طلاب المجموعة'}</span>
+                  <span className="font-bold text-[#6F7882]">{isEn ? 'Group Students' : 'قائمة طلاب المجموعة'}</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {enrolledStudents.length > 0 && onOpenBulkAddSession && (
                       <button
                         type="button"
                         onClick={() => onOpenBulkAddSession(enrolledStudents, group.id)}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#EADBC7] hover:bg-[#B6A89C]/50 text-[#6B1E2B] font-bold text-[11px] flex items-center gap-1 border border-[#B6A89C] transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#C7CDD3]/25 hover:bg-[#C7CDD3]/50 text-[#0A3D62] font-bold text-[11px] flex items-center gap-1 border border-[#C7CDD3] transition-all active:scale-95 cursor-pointer shadow-2xs"
                       >
                         <CalendarCheck2 className="w-3.5 h-3.5" />
                         <span>{isEn ? `Bulk Schedule (${enrolledStudents.length})` : `جدولة جماعية (${enrolledStudents.length})`}</span>
@@ -276,7 +276,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onAddExistingStudent(group)}
-                      className="px-2.5 py-1.5 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
                     >
                       <UserPlus className="w-3.5 h-3.5" />
                       <span>{isEn ? 'Add Enrolled' : 'إضافة طالب مسجل'}</span>
@@ -284,26 +284,26 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onAddNewStudentToGroup(group)}
-                      className="px-2.5 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#EADBC7] text-[#2F2F2F] font-bold text-[11px] flex items-center gap-1 border border-[#EADBC7] transition-all active:scale-95 cursor-pointer shadow-2xs"
+                      className="px-2.5 py-1.5 rounded-xl bg-[#FFFFFF] hover:bg-[#C7CDD3]/35 text-[#16324F] font-bold text-[11px] flex items-center gap-1 border border-[#C7CDD3] transition-all active:scale-95 cursor-pointer shadow-2xs"
                     >
-                      <Plus className="w-3.5 h-3.5 text-[#6B1E2B]" />
+                      <Plus className="w-3.5 h-3.5 text-[#0A3D62]" />
                       <span>{isEn ? 'New Student' : 'طالب جديد'}</span>
                     </button>
                   </div>
                 </div>
 
                 {enrolledStudents.length === 0 ? (
-                  <div className="p-6 bg-[#FAF7F2] rounded-2xl border border-[#EADBC7] text-center space-y-2.5 shadow-xs">
-                    <Users className="w-8 h-8 mx-auto text-[#69493C] opacity-40" />
-                    <p className="font-black text-[#2F2F2F] text-sm">{isEn ? 'No students enrolled in this group yet' : 'لا يوجد طلاب مسجلون في هذه المجموعة بعد'}</p>
-                    <p className="text-[11px] text-[#69493C] max-w-xs mx-auto">
+                  <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#C7CDD3] text-center space-y-2.5 shadow-xs">
+                    <Users className="w-8 h-8 mx-auto text-[#6F7882] opacity-40" />
+                    <p className="font-black text-[#16324F] text-sm">{isEn ? 'No students enrolled in this group yet' : 'لا يوجد طلاب مسجلون في هذه المجموعة بعد'}</p>
+                    <p className="text-[11px] text-[#6F7882] max-w-xs mx-auto">
                       {isEn ? 'Add existing students from your directory or register a new student directly.' : 'يمكنك إضافة طلاب مسجلين مسبقاً من قاعدة بياناتك أو إنشاء ملف طالب جديد مباشرة.'}
                     </p>
                     <div className="pt-2 flex items-center justify-center gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => onAddExistingStudent(group)}
-                        className="px-3.5 py-2 rounded-xl bg-[#6B1E2B] text-[#FAF7F2] font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-[#0A3D62] text-[#FFFFFF] font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                       >
                         <UserPlus className="w-4 h-4" />
                         <span>{isEn ? 'Add Existing Student' : 'إضافة طالب من النظام'}</span>
@@ -311,9 +311,9 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                       <button
                         type="button"
                         onClick={() => onAddNewStudentToGroup(group)}
-                        className="px-3.5 py-2 rounded-xl bg-[#FAF7F2] text-[#2F2F2F] font-bold text-xs inline-flex items-center gap-1.5 border border-[#EADBC7] transition-all cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-[#FFFFFF] text-[#16324F] font-bold text-xs inline-flex items-center gap-1.5 border border-[#C7CDD3] transition-all cursor-pointer"
                       >
-                        <Plus className="w-4 h-4 text-[#6B1E2B]" />
+                        <Plus className="w-4 h-4 text-[#0A3D62]" />
                         <span>{isEn ? 'Register New Student' : 'تسجيل طالب جديد'}</span>
                       </button>
                     </div>
@@ -327,7 +327,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                       return (
                         <div
                           key={st.id}
-                          className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#EADBC7] flex items-center justify-between shadow-xs hover:border-[#6B1E2B]/40 transition-all gap-2"
+                          className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] flex items-center justify-between shadow-xs hover:border-[#0A3D62]/40 transition-all gap-2"
                         >
                           <div
                             onClick={() => onOpenStudentProfile(st)}
@@ -340,10 +340,10 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                               className="shrink-0"
                             />
                             <div className="min-w-0 space-y-0.5">
-                              <p className="font-black text-[#2F2F2F] text-xs hover:text-[#6B1E2B] transition-colors truncate">
+                              <p className="font-black text-[#16324F] text-xs hover:text-[#0A3D62] transition-colors truncate">
                                 {st.name}
                               </p>
-                              <p className="text-[10px] text-[#69493C] truncate">
+                              <p className="text-[10px] text-[#6F7882] truncate">
                                 {getBillingModeLabel(enr?.billingType, enr?.billingMode)} • {enr?.customPrice || group.defaultPrice} {t('currency')}
                                 {st.phone ? ` • ${st.phone}` : ''}
                               </p>
@@ -357,7 +357,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                                 target="_blank"
                                 rel="noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="p-1.5 rounded-xl bg-[#EADBC7]/65 text-[#B68A4C] hover:bg-[#EADBC7] border border-[#B68A4C]/50 transition-colors"
+                                className="p-1.5 rounded-xl bg-[#C7CDD3]/65 text-[#0A3D62] hover:bg-[#C7CDD3]/35 border border-[#0A3D62]/50 transition-colors"
                                 title="WhatsApp"
                               >
                                 <MessageCircle className="w-3.5 h-3.5" />
@@ -367,7 +367,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveStudentFromGroup(st.id, st.name)}
-                              className="p-1.5 rounded-xl text-[#B56B45] hover:bg-[#F8F2EA] border border-transparent hover:border-[#B6A89C] transition-colors"
+                              className="p-1.5 rounded-xl text-[#16324F] hover:bg-[#C7CDD3]/25 border border-transparent hover:border-[#6F7882] transition-colors"
                               title={isEn ? 'Remove from group' : 'إلغاء قيد الطالب'}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -385,11 +385,11 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
             {activeSubTab === 'sessions' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#69493C]">{isEn ? 'Group Sessions' : 'حصص المجموعة'}</span>
+                  <span className="font-bold text-[#6F7882]">{isEn ? 'Group Sessions' : 'حصص المجموعة'}</span>
                   <button
                     type="button"
                     onClick={() => onAddSessionForGroup(group)}
-                    className="px-3 py-1.5 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{t('scheduleSessionBtn')}</span>
@@ -397,22 +397,22 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 </div>
 
                 {groupSessions.length === 0 ? (
-                  <div className="p-6 bg-[#FAF7F2] rounded-2xl border border-[#EADBC7] text-center space-y-2 shadow-xs">
-                    <Calendar className="w-8 h-8 mx-auto text-[#69493C] opacity-40" />
-                    <p className="font-bold text-[#2F2F2F] text-xs">{isEn ? 'No sessions recorded for this group yet' : 'لا توجد حصص مسجلة لهذه المجموعة بعد'}</p>
+                  <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#C7CDD3] text-center space-y-2 shadow-xs">
+                    <Calendar className="w-8 h-8 mx-auto text-[#6F7882] opacity-40" />
+                    <p className="font-bold text-[#16324F] text-xs">{isEn ? 'No sessions recorded for this group yet' : 'لا توجد حصص مسجلة لهذه المجموعة بعد'}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {groupSessions.map((session) => (
                       <div
                         key={session.id}
-                        className="p-3 bg-[#FAF7F2] rounded-2xl border border-[#EADBC7] flex items-center justify-between gap-2 shadow-xs hover:border-[#6B1E2B]/40 transition-all"
+                        className="p-3 bg-[#FFFFFF] rounded-2xl border border-[#C7CDD3] flex items-center justify-between gap-2 shadow-xs hover:border-[#0A3D62]/40 transition-all"
                       >
                         <div className="space-y-0.5 min-w-0">
-                          <strong className="font-black text-xs text-[#2F2F2F] block truncate">
+                          <strong className="font-black text-xs text-[#16324F] block truncate">
                             {session.title}
                           </strong>
-                          <span className="text-[11px] text-[#69493C] block">
+                          <span className="text-[11px] text-[#6F7882] block">
                             {getLocalizedWeekdayName(session.dayName)} {session.date} • {formatTimeDisplay(session.startTime, isRTL)}
                           </span>
                         </div>
@@ -420,9 +420,9 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                         <button
                           type="button"
                           onClick={() => onOpenAttendanceModal(session)}
-                          className="px-3 py-1.5 rounded-xl bg-[#6B1E2B] text-[#FAF7F2] font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-[#0A3D62] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#B68A4C]" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#0A3D62]" />
                           <span>{session.status === 'completed' ? (isEn ? 'Attendance' : 'الحضور') : (isEn ? 'Take Attendance' : 'رصد')}</span>
                         </button>
                       </div>
@@ -436,13 +436,13 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
             {activeSubTab === 'stats' && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="bg-[#FAF7F2] p-3.5 rounded-2xl border border-[#EADBC7] text-center space-y-1">
-                    <span className="text-[10px] text-[#69493C] font-bold block">{isEn ? 'Total Expected Revenue' : 'إجمالي القيمة المستحقة'}</span>
-                    <strong className="text-base font-black text-[#2F2F2F] block">{stats.totalDue} {t('currency')}</strong>
+                  <div className="bg-[#FFFFFF] p-3.5 rounded-2xl border border-[#C7CDD3] text-center space-y-1">
+                    <span className="text-[10px] text-[#6F7882] font-bold block">{isEn ? 'Total Expected Revenue' : 'إجمالي القيمة المستحقة'}</span>
+                    <strong className="text-base font-black text-[#16324F] block">{stats.totalDue} {t('currency')}</strong>
                   </div>
-                  <div className="bg-[#FAF7F2] p-3.5 rounded-2xl border border-[#B68A4C]/50 text-center space-y-1">
-                    <span className="text-[10px] text-[#5C4033] font-bold block">{isEn ? 'Total Collected' : 'إجمالي المحصل'}</span>
-                    <strong className="text-base font-black text-[#5C4033] block">{stats.totalRevenue} {t('currency')}</strong>
+                  <div className="bg-[#FFFFFF] p-3.5 rounded-2xl border border-[#0A3D62]/50 text-center space-y-1">
+                    <span className="text-[10px] text-[#16324F] font-bold block">{isEn ? 'Total Collected' : 'إجمالي المحصل'}</span>
+                    <strong className="text-base font-black text-[#16324F] block">{stats.totalRevenue} {t('currency')}</strong>
                   </div>
                 </div>
               </div>
@@ -450,11 +450,11 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="p-3 bg-[#FAF7F2] border-t border-[#EADBC7] flex items-center justify-between gap-2">
+          <div className="p-3 bg-[#FFFFFF] border-t border-[#C7CDD3] flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={handleDeleteGroup}
-              className="p-2 rounded-xl text-[#B56B45] hover:bg-[#F8F2EA] border border-transparent hover:border-[#B6A89C] transition-colors"
+              className="p-2 rounded-xl text-[#16324F] hover:bg-[#C7CDD3]/25 border border-transparent hover:border-[#6F7882] transition-colors"
               title={isEn ? 'Delete group' : 'حذف المجموعة'}
             >
               <Trash2 className="w-4 h-4" />
@@ -463,7 +463,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
             <button
               type="button"
               onClick={() => onEditGroup(group)}
-              className="px-4 py-2 rounded-xl bg-[#6B1E2B] hover:bg-[#5C4033] text-[#FAF7F2] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+              className="px-4 py-2 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
             >
               <Edit2 className="w-3.5 h-3.5" />
               <span>{isEn ? 'Edit Group Info' : 'تعديل بيانات المجموعة'}</span>

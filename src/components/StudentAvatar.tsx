@@ -81,28 +81,20 @@ export interface FrameInfoItem {
 }
 
 export const LUXURY_AVATAR_PALETTE = [
-  '#6B1E2B', // Burgundy (Palette 01)
-  '#B68A4C', // Bronze (Palette 01)
-  '#B56B45', // Copper (Palette 02)
-  '#5C4033', // Walnut (Palette 01)
-  '#69493C', // Warm Walnut (Palette 02)
-  '#2F2F2F', // Charcoal (Palette 02)
+  '#0A3D62', // Sapphire
+  '#16324F', // Navy
+  '#6F7882', // Steel Grey
 ];
 
 const ALLOWED_LUXURY_HEX_SET = new Set([
-  '#6b1e2b',
-  '#b68a4c',
-  '#f8f2ea',
-  '#5c4033',
-  '#b6a89c',
-  '#b56b45',
-  '#69493c',
-  '#eadbc7',
-  '#faf7f2',
-  '#2f2f2f',
+  '#0a3d62',
+  '#16324F'.toLowerCase(),
+  '#6f7882',
+  '#c7cdd3',
+  '#ffffff',
 ]);
 
-export function normalizeLuxuryColor(color?: string | null, fallback: string = '#6B1E2B'): string {
+export function normalizeLuxuryColor(color?: string | null, fallback: string = '#0A3D62'): string {
   if (!color || typeof color !== 'string') return fallback;
   const clean = color.trim().toLowerCase();
   if (ALLOWED_LUXURY_HEX_SET.has(clean)) {
@@ -122,11 +114,11 @@ export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
     desc: { ar: 'المظهر الافتراضي البسيط بدون مؤثرات', 'en-GB': 'Default clean circular avatar', 'en-US': 'Default clean circular avatar' },
     tierLabel: { ar: 'افتراضي', 'en-GB': 'Standard', 'en-US': 'Standard' },
     tierNumber: 0,
-    themeColor: '#69493C',
+    themeColor: '#6F7882',
     bgClass: '',
     badgeBg: '',
     icon: User,
-    iconColor: 'text-[#69493C]',
+    iconColor: 'text-[#6F7882]',
   },
   default: {
     id: 'default',
@@ -134,131 +126,131 @@ export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
     desc: { ar: 'المظهر الافتراضي البسيط', 'en-GB': 'Default simple appearance', 'en-US': 'Default simple appearance' },
     tierLabel: { ar: 'افتراضي', 'en-GB': 'Standard', 'en-US': 'Standard' },
     tierNumber: 0,
-    themeColor: '#69493C',
+    themeColor: '#6F7882',
     bgClass: '',
     badgeBg: '',
     icon: User,
-    iconColor: 'text-[#69493C]',
+    iconColor: 'text-[#6F7882]',
   },
   bronze_star: {
     id: 'bronze_star',
-    name: { ar: 'نجمة البرونز الأكاديمية (Bronze Star)', 'en-GB': 'Bronze Star', 'en-US': 'Bronze Star' },
-    desc: { ar: 'إطار برونزي عتيق مع نجمة ثلاثية الأبعاد ونقوش تروس معدنية متألقة', 'en-GB': 'Antique bronze metallic frame with 3D star and intricate geared rivets', 'en-US': 'Antique bronze metallic frame with 3D star and intricate geared rivets' },
-    tierLabel: { ar: 'مستوى برونزي Tier I', 'en-GB': 'Bronze Tier I', 'en-US': 'Bronze Tier I' },
+    name: { ar: 'نجمة الياقوت الأزرق (Sapphire Star)', 'en-GB': 'Sapphire Star', 'en-US': 'Sapphire Star' },
+    desc: { ar: 'إطار أكاديمي فاخر مع نجمة ثلاثية الأبعاد ونقوش معدنية مصقولة', 'en-GB': 'Sapphire & silver metallic frame with 3D star and precision rivets', 'en-US': 'Sapphire & silver metallic frame with 3D star and precision rivets' },
+    tierLabel: { ar: 'مستوى أول Tier I', 'en-GB': 'Sapphire Tier I', 'en-US': 'Sapphire Tier I' },
     tierNumber: 1,
-    themeColor: '#B68A4C',
-    bgClass: 'ring-[#B68A4C]/50',
-    badgeBg: 'bg-gradient-to-tr from-[#5C4033] to-[#B68A4C] text-[#FAF7F2] shadow-md ring-1 ring-[#B68A4C]/30',
+    themeColor: '#6F7882',
+    bgClass: 'ring-[#C7CDD3]',
+    badgeBg: 'bg-gradient-to-tr from-[#16324F] to-[#6F7882] text-[#FFFFFF] shadow-md ring-1 ring-[#C7CDD3]/60',
     icon: Star,
-    iconColor: 'text-[#B68A4C]',
+    iconColor: 'text-[#0A3D62]',
   },
   silver_scholar: {
     id: 'silver_scholar',
-    name: { ar: 'طالب الكشمير المتميز (Cashmere Scholar)', 'en-GB': 'Cashmere Scholar', 'en-US': 'Cashmere Scholar' },
-    desc: { ar: 'إطار كشميري عاجي مصقول مع درع التميز وجناحي الصقر المتألقين', 'en-GB': 'Polished cashmere & taupe frame with academic heraldic shield and falcon wings', 'en-US': 'Polished cashmere & taupe frame with academic heraldic shield and falcon wings' },
+    name: { ar: 'طالب الفضة المتميز (Silver Scholar)', 'en-GB': 'Silver Scholar', 'en-US': 'Silver Scholar' },
+    desc: { ar: 'إطار فضي مصقول مع درع التميز وجناحي الصقر المتألقين', 'en-GB': 'Polished silver & steel frame with academic heraldic shield and falcon wings', 'en-US': 'Polished silver & steel frame with academic heraldic shield and falcon wings' },
     tierLabel: { ar: 'مستوى ثانٍ Tier II', 'en-GB': 'Scholar Tier II', 'en-US': 'Scholar Tier II' },
     tierNumber: 2,
-    themeColor: '#B6A89C',
-    bgClass: 'ring-[#B6A89C]',
-    badgeBg: 'bg-gradient-to-tr from-[#69493C] to-[#B6A89C] text-[#FAF7F2] shadow-md ring-1 ring-[#FAF7F2]/50',
+    themeColor: '#C7CDD3',
+    bgClass: 'ring-[#C7CDD3]',
+    badgeBg: 'bg-gradient-to-tr from-[#6F7882] to-[#0A3D62] text-[#FFFFFF] shadow-md ring-1 ring-[#FFFFFF]/60',
     icon: Shield,
-    iconColor: 'text-[#5C4033]',
+    iconColor: 'text-[#16324F]',
   },
   gold_champion: {
     id: 'gold_champion',
-    name: { ar: 'بطل البرونز الملكي (Royal Bronze)', 'en-GB': 'Royal Bronze', 'en-US': 'Royal Bronze' },
-    desc: { ar: 'إطار برونزي ملكي مع أوراق الغار الإغريقية وأحجار العقيق البرغندي', 'en-GB': 'Royal bronze laurel wreath frame with embedded burgundy garnets', 'en-US': 'Royal bronze laurel wreath frame with embedded burgundy garnets' },
+    name: { ar: 'بطل السافير الملكي (Royal Sapphire)', 'en-GB': 'Royal Sapphire', 'en-US': 'Royal Sapphire' },
+    desc: { ar: 'إطار ملكي مع أوراق الغار الإغريقية وأحجار الياقوت الأزرق', 'en-GB': 'Royal sapphire laurel wreath frame with embedded navy gems', 'en-US': 'Royal sapphire laurel wreath frame with embedded navy gems' },
     tierLabel: { ar: 'مستوى ثالث Tier III', 'en-GB': 'Royal Tier III', 'en-US': 'Royal Tier III' },
     tierNumber: 3,
-    themeColor: '#B68A4C',
-    bgClass: 'ring-[#B68A4C]/60',
-    badgeBg: 'bg-gradient-to-tr from-[#B56B45] to-[#B68A4C] text-[#FAF7F2] shadow-lg ring-1 ring-[#FAF7F2]',
+    themeColor: '#0A3D62',
+    bgClass: 'ring-[#0A3D62]/50',
+    badgeBg: 'bg-gradient-to-tr from-[#16324F] to-[#0A3D62] text-[#FFFFFF] shadow-lg ring-1 ring-[#FFFFFF]',
     icon: Award,
-    iconColor: 'text-[#B68A4C]',
+    iconColor: 'text-[#0A3D62]',
   },
   platinum: {
     id: 'platinum',
-    name: { ar: 'نخبة الكشمير الفاخرة (Cashmere Elite)', 'en-GB': 'Cashmere Elite', 'en-US': 'Cashmere Elite' },
-    desc: { ar: 'إطار كشميري مشع فائق النقاوة مع شفرات بلورية وأحجار النحاس الدافئة', 'en-GB': 'Luminous cashmere frame with crystalline blades and warm copper gems', 'en-US': 'Luminous cashmere frame with crystalline blades and warm copper gems' },
+    name: { ar: 'نخبة البلاتين الفاخرة (Platinum Elite)', 'en-GB': 'Platinum Elite', 'en-US': 'Platinum Elite' },
+    desc: { ar: 'إطار بلاتيني مشع فائق النقاوة مع شفرات بلورية وأحجار السافير', 'en-GB': 'Luminous silver-platinum frame with crystalline blades and sapphire gems', 'en-US': 'Luminous silver-platinum frame with crystalline blades and sapphire gems' },
     tierLabel: { ar: 'مستوى رابع Tier IV', 'en-GB': 'Elite Tier IV', 'en-US': 'Elite Tier IV' },
     tierNumber: 4,
-    themeColor: '#6B1E2B',
-    bgClass: 'ring-[#6B1E2B]/50',
-    badgeBg: 'bg-gradient-to-tr from-[#5C4033] to-[#6B1E2B] text-[#FAF7F2] shadow-lg ring-1 ring-[#FAF7F2]',
+    themeColor: '#0A3D62',
+    bgClass: 'ring-[#0A3D62]/50',
+    badgeBg: 'bg-gradient-to-tr from-[#16324F] to-[#0A3D62] text-[#FFFFFF] shadow-lg ring-1 ring-[#FFFFFF]',
     icon: Award,
-    iconColor: 'text-[#6B1E2B]',
+    iconColor: 'text-[#0A3D62]',
   },
   emerald_honor: {
     id: 'emerald_honor',
-    name: { ar: 'شرف الجوز الإمبراطوري (Walnut Honor)', 'en-GB': 'Walnut Honor', 'en-US': 'Walnut Honor' },
-    desc: { ar: 'إطار ملكي دافئ مستوحى من التيجان الكلاسيكية مع أحجار البرونز المعتق', 'en-GB': 'Imperial walnut & antique bronze crown frame with classic filigree', 'en-US': 'Imperial walnut & antique bronze crown frame with classic filigree' },
+    name: { ar: 'شرف البحرية الإمبراطورية (Navy Honor)', 'en-GB': 'Navy Honor', 'en-US': 'Navy Honor' },
+    desc: { ar: 'إطار ملكي مستوحى من التيجان الكلاسيكية مع أحجار الياقوت الأزرق', 'en-GB': 'Imperial navy & silver crown frame with classic filigree', 'en-US': 'Imperial navy & silver crown frame with classic filigree' },
     tierLabel: { ar: 'مستوى خامس Tier V', 'en-GB': 'Honor Tier V', 'en-US': 'Honor Tier V' },
     tierNumber: 5,
-    themeColor: '#5C4033',
-    bgClass: 'ring-[#5C4033]/50',
-    badgeBg: 'bg-gradient-to-tr from-[#5C4033] to-[#B68A4C] text-[#FAF7F2] shadow-lg ring-1 ring-[#FAF7F2]',
+    themeColor: '#16324F',
+    bgClass: 'ring-[#16324F]/50',
+    badgeBg: 'bg-gradient-to-tr from-[#16324F] to-[#0A3D62] text-[#FFFFFF] shadow-lg ring-1 ring-[#FFFFFF]',
     icon: Gem,
-    iconColor: 'text-[#5C4033]',
+    iconColor: 'text-[#16324F]',
   },
   diamond_elite: {
     id: 'diamond_elite',
-    name: { ar: 'نخبة العاج والبرونز (Ivory Elite)', 'en-GB': 'Ivory Elite', 'en-US': 'Ivory Elite' },
-    desc: { ar: 'شظايا بلورية عاجية متوهجة مع نجمة برونزية ثمانية الأضلاع', 'en-GB': 'Radiant ivory & sand prism cluster with 8-point bronze star', 'en-US': 'Radiant ivory & sand prism cluster with 8-point bronze star' },
-    tierLabel: { ar: 'مستوى سادس Tier VI', 'en-GB': 'Ivory Tier VI', 'en-US': 'Ivory Tier VI' },
+    name: { ar: 'نخبة الألماس والسافير (Diamond Sapphire)', 'en-GB': 'Diamond Sapphire', 'en-US': 'Diamond Sapphire' },
+    desc: { ar: 'شظايا بلورية متوهجة مع نجمة سافير ثمانية الأضلاع', 'en-GB': 'Radiant white & silver prism cluster with 8-point sapphire star', 'en-US': 'Radiant white & silver prism cluster with 8-point sapphire star' },
+    tierLabel: { ar: 'مستوى سادس Tier VI', 'en-GB': 'Diamond Tier VI', 'en-US': 'Diamond Tier VI' },
     tierNumber: 6,
-    themeColor: '#B56B45',
-    bgClass: 'ring-[#B56B45]/50',
-    badgeBg: 'bg-gradient-to-tr from-[#69493C] to-[#B56B45] text-[#FAF7F2] shadow-lg ring-1 ring-[#FAF7F2]',
+    themeColor: '#0A3D62',
+    bgClass: 'ring-[#0A3D62]/50',
+    badgeBg: 'bg-gradient-to-tr from-[#6F7882] to-[#0A3D62] text-[#FFFFFF] shadow-lg ring-1 ring-[#FFFFFF]',
     icon: Sparkles,
-    iconColor: 'text-[#B56B45]',
+    iconColor: 'text-[#0A3D62]',
   },
   crown: {
     id: 'crown',
     name: { ar: 'التاج الملكي الإمبراطوري (Imperial Crown)', 'en-GB': 'Imperial Crown', 'en-US': 'Imperial Crown' },
-    desc: { ar: 'تاج ملكي شاهق خماسي القمم مرصع باللؤلؤ العاجي والعقيق البرغندي', 'en-GB': 'Grand 5-peak Imperial bronze crown with ivory pearls and burgundy garnets', 'en-US': 'Grand 5-peak Imperial bronze crown with ivory pearls and burgundy garnets' },
+    desc: { ar: 'تاج ملكي شاهق خماسي القمم مرصع باللؤلؤ الأبيض والياقوت الأزرق', 'en-GB': 'Grand 5-peak Imperial silver crown with white pearls and sapphire gems', 'en-US': 'Grand 5-peak Imperial silver crown with white pearls and sapphire gems' },
     tierLabel: { ar: 'المستوى الملكي Tier VII', 'en-GB': 'Royal Tier VII', 'en-US': 'Royal Tier VII' },
     tierNumber: 7,
-    themeColor: '#B56B45',
-    bgClass: 'ring-[#B56B45]/50',
-    badgeBg: 'bg-gradient-to-tr from-[#6B1E2B] to-[#B56B45] text-[#FAF7F2] shadow-lg ring-1 ring-[#FAF7F2]',
+    themeColor: '#0A3D62',
+    bgClass: 'ring-[#0A3D62]/50',
+    badgeBg: 'bg-gradient-to-tr from-[#16324F] to-[#0A3D62] text-[#FFFFFF] shadow-lg ring-1 ring-[#FFFFFF]',
     icon: Crown,
-    iconColor: 'text-[#B56B45]',
+    iconColor: 'text-[#0A3D62]',
   },
   champion: {
     id: 'champion',
-    name: { ar: 'البطل الأسطوري (Legendary Brocade)', 'en-GB': 'Legendary Champion', 'en-US': 'Legendary Champion' },
-    desc: { ar: 'قمة الفخامة الكلاسيكية: أجنحة البرونز الملكي والياقوت البرغندي الفاخر', 'en-GB': 'The pinnacle luxury frame: antique bronze wings & deep burgundy rubies', 'en-US': 'The pinnacle luxury frame: antique bronze wings & deep burgundy rubies' },
+    name: { ar: 'البطل الأسطوري (Sapphire Estate Legend)', 'en-GB': 'Legendary Champion', 'en-US': 'Legendary Champion' },
+    desc: { ar: 'قمة الفخامة الكلاسيكية: أجنحة الفضة الملكية والياقوت الأزرق الفاخر', 'en-GB': 'The pinnacle luxury frame: royal silver wings & deep sapphire gems', 'en-US': 'The pinnacle luxury frame: royal silver wings & deep sapphire gems' },
     tierLabel: { ar: 'الرتبة الأسطورية Ultimate Legend', 'en-GB': 'Legendary Tier VIII', 'en-US': 'Legendary Tier VIII' },
     tierNumber: 8,
-    themeColor: '#6B1E2B',
-    bgClass: 'ring-[#6B1E2B]/60',
-    badgeBg: 'bg-gradient-to-tr from-[#6B1E2B] via-[#B56B45] to-[#B68A4C] text-[#FAF7F2] shadow-xl ring-2 ring-[#EADBC7]',
+    themeColor: '#0A3D62',
+    bgClass: 'ring-[#0A3D62]/60',
+    badgeBg: 'bg-gradient-to-tr from-[#16324F] via-[#0A3D62] to-[#6F7882] text-[#FFFFFF] shadow-xl ring-2 ring-[#C7CDD3]',
     icon: Flame,
-    iconColor: 'text-[#6B1E2B]',
+    iconColor: 'text-[#0A3D62]',
   },
   gold: {
     id: 'gold',
-    name: { ar: 'بطل البرونز (Bronze)', 'en-GB': 'Royal Bronze', 'en-US': 'Royal Bronze' },
-    desc: { ar: 'إطار برونزي متألق', 'en-GB': 'Radiant bronze champion frame', 'en-US': 'Radiant bronze champion frame' },
-    tierLabel: { ar: 'مستوى برونزي', 'en-GB': 'Bronze Tier', 'en-US': 'Bronze Tier' },
+    name: { ar: 'بطل السافير (Sapphire)', 'en-GB': 'Royal Sapphire', 'en-US': 'Royal Sapphire' },
+    desc: { ar: 'إطار سافير متألق', 'en-GB': 'Radiant sapphire champion frame', 'en-US': 'Radiant sapphire champion frame' },
+    tierLabel: { ar: 'مستوى سافير', 'en-GB': 'Sapphire Tier', 'en-US': 'Sapphire Tier' },
     tierNumber: 3,
-    themeColor: '#B68A4C',
-    bgClass: 'ring-[#B68A4C]',
-    badgeBg: 'bg-[#B68A4C] text-[#FAF7F2]',
+    themeColor: '#0A3D62',
+    bgClass: 'ring-[#0A3D62]',
+    badgeBg: 'bg-[#0A3D62] text-[#FFFFFF]',
     icon: Award,
-    iconColor: 'text-[#B68A4C]',
+    iconColor: 'text-[#0A3D62]',
   },
   silver: {
     id: 'silver',
-    name: { ar: 'طالب الكشمير (Cashmere)', 'en-GB': 'Cashmere Scholar', 'en-US': 'Cashmere Scholar' },
-    desc: { ar: 'إطار كشميري أنيق', 'en-GB': 'Elegant cashmere frame', 'en-US': 'Elegant cashmere frame' },
-    tierLabel: { ar: 'مستوى كشميري', 'en-GB': 'Cashmere Tier', 'en-US': 'Cashmere Tier' },
+    name: { ar: 'طالب الفضة (Silver)', 'en-GB': 'Silver Scholar', 'en-US': 'Silver Scholar' },
+    desc: { ar: 'إطار فضي أنيق', 'en-GB': 'Elegant silver frame', 'en-US': 'Elegant silver frame' },
+    tierLabel: { ar: 'مستوى فضي', 'en-GB': 'Silver Tier', 'en-US': 'Silver Tier' },
     tierNumber: 2,
-    themeColor: '#B6A89C',
-    bgClass: 'ring-[#B6A89C]',
-    badgeBg: 'bg-[#69493C] text-[#FAF7F2]',
+    themeColor: '#C7CDD3',
+    bgClass: 'ring-[#C7CDD3]',
+    badgeBg: 'bg-[#6F7882] text-[#FFFFFF]',
     icon: Shield,
-    iconColor: 'text-[#5C4033]',
+    iconColor: 'text-[#16324F]',
   },
   star: {
     id: 'star',
@@ -266,11 +258,11 @@ export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
     desc: { ar: 'إطار النجمة المتألقة', 'en-GB': 'Radiant star frame', 'en-US': 'Radiant star frame' },
     tierLabel: { ar: 'مستوى النجمة', 'en-GB': 'Star Tier', 'en-US': 'Star Tier' },
     tierNumber: 1,
-    themeColor: '#B56B45',
-    bgClass: 'ring-[#B56B45]',
-    badgeBg: 'bg-[#B56B45] text-[#FAF7F2]',
+    themeColor: '#0A3D62',
+    bgClass: 'ring-[#0A3D62]',
+    badgeBg: 'bg-[#0A3D62] text-[#FFFFFF]',
     icon: Star,
-    iconColor: 'text-[#B56B45]',
+    iconColor: 'text-[#0A3D62]',
   },
 };
 
@@ -289,7 +281,8 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
   const isEn = currentLang.startsWith('en');
 
   const finalName = student?.name || propName || (isEn ? 'Student' : 'طالب');
-  const finalColor = normalizeLuxuryColor(student?.avatarColor || propColor, '#6B1E2B');
+  const finalColor = normalizeLuxuryColor(student?.avatarColor || propColor, '#0A3D62');
+  const isLightAvatarBg = finalColor === '#FFFFFF' || finalColor === '#C7CDD3';
   const finalPhoto = student?.profilePhoto !== undefined ? student?.profilePhoto : propPhoto;
   const rawFrame = (student?.achievementFrame || propFrame || 'none') as AchievementFrame;
 
@@ -321,10 +314,12 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
     >
       {/* Core Avatar Photo / Initial Circle */}
       <div
-        className={`rounded-full overflow-hidden flex items-center justify-center text-[#FAF7F2] font-bold select-none relative shadow-inner z-0 ${
-          hasFrame ? `${sizeConfig.photoFramed} ring-1 ring-[#5C4033]/25` : 'w-full h-full shadow-sm'
+        className={`rounded-full overflow-hidden flex items-center justify-center ${
+          isLightAvatarBg ? 'text-[#16324F]' : 'text-[#FFFFFF]'
+        } font-bold select-none relative shadow-inner z-0 ${
+          hasFrame ? `${sizeConfig.photoFramed} ring-1 ring-[#16324F]/25` : 'w-full h-full shadow-sm'
         }`}
-        style={{ backgroundColor: hasPhoto ? '#EADBC7' : finalColor }}
+        style={{ backgroundColor: hasPhoto ? '#C7CDD3' : finalColor }}
       >
         {hasPhoto ? (
           <img

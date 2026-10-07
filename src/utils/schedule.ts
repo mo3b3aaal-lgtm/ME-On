@@ -796,7 +796,7 @@ export function getScheduledClassesForDate(
               rawTime,
               sortMinutes,
               location: loc,
-              accentColor: group.accentColor || '#B56B45',
+              accentColor: group.accentColor || '#16324F',
             });
           });
         }
@@ -828,7 +828,7 @@ export function getScheduledClassesForDate(
             rawTime,
             sortMinutes,
             location: loc,
-            accentColor: group.accentColor || '#6B1E2B',
+            accentColor: group.accentColor || '#0A3D62',
           });
         });
       }
@@ -862,7 +862,7 @@ export function getScheduledClassesForDate(
               rawTime,
               sortMinutes,
               location: loc,
-              accentColor: group.accentColor || '#6B1E2B',
+              accentColor: group.accentColor || '#0A3D62',
             });
           });
         }
@@ -902,7 +902,7 @@ export function getScheduledClassesForDate(
             rawTime,
             sortMinutes,
             location: loc,
-            accentColor: '#B56B45',
+            accentColor: '#16324F',
           });
         });
       }
@@ -1011,7 +1011,7 @@ export function getUpcomingClassesForStudent(
           isPrivate,
           subject: subj,
           location: loc,
-          accentColor: group.accentColor || (isPrivate ? '#B56B45' : '#6B1E2B'),
+          accentColor: group.accentColor || (isPrivate ? '#16324F' : '#0A3D62'),
         });
       }
     }
@@ -1152,7 +1152,7 @@ export function getStudentEffectiveSchedule(
           location: loc,
           groupId: group.id,
           enrollmentId: enr.id,
-          accentColor: group.accentColor || '#6B1E2B',
+          accentColor: group.accentColor || '#0A3D62',
         };
 
         groupItems.push(item);
@@ -1174,7 +1174,7 @@ export function getStudentEffectiveSchedule(
         groupId: group.id,
         groupName: group.name,
         subject: subj,
-        accentColor: group.accentColor || '#6B1E2B',
+        accentColor: group.accentColor || '#0A3D62',
         location: loc,
         items: groupItems,
       });
@@ -1235,7 +1235,7 @@ export function getStudentEffectiveSchedule(
             location: privLoc,
             groupId: group?.id,
             enrollmentId: enr.id,
-            accentColor: group?.accentColor || '#B56B45',
+            accentColor: group?.accentColor || '#16324F',
           };
 
           privItems.push(item);
@@ -1258,7 +1258,7 @@ export function getStudentEffectiveSchedule(
           title: isRTL ? 'الدرس الخاص' : 'Private Lesson',
           subject: privSubj,
           location: privLoc,
-          accentColor: group?.accentColor || '#B56B45',
+          accentColor: group?.accentColor || '#16324F',
           items: privItems,
         });
       }
@@ -1293,7 +1293,7 @@ export function getStudentEffectiveSchedule(
           sourceTitle: isRTL ? 'الدرس الخاص' : 'Private Lesson',
           subject: privSubj,
           location: privLoc,
-          accentColor: '#B56B45',
+          accentColor: '#16324F',
         };
 
         privItems.push(item);
@@ -1314,7 +1314,7 @@ export function getStudentEffectiveSchedule(
         title: isRTL ? 'الدرس الخاص' : 'Private Lesson',
         subject: privSubj,
         location: privLoc,
-        accentColor: '#B56B45',
+        accentColor: '#16324F',
         items: privItems,
       });
     }
@@ -1348,7 +1348,7 @@ export function getStudentEffectiveSchedule(
             sourceType: 'student_custom',
             sourceTitle: isRTL ? 'موعد مخصص' : 'Custom Schedule',
             subject: getLocalizedSubjectName(student.subject, isRTL) || (isRTL ? 'مادة دراسية' : 'Subject'),
-            accentColor: '#B68A4C',
+            accentColor: '#0A3D62',
           });
         }
       });
@@ -1867,7 +1867,7 @@ export function getDetailedAgendaForDate(
       sortMinutes,
       status: session.status,
       notes: session.notes,
-      accentColor: group?.accentColor || (isPrivate ? '#B56B45' : '#6B1E2B'),
+      accentColor: group?.accentColor || (isPrivate ? '#16324F' : '#0A3D62'),
       pricePerStudent: session.pricePerStudent || group?.defaultPrice,
       hourlyRate: session.hourlyRate || group?.hourlyRate,
       billingMode: group?.billingMode || group?.billingType,
@@ -1931,7 +1931,7 @@ export function getDetailedAgendaForDate(
               formattedTime,
               sortMinutes,
               status: 'scheduled',
-              accentColor: group.accentColor || (isPrivate ? '#B56B45' : '#6B1E2B'),
+              accentColor: group.accentColor || (isPrivate ? '#16324F' : '#0A3D62'),
               pricePerStudent: enr.customPrice || group.defaultPrice,
               hourlyRate: enr.hourlyRate || group.hourlyRate,
               billingMode: enr.billingMode || group.billingMode,
@@ -1972,7 +1972,7 @@ export function getDetailedAgendaForDate(
             formattedTime,
             sortMinutes,
             status: 'scheduled',
-            accentColor: group.accentColor || '#6B1E2B',
+            accentColor: group.accentColor || '#0A3D62',
             pricePerStudent: group.defaultPrice,
             hourlyRate: group.hourlyRate,
             billingMode: group.billingMode,

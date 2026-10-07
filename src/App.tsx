@@ -263,7 +263,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#2F2F2F] md:bg-[#2F2F2F] flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#2F2F2F]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-[#FFFFFF] md:bg-[#C7CDD3]/20 flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#16324F]" dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* Animated Splash Screen Experience */}
       {showSplash && (
@@ -271,13 +271,13 @@ export default function App() {
       )}
 
       {/* Modern Mobile Frame */}
-      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#FAF7F2] md:rounded-[40px] md:border-[8px] md:border-[#5C4033] md:ring-1 md:ring-[#B68A4C]/30 flex flex-col overflow-hidden shadow-2xl text-[#2F2F2F]">
+      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-[#FFFFFF] md:rounded-[40px] md:border-[8px] md:border-[#16324F] md:ring-1 md:ring-[#C7CDD3]/50 flex flex-col overflow-hidden shadow-2xl text-[#16324F]">
         
         {/* Mobile Punch-hole Camera */}
-        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#2F2F2F] border border-[#B68A4C]/40 z-50 pointer-events-none shadow-inner" />
+        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#16324F] border border-[#C7CDD3]/40 z-50 pointer-events-none shadow-inner" />
 
         {/* Main Screen Body */}
-        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#FAF7F2]">
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-[#FFFFFF]">
           
           {!currentUser ? (
             <AuthView onLoginSuccess={handleLoginSuccess} />

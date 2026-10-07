@@ -23,9 +23,9 @@ export const ClassyOwlMascot: React.FC<ClassyOwlMascotProps> = ({
 
   return (
     <div className={`relative inline-flex items-center justify-center select-none ${sizeMap[size]} ${className}`}>
-      {/* Soft Ambient Glow Aura (Burgundy, Bronze & Copper) */}
+      {/* Soft Ambient Glow Aura (Sapphire, Navy & Steel Grey) */}
       {glow && (
-        <div className="absolute inset-0 bg-gradient-to-tr from-[#6B1E2B]/30 via-[#B68A4C]/25 to-[#B56B45]/25 rounded-full blur-xl transform scale-125 pointer-events-none -z-10 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-[#0A3D62]/30 via-[#16324F]/25 to-[#6F7882]/25 rounded-full blur-xl transform scale-125 pointer-events-none -z-10 animate-pulse" />
       )}
 
       {/* Vector Illustrated Classy Owl */}
@@ -33,45 +33,45 @@ export const ClassyOwlMascot: React.FC<ClassyOwlMascotProps> = ({
         viewBox="0 0 200 200"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full filter drop-shadow-[0_8px_20px_rgba(92,64,51,0.25)]"
+        className="w-full h-full filter drop-shadow-[0_8px_20px_rgba(22,50,79,0.22)]"
       >
         <defs>
-          {/* Owl Body Gradient - Warm Walnut & Deep Burgundy */}
+          {/* Owl Body Gradient - Sapphire & Navy */}
           <linearGradient id="owlBodyGrad" x1="40" y1="20" x2="160" y2="180" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#69493C" />
-            <stop offset="50%" stopColor="#5C4033" />
-            <stop offset="100%" stopColor="#6B1E2B" />
+            <stop offset="0%" stopColor="#0A3D62" />
+            <stop offset="50%" stopColor="#16324F" />
+            <stop offset="100%" stopColor="#0A3D62" />
           </linearGradient>
 
-          {/* Owl Belly Gradient - Ivory to Cream to Sand */}
+          {/* Owl Belly Gradient - White to Silver */}
           <linearGradient id="owlBellyGrad" x1="100" y1="90" x2="100" y2="175" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#FAF7F2" />
-            <stop offset="60%" stopColor="#F8F2EA" />
-            <stop offset="100%" stopColor="#EADBC7" />
+            <stop offset="0%" stopColor="#FFFFFF" />
+            <stop offset="65%" stopColor="#FFFFFF" />
+            <stop offset="100%" stopColor="#C7CDD3" />
           </linearGradient>
 
-          {/* Eye Glasses / Accent Gradient - Copper & Bronze */}
+          {/* Eye Glasses / Accent Gradient - Silver & Steel Grey */}
           <linearGradient id="owlCoralGrad" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#B68A4C" />
-            <stop offset="100%" stopColor="#B56B45" />
+            <stop offset="0%" stopColor="#C7CDD3" />
+            <stop offset="100%" stopColor="#6F7882" />
           </linearGradient>
 
-          {/* Beak & Feet - Antique Bronze */}
+          {/* Beak & Feet - Silver & Steel Grey */}
           <linearGradient id="owlGoldGrad" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#B68A4C" />
-            <stop offset="100%" stopColor="#B56B45" />
+            <stop offset="0%" stopColor="#C7CDD3" />
+            <stop offset="100%" stopColor="#6F7882" />
           </linearGradient>
 
-          {/* Graduation Cap Grad - Burgundy & Walnut */}
+          {/* Graduation Cap Grad - Sapphire & Navy */}
           <linearGradient id="capGrad" x1="50" y1="10" x2="150" y2="50" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#6B1E2B" />
-            <stop offset="100%" stopColor="#5C4033" />
+            <stop offset="0%" stopColor="#0A3D62" />
+            <stop offset="100%" stopColor="#16324F" />
           </linearGradient>
 
           {/* Floating Sparkle Gradient */}
           <linearGradient id="sparkleGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#B68A4C" />
-            <stop offset="100%" stopColor="#B56B45" />
+            <stop offset="0%" stopColor="#C7CDD3" />
+            <stop offset="100%" stopColor="#6F7882" />
           </linearGradient>
         </defs>
 
@@ -83,11 +83,11 @@ export const ClassyOwlMascot: React.FC<ClassyOwlMascotProps> = ({
         />
         <path
           d="M172 65L174 59L180 57L174 55L172 49L170 55L164 57L170 59L172 65Z"
-          fill="#B68A4C"
+          fill="#C7CDD3"
           opacity="0.9"
         />
-        <circle cx="168" cy="140" r="3.5" fill="#B56B45" opacity="0.8" />
-        <circle cx="28" cy="130" r="2.5" fill="#6B1E2B" opacity="0.7" />
+        <circle cx="168" cy="140" r="3.5" fill="#6F7882" opacity="0.8" />
+        <circle cx="28" cy="130" r="2.5" fill="#0A3D62" opacity="0.7" />
 
         {/* Feet / Talons */}
         <g id="feet">
@@ -121,8 +121,8 @@ export const ClassyOwlMascot: React.FC<ClassyOwlMascotProps> = ({
               ? "M45 100 C20 80, 15 50, 35 45 C45 65, 52 90, 48 120 Z"
               : "M48 95 C32 110, 32 145, 54 160 C58 145, 56 115, 48 95 Z"
           }
-          fill="#6B1E2B"
-          stroke="#5C4033"
+          fill="#0A3D62"
+          stroke="#16324F"
           strokeWidth="2"
         />
 
@@ -133,8 +133,8 @@ export const ClassyOwlMascot: React.FC<ClassyOwlMascotProps> = ({
               ? "M152 95 C168 110, 168 145, 146 160 C142 145, 144 115, 152 95 Z"
               : "M152 95 C168 110, 168 145, 146 160 C142 145, 144 115, 152 95 Z"
           }
-          fill="#6B1E2B"
-          stroke="#5C4033"
+          fill="#0A3D62"
+          stroke="#16324F"
           strokeWidth="2"
         />
 
@@ -150,47 +150,47 @@ export const ClassyOwlMascot: React.FC<ClassyOwlMascotProps> = ({
         {/* Belly Decorative Chevron Feathers */}
         <path
           d="M88 122 Q100 130 112 122"
-          stroke="#B6A89C"
+          stroke="#C7CDD3"
           strokeWidth="2.5"
           strokeLinecap="round"
           fill="none"
         />
         <path
           d="M84 138 Q100 148 116 138"
-          stroke="#B6A89C"
+          stroke="#C7CDD3"
           strokeWidth="2.5"
           strokeLinecap="round"
           fill="none"
         />
         <path
           d="M90 154 Q100 162 110 154"
-          stroke="#B6A89C"
+          stroke="#C7CDD3"
           strokeWidth="2.5"
           strokeLinecap="round"
           fill="none"
         />
 
         {/* Eye Sockets / Facial Discs */}
-        <ellipse cx="77" cy="85" rx="22" ry="22" fill="#FAF7F2" />
-        <ellipse cx="123" cy="85" rx="22" ry="22" fill="#FAF7F2" />
+        <ellipse cx="77" cy="85" rx="22" ry="22" fill="#FFFFFF" />
+        <ellipse cx="123" cy="85" rx="22" ry="22" fill="#FFFFFF" />
 
         {/* Left Eye */}
-        <ellipse cx="78" cy="85" rx="14" ry="14" fill="#5C4033" />
-        <ellipse cx="80" cy="82" rx="12" ry="12" fill="#69493C" />
-        <ellipse cx="81" cy="84" rx="9" ry="9" fill="#2F2F2F" />
+        <ellipse cx="78" cy="85" rx="14" ry="14" fill="#16324F" />
+        <ellipse cx="80" cy="82" rx="12" ry="12" fill="#0A3D62" />
+        <ellipse cx="81" cy="84" rx="9" ry="9" fill="#16324F" />
         {/* Eye Highlights */}
-        <circle cx="77" cy="80" r="4.5" fill="#FAF7F2" />
-        <circle cx="84" cy="88" r="2" fill="#FAF7F2" />
+        <circle cx="77" cy="80" r="4.5" fill="#FFFFFF" />
+        <circle cx="84" cy="88" r="2" fill="#FFFFFF" />
 
         {/* Right Eye */}
-        <ellipse cx="122" cy="85" rx="14" ry="14" fill="#5C4033" />
-        <ellipse cx="120" cy="82" rx="12" ry="12" fill="#69493C" />
-        <ellipse cx="119" cy="84" rx="9" ry="9" fill="#2F2F2F" />
+        <ellipse cx="122" cy="85" rx="14" ry="14" fill="#16324F" />
+        <ellipse cx="120" cy="82" rx="12" ry="12" fill="#0A3D62" />
+        <ellipse cx="119" cy="84" rx="9" ry="9" fill="#16324F" />
         {/* Eye Highlights */}
-        <circle cx="116" cy="80" r="4.5" fill="#FAF7F2" />
-        <circle cx="123" cy="88" r="2" fill="#FAF7F2" />
+        <circle cx="116" cy="80" r="4.5" fill="#FFFFFF" />
+        <circle cx="123" cy="88" r="2" fill="#FFFFFF" />
 
-        {/* Smart Glasses Frames (Antique Bronze & Copper) */}
+        {/* Smart Glasses Frames (Silver & Steel Grey) */}
         <circle cx="77" cy="85" r="23" stroke="url(#owlCoralGrad)" strokeWidth="3.5" fill="none" opacity="0.95" />
         <circle cx="123" cy="85" r="23" stroke="url(#owlCoralGrad)" strokeWidth="3.5" fill="none" opacity="0.95" />
         {/* Bridge */}
@@ -198,37 +198,37 @@ export const ClassyOwlMascot: React.FC<ClassyOwlMascotProps> = ({
 
         {/* Beak */}
         <polygon points="100,90 92,104 108,104" fill="url(#owlGoldGrad)" />
-        <polygon points="100,108 94,104 106,104" fill="#69493C" />
+        <polygon points="100,108 94,104 106,104" fill="#6F7882" />
 
-        {/* Cheerful Blush Patches */}
-        <ellipse cx="58" cy="98" rx="7" ry="4" fill="#B56B45" opacity="0.45" />
-        <ellipse cx="142" cy="98" rx="7" ry="4" fill="#B56B45" opacity="0.45" />
+        {/* Cheerful Subtle Accent Patches */}
+        <ellipse cx="58" cy="98" rx="7" ry="4" fill="#C7CDD3" opacity="0.45" />
+        <ellipse cx="142" cy="98" rx="7" ry="4" fill="#C7CDD3" opacity="0.45" />
 
         {/* Academic Graduation Cap (Mortarboard) */}
         <g id="gradCap">
           {/* Skull Cap Base */}
           <path
             d="M80 44 C80 37, 120 37, 120 44 L116 52 C116 54, 84 54, 84 52 Z"
-            fill="#5C4033"
+            fill="#16324F"
           />
           {/* Diamond Top */}
           <polygon
             points="100,20 152,36 100,48 48,36"
             fill="url(#capGrad)"
-            stroke="#B68A4C"
+            stroke="#C7CDD3"
             strokeWidth="1.5"
           />
           {/* Cap Button / Center Pin */}
-          <ellipse cx="100" cy="35" rx="3.5" ry="2.5" fill="#B68A4C" />
+          <ellipse cx="100" cy="35" rx="3.5" ry="2.5" fill="#C7CDD3" />
           {/* Tassel Ribbon & Drop */}
           <path
             d="M100 35 Q135 37 142 54"
-            stroke="#B68A4C"
+            stroke="#C7CDD3"
             strokeWidth="2.5"
             strokeLinecap="round"
             fill="none"
           />
-          <polygon points="142,54 138,68 146,68" fill="#B56B45" />
+          <polygon points="142,54 138,68 146,68" fill="#6F7882" />
         </g>
       </svg>
     </div>

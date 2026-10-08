@@ -2,228 +2,279 @@
 
 @theme {
   --font-sans: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Playfair Display', 'Amiri', serif;
 
   /* =========================================================================
-     CLASSY SAPPHIRE ESTATE DESIGN SYSTEM — TAILWIND THEME OVERRIDES
-     Strictly derived from the 5 Official Sapphire Estate Colors:
-     PRIMARY BLUE (SAPPHIRE): #0A3D62
-     DARK BLUE (NAVY):        #16324F
-     STEEL GREY:              #6F7882
-     SILVER:                  #C7CDD3
-     WHITE:                   #FFFFFF
+     ESPRESSO CREAM DESIGN SYSTEM — OFFICIAL DESIGN TOKENS
+     ========================================================================= */
+  --color-cream: #F2E9DE;
+  --color-surface: #F8F2EC;
+  --color-raised: #F6EFE8;
+  --color-sand: #EDE3D9;
+  --color-line: #DDD3C7;
+  --color-forest: #293828;
+  --color-ink: #0F1206;
+  --color-espresso: #241A09;
+  --color-taupe: #756046;
+  --color-caramel: #764F26;
+  --color-ember: #A4452C;
+
+  --radius-card: 20px;
+  --radius-tile: 18px;
+  --radius-sheet: 28px;
+  --shadow-soft: 0 6px 18px rgba(41, 56, 40, 0.07);
+
+  /* =========================================================================
+     STEP 3 — RE-POINT LEGACY TAILWIND COLOR SCALES
      ========================================================================= */
 
-  /* Sapphire Estate Core Palette Tokens */
-  --color-sapphire: #0A3D62;
-  --color-navy: #16324F;
-  --color-steel: #6F7882;
-  --color-silver: #C7CDD3;
-  --color-white: #FFFFFF;
+  /* 1. emerald/green/teal/blue/sky/cyan/indigo:
+        ramp from #F8F2EC (50) through #293828 (700) to #0F1206 (950) */
+  --color-emerald-50: #F8F2EC;
+  --color-emerald-100: color-mix(in srgb, #293828 10%, #F8F2EC);
+  --color-emerald-200: color-mix(in srgb, #293828 22%, #F8F2EC);
+  --color-emerald-300: color-mix(in srgb, #293828 38%, #F8F2EC);
+  --color-emerald-400: color-mix(in srgb, #293828 55%, #F8F2EC);
+  --color-emerald-500: color-mix(in srgb, #293828 75%, #F8F2EC);
+  --color-emerald-600: color-mix(in srgb, #293828 90%, #F8F2EC);
+  --color-emerald-700: #293828;
+  --color-emerald-800: color-mix(in srgb, #0F1206 45%, #293828);
+  --color-emerald-900: color-mix(in srgb, #0F1206 75%, #293828);
+  --color-emerald-950: #0F1206;
 
-  /* Remap all Tailwind color scales to Sapphire Estate Tokens so no default Tailwind color ever leaks */
-  --color-emerald-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-emerald-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-emerald-200: #C7CDD3;
-  --color-emerald-300: color-mix(in srgb, #6F7882 45%, #C7CDD3);
-  --color-emerald-400: #6F7882;
-  --color-emerald-500: #0A3D62;
-  --color-emerald-600: #0A3D62;
-  --color-emerald-700: #16324F;
-  --color-emerald-800: #16324F;
-  --color-emerald-900: #16324F;
-  --color-emerald-950: #16324F;
+  --color-green-50: #F8F2EC;
+  --color-green-100: color-mix(in srgb, #293828 10%, #F8F2EC);
+  --color-green-200: color-mix(in srgb, #293828 22%, #F8F2EC);
+  --color-green-300: color-mix(in srgb, #293828 38%, #F8F2EC);
+  --color-green-400: color-mix(in srgb, #293828 55%, #F8F2EC);
+  --color-green-500: color-mix(in srgb, #293828 75%, #F8F2EC);
+  --color-green-600: color-mix(in srgb, #293828 90%, #F8F2EC);
+  --color-green-700: #293828;
+  --color-green-800: color-mix(in srgb, #0F1206 45%, #293828);
+  --color-green-900: color-mix(in srgb, #0F1206 75%, #293828);
+  --color-green-950: #0F1206;
 
-  --color-green-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-green-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-green-200: #C7CDD3;
-  --color-green-300: color-mix(in srgb, #6F7882 45%, #C7CDD3);
-  --color-green-400: #6F7882;
-  --color-green-500: #0A3D62;
-  --color-green-600: #0A3D62;
-  --color-green-700: #16324F;
-  --color-green-800: #16324F;
-  --color-green-900: #16324F;
+  --color-teal-50: #F8F2EC;
+  --color-teal-100: color-mix(in srgb, #293828 10%, #F8F2EC);
+  --color-teal-200: color-mix(in srgb, #293828 22%, #F8F2EC);
+  --color-teal-300: color-mix(in srgb, #293828 38%, #F8F2EC);
+  --color-teal-400: color-mix(in srgb, #293828 55%, #F8F2EC);
+  --color-teal-500: color-mix(in srgb, #293828 75%, #F8F2EC);
+  --color-teal-600: color-mix(in srgb, #293828 90%, #F8F2EC);
+  --color-teal-700: #293828;
+  --color-teal-800: color-mix(in srgb, #0F1206 45%, #293828);
+  --color-teal-900: color-mix(in srgb, #0F1206 75%, #293828);
+  --color-teal-950: #0F1206;
 
-  --color-teal-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-teal-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-teal-200: #C7CDD3;
-  --color-teal-300: color-mix(in srgb, #6F7882 45%, #C7CDD3);
-  --color-teal-400: #6F7882;
-  --color-teal-500: #0A3D62;
-  --color-teal-600: #0A3D62;
-  --color-teal-700: #16324F;
-  --color-teal-800: #16324F;
-  --color-teal-900: #16324F;
+  --color-blue-50: #F8F2EC;
+  --color-blue-100: color-mix(in srgb, #293828 10%, #F8F2EC);
+  --color-blue-200: color-mix(in srgb, #293828 22%, #F8F2EC);
+  --color-blue-300: color-mix(in srgb, #293828 38%, #F8F2EC);
+  --color-blue-400: color-mix(in srgb, #293828 55%, #F8F2EC);
+  --color-blue-500: color-mix(in srgb, #293828 75%, #F8F2EC);
+  --color-blue-600: color-mix(in srgb, #293828 90%, #F8F2EC);
+  --color-blue-700: #293828;
+  --color-blue-800: color-mix(in srgb, #0F1206 45%, #293828);
+  --color-blue-900: color-mix(in srgb, #0F1206 75%, #293828);
+  --color-blue-950: #0F1206;
 
-  --color-amber-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --color-amber-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
-  --color-amber-200: #C7CDD3;
-  --color-amber-300: color-mix(in srgb, #6F7882 50%, #C7CDD3);
-  --color-amber-400: #6F7882;
-  --color-amber-500: #6F7882;
-  --color-amber-600: #0A3D62;
-  --color-amber-700: #16324F;
-  --color-amber-800: #16324F;
-  --color-amber-900: #16324F;
-  --color-amber-950: #16324F;
+  --color-sky-50: #F8F2EC;
+  --color-sky-100: color-mix(in srgb, #293828 10%, #F8F2EC);
+  --color-sky-200: color-mix(in srgb, #293828 22%, #F8F2EC);
+  --color-sky-300: color-mix(in srgb, #293828 38%, #F8F2EC);
+  --color-sky-400: color-mix(in srgb, #293828 55%, #F8F2EC);
+  --color-sky-500: color-mix(in srgb, #293828 75%, #F8F2EC);
+  --color-sky-600: color-mix(in srgb, #293828 90%, #F8F2EC);
+  --color-sky-700: #293828;
+  --color-sky-800: color-mix(in srgb, #0F1206 45%, #293828);
+  --color-sky-900: color-mix(in srgb, #0F1206 75%, #293828);
+  --color-sky-950: #0F1206;
 
-  --color-yellow-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --color-yellow-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
-  --color-yellow-200: #C7CDD3;
-  --color-yellow-300: #6F7882;
-  --color-yellow-400: #6F7882;
-  --color-yellow-500: #0A3D62;
-  --color-yellow-600: #0A3D62;
-  --color-yellow-700: #16324F;
-  --color-yellow-800: #16324F;
-  --color-yellow-900: #16324F;
+  --color-cyan-50: #F8F2EC;
+  --color-cyan-100: color-mix(in srgb, #293828 10%, #F8F2EC);
+  --color-cyan-200: color-mix(in srgb, #293828 22%, #F8F2EC);
+  --color-cyan-300: color-mix(in srgb, #293828 38%, #F8F2EC);
+  --color-cyan-400: color-mix(in srgb, #293828 55%, #F8F2EC);
+  --color-cyan-500: color-mix(in srgb, #293828 75%, #F8F2EC);
+  --color-cyan-600: color-mix(in srgb, #293828 90%, #F8F2EC);
+  --color-cyan-700: #293828;
+  --color-cyan-800: color-mix(in srgb, #0F1206 45%, #293828);
+  --color-cyan-900: color-mix(in srgb, #0F1206 75%, #293828);
+  --color-cyan-950: #0F1206;
 
-  --color-orange-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --color-orange-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
-  --color-orange-200: #C7CDD3;
-  --color-orange-300: #6F7882;
-  --color-orange-400: #6F7882;
-  --color-orange-500: #0A3D62;
-  --color-orange-600: #0A3D62;
-  --color-orange-700: #16324F;
-  --color-orange-800: #16324F;
-  --color-orange-900: #16324F;
+  --color-indigo-50: #F8F2EC;
+  --color-indigo-100: color-mix(in srgb, #293828 10%, #F8F2EC);
+  --color-indigo-200: color-mix(in srgb, #293828 22%, #F8F2EC);
+  --color-indigo-300: color-mix(in srgb, #293828 38%, #F8F2EC);
+  --color-indigo-400: color-mix(in srgb, #293828 55%, #F8F2EC);
+  --color-indigo-500: color-mix(in srgb, #293828 75%, #F8F2EC);
+  --color-indigo-600: color-mix(in srgb, #293828 90%, #F8F2EC);
+  --color-indigo-700: #293828;
+  --color-indigo-800: color-mix(in srgb, #0F1206 45%, #293828);
+  --color-indigo-900: color-mix(in srgb, #0F1206 75%, #293828);
+  --color-indigo-950: #0F1206;
 
-  --color-rose-50: color-mix(in srgb, #C7CDD3 22%, #FFFFFF);
-  --color-rose-100: color-mix(in srgb, #C7CDD3 42%, #FFFFFF);
-  --color-rose-200: #C7CDD3;
-  --color-rose-300: #6F7882;
-  --color-rose-400: #6F7882;
-  --color-rose-500: #0A3D62;
-  --color-rose-600: #16324F;
-  --color-rose-700: #16324F;
-  --color-rose-800: #16324F;
-  --color-rose-900: #16324F;
-  --color-rose-950: #16324F;
+  /* 2. amber/yellow/orange:
+        ramp from #F8F2EC through #764F26 (700) to #241A09 (950) */
+  --color-amber-50: #F8F2EC;
+  --color-amber-100: color-mix(in srgb, #764F26 12%, #F8F2EC);
+  --color-amber-200: color-mix(in srgb, #764F26 25%, #F8F2EC);
+  --color-amber-300: color-mix(in srgb, #764F26 40%, #F8F2EC);
+  --color-amber-400: color-mix(in srgb, #764F26 60%, #F8F2EC);
+  --color-amber-500: color-mix(in srgb, #764F26 80%, #F8F2EC);
+  --color-amber-600: color-mix(in srgb, #764F26 90%, #F8F2EC);
+  --color-amber-700: #764F26;
+  --color-amber-800: color-mix(in srgb, #241A09 45%, #764F26);
+  --color-amber-900: color-mix(in srgb, #241A09 75%, #764F26);
+  --color-amber-950: #241A09;
 
-  --color-red-50: color-mix(in srgb, #C7CDD3 22%, #FFFFFF);
-  --color-red-100: color-mix(in srgb, #C7CDD3 42%, #FFFFFF);
-  --color-red-200: #C7CDD3;
-  --color-red-300: #6F7882;
-  --color-red-400: #6F7882;
-  --color-red-500: #0A3D62;
-  --color-red-600: #16324F;
-  --color-red-700: #16324F;
-  --color-red-800: #16324F;
-  --color-red-900: #16324F;
-  --color-red-950: #16324F;
+  --color-yellow-50: #F8F2EC;
+  --color-yellow-100: color-mix(in srgb, #764F26 12%, #F8F2EC);
+  --color-yellow-200: color-mix(in srgb, #764F26 25%, #F8F2EC);
+  --color-yellow-300: color-mix(in srgb, #764F26 40%, #F8F2EC);
+  --color-yellow-400: color-mix(in srgb, #764F26 60%, #F8F2EC);
+  --color-yellow-500: color-mix(in srgb, #764F26 80%, #F8F2EC);
+  --color-yellow-600: color-mix(in srgb, #764F26 90%, #F8F2EC);
+  --color-yellow-700: #764F26;
+  --color-yellow-800: color-mix(in srgb, #241A09 45%, #764F26);
+  --color-yellow-900: color-mix(in srgb, #241A09 75%, #764F26);
+  --color-yellow-950: #241A09;
 
-  --color-pink-50: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --color-pink-100: color-mix(in srgb, #C7CDD3 38%, #FFFFFF);
-  --color-pink-200: #C7CDD3;
-  --color-pink-300: #6F7882;
-  --color-pink-400: #6F7882;
-  --color-pink-500: #0A3D62;
-  --color-pink-600: #16324F;
-  --color-pink-700: #16324F;
-  --color-pink-800: #16324F;
-  --color-pink-900: #16324F;
+  --color-orange-50: #F8F2EC;
+  --color-orange-100: color-mix(in srgb, #764F26 12%, #F8F2EC);
+  --color-orange-200: color-mix(in srgb, #764F26 25%, #F8F2EC);
+  --color-orange-300: color-mix(in srgb, #764F26 40%, #F8F2EC);
+  --color-orange-400: color-mix(in srgb, #764F26 60%, #F8F2EC);
+  --color-orange-500: color-mix(in srgb, #764F26 80%, #F8F2EC);
+  --color-orange-600: color-mix(in srgb, #764F26 90%, #F8F2EC);
+  --color-orange-700: #764F26;
+  --color-orange-800: color-mix(in srgb, #241A09 45%, #764F26);
+  --color-orange-900: color-mix(in srgb, #241A09 75%, #764F26);
+  --color-orange-950: #241A09;
 
-  --color-indigo-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-indigo-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-indigo-200: #C7CDD3;
-  --color-indigo-300: #6F7882;
-  --color-indigo-400: #6F7882;
-  --color-indigo-500: #0A3D62;
-  --color-indigo-600: #0A3D62;
-  --color-indigo-700: #16324F;
-  --color-indigo-800: #16324F;
-  --color-indigo-900: #16324F;
-  --color-indigo-950: #16324F;
+  /* 3. red/rose/pink:
+        ramp from #F8F2EC through #A4452C (600) to #241A09 (950) */
+  --color-red-50: #F8F2EC;
+  --color-red-100: color-mix(in srgb, #A4452C 12%, #F8F2EC);
+  --color-red-200: color-mix(in srgb, #A4452C 25%, #F8F2EC);
+  --color-red-300: color-mix(in srgb, #A4452C 42%, #F8F2EC);
+  --color-red-400: color-mix(in srgb, #A4452C 65%, #F8F2EC);
+  --color-red-500: color-mix(in srgb, #A4452C 85%, #F8F2EC);
+  --color-red-600: #A4452C;
+  --color-red-700: color-mix(in srgb, #241A09 35%, #A4452C);
+  --color-red-800: color-mix(in srgb, #241A09 60%, #A4452C);
+  --color-red-900: color-mix(in srgb, #241A09 82%, #A4452C);
+  --color-red-950: #241A09;
 
-  --color-violet-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-violet-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-violet-200: #C7CDD3;
-  --color-violet-300: #6F7882;
-  --color-violet-400: #6F7882;
-  --color-violet-500: #0A3D62;
-  --color-violet-600: #0A3D62;
-  --color-violet-700: #16324F;
-  --color-violet-800: #16324F;
-  --color-violet-900: #16324F;
+  --color-rose-50: #F8F2EC;
+  --color-rose-100: color-mix(in srgb, #A4452C 12%, #F8F2EC);
+  --color-rose-200: color-mix(in srgb, #A4452C 25%, #F8F2EC);
+  --color-rose-300: color-mix(in srgb, #A4452C 42%, #F8F2EC);
+  --color-rose-400: color-mix(in srgb, #A4452C 65%, #F8F2EC);
+  --color-rose-500: color-mix(in srgb, #A4452C 85%, #F8F2EC);
+  --color-rose-600: #A4452C;
+  --color-rose-700: color-mix(in srgb, #241A09 35%, #A4452C);
+  --color-rose-800: color-mix(in srgb, #241A09 60%, #A4452C);
+  --color-rose-900: color-mix(in srgb, #241A09 82%, #A4452C);
+  --color-rose-950: #241A09;
 
-  --color-purple-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-purple-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-purple-200: #C7CDD3;
-  --color-purple-300: #6F7882;
-  --color-purple-400: #6F7882;
-  --color-purple-500: #0A3D62;
-  --color-purple-600: #0A3D62;
-  --color-purple-700: #16324F;
-  --color-purple-800: #16324F;
-  --color-purple-900: #16324F;
+  --color-pink-50: #F8F2EC;
+  --color-pink-100: color-mix(in srgb, #A4452C 12%, #F8F2EC);
+  --color-pink-200: color-mix(in srgb, #A4452C 25%, #F8F2EC);
+  --color-pink-300: color-mix(in srgb, #A4452C 42%, #F8F2EC);
+  --color-pink-400: color-mix(in srgb, #A4452C 65%, #F8F2EC);
+  --color-pink-500: color-mix(in srgb, #A4452C 85%, #F8F2EC);
+  --color-pink-600: #A4452C;
+  --color-pink-700: color-mix(in srgb, #241A09 35%, #A4452C);
+  --color-pink-800: color-mix(in srgb, #241A09 60%, #A4452C);
+  --color-pink-900: color-mix(in srgb, #241A09 82%, #A4452C);
+  --color-pink-950: #241A09;
 
-  --color-blue-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-blue-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-blue-200: #C7CDD3;
-  --color-blue-300: #6F7882;
-  --color-blue-400: #6F7882;
-  --color-blue-500: #0A3D62;
-  --color-blue-600: #0A3D62;
-  --color-blue-700: #16324F;
-  --color-blue-800: #16324F;
-  --color-blue-900: #16324F;
+  /* 4. purple/violet/slate/gray/zinc/neutral/stone:
+        ramp from #F8F2EC through #756046 (600) to #0F1206 (950) */
+  --color-purple-50: #F8F2EC;
+  --color-purple-100: color-mix(in srgb, #756046 12%, #F8F2EC);
+  --color-purple-200: color-mix(in srgb, #756046 25%, #F8F2EC);
+  --color-purple-300: color-mix(in srgb, #756046 42%, #F8F2EC);
+  --color-purple-400: color-mix(in srgb, #756046 65%, #F8F2EC);
+  --color-purple-500: color-mix(in srgb, #756046 85%, #F8F2EC);
+  --color-purple-600: #756046;
+  --color-purple-700: color-mix(in srgb, #0F1206 35%, #756046);
+  --color-purple-800: color-mix(in srgb, #0F1206 60%, #756046);
+  --color-purple-900: color-mix(in srgb, #0F1206 82%, #756046);
+  --color-purple-950: #0F1206;
 
-  --color-sky-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-sky-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-sky-200: #C7CDD3;
-  --color-sky-300: #6F7882;
-  --color-sky-400: #6F7882;
-  --color-sky-500: #0A3D62;
-  --color-sky-600: #0A3D62;
-  --color-sky-700: #16324F;
-  --color-sky-800: #16324F;
-  --color-sky-900: #16324F;
+  --color-violet-50: #F8F2EC;
+  --color-violet-100: color-mix(in srgb, #756046 12%, #F8F2EC);
+  --color-violet-200: color-mix(in srgb, #756046 25%, #F8F2EC);
+  --color-violet-300: color-mix(in srgb, #756046 42%, #F8F2EC);
+  --color-violet-400: color-mix(in srgb, #756046 65%, #F8F2EC);
+  --color-violet-500: color-mix(in srgb, #756046 85%, #F8F2EC);
+  --color-violet-600: #756046;
+  --color-violet-700: color-mix(in srgb, #0F1206 35%, #756046);
+  --color-violet-800: color-mix(in srgb, #0F1206 60%, #756046);
+  --color-violet-900: color-mix(in srgb, #0F1206 82%, #756046);
+  --color-violet-950: #0F1206;
 
-  --color-cyan-50: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  --color-cyan-100: color-mix(in srgb, #C7CDD3 35%, #FFFFFF);
-  --color-cyan-200: #C7CDD3;
-  --color-cyan-300: #6F7882;
-  --color-cyan-400: #6F7882;
-  --color-cyan-500: #0A3D62;
-  --color-cyan-600: #0A3D62;
-  --color-cyan-700: #16324F;
-  --color-cyan-800: #16324F;
-  --color-cyan-900: #16324F;
+  --color-slate-50: #F8F2EC;
+  --color-slate-100: color-mix(in srgb, #756046 12%, #F8F2EC);
+  --color-slate-200: color-mix(in srgb, #756046 25%, #F8F2EC);
+  --color-slate-300: color-mix(in srgb, #756046 42%, #F8F2EC);
+  --color-slate-400: color-mix(in srgb, #756046 65%, #F8F2EC);
+  --color-slate-500: color-mix(in srgb, #756046 85%, #F8F2EC);
+  --color-slate-600: #756046;
+  --color-slate-700: color-mix(in srgb, #0F1206 35%, #756046);
+  --color-slate-800: color-mix(in srgb, #0F1206 60%, #756046);
+  --color-slate-900: color-mix(in srgb, #0F1206 82%, #756046);
+  --color-slate-950: #0F1206;
 
-  --color-slate-50: #FFFFFF;
-  --color-slate-100: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --color-slate-200: #C7CDD3;
-  --color-slate-300: #C7CDD3;
-  --color-slate-400: #6F7882;
-  --color-slate-500: #6F7882;
-  --color-slate-600: #6F7882;
-  --color-slate-700: #16324F;
-  --color-slate-800: #16324F;
-  --color-slate-900: #16324F;
-  --color-slate-950: #16324F;
+  --color-gray-50: #F8F2EC;
+  --color-gray-100: color-mix(in srgb, #756046 12%, #F8F2EC);
+  --color-gray-200: color-mix(in srgb, #756046 25%, #F8F2EC);
+  --color-gray-300: color-mix(in srgb, #756046 42%, #F8F2EC);
+  --color-gray-400: color-mix(in srgb, #756046 65%, #F8F2EC);
+  --color-gray-500: color-mix(in srgb, #756046 85%, #F8F2EC);
+  --color-gray-600: #756046;
+  --color-gray-700: color-mix(in srgb, #0F1206 35%, #756046);
+  --color-gray-800: color-mix(in srgb, #0F1206 60%, #756046);
+  --color-gray-900: color-mix(in srgb, #0F1206 82%, #756046);
+  --color-gray-950: #0F1206;
 
-  --color-gray-50: #FFFFFF;
-  --color-gray-100: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --color-gray-200: #C7CDD3;
-  --color-gray-300: #C7CDD3;
-  --color-gray-400: #6F7882;
-  --color-gray-500: #6F7882;
-  --color-gray-600: #6F7882;
-  --color-gray-700: #16324F;
-  --color-gray-800: #16324F;
-  --color-gray-900: #16324F;
+  --color-zinc-50: #F8F2EC;
+  --color-zinc-100: color-mix(in srgb, #756046 12%, #F8F2EC);
+  --color-zinc-200: color-mix(in srgb, #756046 25%, #F8F2EC);
+  --color-zinc-300: color-mix(in srgb, #756046 42%, #F8F2EC);
+  --color-zinc-400: color-mix(in srgb, #756046 65%, #F8F2EC);
+  --color-zinc-500: color-mix(in srgb, #756046 85%, #F8F2EC);
+  --color-zinc-600: #756046;
+  --color-zinc-700: color-mix(in srgb, #0F1206 35%, #756046);
+  --color-zinc-800: color-mix(in srgb, #0F1206 60%, #756046);
+  --color-zinc-900: color-mix(in srgb, #0F1206 82%, #756046);
+  --color-zinc-950: #0F1206;
 
-  --color-zinc-50: #FFFFFF;
-  --color-zinc-100: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --color-zinc-200: #C7CDD3;
-  --color-zinc-300: #C7CDD3;
-  --color-zinc-400: #6F7882;
-  --color-zinc-500: #6F7882;
-  --color-zinc-600: #6F7882;
-  --color-zinc-700: #16324F;
-  --color-zinc-800: #16324F;
-  --color-zinc-900: #16324F;
+  --color-neutral-50: #F8F2EC;
+  --color-neutral-100: color-mix(in srgb, #756046 12%, #F8F2EC);
+  --color-neutral-200: color-mix(in srgb, #756046 25%, #F8F2EC);
+  --color-neutral-300: color-mix(in srgb, #756046 42%, #F8F2EC);
+  --color-neutral-400: color-mix(in srgb, #756046 65%, #F8F2EC);
+  --color-neutral-500: color-mix(in srgb, #756046 85%, #F8F2EC);
+  --color-neutral-600: #756046;
+  --color-neutral-700: color-mix(in srgb, #0F1206 35%, #756046);
+  --color-neutral-800: color-mix(in srgb, #0F1206 60%, #756046);
+  --color-neutral-900: color-mix(in srgb, #0F1206 82%, #756046);
+  --color-neutral-950: #0F1206;
+
+  --color-stone-50: #F8F2EC;
+  --color-stone-100: color-mix(in srgb, #756046 12%, #F8F2EC);
+  --color-stone-200: color-mix(in srgb, #756046 25%, #F8F2EC);
+  --color-stone-300: color-mix(in srgb, #756046 42%, #F8F2EC);
+  --color-stone-400: color-mix(in srgb, #756046 65%, #F8F2EC);
+  --color-stone-500: color-mix(in srgb, #756046 85%, #F8F2EC);
+  --color-stone-600: #756046;
+  --color-stone-700: color-mix(in srgb, #0F1206 35%, #756046);
+  --color-stone-800: color-mix(in srgb, #0F1206 60%, #756046);
+  --color-stone-900: color-mix(in srgb, #0F1206 82%, #756046);
+  --color-stone-950: #0F1206;
 }
 
 @layer base {
@@ -233,8 +284,8 @@
 
   body {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #FFFFFF;
-    color: #16324F;
+    background-color: #F2E9DE;
+    color: #0F1206;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
@@ -243,274 +294,479 @@
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', sans-serif;
     font-weight: 700;
-    color: #16324F;
+    color: #0F1206;
     letter-spacing: -0.02em;
+  }
+
+  :where(svg.lucide) {
+    stroke-width: 1.7;
   }
 }
 
 /* ==========================================================================
-   CLASSY SAPPHIRE ESTATE DESIGN TOKENS (Single Source of Truth)
-   Official Palette:
-   - PRIMARY BLUE (SAPPHIRE): #0A3D62
-   - DARK BLUE (NAVY):        #16324F
-   - STEEL GREY:              #6F7882
-   - SILVER:                  #C7CDD3
-   - WHITE:                   #FFFFFF
+   STEP 1 — ESPRESSO CREAM SEMANTIC THEME TOKENS
    ========================================================================== */
 :root {
-  /* Core Brand & Structural Tokens */
-  --classy-primary: #0A3D62;
-  --classy-primary-hover: color-mix(in srgb, #0A3D62 82%, #16324F);
-  --classy-primary-active: #16324F;
+  --color-cream: #F2E9DE;
+  --color-surface: #F8F2EC;
+  --color-raised: #F6EFE8;
+  --color-sand: #EDE3D9;
+  --color-line: #DDD3C7;
+  --color-forest: #293828;
+  --color-ink: #0F1206;
+  --color-espresso: #241A09;
+  --color-taupe: #756046;
+  --color-caramel: #764F26;
+  --color-ember: #A4452C;
 
-  --classy-navy: #16324F;
-  --classy-steel: #6F7882;
-  --classy-silver: #C7CDD3;
-  --classy-white: #FFFFFF;
+  --radius-card: 20px;
+  --radius-tile: 18px;
+  --radius-sheet: 28px;
+  --shadow-soft: 0 6px 18px rgba(41, 56, 40, 0.07);
 
-  /* Background & Surface Tokens */
-  --classy-background: #FFFFFF;
-  --classy-background-secondary: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --classy-surface: #FFFFFF;
-  --classy-surface-elevated: color-mix(in srgb, #C7CDD3 16%, #FFFFFF);
+  /* Semantic UI Tokens mapped to Espresso Cream */
+  --classy-primary: #293828;
+  --classy-primary-hover: color-mix(in srgb, #293828 85%, #0F1206);
+  --classy-primary-active: #0F1206;
 
-  /* Accent & Secondary Tokens */
-  --classy-secondary: #6F7882;
-  --classy-accent: #0A3D62;
-  --classy-accent-secondary: #16324F;
+  --classy-background: #F2E9DE;
+  --classy-background-secondary: #EDE3D9;
+  --classy-surface: #F8F2EC;
+  --classy-surface-elevated: #F6EFE8;
 
-  /* Typography Tokens */
-  --classy-text-primary: #16324F;
-  --classy-text-secondary: #6F7882;
-  --classy-text-muted: #6F7882;
-  --classy-text-on-primary: #FFFFFF;
+  --classy-secondary: #756046;
+  --classy-accent: #764F26;
+  --classy-accent-secondary: #293828;
 
-  /* Border & Divider Tokens */
-  --classy-border: #C7CDD3;
-  --classy-divider: color-mix(in srgb, #C7CDD3 55%, #FFFFFF);
+  --classy-text-primary: #0F1206;
+  --classy-text-secondary: #756046;
+  --classy-text-muted: #756046;
+  --classy-text-on-primary: #F8F2EC;
 
-  /* Semantic State Tokens (Strictly Sapphire Estate Palette) */
-  --classy-success: #0A3D62;
-  --classy-warning: #6F7882;
-  --classy-danger: #16324F;
-  --classy-info: #0A3D62;
-  --classy-disabled: #C7CDD3;
+  --classy-border: #DDD3C7;
+  --classy-divider: #DDD3C7;
 
-  /* Legacy Alias Mappings -> Strictly Sapphire Estate */
-  --color-midnight: #16324F;
-  --color-royal: #0A3D62;
-  --color-violet: #0A3D62;
-  --color-lavender: #C7CDD3;
-  --color-coral: #16324F;
-  --color-cyan: #0A3D62;
-  --color-canvas: #FFFFFF;
-  --color-surface: #FFFFFF;
-  --color-text-main: #16324F;
-  --color-text-muted: #6F7882;
-  --color-border-subtle: #C7CDD3;
+  --classy-success: #293828;
+  --classy-warning: #764F26;
+  --classy-danger: #A4452C;
+  --classy-info: #756046;
+  --classy-disabled: #DDD3C7;
 
-  --status-success: #0A3D62;
-  --status-success-bg: color-mix(in srgb, #0A3D62 8%, #FFFFFF);
-  --status-success-border: #C7CDD3;
-  --status-warning: #6F7882;
-  --status-warning-bg: color-mix(in srgb, #C7CDD3 25%, #FFFFFF);
-  --status-warning-border: #C7CDD3;
-  --status-danger: #16324F;
-  --status-danger-bg: color-mix(in srgb, #16324F 8%, #FFFFFF);
-  --status-danger-border: #C7CDD3;
-  --status-info: #0A3D62;
-  --status-info-bg: color-mix(in srgb, #C7CDD3 20%, #FFFFFF);
-  --status-info-border: #C7CDD3;
+  /* Aliases for smooth compatibility */
+  --color-canvas: #F2E9DE;
+  --color-text-main: #0F1206;
+  --color-text-muted: #756046;
+  --color-border-subtle: #DDD3C7;
+
+  --status-success: #293828;
+  --status-success-bg: #EDE3D9;
+  --status-success-border: #DDD3C7;
+  --status-warning: #764F26;
+  --status-warning-bg: color-mix(in srgb, #764F26 15%, #F8F2EC);
+  --status-warning-border: #DDD3C7;
+  --status-danger: #A4452C;
+  --status-danger-bg: color-mix(in srgb, #A4452C 15%, #F8F2EC);
+  --status-danger-border: #DDD3C7;
+  --status-info: #756046;
+  --status-info-bg: #EDE3D9;
+  --status-info-border: #DDD3C7;
 }
 
 /* ==========================================================================
-   CARDS & SURFACES
+   STEP 4 — FONT UTILITIES
+   ========================================================================== */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* ==========================================================================
+   STEP 5 — SHAPES & ELEVATIONS (ESPRESSO CREAM)
    ========================================================================== */
 .classy-card {
-  background-color: #FFFFFF;
-  border-radius: 22px;
-  border: 1px solid #C7CDD3;
-  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.06), 0 1px 3px rgba(22, 50, 79, 0.03);
+  background-color: #F8F2EC;
+  border: 1px solid #DDD3C7;
+  border-radius: 20px;
+  box-shadow: 0 6px 18px rgba(41, 56, 40, 0.07);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .classy-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -6px rgba(10, 61, 98, 0.14), 0 2px 8px -1px rgba(22, 50, 79, 0.06);
-  border-color: #0A3D62;
-}
-
-.classy-subtle-card {
-  background-color: color-mix(in srgb, #C7CDD3 18%, #FFFFFF);
-  border-radius: 18px;
-  border: 1px solid #C7CDD3;
-  padding: 0.875rem;
+  box-shadow: 0 12px 26px rgba(41, 56, 40, 0.12);
+  border-color: #764F26;
 }
 
 .classy-lavender-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 22%, #FFFFFF) 100%);
-  border-radius: 22px;
-  border: 1px solid #C7CDD3;
-  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.07);
+  background-color: #EDE3D9;
+  border: 1px solid #DDD3C7;
+  border-radius: 20px;
 }
 
-.classy-rose-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 24%, #FFFFFF) 100%);
-  border-radius: 22px;
-  border: 1px solid #C7CDD3;
-  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.07);
-}
-
-.classy-cyan-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 20%, #FFFFFF) 100%);
-  border-radius: 22px;
-  border: 1px solid #C7CDD3;
-  box-shadow: 0 4px 20px -4px rgba(10, 61, 98, 0.08);
-}
-
-.classy-mint-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, color-mix(in srgb, #C7CDD3 18%, #FFFFFF) 100%);
-  border-radius: 22px;
-  border: 1px solid #C7CDD3;
-  box-shadow: 0 4px 20px -4px rgba(10, 61, 98, 0.08);
-}
-
-/* Executive Sapphire & Navy Card */
-.classy-dark-card {
-  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
-  border-radius: 26px;
-  border: 1px solid rgba(199, 205, 211, 0.3);
-  box-shadow: 0 16px 36px -8px rgba(22, 50, 79, 0.32);
-  color: #FFFFFF;
-}
-
-/* ==========================================================================
-   BUTTONS
-   ========================================================================== */
-.btn-primary {
-  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
-  color: #FFFFFF;
-  border-radius: 16px;
+.section-label {
+  font-size: 11px;
   font-weight: 700;
-  box-shadow: 0 4px 14px -2px rgba(10, 61, 98, 0.3);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #756046;
+  letter-spacing: 0.08em;
+}
+:lang(en) .section-label,
+[dir="ltr"] .section-label {
+  text-transform: uppercase;
 }
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 22px -2px rgba(10, 61, 98, 0.4);
-  filter: brightness(1.06);
-}
-
-.btn-primary:active {
-  transform: scale(0.98);
-}
-
-.btn-secondary {
-  background-color: #FFFFFF;
-  color: #16324F;
-  border: 1px solid #C7CDD3;
-  border-radius: 16px;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgba(22, 50, 79, 0.05);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn-secondary:hover {
-  background-color: color-mix(in srgb, #C7CDD3 25%, #FFFFFF);
-  border-color: #0A3D62;
-  transform: translateY(-1px);
-}
-
-.btn-secondary:active {
-  transform: scale(0.98);
-}
-
-.btn-violet {
-  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
-  color: #FFFFFF;
-  border-radius: 16px;
-  font-weight: 700;
-  box-shadow: 0 6px 18px -3px rgba(10, 61, 98, 0.32);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn-violet:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px -2px rgba(10, 61, 98, 0.42);
-  filter: brightness(1.05);
-}
-
-.btn-violet:active {
-  transform: scale(0.98);
-}
-
-.btn-coral {
-  background: linear-gradient(135deg, #16324F 0%, #0A3D62 100%);
-  color: #FFFFFF;
-  border-radius: 16px;
-  font-weight: 700;
-  box-shadow: 0 6px 18px -3px rgba(22, 50, 79, 0.32);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn-coral:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px -2px rgba(22, 50, 79, 0.42);
-  filter: brightness(1.05);
-}
-
-.btn-coral:active {
-  transform: scale(0.98);
-}
-
-/* ==========================================================================
-   INPUTS & FORMS
-   ========================================================================== */
-.classy-input,
-.classy-select,
-.classy-textarea {
-  width: 100%;
-  background-color: #FFFFFF;
-  border: 1px solid #C7CDD3;
-  border-radius: 16px;
-  padding: 0.625rem 0.875rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #16324F;
+.chip {
+  border-radius: 9999px;
+  background-color: #F8F2EC;
+  border: 1px solid #DDD3C7;
+  color: #0F1206;
+  padding: 6px 14px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   transition: all 0.2s ease;
 }
 
-.classy-input:focus,
-.classy-select:focus,
-.classy-textarea:focus {
-  outline: none;
-  border-color: #0A3D62;
-  background-color: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(10, 61, 98, 0.14);
+.chip-active {
+  background-color: #293828;
+  color: #F8F2EC;
+  border-color: #293828;
 }
 
+.classy-subtle-card {
+  background-color: #EDE3D9;
+  border-radius: 18px;
+  border: 1px solid #DDD3C7;
+  padding: 0.875rem;
+}
+
+.classy-bento-sapphire,
+.classy-bento-navy,
+.classy-bento-steel,
+.classy-bento-silver,
+.classy-rose-card,
+.classy-cyan-card,
+.classy-mint-card {
+  background-color: #F8F2EC;
+  border-radius: 20px;
+  border: 1px solid #DDD3C7;
+  box-shadow: 0 6px 18px rgba(41, 56, 40, 0.07);
+}
+
+.classy-dark-card,
+.classy-sheen-header {
+  background: linear-gradient(135deg, #293828 0%, #0F1206 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(221, 211, 199, 0.3);
+  box-shadow: 0 16px 36px -8px rgba(15, 18, 6, 0.34);
+  color: #F8F2EC;
+}
+
+/* ==========================================================================
+   BUTTONS (ESPRESSO CREAM SPECIFICATION)
+   ========================================================================== */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  background-color: #293828;
+  color: #F8F2EC;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: 1px solid #293828;
+  box-shadow: 0 4px 14px -2px rgba(41, 56, 40, 0.25);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled,
+.btn-disabled {
+  background-color: #EDE3D9 !important;
+  color: #756046 !important;
+  border-color: #DDD3C7 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 0.75;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  background-color: #F8F2EC;
+  color: #0F1206;
+  border: 1px solid #DDD3C7;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 6px rgba(15, 18, 6, 0.04);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #EDE3D9;
+  border-color: #756046;
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-secondary:disabled,
+.btn-secondary.disabled {
+  background-color: #EDE3D9 !important;
+  color: #756046 !important;
+  border-color: #DDD3C7 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 0.75;
+}
+
+.btn-tertiary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  background-color: transparent;
+  color: #293828;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: 1px solid transparent;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-tertiary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+  background-color: rgba(41, 56, 40, 0.08);
+  transform: translateY(-1px);
+}
+
+.btn-tertiary:active:not(:disabled),
+.btn-ghost:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-tertiary:disabled,
+.btn-ghost:disabled {
+  background-color: #EDE3D9 !important;
+  color: #756046 !important;
+  border-color: transparent !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  opacity: 0.75;
+}
+
+.btn-danger,
+.btn-destructive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  background-color: rgba(164, 69, 44, 0.1);
+  color: #A4452C;
+  border: 1px solid rgba(164, 69, 44, 0.25);
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-danger:hover:not(:disabled),
+.btn-destructive:hover:not(:disabled) {
+  background-color: rgba(164, 69, 44, 0.18);
+  border-color: rgba(164, 69, 44, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-danger:active:not(:disabled),
+.btn-destructive:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-danger:disabled,
+.btn-destructive:disabled {
+  background-color: #EDE3D9 !important;
+  color: #756046 !important;
+  border-color: #DDD3C7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  opacity: 0.75;
+}
+
+/* Solid ember only for the final confirm */
+.btn-danger-solid,
+.btn-destructive-solid {
+  background-color: #A4452C !important;
+  color: #F8F2EC !important;
+  border-color: #A4452C !important;
+  box-shadow: 0 4px 14px -2px rgba(164, 69, 44, 0.35);
+}
+
+.btn-danger-solid:hover:not(:disabled),
+.btn-destructive-solid:hover:not(:disabled) {
+  background-color: color-mix(in srgb, #0F1206 15%, #A4452C) !important;
+  filter: brightness(1.05);
+}
+
+/* Button icons must stay at 18px */
+:where(.btn-primary, .btn-secondary, .btn-ghost, .btn-tertiary, .btn-danger, .btn-destructive, .btn-danger-solid, .btn-destructive-solid) > svg,
+:where(.btn-primary, .btn-secondary, .btn-ghost, .btn-tertiary, .btn-danger, .btn-destructive, .btn-danger-solid, .btn-destructive-solid) svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.btn-violet,
+.btn-coral {
+  background: #293828;
+  color: #F8F2EC;
+  border-radius: 9999px;
+  font-weight: 700;
+  height: 48px;
+  min-height: 48px;
+  box-shadow: 0 4px 14px -2px rgba(41, 56, 40, 0.25);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   INPUTS & FORMS (ESPRESSO CREAM SPECIFICATION)
+   ========================================================================== */
+.field,
+.input-field,
+.classy-input,
+.classy-select {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  background-color: #F8F2EC;
+  border: 1px solid #DDD3C7;
+  border-radius: 16px;
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0F1206;
+  transition: all 0.15s ease;
+}
+
+.classy-textarea,
+textarea.field,
+textarea.input-field {
+  width: 100%;
+  min-height: 48px;
+  background-color: #F8F2EC;
+  border: 1px solid #DDD3C7;
+  border-radius: 16px;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0F1206;
+  transition: all 0.15s ease;
+}
+
+.field:focus,
+.input-field:focus,
+.classy-input:focus,
+.classy-select:focus,
+.classy-textarea:focus,
+textarea.field:focus {
+  outline: none;
+  border-color: #293828;
+  background-color: #F8F2EC;
+  box-shadow: 0 0 0 3px rgba(41, 56, 40, 0.25);
+}
+
+.field::placeholder,
+.input-field::placeholder,
 .classy-input::placeholder,
-.classy-textarea::placeholder {
-  color: #6F7882;
-  font-weight: 500;
+.classy-textarea::placeholder,
+textarea.field::placeholder {
+  color: #756046;
+  font-weight: 400;
+}
+
+.field-error,
+.input-field-error,
+.classy-input-error {
+  border-color: #A4452C !important;
+}
+
+.field-error:focus,
+.input-field-error:focus,
+.classy-input-error:focus {
+  box-shadow: 0 0 0 3px rgba(164, 69, 44, 0.25) !important;
+}
+
+.field-error-msg,
+.classy-error-msg {
+  font-size: 0.75rem;
+  color: #A4452C;
+  font-weight: 600;
+  margin-top: 0.25rem;
 }
 
 .classy-label {
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #16324F;
+  color: #0F1206;
   margin-bottom: 0.375rem;
+}
+
+/* Checkbox, Radio, and Toggle - Forest Active */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #293828;
+  cursor: pointer;
 }
 
 /* ==========================================================================
    SEMANTIC BADGES
    ========================================================================== */
 .badge-success {
-  background-color: rgba(10, 61, 98, 0.1);
-  color: #0A3D62;
-  border: 1px solid rgba(10, 61, 98, 0.28);
+  background-color: rgba(41, 56, 40, 0.1);
+  color: #293828;
+  border: 1px solid rgba(41, 56, 40, 0.28);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -518,9 +774,9 @@
 }
 
 .badge-warning {
-  background-color: rgba(199, 205, 211, 0.35);
-  color: #16324F;
-  border: 1px solid #C7CDD3;
+  background-color: rgba(118, 79, 38, 0.12);
+  color: #764F26;
+  border: 1px solid rgba(118, 79, 38, 0.3);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -528,9 +784,9 @@
 }
 
 .badge-danger {
-  background-color: rgba(22, 50, 79, 0.1);
-  color: #16324F;
-  border: 1px solid rgba(22, 50, 79, 0.3);
+  background-color: rgba(164, 69, 44, 0.1);
+  color: #A4452C;
+  border: 1px solid rgba(164, 69, 44, 0.3);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -538,9 +794,9 @@
 }
 
 .badge-info {
-  background-color: rgba(199, 205, 211, 0.28);
-  color: #0A3D62;
-  border: 1px solid #C7CDD3;
+  background-color: rgba(117, 96, 70, 0.12);
+  color: #756046;
+  border: 1px solid rgba(117, 96, 70, 0.25);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -548,9 +804,9 @@
 }
 
 .badge-primary {
-  background-color: rgba(10, 61, 98, 0.1);
-  color: #0A3D62;
-  border: 1px solid rgba(10, 61, 98, 0.25);
+  background-color: rgba(41, 56, 40, 0.1);
+  color: #293828;
+  border: 1px solid rgba(41, 56, 40, 0.25);
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
   font-size: 0.6875rem;
@@ -558,70 +814,57 @@
 }
 
 /* ==========================================================================
-   ICON BOX CONTAINERS
+   SEGMENTED CONTROLS / TABS (ESPRESSO CREAM SPECIFICATION)
    ========================================================================== */
-.icon-box-violet {
-  background-color: rgba(10, 61, 98, 0.1);
-  color: #0A3D62;
-  border-radius: 16px;
-}
-
-.icon-box-coral {
-  background-color: rgba(22, 50, 79, 0.1);
-  color: #16324F;
-  border-radius: 16px;
-}
-
-.icon-box-cyan {
-  background-color: rgba(199, 205, 211, 0.35);
-  color: #0A3D62;
-  border-radius: 16px;
-}
-
-.icon-box-midnight {
-  background-color: rgba(111, 120, 130, 0.14);
-  color: #16324F;
-  border-radius: 16px;
-}
-
-/* ==========================================================================
-   SEGMENTED CONTROLS / TABS
-   ========================================================================== */
+.segmented-control,
 .classy-segment {
-  background-color: color-mix(in srgb, #C7CDD3 22%, #FFFFFF);
-  border: 1px solid #C7CDD3;
-  border-radius: 18px;
-  padding: 0.25rem;
+  background-color: #EDE3D9;
+  border: 1px solid #DDD3C7;
+  border-radius: 9999px;
+  padding: 4px;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 4px;
 }
 
+.segmented-item,
 .classy-segment-btn {
   flex: 1;
-  padding: 0.5rem 0.75rem;
-  border-radius: 14px;
-  font-size: 0.75rem;
+  height: 40px;
+  min-height: 40px;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
   font-weight: 700;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   cursor: pointer;
   text-align: center;
-}
-
-.classy-segment-btn-active {
-  background-color: #0A3D62;
-  color: #FFFFFF;
-  box-shadow: 0 4px 10px rgba(10, 61, 98, 0.25);
-}
-
-.classy-segment-btn-inactive {
-  color: #6F7882;
+  border: none;
+  color: #756046;
   background-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  user-select: none;
 }
 
-.classy-segment-btn-inactive:hover {
-  color: #16324F;
-  background-color: #FFFFFF;
+.segmented-item:hover,
+.classy-segment-btn:hover {
+  color: #0F1206;
+}
+
+.segmented-item-active,
+.classy-segment-btn-active {
+  background-color: #293828 !important;
+  color: #F8F2EC !important;
+  box-shadow: 0 2px 8px rgba(41, 56, 40, 0.25);
+}
+
+.segmented-item-inactive,
+.classy-segment-btn-inactive {
+  color: #756046;
+  background-color: transparent;
 }
 
 /* ==========================================================================
@@ -635,19 +878,19 @@
   width: 56px;
   height: 56px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #0A3D62 0%, #16324F 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #293828 0%, #0F1206 100%);
+  color: #F8F2EC;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 28px -4px rgba(10, 61, 98, 0.42), 0 4px 10px rgba(22, 50, 79, 0.25);
+  box-shadow: 0 12px 28px -4px rgba(41, 56, 40, 0.42), 0 4px 10px rgba(15, 18, 6, 0.25);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 
 .classy-fab:hover {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 16px 34px -4px rgba(10, 61, 98, 0.52);
+  box-shadow: 0 16px 34px -4px rgba(41, 56, 40, 0.52);
 }
 
 .classy-fab:active {
@@ -657,38 +900,18 @@
 /* ==========================================================================
    BACKWARD COMPATIBILITY ALIASES
    ========================================================================== */
-.neu-card, .royal-card {
-  background-color: #FFFFFF;
-  border-radius: 22px;
-  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.06);
-  border: 1px solid #C7CDD3;
+.neu-card, .royal-card, .bento-stat-card {
+  background-color: #F8F2EC;
+  border-radius: 20px;
+  box-shadow: 0 6px 18px rgba(41, 56, 40, 0.07);
+  border: 1px solid #DDD3C7;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.neu-card-hover:hover, .royal-card-hover:hover {
+.neu-card-hover:hover, .royal-card-hover:hover, .bento-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(10, 61, 98, 0.14);
-  border-color: #0A3D62;
-}
-
-.bento-stat-card {
-  background-color: #FFFFFF;
-  border-radius: 22px;
-  padding: 1.25rem;
-  box-shadow: 0 4px 20px -4px rgba(22, 50, 79, 0.06);
-  border: 1px solid #C7CDD3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.bento-stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(10, 61, 98, 0.14);
-  border-color: #0A3D62;
+  box-shadow: 0 12px 26px rgba(41, 56, 40, 0.12);
+  border-color: #764F26;
 }
 
 /* ==========================================================================
@@ -767,15 +990,15 @@
   background: transparent;
 }
 .android-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(199, 205, 211, 0.75);
+  background: rgba(221, 211, 199, 0.85);
   border-radius: 9999px;
 }
 .android-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(10, 61, 98, 0.55);
+  background: rgba(41, 56, 40, 0.65);
 }
 
 /* ==========================================================================
-   TOUCH & GESTURES OPTIMIZATION (Classy Touch Engine)
+   TOUCH & GESTURES OPTIMIZATION
    ========================================================================== */
 html, body {
   touch-action: manipulation;
@@ -799,7 +1022,7 @@ button, a, input, select, textarea, [role="button"], .interactive-touch {
 .modal-drag-handle {
   width: 40px;
   height: 5px;
-  background-color: #C7CDD3;
+  background-color: #DDD3C7;
   border-radius: 9999px;
   margin: 0 auto;
   cursor: grab;
@@ -807,7 +1030,7 @@ button, a, input, select, textarea, [role="button"], .interactive-touch {
 }
 
 .modal-drag-handle:active {
-  background-color: #0A3D62;
+  background-color: #293828;
   transform: scaleX(1.2);
 }
 

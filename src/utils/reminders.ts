@@ -11,6 +11,7 @@ import {
 import { db } from './storage';
 import { getScheduledClassesForDate } from './schedule';
 import { getAppLanguage } from './i18n';
+import { toLocalISODate } from './localDate';
 
 export { type SmartReminderItem, type SmartReminderItem as AppNotification } from '../types';
 
@@ -33,7 +34,7 @@ export function getSmartReminders(
   const isRTL = !isEn;
 
   const reminders: SmartReminderItem[] = [];
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalISODate();
   const activeStudents = students.filter((s) => s.status !== 'archived');
   const groupsMap = new Map(groups.map((g) => [g.id, g]));
 

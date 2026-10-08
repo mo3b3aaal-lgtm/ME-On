@@ -1,6 +1,6 @@
 import { Group, Student, Enrollment, Session, SessionStatus } from '../types';
 import { getAppLanguage } from './i18n';
-import { getLocalDateParts, getLocalDateString, parseLocalTimeToStandard } from './localDate';
+import { getLocalDateParts, getLocalDateString, parseLocalTimeToStandard, toLocalISODate, parseLocalDateStr } from './localDate';
 
 // ==========================================
 // 1. CANONICAL WEEKDAYS ARCHITECTURE
@@ -321,7 +321,7 @@ export function formatDayNameLocalized(dayName: string, isRTLOrLang?: boolean | 
  * Get localized day name from a Date or ISO string
  */
 export function getLocalizedDayForDate(date: Date | string, isRTLOrLang?: boolean | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = typeof date === 'string' ? parseLocalDateStr(date) : date;
   if (isNaN(d.getTime())) return getLocalizedWeekdayName('saturday', isRTLOrLang);
   const dayIndex = d.getDay();
   const canon = DAY_INDEX_TO_CANONICAL[dayIndex] || 'saturday';
@@ -680,7 +680,7 @@ export function getScheduledClassesForDate(
   arg4: Student[] | Enrollment[],
   isRTLOrLang?: boolean | string
 ): ScheduledClassItem[] {
-  const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  const d = typeof dateInput === 'string' ? parseLocalDateStr(dateInput) : dateInput;
   if (isNaN(d.getTime())) return [];
 
   const isRTL = isRTLMode(isRTLOrLang);
@@ -796,7 +796,7 @@ export function getScheduledClassesForDate(
               rawTime,
               sortMinutes,
               location: loc,
-              accentColor: group.accentColor || '#16324F',
+              accentColor: group.accentColor || '#0F1206',
             });
           });
         }
@@ -828,7 +828,7 @@ export function getScheduledClassesForDate(
             rawTime,
             sortMinutes,
             location: loc,
-            accentColor: group.accentColor || '#0A3D62',
+            accentColor: group.accentColor || '#293828',
           });
         });
       }
@@ -862,7 +862,7 @@ export function getScheduledClassesForDate(
               rawTime,
               sortMinutes,
               location: loc,
-              accentColor: group.accentColor || '#0A3D62',
+              accentColor: group.accentColor || '#293828',
             });
           });
         }
@@ -902,7 +902,7 @@ export function getScheduledClassesForDate(
             rawTime,
             sortMinutes,
             location: loc,
-            accentColor: '#16324F',
+            accentColor: '#0F1206',
           });
         });
       }
@@ -966,7 +966,7 @@ export function getUpcomingClassesForStudent(
     const dayIdx = targetDate.getDay();
     const canonKey = DAY_INDEX_TO_CANONICAL[dayIdx] || 'saturday';
     const localizedDayName = getLocalizedWeekdayName(canonKey, isRTL);
-    const dateStr = targetDate.toISOString().split('T')[0];
+    const dateStr = toLocalISODate(targetDate);
 
     const dayRelative =
       offset === 0
@@ -1011,7 +1011,7 @@ export function getUpcomingClassesForStudent(
           isPrivate,
           subject: subj,
           location: loc,
-          accentColor: group.accentColor || (isPrivate ? '#16324F' : '#0A3D62'),
+          accentColor: group.accentColor || (isPrivate ? '#0F1206' : '#293828'),
         });
       }
     }
@@ -1152,7 +1152,7 @@ export function getStudentEffectiveSchedule(
           location: loc,
           groupId: group.id,
           enrollmentId: enr.id,
-          accentColor: group.accentColor || '#0A3D62',
+          accentColor: group.accentColor || '#293828',
         };
 
         groupItems.push(item);
@@ -1174,7 +1174,7 @@ export function getStudentEffectiveSchedule(
         groupId: group.id,
         groupName: group.name,
         subject: subj,
-        accentColor: group.accentColor || '#0A3D62',
+        accentColor: group.accentColor || '#293828',
         location: loc,
         items: groupItems,
       });
@@ -1235,7 +1235,7 @@ export function getStudentEffectiveSchedule(
             location: privLoc,
             groupId: group?.id,
             enrollmentId: enr.id,
-            accentColor: group?.accentColor || '#16324F',
+            accentColor: group?.accentColor || '#0F1206',
           };
 
           privItems.push(item);
@@ -1258,7 +1258,7 @@ export function getStudentEffectiveSchedule(
           title: isRTL ? 'الدرس الخاص' : 'Private Lesson',
           subject: privSubj,
           location: privLoc,
-          accentColor: group?.accentColor || '#16324F',
+          accentColor: group?.accentColor || '#0F1206',
           items: privItems,
         });
       }
@@ -1293,7 +1293,7 @@ export function getStudentEffectiveSchedule(
           sourceTitle: isRTL ? 'الدرس الخاص' : 'Private Lesson',
           subject: privSubj,
           location: privLoc,
-          accentColor: '#16324F',
+          accentColor: '#0F1206',
         };
 
         privItems.push(item);
@@ -1314,7 +1314,7 @@ export function getStudentEffectiveSchedule(
         title: isRTL ? 'الدرس الخاص' : 'Private Lesson',
         subject: privSubj,
         location: privLoc,
-        accentColor: '#16324F',
+        accentColor: '#0F1206',
         items: privItems,
       });
     }
@@ -1348,7 +1348,7 @@ export function getStudentEffectiveSchedule(
             sourceType: 'student_custom',
             sourceTitle: isRTL ? 'موعد مخصص' : 'Custom Schedule',
             subject: getLocalizedSubjectName(student.subject, isRTL) || (isRTL ? 'مادة دراسية' : 'Subject'),
-            accentColor: '#0A3D62',
+            accentColor: '#293828',
           });
         }
       });
@@ -1475,7 +1475,7 @@ export function getYearClassStatsMap(
   students: Student[]
 ): Map<string, DayClassSummary> {
   const statsMap = new Map<string, DayClassSummary>();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalISODate();
 
   const sessionsByDate = new Map<string, Session[]>();
   for (const s of sessions) {
@@ -1612,7 +1612,7 @@ export function generateMonthGrid(
   statsMap?: Map<string, DayClassSummary>
 ): CalendarDayCell[] {
   const cells: CalendarDayCell[] = [];
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalISODate();
 
   const firstDayDate = new Date(year, monthIndex, 1);
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -1767,12 +1767,12 @@ export function getDetailedAgendaForDate(
   isRTLOrLang?: boolean | string
 ): DetailedDateAgenda {
   const isRTL = isRTLMode(isRTLOrLang);
-  const dateObj = new Date(dateStr);
+  const dateObj = parseLocalDateStr(dateStr);
   const dayOfWeek = !isNaN(dateObj.getTime()) ? dateObj.getDay() : 6;
   const canonDay = DAY_INDEX_TO_CANONICAL[dayOfWeek] || 'saturday';
   const dayName = getLocalizedWeekdayName(canonDay, isRTL);
   
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalISODate();
   const isToday = dateStr === todayStr;
   const isPast = dateStr < todayStr;
   const isFuture = dateStr > todayStr;
@@ -1867,7 +1867,7 @@ export function getDetailedAgendaForDate(
       sortMinutes,
       status: session.status,
       notes: session.notes,
-      accentColor: group?.accentColor || (isPrivate ? '#16324F' : '#0A3D62'),
+      accentColor: group?.accentColor || (isPrivate ? '#0F1206' : '#293828'),
       pricePerStudent: session.pricePerStudent || group?.defaultPrice,
       hourlyRate: session.hourlyRate || group?.hourlyRate,
       billingMode: group?.billingMode || group?.billingType,
@@ -1931,7 +1931,7 @@ export function getDetailedAgendaForDate(
               formattedTime,
               sortMinutes,
               status: 'scheduled',
-              accentColor: group.accentColor || (isPrivate ? '#16324F' : '#0A3D62'),
+              accentColor: group.accentColor || (isPrivate ? '#0F1206' : '#293828'),
               pricePerStudent: enr.customPrice || group.defaultPrice,
               hourlyRate: enr.hourlyRate || group.hourlyRate,
               billingMode: enr.billingMode || group.billingMode,
@@ -1972,7 +1972,7 @@ export function getDetailedAgendaForDate(
             formattedTime,
             sortMinutes,
             status: 'scheduled',
-            accentColor: group.accentColor || '#0A3D62',
+            accentColor: group.accentColor || '#293828',
             pricePerStudent: group.defaultPrice,
             hourlyRate: group.hourlyRate,
             billingMode: group.billingMode,

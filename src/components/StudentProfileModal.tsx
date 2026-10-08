@@ -73,6 +73,7 @@ import {
 } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
+import { parseLocalDateStr } from '../utils/localDate';
 import { QuickBehaviorLogModal } from './QuickBehaviorLogModal';
 import { SafeDeleteStudentModal } from './SafeDeleteStudentModal';
 import { getLocalizedStageName } from '../utils/stages';
@@ -343,10 +344,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         subtitle: b.note || (b.groupName ? (isEn ? `in ${b.groupName}` : `في ${b.groupName}`) : (isEn ? 'Quick behavior assessment' : 'تقييم سلوكي سريع')),
         badge: `${(b.points ?? 0) > 0 ? '+' : ''}${b.points ?? 0} ${t('points')}`,
         badgeColor: isPos
-          ? 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60'
+          ? 'bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60'
           : isNeg
-          ? 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]'
-          : 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]',
+          ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
+          : 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]',
         timestamp: new Date(b.timestamp || b.createdAt).getTime(),
       });
     });
@@ -374,12 +375,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           : (isEn ? `Excused Absence (${att.absenceReason || 'Excused'})` : `غياب معفى (${att.absenceReason || 'معتذر'})`),
         badge: isPres ? t('present') : isLate ? t('late') : isCharged ? t('absentCharged') : t('absentExcused'),
         badgeColor: isPres
-          ? 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60'
+          ? 'bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60'
           : isLate
-          ? 'bg-[#C7CDD3]/70 text-[#16324F] border border-[#16324F]/50'
+          ? 'bg-[#DDD3C7]/70 text-[#0F1206] border border-[#0F1206]/50'
           : isCharged
-          ? 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]'
-          : 'bg-[#C7CDD3]/25 text-[#16324F] border border-[#C7CDD3]',
+          ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
+          : 'bg-[#DDD3C7]/25 text-[#0F1206] border border-[#DDD3C7]',
         timestamp: new Date(att.recordedAt || ses?.date || 0).getTime(),
       });
     });
@@ -402,7 +403,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             : p.paymentMethod === 'bank_transfer'
             ? (isEn ? 'Bank Transfer' : 'تحويل بنكي')
             : (isEn ? 'Cash' : 'كاش'),
-        badgeColor: 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60',
+        badgeColor: 'bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60',
         timestamp: new Date(p.createdAt || p.date).getTime(),
       });
     });
@@ -418,9 +419,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         badge: `${log.sessionsDelta > 0 ? '+' : ''}${log.sessionsDelta} ${isEn ? 'sessions' : 'حصة'}`,
         badgeColor:
           log.sessionsDelta > 0
-            ? 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60'
-            : 'bg-[#C7CDD3]/70 text-[#16324F] border border-[#16324F]/50',
-        timestamp: new Date(log.date).getTime(),
+            ? 'bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60'
+            : 'bg-[#DDD3C7]/70 text-[#0F1206] border border-[#0F1206]/50',
+        timestamp: parseLocalDateStr(log.date).getTime(),
       });
     });
 
@@ -632,16 +633,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#16324F]/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#0F1206]/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#FFFFFF] border border-[#C7CDD3] rounded-t-[32px] sm:rounded-[32px] max-w-2xl w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
+        <div className="bg-[#F8F2EC] border border-[#DDD3C7] rounded-t-[32px] sm:rounded-[32px] max-w-2xl w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
           {/* =========================================================================
               1. STUDENT PROFILE HERO (Classy Midnight & Royal Gradient)
               ========================================================================= */}
           <div
             {...headerSwipeDownGestures}
-            className="bg-gradient-to-r from-[#0A3D62] via-[#16324F] to-[#6F7882] p-5 sm:p-6 text-[#FFFFFF] relative overflow-hidden shrink-0 border-b border-[#C7CDD3]/15 select-none cursor-grab active:cursor-grabbing"
+            className="bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] p-5 sm:p-6 text-[#F8F2EC] relative overflow-hidden shrink-0 border-b border-[#DDD3C7]/15 select-none cursor-grab active:cursor-grabbing"
           >
             {/* Mobile Drag Indicator */}
             <div className="sm:hidden w-full pb-2 flex items-center justify-center -mt-2">
@@ -649,13 +650,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             </div>
 
             {/* Ambient internal glows */}
-            <div className="absolute -top-16 -right-16 w-52 h-52 bg-[#0A3D62]/35 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-16 -left-16 w-52 h-52 bg-[#16324F]/30 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-16 -right-16 w-52 h-52 bg-[#293828]/35 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-52 h-52 bg-[#0F1206]/30 rounded-full blur-3xl pointer-events-none" />
 
             {/* Close button */}
             <button
               onClick={onClose}
-              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF]/90 hover:text-[#FFFFFF] transition-all cursor-pointer z-10`}
+              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-2xl bg-[#F8F2EC]/10 hover:bg-[#F8F2EC]/20 text-[#F8F2EC]/90 hover:text-[#F8F2EC] transition-all cursor-pointer z-10`}
               title={t('close')}
             >
               <X className="w-5 h-5" />
@@ -672,43 +673,43 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl sm:text-2xl font-black text-[#FFFFFF] tracking-tight truncate">
+                    <h2 className="text-xl sm:text-2xl font-black text-[#F8F2EC] tracking-tight truncate">
                       {student.name}
                     </h2>
 
                     {/* Archived Status Badge */}
                     {isArchived && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#0A3D62]/20 text-[#C7CDD3] border border-[#0A3D62]/30 flex items-center gap-1 shadow-2xs">
-                        <Archive className="w-3 h-3 text-[#C7CDD3]" />
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#293828]/20 text-[#DDD3C7] border border-[#293828]/30 flex items-center gap-1 shadow-2xs">
+                        <Archive className="w-3 h-3 text-[#DDD3C7]" />
                         <span>{t('archived')}</span>
                       </span>
                     )}
 
                     {/* Service Badges */}
                     {serviceType === 'both' && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#C7CDD3]/25">
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/25">
                         {isEn ? 'Group + Private' : 'مجموعة + درس خاص'}
                       </span>
                     )}
                     {serviceType === 'private_only' && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/15 text-[#FFFFFF] border border-[#C7CDD3]/30">
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/15 text-[#F8F2EC] border border-[#DDD3C7]/30">
                         {isEn ? 'Private Lesson' : 'درس خاص'}
                       </span>
                     )}
                     {serviceType === 'group_only' && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#C7CDD3] border border-[#C7CDD3]/25">
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/20 text-[#DDD3C7] border border-[#DDD3C7]/25">
                         {isEn ? 'Group Only' : 'مجموعة فقط'}
                       </span>
                     )}
                     {serviceType === 'none' && !isArchived && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/10 text-[#C7CDD3]/90 border border-[#C7CDD3]/20">
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/10 text-[#DDD3C7]/90 border border-[#DDD3C7]/20">
                         {isEn ? 'No Active Enrollment' : 'بدون اشتراك نشط'}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-[#C7CDD3]/90 font-medium flex-wrap">
-                    <span className="font-bold bg-[#FFFFFF]/15 px-2.5 py-0.5 rounded-lg border border-[#C7CDD3]/15">
+                  <div className="flex items-center gap-2 text-xs text-[#DDD3C7]/90 font-medium flex-wrap">
+                    <span className="font-bold bg-[#F8F2EC]/15 px-2.5 py-0.5 rounded-lg border border-[#DDD3C7]/15">
                       {getLocalizedStageName(student.gradeLevel) || (isEn ? 'Grade Not Set' : 'الصف غير محدد')}
                     </span>
                     {student.school && <span>• {isEn ? `School: ${student.school}` : `مدرسة ${student.school}`}</span>}
@@ -720,15 +721,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
             {/* Archived Alert Banner */}
             {isArchived && (
-              <div className="mt-4 p-3 rounded-2xl bg-[#16324F]/20 border border-[#0A3D62]/30 text-[#FFFFFF] flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
+              <div className="mt-4 p-3 rounded-2xl bg-[#0F1206]/20 border border-[#293828]/30 text-[#F8F2EC] flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
                 <div className={`text-xs font-medium leading-relaxed ${isRTL ? 'text-right' : 'text-left'} w-full sm:w-auto`}>
-                  <strong className="font-black block text-[#FFFFFF]">{isEn ? 'Student is currently archived' : 'هذا الطالب مؤرشف حالياً'}</strong>
+                  <strong className="font-black block text-[#F8F2EC]">{isEn ? 'Student is currently archived' : 'هذا الطالب مؤرشف حالياً'}</strong>
                   <span>{isEn ? 'All historical records, sessions, and payments are preserved.' : 'كافة السجلات والحصص والمدفوعات التاريخية محفوظة بالكامل.'}</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleRestoreStudent}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#16324F] hover:from-[#16324F] hover:to-[#6F7882] text-[#FFFFFF] font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0 active:scale-95"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] hover:from-[#0F1206] hover:to-[#756046] text-[#F8F2EC] font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0 active:scale-95"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>{isEn ? 'Restore Student' : 'استعادة الطالب للنشاط'}</span>
@@ -737,12 +738,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             )}
 
             {/* Quick Contacts & Actions Ribbon */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-4 border-t border-[#C7CDD3]/20 relative z-10">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-4 border-t border-[#DDD3C7]/20 relative z-10">
               {hasPrivate && (
                 <button
                   type="button"
                   onClick={() => setIsRecordPrivateModalOpen(true)}
-                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] text-xs font-black flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95 hover:brightness-105"
+                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] text-xs font-black flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95 hover:brightness-105"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{isEn ? '+ Private Class' : '+ حصة خاصة'}</span>
@@ -752,25 +753,25 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenAddPayment(student)}
-                className="py-2 px-3 rounded-xl bg-[#FFFFFF] text-[#16324F] hover:bg-[#FFFFFF] text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                className="py-2 px-3 rounded-xl bg-[#F8F2EC] text-[#0F1206] hover:bg-[#F8F2EC] text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
               >
-                <DollarSign className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                <DollarSign className="w-3.5 h-3.5 text-[#F8F2EC]" />
                 <span>+ {t('recordPayment')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsQuickBehaviorModalOpen(true)}
-                className="py-2 px-3 rounded-xl bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/25 text-[#FFFFFF] border border-[#C7CDD3]/25 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="py-2 px-3 rounded-xl bg-[#F8F2EC]/15 hover:bg-[#F8F2EC]/25 text-[#F8F2EC] border border-[#DDD3C7]/25 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
               >
-                <Zap className="w-3.5 h-3.5 text-[#C7CDD3]" />
+                <Zap className="w-3.5 h-3.5 text-[#DDD3C7]" />
                 <span>{isEn ? 'Behavior Rating' : 'تقييم سلوك'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onEditStudent(student)}
-                className="py-2 px-3 rounded-xl bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/25 text-[#FFFFFF] border border-[#C7CDD3]/25 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="py-2 px-3 rounded-xl bg-[#F8F2EC]/15 hover:bg-[#F8F2EC]/25 text-[#F8F2EC] border border-[#DDD3C7]/25 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
                 title={t('editStudent')}
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -782,13 +783,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           {/* =========================================================================
               2. SUB-NAVIGATION TABS (Horizontal Scrollable Strip)
               ========================================================================= */}
-          <div className="flex border-b border-[#C7CDD3] bg-[#FFFFFF] px-2 overflow-x-auto android-scrollbar shrink-0 z-10 sticky top-0">
+          <div className="flex border-b border-[#DDD3C7] bg-[#F8F2EC] px-2 overflow-x-auto android-scrollbar shrink-0 z-10 sticky top-0">
             <button
               onClick={() => setActiveSubTab('overview')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'overview'
-                  ? 'border-[#0A3D62] text-[#0A3D62] bg-[#C7CDD3]/30'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#293828] text-[#293828] bg-[#DDD3C7]/30'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
               <Activity className="w-4 h-4" />
@@ -799,8 +800,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               onClick={() => setActiveSubTab('groups')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'groups'
-                  ? 'border-[#0A3D62] text-[#0A3D62] bg-[#C7CDD3]/30'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#293828] text-[#293828] bg-[#DDD3C7]/30'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
               <Layers className="w-4 h-4" />
@@ -811,11 +812,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               onClick={() => setActiveSubTab('private')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'private'
-                  ? 'border-[#16324F] text-[#16324F] bg-[#C7CDD3]/15'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#0F1206] text-[#0F1206] bg-[#DDD3C7]/15'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
-              <Sparkles className="w-4 h-4 text-[#16324F]" />
+              <Sparkles className="w-4 h-4 text-[#0F1206]" />
               <span>{isEn ? 'Private Lessons' : 'الدرس الخاص'} {privateEnrollments.length > 0 ? `(${privateEnrollments.length})` : ''}</span>
             </button>
 
@@ -823,8 +824,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               onClick={() => setActiveSubTab('finances')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'finances'
-                  ? 'border-[#0A3D62] text-[#0A3D62] bg-[#C7CDD3]/30'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#293828] text-[#293828] bg-[#DDD3C7]/30'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
               <DollarSign className="w-4 h-4" />
@@ -835,8 +836,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               onClick={() => setActiveSubTab('attendance')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'attendance'
-                  ? 'border-[#0A3D62] text-[#0A3D62] bg-[#C7CDD3]/30'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#293828] text-[#293828] bg-[#DDD3C7]/30'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
               <CalendarCheck2 className="w-4 h-4" />
@@ -847,8 +848,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               onClick={() => setActiveSubTab('behavior')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'behavior'
-                  ? 'border-[#0A3D62] text-[#0A3D62] bg-[#C7CDD3]/30'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#293828] text-[#293828] bg-[#DDD3C7]/30'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
               <Zap className="w-4 h-4" />
@@ -859,8 +860,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               onClick={() => setActiveSubTab('history')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'history'
-                  ? 'border-[#0A3D62] text-[#0A3D62] bg-[#C7CDD3]/30'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#293828] text-[#293828] bg-[#DDD3C7]/30'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
               <History className="w-4 h-4" />
@@ -871,8 +872,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               onClick={() => setActiveSubTab('credit_logs')}
               className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
                 activeSubTab === 'credit_logs'
-                  ? 'border-[#0A3D62] text-[#0A3D62] bg-[#C7CDD3]/30'
-                  : 'border-transparent text-[#6F7882] hover:text-[#16324F]'
+                  ? 'border-[#293828] text-[#293828] bg-[#DDD3C7]/30'
+                  : 'border-transparent text-[#756046] hover:text-[#0F1206]'
               }`}
             >
               <Coins className="w-4 h-4" />
@@ -885,7 +886,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               ========================================================================= */}
           <div
             {...tabContentSwipeGestures}
-            className="p-4 sm:p-5 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar flex-1 space-y-4 text-xs text-[#16324F]"
+            className="p-4 sm:p-5 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar flex-1 space-y-4 text-xs text-[#0F1206]"
           >
             {/* -------------------------------------------------------------
                 TAB 1: OVERVIEW / TEACHER DOSSIER
@@ -894,17 +895,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-4">
                 {/* Today's Private Lessons Summary (Feature 1 & Feature 3) */}
                 {todayPrivateSummary && todayPrivateSummary.visitsCount > 0 && (
-                  <div className="classy-card p-4 bg-gradient-to-r from-[#FFFFFF] via-[#FFFFFF] to-[#FFFFFF] border-[#C7CDD3] space-y-3 shadow-xs">
+                  <div className="classy-card p-4 bg-gradient-to-r from-[#F8F2EC] via-[#F8F2EC] to-[#F8F2EC] border-[#DDD3C7] space-y-3 shadow-xs">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/15 text-[#16324F] flex items-center justify-center font-black">
+                        <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/15 text-[#0F1206] flex items-center justify-center font-black">
                           <Calendar className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-black text-xs sm:text-sm text-[#16324F] flex items-center gap-1.5">
+                          <h3 className="font-black text-xs sm:text-sm text-[#0F1206] flex items-center gap-1.5">
                             <span>{isEn ? "Today's Private Lessons" : 'دروس اليوم الخاصة'}</span>
                           </h3>
-                          <p className="text-[11px] text-[#6F7882] font-medium">
+                          <p className="text-[11px] text-[#756046] font-medium">
                             {student.name} • {todayPrivateSummary.date}
                           </p>
                         </div>
@@ -912,11 +913,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                       <div className="flex items-center gap-1.5">
                         {todayPrivateSummary.hasIncomplete && (
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#C7CDD3]/25 text-[#16324F] border border-[#16324F]/50 animate-pulse">
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/25 text-[#0F1206] border border-[#0F1206]/50 animate-pulse">
                             ⚠️ {isEn ? `${todayPrivateSummary.incompleteCount} need(s) completion` : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`}
                           </span>
                         )}
-                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]">
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]">
                           {todayPrivateSummary.visitsCount} {isEn ? (todayPrivateSummary.visitsCount === 1 ? 'Appointment' : 'Appointments') : (todayPrivateSummary.visitsCount === 1 ? 'موعد' : 'مواعيد')}
                         </span>
                       </div>
@@ -933,28 +934,28 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             key={sesItem.occurrenceId}
                             className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all ${
                               sesItem.isIncomplete
-                                ? 'bg-[#C7CDD3]/80 border-[#16324F]/50'
+                                ? 'bg-[#DDD3C7]/80 border-[#0F1206]/50'
                                 : isPres
-                                ? 'bg-[#FFFFFF] border-[#0A3D62]/50 shadow-2xs'
-                                : 'bg-[#C7CDD3]/15 border-[#C7CDD3]'
+                                ? 'bg-[#F8F2EC] border-[#293828]/50 shadow-2xs'
+                                : 'bg-[#DDD3C7]/15 border-[#DDD3C7]'
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="px-2.5 py-1 rounded-xl bg-[#0A3D62] text-[#FFFFFF] font-black text-xs shrink-0">
+                              <div className="px-2.5 py-1 rounded-xl bg-[#293828] text-[#F8F2EC] font-black text-xs shrink-0">
                                 {sesItem.time}
                               </div>
                               <div className="min-w-0">
-                                <strong className="text-xs font-black text-[#16324F] block truncate">
+                                <strong className="text-xs font-black text-[#0F1206] block truncate">
                                   {sesItem.subject}
                                 </strong>
-                                <span className="text-[11px] text-[#6F7882] block">
+                                <span className="text-[11px] text-[#756046] block">
                                   {sesItem.status === 'unrecorded'
                                     ? (isEn ? 'Scheduled • Not recorded yet' : 'مجدول • لم يُرصد بعد')
                                     : isPres
                                     ? (isEn ? '✓ Present' : '✓ حضر')
                                     : (isEn ? 'Absent' : 'لم يحضر')}
                                   {isPres && (
-                                    <span className="font-black text-[#0A3D62] ms-1">
+                                    <span className="font-black text-[#293828] ms-1">
                                       • {isHourly ? `${sesItem.hours || 0} ${isEn ? 'Hours' : 'ساعة'}` : `${sesItem.sessionUnits || 0} ${isEn ? 'Session(s)' : 'حصة'}`}
                                     </span>
                                   )}
@@ -972,14 +973,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                       setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
                                     }
                                   }}
-                                  className="px-2.5 py-1.5 rounded-xl bg-[#C7CDD3]/700 hover:bg-[#16324F] text-[#FFFFFF] font-black text-[10px] flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
+                                  className="px-2.5 py-1.5 rounded-xl bg-[#DDD3C7]/700 hover:bg-[#0F1206] text-[#F8F2EC] font-black text-[10px] flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
                                 >
                                   <span>⚠️</span>
                                   <span>{isEn ? 'Complete Session' : 'استكمال تفاصيل الحصة'}</span>
                                 </button>
                               ) : isPres ? (
                                 <div className="text-right">
-                                  <span className="text-xs font-black text-[#16324F] block">
+                                  <span className="text-xs font-black text-[#0F1206] block">
                                     {sesItem.price} {t('currency')}
                                   </span>
                                   <button
@@ -990,7 +991,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                         setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
                                       }
                                     }}
-                                    className="text-[10px] text-[#0A3D62] font-bold hover:underline cursor-pointer"
+                                    className="text-[10px] text-[#293828] font-bold hover:underline cursor-pointer"
                                   >
                                     {isEn ? 'Edit' : 'تعديل'}
                                   </button>
@@ -1003,15 +1004,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     </div>
 
                     {/* Daily Totals Bar */}
-                    <div className="p-3 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#6F7882]">
+                    <div className="p-3 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#756046]">
                         {isEn ? "Today's Total:" : 'إجمالي اليوم:'}
                       </span>
                       <div className="flex items-center gap-3">
-                        <span className="font-black text-[#0A3D62]">
+                        <span className="font-black text-[#293828]">
                           {todayPrivateSummary.totalUnitsOrHoursText}
                         </span>
-                        <span className="text-sm font-black text-[#16324F]">
+                        <span className="text-sm font-black text-[#0F1206]">
                           {todayPrivateSummary.totalAmount} {t('currency')}
                         </span>
                       </div>
@@ -1021,20 +1022,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                 {/* Financial Summary Bento Cards */}
                 <div className="grid grid-cols-3 gap-2.5 text-center">
-                  <div className="classy-card p-3.5 bg-[#FFFFFF] space-y-1">
-                    <span className="text-[10px] font-bold text-[#6F7882] block">
+                  <div className="classy-card p-3.5 bg-[#F8F2EC] space-y-1">
+                    <span className="text-[10px] font-bold text-[#756046] block">
                       {isEn ? 'Total Fees (Gross)' : 'إجمالي الرسوم (Gross)'}
                     </span>
-                    <strong className="text-base sm:text-lg font-black text-[#16324F] block">
+                    <strong className="text-base sm:text-lg font-black text-[#0F1206] block">
                       {grandFinancials.grandTotalDue} {t('currency')}
                     </strong>
                   </div>
 
-                  <div className="classy-card p-3.5 bg-[#FFFFFF] space-y-1 border-[#0A3D62]/50">
-                    <span className="text-[10px] font-bold text-[#16324F] block">
+                  <div className="classy-card p-3.5 bg-[#F8F2EC] space-y-1 border-[#293828]/50">
+                    <span className="text-[10px] font-bold text-[#0F1206] block">
                       {t('totalCollected')}
                     </span>
-                    <strong className="text-base sm:text-lg font-black text-[#16324F] block">
+                    <strong className="text-base sm:text-lg font-black text-[#0F1206] block">
                       {grandFinancials.grandTotalPaid} {t('currency')}
                     </strong>
                   </div>
@@ -1042,16 +1043,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <div
                     className={`classy-card p-3.5 space-y-1 ${
                       grandFinancials.grandRemaining > 0
-                        ? 'bg-[#C7CDD3]/15 border-[#C7CDD3]'
-                        : 'bg-[#FFFFFF] border-[#0A3D62]/50'
+                        ? 'bg-[#DDD3C7]/15 border-[#DDD3C7]'
+                        : 'bg-[#F8F2EC] border-[#293828]/50'
                     }`}
                   >
-                    <span className="text-[10px] font-bold text-[#6F7882] block">
+                    <span className="text-[10px] font-bold text-[#756046] block">
                       {t('remainingBalance')}
                     </span>
                     <strong
                       className={`text-base sm:text-lg font-black block ${
-                        grandFinancials.grandRemaining > 0 ? 'text-[#16324F]' : 'text-[#16324F]'
+                        grandFinancials.grandRemaining > 0 ? 'text-[#0F1206]' : 'text-[#0F1206]'
                       }`}
                     >
                       {grandFinancials.grandRemaining} {t('currency')}
@@ -1060,56 +1061,56 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {/* Lesson & Hourly Delivery Ledger Breakdown (Sessions vs Lessons & Unpaid Lessons) */}
-                <div className="classy-card p-4 bg-gradient-to-br from-[#FFFFFF] via-[#FFFFFF] to-[#FFFFFF] border-[#C7CDD3] shadow-xs space-y-2.5">
-                  <div className="flex items-center justify-between border-b border-[#C7CDD3] pb-2">
+                <div className="classy-card p-4 bg-gradient-to-br from-[#F8F2EC] via-[#F8F2EC] to-[#F8F2EC] border-[#DDD3C7] shadow-xs space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-[#DDD3C7] pb-2">
                     <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-[#0A3D62]" />
-                      <h4 className="font-black text-xs text-[#16324F]">
+                      <Layers className="w-4 h-4 text-[#293828]" />
+                      <h4 className="font-black text-xs text-[#0F1206]">
                         {isEn ? 'Lessons & Workload Balance (Physical vs Billed)' : 'ميزان الحصص وساعات العمل (الفعلي مقابل المسدد)'}
                       </h4>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C7CDD3]/25 text-[#0A3D62]">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#DDD3C7]/25 text-[#293828]">
                       {grandFinancials.grandAppointmentsCount || 0} {isEn ? 'Appointments' : 'جلسات منعقدة'}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[10px]">
-                    <div className="p-2.5 bg-[#FFFFFF] rounded-2xl border border-[#C7CDD3] space-y-0.5">
-                      <span className="text-[#6F7882] block font-bold">
+                    <div className="p-2.5 bg-[#F8F2EC] rounded-2xl border border-[#DDD3C7] space-y-0.5">
+                      <span className="text-[#756046] block font-bold">
                         {isEn ? 'Completed Lessons' : 'إجمالي الحصص المنفذة'}
                       </span>
-                      <strong className="text-sm font-black text-[#16324F] block">
+                      <strong className="text-sm font-black text-[#0F1206] block">
                         {grandFinancials.grandCompletedLessons || 0} {isEn ? 'Lessons' : 'حصة'}
                       </strong>
                     </div>
 
-                    <div className="p-2.5 bg-[#FFFFFF] rounded-2xl border border-[#0A3D62]/50 space-y-0.5">
-                      <span className="text-[#16324F] block font-bold">
+                    <div className="p-2.5 bg-[#F8F2EC] rounded-2xl border border-[#293828]/50 space-y-0.5">
+                      <span className="text-[#0F1206] block font-bold">
                         {isEn ? 'Paid Lessons' : 'الحصص المسددة'}
                       </span>
-                      <strong className="text-sm font-black text-[#16324F] block">
+                      <strong className="text-sm font-black text-[#0F1206] block">
                         {grandFinancials.grandPaidLessons || 0} {isEn ? 'Lessons' : 'حصة'}
                       </strong>
                     </div>
 
                     <div className={`p-2.5 rounded-2xl border space-y-0.5 ${
-                      (grandFinancials.grandUnpaidLessons || 0) > 0 ? 'bg-[#C7CDD3]/15 border-[#C7CDD3]' : 'bg-[#FFFFFF] border-[#C7CDD3]'
+                      (grandFinancials.grandUnpaidLessons || 0) > 0 ? 'bg-[#DDD3C7]/15 border-[#DDD3C7]' : 'bg-[#F8F2EC] border-[#DDD3C7]'
                     }`}>
-                      <span className="block font-bold text-[#6F7882]">
+                      <span className="block font-bold text-[#756046]">
                         {isEn ? 'Unpaid Lessons' : 'الحصص غير المسددة'}
                       </span>
                       <strong className={`text-sm font-black block ${
-                        (grandFinancials.grandUnpaidLessons || 0) > 0 ? 'text-[#16324F]' : 'text-[#16324F]'
+                        (grandFinancials.grandUnpaidLessons || 0) > 0 ? 'text-[#0F1206]' : 'text-[#0F1206]'
                       }`}>
                         {grandFinancials.grandUnpaidLessons || 0} {isEn ? 'Lessons' : 'حصة'}
                       </strong>
                     </div>
 
-                    <div className="p-2.5 bg-[#FFFFFF] rounded-2xl border border-[#C7CDD3] space-y-0.5">
-                      <span className="text-[#6F7882] block font-bold">
+                    <div className="p-2.5 bg-[#F8F2EC] rounded-2xl border border-[#DDD3C7] space-y-0.5">
+                      <span className="text-[#756046] block font-bold">
                         {isEn ? 'Hourly Logged' : 'ساعات العمل'}
                       </span>
-                      <strong className="text-sm font-black text-[#16324F] block">
+                      <strong className="text-sm font-black text-[#0F1206] block">
                         {grandFinancials.grandTotalHours || 0} {isEn ? 'Hours' : 'ساعة'}
                       </strong>
                     </div>
@@ -1117,19 +1118,19 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {/* Direct Contacts & WhatsApp Bar */}
-                <div className="classy-card p-3.5 bg-[#FFFFFF] flex items-center justify-between gap-2 flex-wrap">
+                <div className="classy-card p-3.5 bg-[#F8F2EC] flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-[#0A3D62]" />
-                    <span className="font-bold text-xs text-[#16324F]">{isEn ? 'Contact Info:' : 'بيانات التواصل المباشر:'}</span>
+                    <Phone className="w-4 h-4 text-[#293828]" />
+                    <span className="font-bold text-xs text-[#0F1206]">{isEn ? 'Contact Info:' : 'بيانات التواصل المباشر:'}</span>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
                     {student.phone && (
                       <a
                         href={`tel:${student.phone}`}
-                        className="px-3 py-1.5 rounded-xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#16324F] font-bold text-xs flex items-center gap-1.5 border border-[#C7CDD3] transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#0F1206] font-bold text-xs flex items-center gap-1.5 border border-[#DDD3C7] transition-colors"
                       >
-                        <Phone className="w-3 h-3 text-[#0A3D62]" />
+                        <Phone className="w-3 h-3 text-[#293828]" />
                         <span>{student.phone}</span>
                       </a>
                     )}
@@ -1139,9 +1140,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         href={`https://wa.me/${student.parentPhone.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-1.5 rounded-xl bg-[#C7CDD3]/65 hover:bg-[#C7CDD3]/35 text-[#16324F] font-bold text-xs flex items-center gap-1.5 border border-[#0A3D62]/60 transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-[#DDD3C7]/65 hover:bg-[#DDD3C7]/35 text-[#0F1206] font-bold text-xs flex items-center gap-1.5 border border-[#293828]/60 transition-colors"
                       >
-                        <MessageCircle className="w-3.5 h-3.5 text-[#0A3D62]" />
+                        <MessageCircle className="w-3.5 h-3.5 text-[#293828]" />
                         <span>{isEn ? `WhatsApp (${student.parentRelation || 'Parent'}): ${student.parentPhone}` : `واتساب ${student.parentRelation || 'ولي الأمر'}: ${student.parentPhone}`}</span>
                       </a>
                     )}
@@ -1151,17 +1152,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 {/* =========================================================================
                     DEDICATED STUDENT SCHEDULE CARD (مواعيد الطالب)
                     ========================================================================= */}
-                <div className="classy-card p-4 bg-[#FFFFFF] space-y-3.5 shadow-sm border-[#C7CDD3]">
+                <div className="classy-card p-4 bg-[#F8F2EC] space-y-3.5 shadow-sm border-[#DDD3C7]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/25 text-[#0A3D62] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/25 text-[#293828] flex items-center justify-center shrink-0">
                         <Clock className="w-4 h-4" />
                       </div>
                       <div>
-                        <h3 className="font-black text-xs sm:text-sm text-[#16324F] flex items-center gap-1.5">
+                        <h3 className="font-black text-xs sm:text-sm text-[#0F1206] flex items-center gap-1.5">
                           <span>{t('studentSchedule')}</span>
                         </h3>
-                        <p className="text-[11px] text-[#6F7882] font-medium">
+                        <p className="text-[11px] text-[#756046] font-medium">
                           {isEn ? 'Effective recurring weekly timetable' : 'جدول ومواعيد الحصص الأسبوعية الفعلية'}
                         </p>
                       </div>
@@ -1169,14 +1170,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                     <div className="flex items-center gap-2">
                       {effectiveSchedule && effectiveSchedule.totalOccurrencesCount > 0 && (
-                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#C7CDD3]/25 text-[#0A3D62] border border-[#0A3D62]/20">
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/25 text-[#293828] border border-[#293828]/20">
                           {effectiveSchedule.totalOccurrencesCount} {t('weeklyClassesCount')}
                         </span>
                       )}
                       <button
                         type="button"
                         onClick={() => onEditStudent(student)}
-                        className="p-1.5 rounded-xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#6F7882] hover:text-[#16324F] border border-[#C7CDD3] transition-colors cursor-pointer"
+                        className="p-1.5 rounded-xl bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#756046] hover:text-[#0F1206] border border-[#DDD3C7] transition-colors cursor-pointer"
                         title={isEn ? 'Edit Schedule' : 'تعديل المواعيد'}
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -1186,15 +1187,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                   {/* Schedule Content */}
                   {!effectiveSchedule || effectiveSchedule.allDaysGrouped.length === 0 ? (
-                    <div className="p-4 bg-[#C7CDD3]/15 rounded-2xl border border-dashed border-[#C7CDD3] text-center space-y-2">
-                      <Clock className="w-6 h-6 text-[#6F7882]/40 mx-auto" />
-                      <p className="text-xs font-bold text-[#6F7882]">
+                    <div className="p-4 bg-[#DDD3C7]/15 rounded-2xl border border-dashed border-[#DDD3C7] text-center space-y-2">
+                      <Clock className="w-6 h-6 text-[#756046]/40 mx-auto" />
+                      <p className="text-xs font-bold text-[#756046]">
                         {t('noStudentSchedulePrompt')}
                       </p>
                       <button
                         type="button"
                         onClick={() => onEditStudent(student)}
-                        className="px-3 py-1.5 rounded-xl bg-[#0A3D62] text-[#FFFFFF] font-black text-xs inline-flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                        className="px-3 py-1.5 rounded-xl bg-[#293828] text-[#F8F2EC] font-black text-xs inline-flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>{t('addScheduleSlot')}</span>
@@ -1207,14 +1208,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         {effectiveSchedule.allDaysGrouped.map((dayGroup) => (
                           <div
                             key={dayGroup.dayKey}
-                            className="p-3 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] space-y-2 hover:border-[#0A3D62]/30 transition-all"
+                            className="p-3 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] space-y-2 hover:border-[#293828]/30 transition-all"
                           >
-                            <div className="flex items-center justify-between border-b border-[#C7CDD3]/70 pb-1.5">
-                              <span className="font-black text-xs text-[#16324F] flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-[#0A3D62]" />
+                            <div className="flex items-center justify-between border-b border-[#DDD3C7]/70 pb-1.5">
+                              <span className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[#293828]" />
                                 <span>{dayGroup.dayName}</span>
                               </span>
-                              <span className="text-[10px] font-bold text-[#6F7882]">
+                              <span className="text-[10px] font-bold text-[#756046]">
                                 {dayGroup.items.length} {isEn ? (dayGroup.items.length > 1 ? 'times' : 'time') : (dayGroup.items.length > 1 ? 'مواعيد' : 'موعد')}
                               </span>
                             </div>
@@ -1223,17 +1224,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               {dayGroup.items.map((item) => (
                                 <div
                                   key={item.id}
-                                  className="p-2 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] flex items-center justify-between gap-2 shadow-2xs"
+                                  className="p-2 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-between gap-2 shadow-2xs"
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
-                                    <span className="px-2 py-0.5 rounded-lg bg-[#0A3D62] text-[#FFFFFF] font-black text-xs tracking-wide shrink-0">
+                                    <span className="px-2 py-0.5 rounded-lg bg-[#293828] text-[#F8F2EC] font-black text-xs tracking-wide shrink-0">
                                       {item.time}
                                     </span>
                                     <div className="min-w-0 truncate">
-                                      <strong className="text-xs font-black text-[#16324F] block truncate">
+                                      <strong className="text-xs font-black text-[#0F1206] block truncate">
                                         {item.sourceTitle}
                                       </strong>
-                                      <span className="text-[10px] text-[#6F7882] font-bold block truncate">
+                                      <span className="text-[10px] text-[#756046] font-bold block truncate">
                                         {item.subject} {item.location ? `• ${item.location}` : ''}
                                       </span>
                                     </div>
@@ -1242,8 +1243,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                   <span
                                     className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${
                                       item.sourceType === 'private'
-                                        ? 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]'
-                                        : 'bg-[#C7CDD3]/25 text-[#16324F] border border-[#C7CDD3]'
+                                        ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
+                                        : 'bg-[#DDD3C7]/25 text-[#0F1206] border border-[#DDD3C7]'
                                     }`}
                                   >
                                     {item.sourceType === 'private'
@@ -1258,31 +1259,31 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       </div>
 
                       {/* Breakdown by Service Type (Group vs Private) */}
-                      <div className="pt-2 border-t border-[#C7CDD3] space-y-2">
+                      <div className="pt-2 border-t border-[#DDD3C7] space-y-2">
                         {effectiveSchedule.groupSchedules.length > 0 && (
                           <div className="space-y-1.5">
-                            <span className="text-[11px] font-black text-[#6F7882] block">
+                            <span className="text-[11px] font-black text-[#756046] block">
                               {t('groupSchedules')}:
                             </span>
                             <div className="space-y-1">
                               {effectiveSchedule.groupSchedules.map((grp) => (
                                 <div
                                   key={grp.groupId}
-                                  className="p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] flex items-center justify-between text-xs flex-wrap gap-2"
+                                  className="p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] flex items-center justify-between text-xs flex-wrap gap-2"
                                 >
                                   <div className="flex items-center gap-2">
                                     <span
                                       className="w-2.5 h-2.5 rounded-full"
                                       style={{ backgroundColor: grp.accentColor }}
                                     />
-                                    <strong className="font-black text-[#16324F]">{grp.groupName}</strong>
-                                    <span className="text-[11px] text-[#6F7882]">({grp.subject})</span>
+                                    <strong className="font-black text-[#0F1206]">{grp.groupName}</strong>
+                                    <span className="text-[11px] text-[#756046]">({grp.subject})</span>
                                   </div>
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     {grp.items.map((itm) => (
                                       <span
                                         key={itm.id}
-                                        className="px-2 py-0.5 rounded-lg bg-[#FFFFFF] border border-[#C7CDD3] font-bold text-[11px] text-[#16324F]"
+                                        className="px-2 py-0.5 rounded-lg bg-[#F8F2EC] border border-[#DDD3C7] font-bold text-[11px] text-[#0F1206]"
                                       >
                                         {itm.dayName} — {itm.time}
                                       </span>
@@ -1296,27 +1297,27 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                         {effectiveSchedule.privateSchedules.length > 0 && (
                           <div className="space-y-1.5 pt-1">
-                            <span className="text-[11px] font-black text-[#16324F] block">
+                            <span className="text-[11px] font-black text-[#0F1206] block">
                               {t('privateLessonSchedule')}:
                             </span>
                             <div className="space-y-1">
                               {effectiveSchedule.privateSchedules.map((priv, pIdx) => (
                                 <div
                                   key={pIdx}
-                                  className="p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] flex items-center justify-between text-xs flex-wrap gap-2"
+                                  className="p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] flex items-center justify-between text-xs flex-wrap gap-2"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <Sparkles className="w-3.5 h-3.5 text-[#16324F]" />
-                                    <strong className="font-black text-[#16324F]">{priv.subject}</strong>
+                                    <Sparkles className="w-3.5 h-3.5 text-[#0F1206]" />
+                                    <strong className="font-black text-[#0F1206]">{priv.subject}</strong>
                                     {priv.location && (
-                                      <span className="text-[11px] text-[#6F7882]">({priv.location})</span>
+                                      <span className="text-[11px] text-[#756046]">({priv.location})</span>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     {priv.items.map((itm) => (
                                       <span
                                         key={itm.id}
-                                        className="px-2 py-0.5 rounded-lg bg-[#FFFFFF] border border-[#C7CDD3] font-bold text-[11px] text-[#16324F]"
+                                        className="px-2 py-0.5 rounded-lg bg-[#F8F2EC] border border-[#DDD3C7] font-bold text-[11px] text-[#0F1206]"
                                       >
                                         {itm.dayName} — {itm.time}
                                       </span>
@@ -1335,25 +1336,25 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 {/* Attendance & Behavioral Quick Bento Strip */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Attendance Rate */}
-                  <div className="classy-card p-4 bg-[#FFFFFF] space-y-2.5">
+                  <div className="classy-card p-4 bg-[#F8F2EC] space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-[#16324F] flex items-center gap-1.5">
-                        <CalendarCheck2 className="w-4 h-4 text-[#0A3D62]" />
+                      <span className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
+                        <CalendarCheck2 className="w-4 h-4 text-[#293828]" />
                         <span>{isEn ? 'Attendance Rate' : 'معدل الحضور والالتزام'}</span>
                       </span>
-                      <span className="text-xs font-black text-[#16324F]">
+                      <span className="text-xs font-black text-[#0F1206]">
                         {attendanceRate}%
                       </span>
                     </div>
 
-                    <div className="w-full bg-[#C7CDD3]/25 h-2 rounded-full overflow-hidden">
+                    <div className="w-full bg-[#DDD3C7]/25 h-2 rounded-full overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-[#0A3D62] to-[#16324F] h-full rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-[#293828] to-[#0F1206] h-full rounded-full transition-all duration-300"
                         style={{ width: `${attendanceRate}%` }}
                       />
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-[#6F7882] font-bold pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-[#756046] font-bold pt-1">
                       <span>{t('present')}: {presentCount}</span>
                       <span>{t('late')}: {lateCount}</span>
                       <span>{t('absentCharged')}: {absentChargedCount}</span>
@@ -1362,19 +1363,19 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   </div>
 
                   {/* Behavior & Points */}
-                  <div className="classy-card p-4 bg-[#FFFFFF] space-y-2.5">
+                  <div className="classy-card p-4 bg-[#F8F2EC] space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-[#16324F] flex items-center gap-1.5">
-                        <Zap className="w-4 h-4 text-[#0A3D62]" />
+                      <span className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-[#293828]" />
                         <span>{isEn ? 'Behavior Rating & Engagement' : 'التقييم السلوكي والتفاعل'}</span>
                       </span>
                       <span
                         className={`text-xs font-black ${
                           behaviorStats.totalPoints > 0
-                            ? 'text-[#16324F]'
+                            ? 'text-[#0F1206]'
                             : behaviorStats.totalPoints < 0
-                            ? 'text-[#16324F]'
-                            : 'text-[#16324F]'
+                            ? 'text-[#0F1206]'
+                            : 'text-[#0F1206]'
                         }`}
                       >
                         {behaviorStats.totalPoints > 0
@@ -1385,11 +1386,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold pt-1">
-                      <div className="p-2 rounded-xl bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/50">
+                      <div className="p-2 rounded-xl bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/50">
                         <span className="text-[10px] block">{isEn ? 'Positive' : 'تميز وتفاعل'}</span>
                         <strong className="text-sm font-black">{behaviorStats.positiveCount}</strong>
                       </div>
-                      <div className="p-2 rounded-xl bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]">
+                      <div className="p-2 rounded-xl bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]">
                         <span className="text-[10px] block">{isEn ? 'Needs Attention' : 'يحتاج متابعة'}</span>
                         <strong className="text-sm font-black">{behaviorStats.needsImprovementCount}</strong>
                       </div>
@@ -1398,14 +1399,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {/* Persistent Teacher Notes */}
-                <div className="classy-card p-4 bg-[#FFFFFF] space-y-2.5">
+                <div className="classy-card p-4 bg-[#F8F2EC] space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-black text-xs text-[#16324F] flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-[#0A3D62]" />
+                    <span className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-[#293828]" />
                       <span>{isEn ? 'Teacher Private Notes:' : 'ملاحظات المعلم الخاصة عن الطالب:'}</span>
                     </span>
                     {isNotesSaved && (
-                      <span className="text-[10px] font-bold text-[#16324F] flex items-center gap-1 animate-in fade-in">
+                      <span className="text-[10px] font-bold text-[#0F1206] flex items-center gap-1 animate-in fade-in">
                         <Check className="w-3 h-3" />
                         <span>{isEn ? 'Saved successfully' : 'تم الحفظ بنجاح'}</span>
                       </span>
@@ -1417,14 +1418,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     onChange={(e) => setNotesText(e.target.value)}
                     placeholder={isEn ? 'Write notes on student progress, parent follow-ups, or curriculum goals...' : 'اكتب ملاحظاتك عن مستوى الطالب، متابعة ولي الأمر، أو خطة المنهج...'}
                     rows={3}
-                    className="w-full p-3 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] text-xs text-[#16324F] font-medium focus:outline-none focus:border-[#0A3D62] focus:bg-[#FFFFFF] transition-all shadow-inner"
+                    className="w-full p-3 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] text-xs text-[#0F1206] font-medium focus:outline-none focus:border-[#293828] focus:bg-[#F8F2EC] transition-all shadow-inner"
                   />
 
                   <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={handleSaveNotes}
-                      className="px-4 py-2 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
+                      className="px-4 py-2 rounded-xl bg-[#293828] hover:bg-[#0F1206] text-[#F8F2EC] font-black text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
                     >
                       <Save className="w-3.5 h-3.5" />
                       <span>{isEn ? 'Save Notes' : 'حفظ الملاحظات'}</span>
@@ -1433,16 +1434,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {/* Recent Activity Timeline Feed */}
-                <div className="classy-card p-4 bg-[#FFFFFF] space-y-3">
+                <div className="classy-card p-4 bg-[#F8F2EC] space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-black text-xs text-[#16324F] flex items-center gap-1.5">
-                      <Activity className="w-4 h-4 text-[#0A3D62]" />
+                    <h3 className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
+                      <Activity className="w-4 h-4 text-[#293828]" />
                       <span>{isEn ? 'Recent Activity & Transactions' : 'سجل النشاط والعمليات الأخيرة'}</span>
                     </h3>
                   </div>
 
                   {latestActivities.length === 0 ? (
-                    <p className="text-xs text-[#6F7882] font-bold text-center py-3">
+                    <p className="text-xs text-[#756046] font-bold text-center py-3">
                       {isEn ? 'No activity recorded yet for this student.' : 'لا يوجد نشاط مسجل للطالب بعد.'}
                     </p>
                   ) : (
@@ -1450,13 +1451,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       {latestActivities.map((act) => (
                         <div
                           key={act.id}
-                          className="p-3 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] flex items-center justify-between gap-2 text-xs"
+                          className="p-3 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] flex items-center justify-between gap-2 text-xs"
                         >
                           <div className="space-y-0.5 min-w-0">
-                            <strong className="font-black text-[#16324F] block truncate">
+                            <strong className="font-black text-[#0F1206] block truncate">
                               {act.title}
                             </strong>
-                            <p className="text-[11px] text-[#6F7882] truncate">
+                            <p className="text-[11px] text-[#756046] truncate">
                               {act.date} • {act.subtitle}
                             </p>
                           </div>
@@ -1472,12 +1473,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {/* Safety Danger Zone: Archive / Delete */}
-                <div className="p-3.5 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] flex items-center justify-between flex-wrap gap-2">
+                <div className="p-3.5 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] flex items-center justify-between flex-wrap gap-2">
                   <div className="space-y-0.5">
-                    <strong className="text-xs font-black text-[#16324F] block">
+                    <strong className="text-xs font-black text-[#0F1206] block">
                       {isEn ? 'Student Status & Archiving' : 'إدارة حالة الطالب والأرشفة'}
                     </strong>
-                    <p className="text-[10px] text-[#6F7882]">
+                    <p className="text-[10px] text-[#756046]">
                       {isEn ? 'Archiving preserves all records and accounts, while permanent delete wipes data.' : 'أرشفة الطالب تحتفظ بكافة سجلاته وحساباته، بينما الحذف النهائي يزيل بياناته.'}
                     </p>
                   </div>
@@ -1485,7 +1486,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsSafeDeleteModalOpen(true)}
-                    className="px-3.5 py-1.5 rounded-xl bg-[#FFFFFF] text-[#16324F] border border-[#C7CDD3] hover:bg-[#C7CDD3]/25 text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7] hover:bg-[#DDD3C7]/25 text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>{isEn ? 'Archive or Delete' : 'أرشفة أو حذف'}</span>
@@ -1500,13 +1501,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {activeSubTab === 'groups' && (
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-[#16324F]">
+                  <span className="font-black text-xs text-[#0F1206]">
                     {isEn ? `Enrolled Groups (${groupEnrollments.length})` : `المجموعات الدراسية المسجل بها (${groupEnrollments.length})`}
                   </span>
                   <button
                     type="button"
                     onClick={() => onOpenEnrollModal(student)}
-                    className="px-3 py-1.5 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-black text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-[#293828] hover:bg-[#0F1206] text-[#F8F2EC] font-black text-xs flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{isEn ? 'Enroll in Group' : 'تسجيل في مجموعة'}</span>
@@ -1514,15 +1515,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {groupEnrollments.length === 0 ? (
-                  <div className="classy-card p-8 text-center space-y-3 bg-[#FFFFFF]">
-                    <Layers className="w-8 h-8 text-[#6F7882] mx-auto opacity-40" />
-                    <p className="text-xs font-bold text-[#6F7882]">
+                  <div className="classy-card p-8 text-center space-y-3 bg-[#F8F2EC]">
+                    <Layers className="w-8 h-8 text-[#756046] mx-auto opacity-40" />
+                    <p className="text-xs font-bold text-[#756046]">
                       {isEn ? 'Student is not enrolled in any study group yet.' : 'الطالب مش مضاف لأي مجموعة دراسية حالياً.'}
                     </p>
                     <button
                       type="button"
                       onClick={() => onOpenEnrollModal(student)}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                       <span>{isEn ? 'Add Student to Group Now' : 'إضافة الطالب لمجموعة الآن'}</span>
@@ -1533,22 +1534,22 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     {groupEnrollments.map((enr) => (
                       <div
                         key={enr.enrollmentId}
-                        className="classy-card p-4 bg-[#FFFFFF] border-[#C7CDD3] hover:border-[#0A3D62]/40 transition-all space-y-3"
+                        className="classy-card p-4 bg-[#F8F2EC] border-[#DDD3C7] hover:border-[#293828]/40 transition-all space-y-3"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
                               <span
                                 className="w-2.5 h-2.5 rounded-full"
-                                style={{ backgroundColor: enr.accentColor || '#0A3D62' }}
+                                style={{ backgroundColor: enr.accentColor || '#293828' }}
                               />
-                              <h4 className="font-black text-sm text-[#16324F]">{enr.groupName}</h4>
-                              <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-[#C7CDD3]/25 text-[#16324F]">
+                              <h4 className="font-black text-sm text-[#0F1206]">{enr.groupName}</h4>
+                              <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-[#DDD3C7]/25 text-[#0F1206]">
                                 {getBillingModeLabel(enr.billingType, enr.billingMode)}
                               </span>
                             </div>
-                            <p className="text-[11px] text-[#6F7882]">
-                              {isEn ? 'Class Price:' : 'سعر الحصة المقرر:'} <strong className="text-[#16324F]">{enr.customPrice} {t('currency')}</strong>
+                            <p className="text-[11px] text-[#756046]">
+                              {isEn ? 'Class Price:' : 'سعر الحصة المقرر:'} <strong className="text-[#0F1206]">{enr.customPrice} {t('currency')}</strong>
                             </p>
                           </div>
 
@@ -1556,7 +1557,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleStartEditEnrollment(enr.enrollmentId)}
-                              className="p-1.5 rounded-lg bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#6F7882] hover:text-[#16324F] border border-[#C7CDD3] transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#756046] hover:text-[#0F1206] border border-[#DDD3C7] transition-colors cursor-pointer"
                               title={isEn ? 'Edit Pricing' : 'تعديل شروط التسعير والاشتراك'}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -1564,7 +1565,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveEnrollment(enr.enrollmentId, enr.groupName)}
-                              className="p-1.5 rounded-lg bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#16324F] border border-[#C7CDD3] transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#0F1206] border border-[#DDD3C7] transition-colors cursor-pointer"
                               title={isEn ? 'Unenroll Student' : 'إلغاء قيد الطالب من المجموعة'}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1574,17 +1575,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                         {/* Inline Billing Editor */}
                         {editingEnrollmentId === enr.enrollmentId && (
-                          <div className="p-3 bg-[#C7CDD3]/15 rounded-2xl border border-[#C7CDD3] space-y-2.5 text-xs">
-                            <span className="font-black text-[#16324F] block">{isEn ? 'Edit Billing & Pricing Mode:' : 'تعديل نظام المحاسبة والتسعير:'}</span>
+                          <div className="p-3 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] space-y-2.5 text-xs">
+                            <span className="font-black text-[#0F1206] block">{isEn ? 'Edit Billing & Pricing Mode:' : 'تعديل نظام المحاسبة والتسعير:'}</span>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                                <label className="block text-[10px] text-[#756046] font-bold mb-1">
                                   {isEn ? 'Billing Mode' : 'نظام المحاسبة'}
                                 </label>
                                 <select
                                   value={editBillingMode}
                                   onChange={(e) => setEditBillingMode(e.target.value as BillingMode)}
-                                  className="w-full p-2 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] text-xs font-bold text-[#16324F]"
+                                  className="w-full p-2 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-bold text-[#0F1206]"
                                 >
                                   <option value="prepaid">{isEn ? 'Prepaid Per Session' : 'دفع مسبق بالحصة'}</option>
                                   <option value="postpaid">{isEn ? 'Postpaid (Pay After)' : 'دفع بعد الحصة (آجل)'}</option>
@@ -1595,14 +1596,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               </div>
 
                               <div>
-                                <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                                <label className="block text-[10px] text-[#756046] font-bold mb-1">
                                   {isEn ? `Price (${t('currency')})` : `السعر المخصص (${t('currency')})`}
                                 </label>
                                 <input
                                   type="number"
                                   value={editCustomPrice}
                                   onChange={(e) => setEditCustomPrice(Number(e.target.value))}
-                                  className="w-full p-2 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] text-xs font-bold text-[#16324F]"
+                                  className="w-full p-2 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-bold text-[#0F1206]"
                                 />
                               </div>
                             </div>
@@ -1611,14 +1612,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setEditingEnrollmentId(null)}
-                                className="px-3 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] text-xs font-bold text-[#6F7882]"
+                                className="px-3 py-1.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-bold text-[#756046]"
                               >
                                 {t('cancel')}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleSaveEnrollmentBilling(enr.enrollmentId)}
-                                className="px-3.5 py-1.5 rounded-xl bg-[#0A3D62] text-[#FFFFFF] text-xs font-black shadow-xs"
+                                className="px-3.5 py-1.5 rounded-xl bg-[#293828] text-[#F8F2EC] text-xs font-black shadow-xs"
                               >
                                 {t('save')}
                               </button>
@@ -1628,29 +1629,29 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                         {/* Financial Metrics Strip */}
                         <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
-                          <div className="p-2 bg-[#C7CDD3]/15 rounded-xl border border-[#C7CDD3]">
-                            <span className="text-[#6F7882] block font-bold">{isEn ? 'Used' : 'الحصص المستهلكة'}</span>
-                            <strong className="text-xs font-black text-[#16324F]">
+                          <div className="p-2 bg-[#DDD3C7]/15 rounded-xl border border-[#DDD3C7]">
+                            <span className="text-[#756046] block font-bold">{isEn ? 'Used' : 'الحصص المستهلكة'}</span>
+                            <strong className="text-xs font-black text-[#0F1206]">
                               {enr.usedSessionsCount || 0}
                             </strong>
                           </div>
-                          <div className="p-2 bg-[#C7CDD3]/15 rounded-xl border border-[#C7CDD3]">
-                            <span className="text-[#6F7882] block font-bold">{isEn ? 'Credit' : 'رصيد الحصص'}</span>
-                            <strong className="text-xs font-black text-[#0A3D62]">
+                          <div className="p-2 bg-[#DDD3C7]/15 rounded-xl border border-[#DDD3C7]">
+                            <span className="text-[#756046] block font-bold">{isEn ? 'Credit' : 'رصيد الحصص'}</span>
+                            <strong className="text-xs font-black text-[#293828]">
                               {enr.sessionCredit || 0}
                             </strong>
                           </div>
-                          <div className="p-2 bg-[#C7CDD3]/15 rounded-xl border border-[#C7CDD3]">
-                            <span className="text-[#6F7882] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
-                            <strong className="text-xs font-black text-[#16324F]">
+                          <div className="p-2 bg-[#DDD3C7]/15 rounded-xl border border-[#DDD3C7]">
+                            <span className="text-[#756046] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
+                            <strong className="text-xs font-black text-[#0F1206]">
                               {enr.totalPaid} {t('currency')}
                             </strong>
                           </div>
                           <div
                             className={`p-2 rounded-xl border ${
                               enr.remaining > 0
-                                ? 'bg-[#C7CDD3]/15 border-[#C7CDD3] text-[#16324F]'
-                                : 'bg-[#C7CDD3]/15 border-[#C7CDD3] text-[#16324F]'
+                                ? 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#0F1206]'
+                                : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#0F1206]'
                             }`}
                           >
                             <span className="block font-bold">{isEn ? 'Remaining' : 'المتبقي'}</span>
@@ -1671,17 +1672,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-3.5">
                 {/* Today's Private Lessons Summary (Feature 1 & Feature 3) */}
                 {todayPrivateSummary && todayPrivateSummary.visitsCount > 0 && (
-                  <div className="classy-card p-4 bg-gradient-to-r from-[#FFFFFF] via-[#FFFFFF] to-[#FFFFFF] border-[#C7CDD3] space-y-3 shadow-xs">
+                  <div className="classy-card p-4 bg-gradient-to-r from-[#F8F2EC] via-[#F8F2EC] to-[#F8F2EC] border-[#DDD3C7] space-y-3 shadow-xs">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/15 text-[#16324F] flex items-center justify-center font-black">
+                        <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/15 text-[#0F1206] flex items-center justify-center font-black">
                           <Calendar className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-black text-xs sm:text-sm text-[#16324F] flex items-center gap-1.5">
+                          <h3 className="font-black text-xs sm:text-sm text-[#0F1206] flex items-center gap-1.5">
                             <span>{isEn ? "Today's Private Lessons" : 'دروس اليوم الخاصة'}</span>
                           </h3>
-                          <p className="text-[11px] text-[#6F7882] font-medium">
+                          <p className="text-[11px] text-[#756046] font-medium">
                             {student.name} • {todayPrivateSummary.date}
                           </p>
                         </div>
@@ -1689,11 +1690,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                       <div className="flex items-center gap-1.5">
                         {todayPrivateSummary.hasIncomplete && (
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#C7CDD3]/25 text-[#16324F] border border-[#16324F]/50 animate-pulse">
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/25 text-[#0F1206] border border-[#0F1206]/50 animate-pulse">
                             ⚠️ {isEn ? `${todayPrivateSummary.incompleteCount} need(s) completion` : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`}
                           </span>
                         )}
-                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]">
+                        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]">
                           {todayPrivateSummary.visitsCount} {isEn ? (todayPrivateSummary.visitsCount === 1 ? 'Appointment' : 'Appointments') : (todayPrivateSummary.visitsCount === 1 ? 'موعد' : 'مواعيد')}
                         </span>
                       </div>
@@ -1710,28 +1711,28 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             key={sesItem.occurrenceId}
                             className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all ${
                               sesItem.isIncomplete
-                                ? 'bg-[#C7CDD3]/80 border-[#16324F]/50'
+                                ? 'bg-[#DDD3C7]/80 border-[#0F1206]/50'
                                 : isPres
-                                ? 'bg-[#FFFFFF] border-[#0A3D62]/50 shadow-2xs'
-                                : 'bg-[#C7CDD3]/15 border-[#C7CDD3]'
+                                ? 'bg-[#F8F2EC] border-[#293828]/50 shadow-2xs'
+                                : 'bg-[#DDD3C7]/15 border-[#DDD3C7]'
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="px-2.5 py-1 rounded-xl bg-[#0A3D62] text-[#FFFFFF] font-black text-xs shrink-0">
+                              <div className="px-2.5 py-1 rounded-xl bg-[#293828] text-[#F8F2EC] font-black text-xs shrink-0">
                                 {sesItem.time}
                               </div>
                               <div className="min-w-0">
-                                <strong className="text-xs font-black text-[#16324F] block truncate">
+                                <strong className="text-xs font-black text-[#0F1206] block truncate">
                                   {sesItem.subject}
                                 </strong>
-                                <span className="text-[11px] text-[#6F7882] block">
+                                <span className="text-[11px] text-[#756046] block">
                                   {sesItem.status === 'unrecorded'
                                     ? (isEn ? 'Scheduled • Not recorded yet' : 'مجدول • لم يُرصد بعد')
                                     : isPres
                                     ? (isEn ? '✓ Present' : '✓ حضر')
                                     : (isEn ? 'Absent' : 'لم يحضر')}
                                   {isPres && (
-                                    <span className="font-black text-[#0A3D62] ms-1">
+                                    <span className="font-black text-[#293828] ms-1">
                                       • {isHourly ? `${sesItem.hours || 0} ${isEn ? 'Hours' : 'ساعة'}` : `${sesItem.sessionUnits || 0} ${isEn ? 'Session(s)' : 'حصة'}`}
                                     </span>
                                   )}
@@ -1749,14 +1750,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                       setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
                                     }
                                   }}
-                                  className="px-2.5 py-1.5 rounded-xl bg-[#C7CDD3]/700 hover:bg-[#16324F] text-[#FFFFFF] font-black text-[10px] flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
+                                  className="px-2.5 py-1.5 rounded-xl bg-[#DDD3C7]/700 hover:bg-[#0F1206] text-[#F8F2EC] font-black text-[10px] flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
                                 >
                                   <span>⚠️</span>
                                   <span>{isEn ? 'Complete Session' : 'استكمال تفاصيل الحصة'}</span>
                                 </button>
                               ) : isPres ? (
                                 <div className="text-right">
-                                  <span className="text-xs font-black text-[#16324F] block">
+                                  <span className="text-xs font-black text-[#0F1206] block">
                                     {sesItem.price} {t('currency')}
                                   </span>
                                   <button
@@ -1767,7 +1768,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                         setSelectedPrivateIntakeSession({ session: actualSession, item: sesItem });
                                       }
                                     }}
-                                    className="text-[10px] text-[#0A3D62] font-bold hover:underline cursor-pointer"
+                                    className="text-[10px] text-[#293828] font-bold hover:underline cursor-pointer"
                                   >
                                     {isEn ? 'Edit' : 'تعديل'}
                                   </button>
@@ -1780,15 +1781,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     </div>
 
                     {/* Daily Totals Bar */}
-                    <div className="p-3 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#6F7882]">
+                    <div className="p-3 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#756046]">
                         {isEn ? "Today's Total:" : 'إجمالي اليوم:'}
                       </span>
                       <div className="flex items-center gap-3">
-                        <span className="font-black text-[#0A3D62]">
+                        <span className="font-black text-[#293828]">
                           {todayPrivateSummary.totalUnitsOrHoursText}
                         </span>
-                        <span className="text-sm font-black text-[#16324F]">
+                        <span className="text-sm font-black text-[#0F1206]">
                           {todayPrivateSummary.totalAmount} {t('currency')}
                         </span>
                       </div>
@@ -1797,13 +1798,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 )}
 
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-[#16324F]">
+                  <span className="font-black text-xs text-[#0F1206]">
                     {isEn ? `Private Services & Tutoring (${privateEnrollments.length})` : `الخدمات والدروس الخاصة (${privateEnrollments.length})`}
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsAddingPrivateService(!isAddingPrivateService)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] font-black text-xs flex items-center gap-1 shadow-md shadow-[#16324F]/30 transition-all active:scale-95 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-xs flex items-center gap-1 shadow-md shadow-[#0F1206]/30 transition-all active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{isEn ? 'Add New Private Lesson' : 'إضافة درس خاص جديد'}</span>
@@ -1814,16 +1815,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 {isAddingPrivateService && (
                   <form
                     onSubmit={handleCreatePrivateService}
-                    className="classy-card p-4 bg-[#FFFFFF] border-[#C7CDD3] space-y-3 shadow-md"
+                    className="classy-card p-4 bg-[#F8F2EC] border-[#DDD3C7] space-y-3 shadow-md"
                   >
-                    <div className="flex items-center justify-between border-b border-[#C7CDD3] pb-2">
-                      <span className="font-black text-xs text-[#16324F]">
+                    <div className="flex items-center justify-between border-b border-[#DDD3C7] pb-2">
+                      <span className="font-black text-xs text-[#0F1206]">
                         {isEn ? 'Configure New Private Tutoring Service:' : 'إعداد وتخصيص خدمة درس خاص جديدة:'}
                       </span>
                       <button
                         type="button"
                         onClick={() => setIsAddingPrivateService(false)}
-                        className="text-[#6F7882] hover:text-[#16324F]"
+                        className="text-[#756046] hover:text-[#0F1206]"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -1831,7 +1832,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                       <div>
-                        <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                        <label className="block text-[10px] text-[#756046] font-bold mb-1">
                           {isEn ? 'Subject / Topic' : 'المادة / موضوع الدرس'}
                         </label>
                         <input
@@ -1839,13 +1840,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           value={newPrivateSubject}
                           onChange={(e) => setNewPrivateSubject(e.target.value)}
                           placeholder={isEn ? 'e.g. English - Private' : 'مثال: لغة إنجليزية - خاص'}
-                          className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F]"
+                          className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206]"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                        <label className="block text-[10px] text-[#756046] font-bold mb-1">
                           {isEn ? 'Billing Mode' : 'نظام المحاسبة'}
                         </label>
                         <select
@@ -1853,7 +1854,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           onChange={(e) =>
                             setNewPrivateBillingMode(e.target.value as BillingMode)
                           }
-                          className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F]"
+                          className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206]"
                         >
                           <option value="postpaid">{isEn ? 'Postpaid (Pay After Class)' : 'دفع آجل (بعد الحصة)'}</option>
                           <option value="prepaid">{isEn ? 'Prepaid (Credit Balance)' : 'دفع مسبق (شحن رصيد)'}</option>
@@ -1865,21 +1866,21 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                       {newPrivateBillingMode === 'hourly' ? (
                         <div>
-                          <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                          <label className="block text-[10px] text-[#756046] font-bold mb-1">
                             {isEn ? `Hourly Rate (${t('currency')})` : `سعر الساعة (${t('currency')})`}
                           </label>
                           <input
                             type="number"
                             value={newPrivateHourlyRate}
                             onChange={(e) => setNewPrivateHourlyRate(Number(e.target.value))}
-                            className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F]"
+                            className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206]"
                             required
                           />
                         </div>
                       ) : newPrivateBillingMode === 'package' ? (
                         <>
                           <div>
-                            <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                            <label className="block text-[10px] text-[#756046] font-bold mb-1">
                               {isEn ? 'Package Sessions Count' : 'عدد حصص الباقة'}
                             </label>
                             <input
@@ -1888,40 +1889,40 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               onChange={(e) =>
                                 setNewPrivatePackageSessions(Number(e.target.value))
                               }
-                              className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F]"
+                              className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206]"
                               required
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                            <label className="block text-[10px] text-[#756046] font-bold mb-1">
                               {isEn ? `Package Total Price (${t('currency')})` : `إجمالي سعر الباقة (${t('currency')})`}
                             </label>
                             <input
                               type="number"
                               value={newPrivatePackagePrice}
                               onChange={(e) => setNewPrivatePackagePrice(Number(e.target.value))}
-                              className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F]"
+                              className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206]"
                               required
                             />
                           </div>
                         </>
                       ) : (
                         <div>
-                          <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                          <label className="block text-[10px] text-[#756046] font-bold mb-1">
                             {isEn ? `Session Price (${t('currency')})` : `سعر الحصة (${t('currency')})`}
                           </label>
                           <input
                             type="number"
                             value={newPrivatePrice}
                             onChange={(e) => setNewPrivatePrice(Number(e.target.value))}
-                            className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F]"
+                            className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206]"
                             required
                           />
                         </div>
                       )}
 
                       <div>
-                        <label className="block text-[10px] text-[#6F7882] font-bold mb-1">
+                        <label className="block text-[10px] text-[#756046] font-bold mb-1">
                           {isEn ? 'Location' : 'مكان الدرس'}
                         </label>
                         <input
@@ -1929,7 +1930,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           value={newPrivateLocation}
                           onChange={(e) => setNewPrivateLocation(e.target.value)}
                           placeholder={isEn ? "e.g. Student's Home or Center" : 'مثال: منزل الطالب أو السنتر'}
-                          className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F]"
+                          className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206]"
                         />
                       </div>
                     </div>
@@ -1938,13 +1939,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setIsAddingPrivateService(false)}
-                        className="px-4 py-2 rounded-xl bg-[#C7CDD3]/15 text-[#6F7882] font-bold text-xs"
+                        className="px-4 py-2 rounded-xl bg-[#DDD3C7]/15 text-[#756046] font-bold text-xs"
                       >
                         {t('cancel')}
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] font-black text-xs shadow-md shadow-[#16324F]/30"
+                        className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-xs shadow-md shadow-[#0F1206]/30"
                       >
                         {isEn ? 'Save Private Lesson' : 'حفظ وإنشاء الدرس الخاص'}
                       </button>
@@ -1953,15 +1954,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 )}
 
                 {privateEnrollments.length === 0 ? (
-                  <div className="classy-card p-8 text-center space-y-3 bg-[#FFFFFF]">
-                    <Sparkles className="w-8 h-8 text-[#16324F] mx-auto opacity-50" />
-                    <p className="text-xs font-bold text-[#6F7882]">
+                  <div className="classy-card p-8 text-center space-y-3 bg-[#F8F2EC]">
+                    <Sparkles className="w-8 h-8 text-[#0F1206] mx-auto opacity-50" />
+                    <p className="text-xs font-bold text-[#756046]">
                       {isEn ? 'No private lessons registered yet for this student.' : 'مفيش دروس خاصة مسجلة للطالب حتى الآن.'}
                     </p>
                     <button
                       type="button"
                       onClick={() => setIsAddingPrivateService(true)}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-xs inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                       <span>{isEn ? 'Add First Private Lesson' : 'إضافة أول درس خاص للطالب'}</span>
@@ -1972,18 +1973,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     {privateEnrollments.map((enr) => (
                       <div
                         key={enr.enrollmentId}
-                        className="classy-card p-4 bg-[#FFFFFF] border-[#C7CDD3] hover:border-[#16324F]/60 transition-all space-y-3"
+                        className="classy-card p-4 bg-[#F8F2EC] border-[#DDD3C7] hover:border-[#0F1206]/60 transition-all space-y-3"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-[#16324F]" />
-                              <h4 className="font-black text-sm text-[#16324F]">{enr.groupName}</h4>
-                              <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]">
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#0F1206]" />
+                              <h4 className="font-black text-sm text-[#0F1206]">{enr.groupName}</h4>
+                              <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]">
                                 {getBillingModeLabel(enr.billingType, enr.billingMode)}
                               </span>
                             </div>
-                            <p className="text-[11px] text-[#6F7882]">
+                            <p className="text-[11px] text-[#756046]">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
                                 ? (isEn ? `Hourly Rate: ${enr.customPrice} ${t('currency')}` : `سعر الساعة: ${enr.customPrice} ج.م`)
                                 : (isEn ? `Session Price: ${enr.customPrice} ${t('currency')}` : `سعر الحصة: ${enr.customPrice} ج.م`)}
@@ -1994,7 +1995,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleStartEditEnrollment(enr.enrollmentId)}
-                              className="p-1.5 rounded-lg bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#6F7882] hover:text-[#16324F] border border-[#C7CDD3] transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#756046] hover:text-[#0F1206] border border-[#DDD3C7] transition-colors cursor-pointer"
                               title={isEn ? 'Edit Pricing' : 'تعديل شروط التسعير والاشتراك'}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -2002,7 +2003,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveEnrollment(enr.enrollmentId, enr.groupName)}
-                              className="p-1.5 rounded-lg bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#16324F] border border-[#C7CDD3] transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#0F1206] border border-[#DDD3C7] transition-colors cursor-pointer"
                               title={isEn ? 'Delete Private Lesson' : 'إلغاء خدمة الدرس الخاص'}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -2012,42 +2013,42 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                         {/* Financial & Workload Metrics Strip */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center text-[10px]">
-                          <div className="p-2 bg-[#C7CDD3]/15 rounded-xl border border-[#C7CDD3]">
-                            <span className="text-[#6F7882] block font-bold">
+                          <div className="p-2 bg-[#DDD3C7]/15 rounded-xl border border-[#DDD3C7]">
+                            <span className="text-[#756046] block font-bold">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
                                 ? (isEn ? 'Logged Duration' : 'الساعات المنفذة')
                                 : (isEn ? 'Completed Lessons' : 'الحصص المنفذة')}
                             </span>
-                            <strong className="text-xs font-black text-[#16324F]">
+                            <strong className="text-xs font-black text-[#0F1206]">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
                                 ? (isEn ? `${enr.totalHours ?? 0} hrs` : `${enr.totalHours ?? 0} ساعة`)
                                 : `${enr.attendedSessionsCount || enr.usedSessionsCount || 0} ${isEn ? 'Lessons' : 'حصة'}`}
                             </strong>
-                            <span className="text-[9px] text-[#6F7882] block mt-0.5">
+                            <span className="text-[9px] text-[#756046] block mt-0.5">
                               {enr.actualOccurrencesCount || 0} {isEn ? 'sessions' : 'جلسة'}
                             </span>
                           </div>
 
-                          <div className="p-2 bg-[#C7CDD3]/70 rounded-xl border border-[#0A3D62]/50">
-                            <span className="text-[#16324F] block font-bold">
+                          <div className="p-2 bg-[#DDD3C7]/70 rounded-xl border border-[#293828]/50">
+                            <span className="text-[#0F1206] block font-bold">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
                                 ? (isEn ? 'Paid Amount' : 'المسدد')
                                 : (isEn ? 'Paid Lessons' : 'الحصص المسددة')}
                             </span>
-                            <strong className="text-xs font-black text-[#16324F]">
+                            <strong className="text-xs font-black text-[#0F1206]">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
                                 ? `${enr.totalPaid} ${t('currency')}`
                                 : `${enr.paidLessonsCount ?? enr.settledSessionsCount ?? 0} ${isEn ? 'Lessons' : 'حصة'}`}
                             </strong>
-                            <span className="text-[9px] text-[#0A3D62] block mt-0.5">
+                            <span className="text-[9px] text-[#293828] block mt-0.5">
                               {enr.totalPaid} {t('currency')}
                             </span>
                           </div>
 
                           <div className={`p-2 rounded-xl border ${
                             enr.remaining > 0
-                              ? 'bg-[#C7CDD3]/15 border-[#C7CDD3] text-[#16324F]'
-                              : 'bg-[#C7CDD3]/15 border-[#C7CDD3] text-[#16324F]'
+                              ? 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#0F1206]'
+                              : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#0F1206]'
                           }`}>
                             <span className="block font-bold">
                               {enr.billingMode === 'hourly' || enr.billingType === 'hourly'
@@ -2064,14 +2065,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             </span>
                           </div>
 
-                          <div className="p-2 bg-[#C7CDD3]/15 rounded-xl border border-[#C7CDD3]">
-                            <span className="text-[#6F7882] block font-bold">
+                          <div className="p-2 bg-[#DDD3C7]/15 rounded-xl border border-[#DDD3C7]">
+                            <span className="text-[#756046] block font-bold">
                               {enr.billingMode === 'package' ? (isEn ? 'Package Credit' : 'رصيد الباقة') : (isEn ? 'Balance Credit' : 'الرصيد الدائن')}
                             </span>
-                            <strong className="text-xs font-black text-[#0A3D62]">
+                            <strong className="text-xs font-black text-[#293828]">
                               {enr.sessionCredit || 0} {isEn ? 'rem.' : 'متبقي'}
                             </strong>
-                            <span className="text-[9px] text-[#6F7882] block mt-0.5">
+                            <span className="text-[9px] text-[#756046] block mt-0.5">
                               {enr.financialCredit || 0} {t('currency')}
                             </span>
                           </div>
@@ -2089,16 +2090,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {activeSubTab === 'finances' && (
               <div className="space-y-4">
                 {/* Grand Financial Overview Card */}
-                <div className="classy-card p-4 bg-[#FFFFFF] space-y-3 border-[#0A3D62]/50">
+                <div className="classy-card p-4 bg-[#F8F2EC] space-y-3 border-[#293828]/50">
                   <div className="flex items-center justify-between">
-                    <span className="font-black text-xs text-[#16324F] flex items-center gap-1.5">
-                      <Wallet className="w-4 h-4 text-[#0A3D62]" />
+                    <span className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
+                      <Wallet className="w-4 h-4 text-[#293828]" />
                       <span>{isEn ? 'Grand Financial Summary:' : 'الحساب المالي الإجمالي للطالب:'}</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => onOpenAddPayment(student)}
-                      className="px-3 py-1 rounded-xl bg-gradient-to-r from-[#16324F] to-[#6F7882] text-[#FFFFFF] font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
+                      className="px-3 py-1 rounded-xl bg-gradient-to-r from-[#0F1206] to-[#756046] text-[#F8F2EC] font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{t('recordPayment')}</span>
@@ -2106,16 +2107,16 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3]">
-                      <span className="text-[10px] text-[#6F7882] font-bold block">
+                    <div className="p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7]">
+                      <span className="text-[10px] text-[#756046] font-bold block">
                         {isEn ? 'Total Fees (Gross)' : 'إجمالي الرسوم (Gross)'}
                       </span>
-                      <strong className="text-sm sm:text-base font-black text-[#16324F] mt-0.5 block">
+                      <strong className="text-sm sm:text-base font-black text-[#0F1206] mt-0.5 block">
                         {grandFinancials.grandTotalDue} {t('currency')}
                       </strong>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-[#C7CDD3]/65 border border-[#0A3D62]/50 text-[#16324F]">
+                    <div className="p-2.5 rounded-xl bg-[#DDD3C7]/65 border border-[#293828]/50 text-[#0F1206]">
                       <span className="text-[10px] font-bold block">{t('totalCollected')}</span>
                       <strong className="text-sm sm:text-base font-black mt-0.5 block">
                         {grandFinancials.grandTotalPaid} {t('currency')}
@@ -2125,8 +2126,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     <div
                       className={`p-2.5 rounded-xl border ${
                         grandFinancials.grandRemaining > 0
-                          ? 'bg-[#C7CDD3]/15 border-[#C7CDD3] text-[#16324F]'
-                          : 'bg-[#C7CDD3]/65 border-[#0A3D62]/50 text-[#16324F]'
+                          ? 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#0F1206]'
+                          : 'bg-[#DDD3C7]/65 border-[#293828]/50 text-[#0F1206]'
                       }`}
                     >
                       <span className="text-[10px] font-bold block">{t('remainingBalance')}</span>
@@ -2138,27 +2139,27 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {/* Services Financial Breakdown (Group vs Private) */}
-                <div className="classy-card p-4 bg-[#FFFFFF] space-y-3">
-                  <h4 className="font-black text-xs text-[#16324F] flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-[#0A3D62]" />
+                <div className="classy-card p-4 bg-[#F8F2EC] space-y-3">
+                  <h4 className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-[#293828]" />
                     <span>{isEn ? 'Group vs Private Fees Comparison:' : 'مقارنة الرسوم بين المجموعات والدروس الخاصة:'}</span>
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-3 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] space-y-1.5">
+                    <div className="p-3 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-[#16324F]">{isEn ? 'Group Classes' : 'خدمات المجموعات'}</span>
-                        <span className="text-[10px] font-bold text-[#6F7882]">
+                        <span className="font-black text-xs text-[#0F1206]">{isEn ? 'Group Classes' : 'خدمات المجموعات'}</span>
+                        <span className="text-[10px] font-bold text-[#756046]">
                           {grandFinancials.groupsFinancials.enrollments.length} {t('groups')}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-[#C7CDD3]">
+                      <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-[#DDD3C7]">
                         <span>{isEn ? 'Paid' : 'المسدد'}: {grandFinancials.groupsFinancials.totalPaid} {t('currency')}</span>
                         <span
                           className={
                             grandFinancials.groupsFinancials.remaining > 0
-                              ? 'text-[#16324F]'
-                              : 'text-[#16324F]'
+                              ? 'text-[#0F1206]'
+                              : 'text-[#0F1206]'
                           }
                         >
                           {isEn ? 'Due' : 'المتبقي'}: {grandFinancials.groupsFinancials.remaining} {t('currency')}
@@ -2166,20 +2167,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] space-y-1.5">
+                    <div className="p-3 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-[#16324F]">{isEn ? 'Private Lessons' : 'الدروس الخاصة'}</span>
-                        <span className="text-[10px] font-bold text-[#6F7882]">
+                        <span className="font-black text-xs text-[#0F1206]">{isEn ? 'Private Lessons' : 'الدروس الخاصة'}</span>
+                        <span className="text-[10px] font-bold text-[#756046]">
                           {grandFinancials.privateFinancials.enrollments.length} {isEn ? 'services' : 'خدمات خاصة'}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-[#C7CDD3]">
+                      <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-[#DDD3C7]">
                         <span>{isEn ? 'Paid' : 'المسدد'}: {grandFinancials.privateFinancials.totalPaid} {t('currency')}</span>
                         <span
                           className={
                             grandFinancials.privateFinancials.remaining > 0
-                              ? 'text-[#16324F]'
-                              : 'text-[#16324F]'
+                              ? 'text-[#0F1206]'
+                              : 'text-[#0F1206]'
                           }
                         >
                           {isEn ? 'Due' : 'المتبقي'}: {grandFinancials.privateFinancials.remaining} {t('currency')}
@@ -2197,18 +2198,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {activeSubTab === 'attendance' && (
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-[#16324F]">
+                  <span className="font-black text-xs text-[#0F1206]">
                     {isEn ? `Attendance History (${attendanceList.length})` : `سجل الحصص المنفذة والحضور (${attendanceList.length})`}
                   </span>
-                  <span className="text-xs font-black text-[#16324F] bg-[#C7CDD3]/65 px-2.5 py-1 rounded-xl border border-[#0A3D62]/50">
+                  <span className="text-xs font-black text-[#0F1206] bg-[#DDD3C7]/65 px-2.5 py-1 rounded-xl border border-[#293828]/50">
                     {isEn ? `Rate: ${attendanceRate}%` : `معدل الالتزام: ${attendanceRate}%`}
                   </span>
                 </div>
 
                 {attendanceList.length === 0 ? (
-                  <div className="classy-card p-8 text-center space-y-3 bg-[#FFFFFF]">
-                    <CalendarCheck2 className="w-8 h-8 text-[#6F7882] mx-auto opacity-40" />
-                    <p className="text-xs font-bold text-[#6F7882]">
+                  <div className="classy-card p-8 text-center space-y-3 bg-[#F8F2EC]">
+                    <CalendarCheck2 className="w-8 h-8 text-[#756046] mx-auto opacity-40" />
+                    <p className="text-xs font-bold text-[#756046]">
                       {isEn ? 'No attendance records yet for this student.' : 'مفيش سجلات حضور مسجلة للطالب حتى الآن.'}
                     </p>
                   </div>
@@ -2225,23 +2226,23 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       return (
                         <div
                           key={att.id}
-                          className="classy-card p-3.5 bg-[#FFFFFF] border-[#C7CDD3] hover:border-[#0A3D62]/40 transition-all space-y-2 text-xs"
+                          className="classy-card p-3.5 bg-[#F8F2EC] border-[#DDD3C7] hover:border-[#293828]/40 transition-all space-y-2 text-xs"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <span
                                 className={`w-2.5 h-2.5 rounded-full ${
-                                  isPrivate ? 'bg-[#16324F]' : 'bg-[#0A3D62]'
+                                  isPrivate ? 'bg-[#0F1206]' : 'bg-[#293828]'
                                 }`}
                               />
-                              <strong className="font-black text-[#16324F]">
+                              <strong className="font-black text-[#0F1206]">
                                 {session?.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Group Class' : 'حصة مجموعة'))}
                               </strong>
                               <span
                                 className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${
                                   isPrivate
-                                    ? 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]'
-                                    : 'bg-[#C7CDD3]/25 text-[#16324F]'
+                                    ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
+                                    : 'bg-[#DDD3C7]/25 text-[#0F1206]'
                                 }`}
                               >
                                 {isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
@@ -2252,12 +2253,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <span
                               className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
                                 att.status === 'present'
-                                  ? 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60'
+                                  ? 'bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60'
                                   : att.status === 'late'
-                                  ? 'bg-[#C7CDD3]/70 text-[#16324F] border border-[#16324F]/50'
+                                  ? 'bg-[#DDD3C7]/70 text-[#0F1206] border border-[#0F1206]/50'
                                   : att.status === 'absent_charged'
-                                  ? 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]'
-                                  : 'bg-[#C7CDD3]/15 text-[#6F7882] border border-[#C7CDD3]'
+                                  ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
+                                  : 'bg-[#DDD3C7]/15 text-[#756046] border border-[#DDD3C7]'
                               }`}
                             >
                               {att.status === 'present'
@@ -2270,7 +2271,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between text-[11px] text-[#6F7882] pt-1 border-t border-[#C7CDD3] flex-wrap gap-2">
+                          <div className="flex items-center justify-between text-[11px] text-[#756046] pt-1 border-t border-[#DDD3C7] flex-wrap gap-2">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span>
                                 {session?.date || att.recordedAt?.split('T')[0]}{' '}
@@ -2280,7 +2281,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               </span>
 
                               {isPrivate && (
-                                <span className="font-black text-[10px] px-2 py-0.5 rounded-lg bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3] inline-flex items-center gap-1">
+                                <span className="font-black text-[10px] px-2 py-0.5 rounded-lg bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7] inline-flex items-center gap-1">
                                   <span>
                                     {formatSessionQuantityDisplay(
                                       att.hours || session?.hours
@@ -2302,8 +2303,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 onClick={() => handleToggleSessionPaymentOverride(att.sessionId)}
                                 className={`px-2 py-0.5 rounded-md font-bold text-[10px] border transition-colors cursor-pointer ${
                                   isUnpaid
-                                    ? 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3]'
-                                    : 'bg-[#C7CDD3]/65 text-[#16324F] border-[#0A3D62]/50'
+                                    ? 'bg-[#DDD3C7]/15 text-[#0F1206] border-[#DDD3C7]'
+                                    : 'bg-[#DDD3C7]/65 text-[#0F1206] border-[#293828]/50'
                                 }`}
                               >
                                 {isUnpaid ? (isEn ? 'Unpaid' : 'غير مسدد (مستحق)') : (isEn ? 'Paid' : 'مسدد (خالص)')}
@@ -2324,13 +2325,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {activeSubTab === 'behavior' && (
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-[#16324F]">
+                  <span className="font-black text-xs text-[#0F1206]">
                     {isEn ? `Behavior & Engagement Logs (${studentBehaviorLogs.length})` : `سجل التقييم السلوكي والتفاعل (${studentBehaviorLogs.length})`}
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsQuickBehaviorModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#0A3D62] text-[#FFFFFF] font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#293828] to-[#293828] text-[#F8F2EC] font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{isEn ? 'New Behavior Rating' : 'تقييم سلوكي جديد'}</span>
@@ -2338,9 +2339,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 </div>
 
                 {studentBehaviorLogs.length === 0 ? (
-                  <div className="classy-card p-8 text-center space-y-3 bg-[#FFFFFF]">
-                    <Zap className="w-8 h-8 text-[#6F7882] mx-auto opacity-40" />
-                    <p className="text-xs font-bold text-[#6F7882]">
+                  <div className="classy-card p-8 text-center space-y-3 bg-[#F8F2EC]">
+                    <Zap className="w-8 h-8 text-[#756046] mx-auto opacity-40" />
+                    <p className="text-xs font-bold text-[#756046]">
                       {isEn ? 'No behavior ratings logged yet.' : 'لا توجد تقييمات سلوكية مرصودة بعد.'}
                     </p>
                   </div>
@@ -2352,14 +2353,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       return (
                         <div
                           key={log.id}
-                          className="classy-card p-3.5 bg-[#FFFFFF] border-[#C7CDD3] flex items-center justify-between gap-2 text-xs"
+                          className="classy-card p-3.5 bg-[#F8F2EC] border-[#DDD3C7] flex items-center justify-between gap-2 text-xs"
                         >
                           <div className="space-y-0.5 min-w-0">
-                            <strong className="font-black text-[#16324F] block truncate">
+                            <strong className="font-black text-[#0F1206] block truncate">
                               {log.emoji ? `${log.emoji} ` : ''}
                               {log.tag}
                             </strong>
-                            <p className="text-[11px] text-[#6F7882]">
+                            <p className="text-[11px] text-[#756046]">
                               {log.timestamp.split('T')[0]} {log.note ? `• ${log.note}` : ''}
                             </p>
                           </div>
@@ -2367,10 +2368,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           <span
                             className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${
                               isPos
-                                ? 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60'
+                                ? 'bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60'
                                 : isNeg
-                                ? 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]'
-                                : 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#C7CDD3]'
+                                ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
+                                : 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
                             }`}
                           >
                             {(log.points ?? 0) > 0 ? `+${log.points}` : log.points} {t('points')}
@@ -2389,34 +2390,34 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {activeSubTab === 'history' && (
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-[#16324F]">
+                  <span className="font-black text-xs text-[#0F1206]">
                     {isEn ? `Payments History (${allPayments.length})` : `سجل الدفعات والمقبوضات (${allPayments.length})`}
                   </span>
                   <button
                     type="button"
                     onClick={() => onOpenAddPayment(student)}
-                    className="px-3 py-1.5 rounded-xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
+                    className="px-3 py-1.5 rounded-xl bg-[#293828] hover:bg-[#0F1206] text-[#F8F2EC] font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
                   >
-                    <Plus className="w-3.5 h-3.5 text-[#0A3D62]" />
+                    <Plus className="w-3.5 h-3.5 text-[#F8F2EC]" />
                     <span>{t('recordPayment')}</span>
                   </button>
                 </div>
 
                 {allPayments.length === 0 ? (
-                  <div className="classy-card p-8 text-center space-y-3 bg-[#FFFFFF]">
-                    <Receipt className="w-8 h-8 text-[#6F7882] mx-auto opacity-40" />
-                    <p className="text-xs font-bold text-[#6F7882]">{isEn ? 'No payments recorded yet for this student.' : 'مفيش دفعات مسجلة للطالب بعد.'}</p>
+                  <div className="classy-card p-8 text-center space-y-3 bg-[#F8F2EC]">
+                    <Receipt className="w-8 h-8 text-[#756046] mx-auto opacity-40" />
+                    <p className="text-xs font-bold text-[#756046]">{isEn ? 'No payments recorded yet for this student.' : 'مفيش دفعات مسجلة للطالب بعد.'}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {allPayments.map((p) => (
                       <div
                         key={p.id}
-                        className="classy-card p-3.5 bg-[#FFFFFF] border-[#C7CDD3] flex items-center justify-between text-xs hover:border-[#0A3D62]/40 transition-all"
+                        className="classy-card p-3.5 bg-[#F8F2EC] border-[#DDD3C7] flex items-center justify-between text-xs hover:border-[#293828]/40 transition-all"
                       >
                         <div>
-                          <p className="font-black text-[#16324F] text-sm">{p.amount} {t('currency')}</p>
-                          <p className="text-[11px] text-[#6F7882] font-medium">
+                          <p className="font-black text-[#0F1206] text-sm">{p.amount} {t('currency')}</p>
+                          <p className="text-[11px] text-[#756046] font-medium">
                             {p.date} •{' '}
                             {p.paymentType === 'specific_month'
                               ? (isEn ? `Month: ${getArabicMonthName(p.targetMonth || 1)}` : `شهر ${getArabicMonthName(p.targetMonth || 1)}`)
@@ -2424,7 +2425,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             {p.notes ? `• ${p.notes}` : ''}
                           </p>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C7CDD3]/15 border border-[#C7CDD3] text-[#16324F]">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#DDD3C7]/15 border border-[#DDD3C7] text-[#0F1206]">
                           {p.paymentMethod === 'vodafone_cash'
                             ? (isEn ? 'Vodafone Cash' : 'فودافون كاش')
                             : p.paymentMethod === 'instapay'
@@ -2445,27 +2446,27 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 ------------------------------------------------------------- */}
             {activeSubTab === 'credit_logs' && (
               <div className="space-y-3.5">
-                <span className="font-black text-xs text-[#16324F] block">
+                <span className="font-black text-xs text-[#0F1206] block">
                   {isEn ? `Prepaid Session Credit Logs (${allCreditLogs.length})` : `سجل حركات رصيد الحصص الدفع المسبق (${allCreditLogs.length})`}
                 </span>
 
                 {allCreditLogs.length === 0 ? (
-                  <div className="classy-card p-8 text-center space-y-3 bg-[#FFFFFF]">
-                    <Coins className="w-8 h-8 text-[#6F7882] mx-auto opacity-40" />
-                    <p className="text-xs font-bold text-[#6F7882]">{isEn ? 'No credit balance logs recorded.' : 'لا توجد حركات رصيد مسجلة.'}</p>
+                  <div className="classy-card p-8 text-center space-y-3 bg-[#F8F2EC]">
+                    <Coins className="w-8 h-8 text-[#756046] mx-auto opacity-40" />
+                    <p className="text-xs font-bold text-[#756046]">{isEn ? 'No credit balance logs recorded.' : 'لا توجد حركات رصيد مسجلة.'}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {allCreditLogs.map((log) => (
                       <div
                         key={log.id}
-                        className="classy-card p-3.5 bg-[#FFFFFF] border-[#C7CDD3] flex items-center justify-between text-xs"
+                        className="classy-card p-3.5 bg-[#F8F2EC] border-[#DDD3C7] flex items-center justify-between text-xs"
                       >
                         <div className="space-y-0.5 min-w-0">
-                          <strong className="font-black text-[#16324F] block truncate">
+                          <strong className="font-black text-[#0F1206] block truncate">
                             {log.reason || (isEn ? 'Credit adjustment' : 'حركة رصيد')}
                           </strong>
-                          <p className="text-[11px] text-[#6F7882]">
+                          <p className="text-[11px] text-[#756046]">
                             {log.date} • {isEn ? `Balance after: ${log.balanceAfter} sessions` : `الرصيد بعد العملية: ${log.balanceAfter} حصص`}
                           </p>
                         </div>
@@ -2473,8 +2474,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                         <span
                           className={`text-[10px] font-black px-2.5 py-0.5 rounded-full shrink-0 ${
                             log.sessionsDelta > 0
-                              ? 'bg-[#C7CDD3]/65 text-[#16324F] border border-[#0A3D62]/60'
-                              : 'bg-[#C7CDD3]/70 text-[#16324F] border border-[#16324F]/50'
+                              ? 'bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60'
+                              : 'bg-[#DDD3C7]/70 text-[#0F1206] border border-[#0F1206]/50'
                           }`}
                         >
                           {log.sessionsDelta > 0 ? `+${log.sessionsDelta}` : log.sessionsDelta} {isEn ? 'sessions' : 'حصة'}

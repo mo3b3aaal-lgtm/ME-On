@@ -1,6 +1,7 @@
 import { Student, Group, Session, Payment, Enrollment, Attendance } from '../types';
 import { db } from './storage';
 import { getAppLanguage } from './i18n';
+import { toLocalISODate } from './localDate';
 
 export interface QuickTip {
   id: string;
@@ -28,7 +29,7 @@ export function generateQuickTips(
   const isEn = currentLang.startsWith('en');
 
   const tips: QuickTip[] = [];
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalISODate();
   const activeStudents = students.filter((s) => s.status !== 'archived');
   const currencyLabel = isEn ? 'EGP' : 'ج.م';
 

@@ -14,14 +14,20 @@
     ]
   },
   "android": {
-    "allowMixedContent": true
+    "allowMixedContent": true,
+    "backgroundColor": "#F2E9DE"
   },
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
     },
     "StatusBar": {
-      "overlaysWebView": true
+      "overlaysWebView": true,
+      "style": "DARK",
+      "backgroundColor": "#F2E9DE"
+    },
+    "SplashScreen": {
+      "backgroundColor": "#F2E9DE"
     }
   }
 }

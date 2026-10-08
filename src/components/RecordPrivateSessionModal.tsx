@@ -29,6 +29,7 @@ import {
 } from '../utils/storage';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
+import { toLocalISODate } from '../utils/localDate';
 
 interface RecordPrivateSessionModalProps {
   isOpen: boolean;
@@ -54,7 +55,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     isEn ? 'Other Reason' : 'سبب آخر',
   ];
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalISODate();
   const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
   // Get private enrollments for this student
@@ -328,27 +329,27 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#0A3D62]/70 backdrop-blur-md flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#293828]/70 backdrop-blur-md flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#C7CDD3]/15 border border-[#C7CDD3] rounded-t-[32px] sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
+        <div className="bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-t-[32px] sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
           {/* 1. Header with Smart Session Studio Badge */}
-          <div className="p-5 bg-gradient-to-r from-[#0A3D62] via-[#16324F] to-[#0A3D62] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden shadow-sm">
+          <div className="p-5 bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#293828] text-[#F8F2EC] flex items-center justify-between shrink-0 relative overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 relative z-10 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0A3D62] to-[#16324F] text-[#FFFFFF] flex items-center justify-center shrink-0 shadow-md shadow-[#16324F]/20 border border-[#C7CDD3]/25">
-                <Zap className="w-5 h-5 text-[#C7CDD3] animate-pulse" />
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shrink-0 shadow-md shadow-[#0F1206]/20 border border-[#DDD3C7]/25">
+                <Zap className="w-5 h-5 text-[#DDD3C7] animate-pulse" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight truncate">
+                  <h2 className="text-base sm:text-lg font-black text-[#F8F2EC] tracking-tight truncate">
                     {isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
                   </h2>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#C7CDD3]/30">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30">
                     {isHourly ? (isEn ? 'Hourly' : 'ساعات') : (isEn ? 'Lessons' : 'حصص')}
                   </span>
                 </div>
-                <p className="text-xs text-[#C7CDD3]/85 font-medium truncate">
-                  {isEn ? 'Student:' : 'الطالب:'} <strong className="text-[#FFFFFF] font-black">{student.name}</strong>
+                <p className="text-xs text-[#DDD3C7]/85 font-medium truncate">
+                  {isEn ? 'Student:' : 'الطالب:'} <strong className="text-[#F8F2EC] font-black">{student.name}</strong>
                 </p>
               </div>
             </div>
@@ -356,25 +357,25 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#C7CDD3]/20 transition-all cursor-pointer relative z-10 active:scale-95"
+              className="p-2 rounded-2xl bg-[#F8F2EC]/10 hover:bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/20 transition-all cursor-pointer relative z-10 active:scale-95"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* 2. Scrollable Body */}
-          <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#16324F]">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#0F1206]">
             {/* Service / Enrollment Selector (If student has multiple private subjects) */}
             {studentPrivateEnrollments.length > 1 && (
-              <div className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-1.5 shadow-2xs">
-                <label className="font-bold text-[#6F7882] text-[11px] flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-[#0A3D62]" />
+              <div className="p-3 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-1.5 shadow-2xs">
+                <label className="font-bold text-[#756046] text-[11px] flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[#293828]" />
                   <span>{isEn ? 'Private Subject / Service:' : 'المادة / الخدمة الخاصة:'}</span>
                 </label>
                 <select
                   value={selectedEnrollmentId}
                   onChange={(e) => setSelectedEnrollmentId(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-black text-xs text-[#16324F] focus:outline-none focus:border-[#0A3D62]"
+                  className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828]"
                 >
                   {studentPrivateEnrollments.map((enr) => {
                     const grp = allGroups.find((g) => g.id === enr.groupId);
@@ -390,12 +391,12 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
             {/* Smart Memory Suggestion Banner */}
             {rememberedQuantity !== null && rememberedQuantity > 0 && rememberedQuantity !== selectedQuantity && (
-              <div className="p-2.5 rounded-2xl bg-gradient-to-r from-[#FFFFFF] to-[#FFFFFF] border border-[#C7CDD3]/80 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-r from-[#F8F2EC] to-[#F8F2EC] border border-[#DDD3C7]/80 flex items-center justify-between gap-2 shadow-2xs">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Bookmark className="w-4 h-4 text-[#16324F] shrink-0" />
-                  <span className="text-[11px] text-[#16324F] font-bold truncate">
+                  <Bookmark className="w-4 h-4 text-[#0F1206] shrink-0" />
+                  <span className="text-[11px] text-[#0F1206] font-bold truncate">
                     {isEn ? 'Last used quantity:' : 'الكمية السابقة:'}
-                    <strong className="ms-1 text-[#16324F] font-black">
+                    <strong className="ms-1 text-[#0F1206] font-black">
                       {formatSessionQuantityDisplay(
                         isHourly ? { hours: rememberedQuantity, isHourly: true } : { sessionUnits: rememberedQuantity, isHourly: false },
                         isRTL
@@ -406,7 +407,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                 <button
                   type="button"
                   onClick={handleApplySmartMemory}
-                  className="px-2.5 py-1 rounded-xl bg-[#C7CDD3]/700 hover:bg-[#16324F] text-[#FFFFFF] text-[10px] font-black shrink-0 transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="px-2.5 py-1 rounded-xl bg-[#DDD3C7]/700 hover:bg-[#0F1206] text-[#F8F2EC] text-[10px] font-black shrink-0 transition-all cursor-pointer shadow-xs active:scale-95"
                 >
                   {isEn ? 'Repeat Last' : 'تكرار السابقة'}
                 </button>
@@ -415,9 +416,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
             {/* Date & Time Row */}
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-1">
-                <label className="font-bold text-[11px] text-[#6F7882] flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-[#0A3D62]" />
+              <div className="p-3 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-1">
+                <label className="font-bold text-[11px] text-[#756046] flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-[#293828]" />
                   <span>{isEn ? 'Date:' : 'التاريخ:'}</span>
                 </label>
                 <input
@@ -425,13 +426,13 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-black text-xs text-[#16324F] focus:outline-none"
+                  className="w-full p-2 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none"
                 />
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-1">
-                <label className="font-bold text-[11px] text-[#6F7882] flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-[#0A3D62]" />
+              <div className="p-3 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-1">
+                <label className="font-bold text-[11px] text-[#756046] flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-[#293828]" />
                   <span>{isEn ? 'Start Time:' : 'وقت البدء:'}</span>
                 </label>
                 <input
@@ -439,14 +440,14 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   required
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-black text-xs text-[#16324F] focus:outline-none"
+                  className="w-full p-2 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none"
                 />
               </div>
             </div>
 
             {/* A. INTERACTIVE QUANTITY CONTROLLER */}
-            <div className="p-4 sm:p-5 rounded-3xl bg-[#FFFFFF] border border-[#C7CDD3] shadow-xs space-y-4 text-center relative overflow-hidden">
-              <span className="text-[11px] font-black text-[#6F7882] block uppercase tracking-wider">
+            <div className="p-4 sm:p-5 rounded-3xl bg-[#F8F2EC] border border-[#DDD3C7] shadow-xs space-y-4 text-center relative overflow-hidden">
+              <span className="text-[11px] font-black text-[#756046] block uppercase tracking-wider">
                 {isHourly
                   ? (isEn ? 'Session Duration (Hours)' : 'مدة الحصة الفعلية (بالساعات)')
                   : (isEn ? 'Lesson Intake Quantity' : 'كمية الحصص المنفذة')}
@@ -458,17 +459,17 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   type="button"
                   onClick={() => handleStepChange(-0.5)}
                   disabled={selectedQuantity <= 0.5}
-                  className="w-12 h-12 rounded-2xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border border-[#C7CDD3] flex items-center justify-center text-[#16324F] font-black transition-all shadow-2xs cursor-pointer"
+                  className="w-12 h-12 rounded-2xl bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] font-black transition-all shadow-2xs cursor-pointer"
                   title="- 0.5"
                 >
-                  <Minus className="w-5 h-5 text-[#0A3D62]" />
+                  <Minus className="w-5 h-5 text-[#293828]" />
                 </button>
 
-                <div className="min-w-[150px] p-3.5 rounded-3xl bg-gradient-to-b from-[#FFFFFF] to-[#C7CDD3]/40 border border-[#0A3D62]/30 shadow-inner">
-                  <div className="text-3xl sm:text-4xl font-black text-[#16324F] tracking-tight">
+                <div className="min-w-[150px] p-3.5 rounded-3xl bg-gradient-to-b from-[#F8F2EC] to-[#DDD3C7]/40 border border-[#293828]/30 shadow-inner">
+                  <div className="text-3xl sm:text-4xl font-black text-[#0F1206] tracking-tight">
                     {selectedQuantity}
                   </div>
-                  <div className="text-xs font-black text-[#0A3D62] mt-0.5">
+                  <div className="text-xs font-black text-[#293828] mt-0.5">
                     {formatSessionQuantityDisplay(
                       isHourly ? { hours: selectedQuantity, isHourly: true } : { sessionUnits: selectedQuantity, isHourly: false },
                       isRTL
@@ -479,10 +480,10 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                 <button
                   type="button"
                   onClick={() => handleStepChange(0.5)}
-                  className="w-12 h-12 rounded-2xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 active:scale-95 border border-[#C7CDD3] flex items-center justify-center text-[#16324F] font-black transition-all shadow-2xs cursor-pointer"
+                  className="w-12 h-12 rounded-2xl bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 active:scale-95 border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] font-black transition-all shadow-2xs cursor-pointer"
                   title="+ 0.5"
                 >
-                  <Plus className="w-5 h-5 text-[#0A3D62]" />
+                  <Plus className="w-5 h-5 text-[#293828]" />
                 </button>
               </div>
 
@@ -497,8 +498,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                       onClick={() => handleSelectPreset(val)}
                       className={`py-2 px-1 rounded-2xl font-black text-xs transition-all border cursor-pointer ${
                         isSel
-                          ? 'bg-[#0A3D62] text-[#FFFFFF] border-[#0A3D62] shadow-md shadow-[#16324F]/20 scale-[1.02]'
-                          : 'bg-[#C7CDD3]/15 text-[#6F7882] border-[#C7CDD3] hover:border-[#0A3D62]/40 hover:text-[#16324F]'
+                          ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-md shadow-[#0F1206]/20 scale-[1.02]'
+                          : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:border-[#293828]/40 hover:text-[#0F1206]'
                       }`}
                     >
                       {val} {isHourly ? (isEn ? 'h' : 'س') : (isEn ? 'L' : 'ح')}
@@ -508,12 +509,12 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               </div>
 
               {/* Custom Value Mode */}
-              <div className="pt-2 border-t border-[#C7CDD3]/60 flex items-center justify-between gap-3">
+              <div className="pt-2 border-t border-[#DDD3C7]/60 flex items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setIsCustomMode(!isCustomMode)}
                   className={`text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer ${
-                    isCustomMode ? 'text-[#0A3D62]' : 'text-[#6F7882] hover:text-[#16324F]'
+                    isCustomMode ? 'text-[#293828]' : 'text-[#756046] hover:text-[#0F1206]'
                   }`}
                 >
                   <Tag className="w-3.5 h-3.5" />
@@ -530,9 +531,9 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                       value={customInput}
                       onChange={(e) => handleCustomChange(e.target.value)}
                       placeholder="e.g. 1.25"
-                      className="w-24 p-1.5 text-center rounded-xl bg-[#C7CDD3]/15 border border-[#0A3D62] font-black text-xs text-[#16324F] focus:outline-none"
+                      className="w-24 p-1.5 text-center rounded-xl bg-[#DDD3C7]/15 border border-[#293828] font-black text-xs text-[#0F1206] focus:outline-none"
                     />
-                    <span className="text-[11px] font-bold text-[#6F7882]">
+                    <span className="text-[11px] font-bold text-[#756046]">
                       {isHourly ? (isEn ? 'hours' : 'ساعة') : (isEn ? 'lessons' : 'حصة')}
                     </span>
                   </div>
@@ -541,11 +542,11 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             </div>
 
             {/* Attendance Status Selection */}
-            <div className="p-4 rounded-3xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-2.5">
+            <div className="p-4 rounded-3xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-black text-[#16324F] text-xs">{isEn ? 'Attendance Status:' : 'حالة الحضور والاحتساب:'}</span>
+                <span className="font-black text-[#0F1206] text-xs">{isEn ? 'Attendance Status:' : 'حالة الحضور والاحتساب:'}</span>
                 <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-                  isCharged ? 'bg-[#C7CDD3]/15 text-[#16324F] border border-[#0A3D62]' : 'bg-[#C7CDD3]/15 text-[#6F7882] border border-[#C7CDD3]'
+                  isCharged ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#293828]' : 'bg-[#DDD3C7]/15 text-[#756046] border border-[#DDD3C7]'
                 }`}>
                   {isCharged ? (isEn ? 'Charged (Consumes Credit)' : 'محسوبة (تستهلك رصيد)') : (isEn ? 'Exempt (Free)' : 'غير محسوبة (معفية)')}
                 </span>
@@ -557,8 +558,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   onClick={() => setAttendanceType('present')}
                   className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
                     attendanceType === 'present'
-                      ? 'bg-[#16324F] text-[#FFFFFF] border-[#16324F] shadow-sm'
-                      : 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3]'
+                      ? 'bg-[#0F1206] text-[#F8F2EC] border-[#0F1206] shadow-sm'
+                      : 'bg-[#DDD3C7]/15 text-[#0F1206] border-[#DDD3C7]'
                   }`}
                 >
                   ✓ {isEn ? 'Present' : 'حاضر (مستهلكة)'}
@@ -569,8 +570,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   onClick={() => setAttendanceType('absent_charged')}
                   className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
                     attendanceType === 'absent_charged'
-                      ? 'bg-[#16324F] text-[#FFFFFF] border-[#16324F] shadow-sm'
-                      : 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3]'
+                      ? 'bg-[#0F1206] text-[#F8F2EC] border-[#0F1206] shadow-sm'
+                      : 'bg-[#DDD3C7]/15 text-[#0F1206] border-[#DDD3C7]'
                   }`}
                 >
                   ⚠️ {isEn ? 'Absent (Charged)' : 'غائب (محسوبة)'}
@@ -581,8 +582,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   onClick={() => setAttendanceType('absent_free')}
                   className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
                     attendanceType === 'absent_free'
-                      ? 'bg-[#0A3D62] text-[#FFFFFF] border-[#0A3D62] shadow-sm'
-                      : 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3]'
+                      ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-sm'
+                      : 'bg-[#DDD3C7]/15 text-[#0F1206] border-[#DDD3C7]'
                   }`}
                 >
                   ℹ️ {isEn ? 'Absent (Free)' : 'غائب (غير محسوبة)'}
@@ -593,8 +594,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
                   onClick={() => setAttendanceType('cancelled')}
                   className={`p-2.5 rounded-2xl text-xs font-black border text-center transition-all cursor-pointer ${
                     attendanceType === 'cancelled'
-                      ? 'bg-[#6F7882] text-[#FFFFFF] border-[#6F7882] shadow-sm'
-                      : 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3]'
+                      ? 'bg-[#756046] text-[#F8F2EC] border-[#756046] shadow-sm'
+                      : 'bg-[#DDD3C7]/15 text-[#0F1206] border-[#DDD3C7]'
                   }`}
                 >
                   ✕ {isEn ? 'Cancelled' : 'حصة ملغاة'}
@@ -603,15 +604,15 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             </div>
 
             {/* B. LIVE FINANCIAL IMPACT PANEL */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-[#FFFFFF] via-[#FFFFFF] to-[#FFFFFF] border border-[#C7CDD3] shadow-xs space-y-3">
-              <div className="flex items-center justify-between border-b border-[#C7CDD3] pb-2">
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-[#F8F2EC] via-[#F8F2EC] to-[#F8F2EC] border border-[#DDD3C7] shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-[#DDD3C7] pb-2">
                 <div className="flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-[#0A3D62]" />
-                  <span className="font-black text-xs text-[#16324F]">
+                  <Calculator className="w-4 h-4 text-[#293828]" />
+                  <span className="font-black text-xs text-[#0F1206]">
                     {isEn ? 'Live Financial Impact' : 'الأثر المالي المباشر'}
                   </span>
                 </div>
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#C7CDD3]/25 text-[#16324F]">
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/25 text-[#0F1206]">
                   {isPrepaid
                     ? (isEn ? 'Prepaid (Auto-settled)' : 'مسبق (تسوية فورية)')
                     : isPackage
@@ -623,31 +624,31 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-start">
-                <div className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-0.5">
-                  <span className="text-[10px] text-[#6F7882] block font-bold">
+                <div className="p-3 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-0.5">
+                  <span className="text-[10px] text-[#756046] block font-bold">
                     {isHourly ? (isEn ? 'Hourly Rate' : 'سعر الساعة') : (isEn ? 'Price / Lesson' : 'سعر الحصة')}
                   </span>
-                  <strong className="text-sm font-black text-[#16324F] block">
+                  <strong className="text-sm font-black text-[#0F1206] block">
                     {effectiveSessionPrice} {t('currency')}
                   </strong>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-0.5">
-                  <span className="text-[10px] text-[#6F7882] block font-bold">
+                <div className="p-3 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-0.5">
+                  <span className="text-[10px] text-[#756046] block font-bold">
                     {isEn ? 'Session Total' : 'إجمالي قيمة الحصة'}
                   </span>
-                  <strong className="text-sm font-black text-[#16324F] block">
+                  <strong className="text-sm font-black text-[#0F1206] block">
                     {totalSessionValue} {t('currency')}
                   </strong>
                 </div>
 
-                <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-0.5">
-                  <span className="text-[10px] text-[#6F7882] block font-bold">
+                <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-0.5">
+                  <span className="text-[10px] text-[#756046] block font-bold">
                     {isEn ? 'Outstanding Dues' : 'الرصيد المتبقي على الطالب'}
                   </span>
                   <strong
                     className={`text-sm font-black block ${
-                      (finSummary?.remaining || 0) > 0 ? 'text-[#16324F]' : 'text-[#16324F]'
+                      (finSummary?.remaining || 0) > 0 ? 'text-[#0F1206]' : 'text-[#0F1206]'
                     }`}
                   >
                     {finSummary?.remaining || 0} {t('currency')}
@@ -658,58 +659,58 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
             {/* C. BEFORE & AFTER PACKAGE PROGRESS */}
             {packageProjection && (
-              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#0A3D62]/5 via-[#FFFFFF] to-[#0A3D62]/5 border border-[#0A3D62]/30 shadow-xs space-y-3">
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#293828]/5 via-[#F8F2EC] to-[#293828]/5 border border-[#293828]/30 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-[#0A3D62]" />
-                    <span className="font-black text-xs text-[#16324F]">
+                    <Layers className="w-4 h-4 text-[#293828]" />
+                    <span className="font-black text-xs text-[#0F1206]">
                       {isEn ? 'Package Progress (Before & After)' : 'تطور رصيد الباقة (قبل وبعد الرصد)'}
                     </span>
                   </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#C7CDD3]/25 text-[#0A3D62]">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#DDD3C7]/25 text-[#293828]">
                     {packageProjection.total} {isEn ? 'Lessons Package' : 'حصص في الباقة'}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
-                  <div className="p-2.5 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] space-y-1">
-                    <span className="text-[10px] font-bold text-[#6F7882] block">
+                  <div className="p-2.5 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] space-y-1">
+                    <span className="text-[10px] font-bold text-[#756046] block">
                       {isEn ? 'Before' : 'قبل الرصد'}
                     </span>
-                    <strong className="text-xs font-black text-[#16324F] block">
+                    <strong className="text-xs font-black text-[#0F1206] block">
                       {packageProjection.beforeRemaining} {isEn ? 'rem.' : 'متبقية'}
                     </strong>
                   </div>
 
-                  <div className="p-2.5 rounded-2xl bg-[#0A3D62]/10 border border-[#0A3D62]/40 space-y-1">
-                    <span className="text-[10px] font-bold text-[#0A3D62] block">
+                  <div className="p-2.5 rounded-2xl bg-[#293828]/10 border border-[#293828]/40 space-y-1">
+                    <span className="text-[10px] font-bold text-[#293828] block">
                       {isEn ? 'This Session' : 'هذه الحصة'}
                     </span>
-                    <strong className="text-xs font-black text-[#0A3D62] block">
+                    <strong className="text-xs font-black text-[#293828] block">
                       -{packageProjection.thisSessionUnits} {isEn ? 'lessons' : 'حصة'}
                     </strong>
                   </div>
 
-                  <div className="p-2.5 rounded-2xl bg-[#C7CDD3]/65 border border-[#0A3D62]/50 space-y-1">
-                    <span className="text-[10px] font-bold text-[#16324F] block">
+                  <div className="p-2.5 rounded-2xl bg-[#DDD3C7]/65 border border-[#293828]/50 space-y-1">
+                    <span className="text-[10px] font-bold text-[#0F1206] block">
                       {isEn ? 'After' : 'بعد الرصد'}
                     </span>
-                    <strong className="text-xs font-black text-[#16324F] block">
+                    <strong className="text-xs font-black text-[#0F1206] block">
                       {packageProjection.afterRemaining} {isEn ? 'rem.' : 'متبقية'}
                     </strong>
                   </div>
                 </div>
 
                 <div className="space-y-1 pt-1">
-                  <div className="h-2.5 w-full bg-[#C7CDD3]/25 rounded-full overflow-hidden flex">
+                  <div className="h-2.5 w-full bg-[#DDD3C7]/25 rounded-full overflow-hidden flex">
                     <div
                       style={{
                         width: `${Math.min(100, (packageProjection.projectedUsed / packageProjection.total) * 100)}%`,
                       }}
-                      className="bg-gradient-to-r from-[#0A3D62] to-[#16324F] h-full transition-all duration-300"
+                      className="bg-gradient-to-r from-[#293828] to-[#0F1206] h-full transition-all duration-300"
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-[#6F7882] font-bold">
+                  <div className="flex items-center justify-between text-[10px] text-[#756046] font-bold">
                     <span>{packageProjection.projectedUsed} {isEn ? 'consumed' : 'مستهلك'}</span>
                     <span>{packageProjection.afterRemaining} {isEn ? 'remaining' : 'متبقي'}</span>
                   </div>
@@ -719,23 +720,23 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
             {/* Optional Notes */}
             <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-[#6F7882]">
+              <label className="block text-[11px] font-bold text-[#756046]">
                 {isEn ? 'Notes (Optional):' : 'ملاحظات (اختياري):'}
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={isEn ? 'Topics covered, homework, remarks...' : 'الموضوعات المغطاة، الواجب، ملاحظات المعلم...'}
-                className="w-full p-2.5 rounded-2xl bg-[#FFFFFF] border border-[#C7CDD3] text-xs font-medium text-[#16324F] focus:outline-none focus:border-[#0A3D62] resize-none h-16"
+                className="w-full p-2.5 rounded-2xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-medium text-[#0F1206] focus:outline-none focus:border-[#293828] resize-none h-16"
               />
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-2 pt-3 flex items-center justify-between gap-3 border-t border-[#C7CDD3]">
+            <div className="p-2 pt-3 flex items-center justify-between gap-3 border-t border-[#DDD3C7]">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-2xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#6F7882] font-bold text-xs cursor-pointer"
+                className="btn-secondary"
               >
                 {t('cancel')}
               </button>
@@ -743,7 +744,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-[#0A3D62] via-[#16324F] to-[#6F7882] hover:from-[#16324F] hover:to-[#16324F] text-[#FFFFFF] font-black text-xs sm:text-sm shadow-md shadow-[#0A3D62]/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                className="btn-primary flex-1"
               >
                 <Check className="w-4 h-4" />
                 <span>

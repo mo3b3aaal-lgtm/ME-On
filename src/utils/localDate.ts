@@ -24,6 +24,25 @@ export function getDeviceTimezone(): string {
 }
 
 /**
+ * Formats a Date object into a canonical local YYYY-MM-DD string using the device's local calendar day.
+ */
+export function toLocalISODate(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Parses a YYYY-MM-DD date string into a local Date object (at 00:00:00 local time).
+ */
+export function parseLocalDateStr(dateStr: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr || '');
+  if (!m) return new Date(dateStr);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/**
  * Formats any Date or timestamp into a canonical local YYYY-MM-DD string
  * in the specified IANA timezone (or current device timezone).
  */

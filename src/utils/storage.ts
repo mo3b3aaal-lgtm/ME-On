@@ -58,7 +58,7 @@ import {
   CategoryFinancialBreakdown,
 } from '../types';
 import { getAppLanguage } from './i18n';
-import { getLocalDateString } from './localDate';
+import { getLocalDateString, toLocalISODate, parseLocalDateStr } from './localDate';
 import { formatTimeDisplay, parseTimeToMinutes, getScheduledClassesForDate } from './schedule';
 import {
   roundMoney,
@@ -394,7 +394,7 @@ const ENGLISH_DAY_NAMES = [
 
 export function getArabicDayName(dateString: string): string {
   const isEn = getAppLanguage().startsWith('en');
-  const d = new Date(dateString);
+  const d = parseLocalDateStr(dateString);
   if (isNaN(d.getTime())) return isEn ? 'Saturday' : 'السبت';
   return isEn ? (ENGLISH_DAY_NAMES[d.getDay()] || 'Saturday') : (ARABIC_DAY_NAMES[d.getDay()] || 'السبت');
 }
@@ -1621,7 +1621,7 @@ export function formatSyncStatusArabic(
         label: isEn
           ? 'Deferred - Cannot reach Cloud Server (Data saved safely locally)'
           : 'مؤجل - تعذر الوصول للسيرفر السحابي (البيانات محفوظة محلياً)',
-        badgeClass: 'bg-[#16324F]/12 text-[#16324F] border border-[#16324F]/30',
+        badgeClass: 'bg-[#0F1206]/12 text-[#0F1206] border border-[#0F1206]/30',
         iconType: 'offline',
       };
     }
@@ -1629,7 +1629,7 @@ export function formatSyncStatusArabic(
       label: isEn
         ? 'Deferred - No Internet connection (Data saved safely locally)'
         : 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
-      badgeClass: 'bg-[#16324F]/12 text-[#16324F] border border-[#16324F]/30',
+      badgeClass: 'bg-[#0F1206]/12 text-[#0F1206] border border-[#0F1206]/30',
       iconType: 'offline',
     };
   }
@@ -1638,26 +1638,26 @@ export function formatSyncStatusArabic(
     case 'syncing':
       return {
         label: isEn ? 'Syncing data with cloud...' : 'جاري مزامنة البيانات مع السحابة...',
-        badgeClass: 'bg-[#0A3D62]/12 text-[#0A3D62] border border-[#0A3D62]/30',
+        badgeClass: 'bg-[#293828]/12 text-[#293828] border border-[#293828]/30',
         iconType: 'syncing',
       };
     case 'success':
     case 'idle':
       return {
         label: isEn ? 'Synced & Ready (All data secured on Cloud)' : 'متزامن وجاهز (جميع البيانات مؤمنة بالسحابة)',
-        badgeClass: 'bg-[#0A3D62]/10 text-[#0A3D62] border border-[#0A3D62]/25',
+        badgeClass: 'bg-[#293828]/10 text-[#293828] border border-[#293828]/25',
         iconType: 'success',
       };
     case 'error':
       return {
         label: isEn ? 'Last sync failed (Data preserved locally)' : 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
-        badgeClass: 'bg-[#16324F]/15 text-[#16324F] border border-[#16324F]/35',
+        badgeClass: 'bg-[#0F1206]/15 text-[#0F1206] border border-[#0F1206]/35',
         iconType: 'error',
       };
     default:
       return {
         label: isEn ? 'Synced & Ready' : 'متزامن وجاهز',
-        badgeClass: 'bg-[#C7CDD3]/25 text-[#16324F] border border-[#C7CDD3]',
+        badgeClass: 'bg-[#DDD3C7]/25 text-[#0F1206] border border-[#DDD3C7]',
         iconType: 'idle',
       };
   }
@@ -1727,9 +1727,9 @@ export function calculateCustomEnrollmentPrice(
 
 // ==========================================
 // Database Engine API
-const ALLOWED_LUXURY_HEX = ['#0A3D62', '#16324F', '#6F7882'];
+const ALLOWED_LUXURY_HEX = ['#293828', '#0F1206', '#756046'];
 
-function normalizeLuxuryAccentColor(color: string | undefined, idSeed: string, fallback = '#0A3D62'): string {
+function normalizeLuxuryAccentColor(color: string | undefined, idSeed: string, fallback = '#293828'): string {
   if (!color) return fallback;
   const upper = color.toUpperCase();
   if (ALLOWED_LUXURY_HEX.includes(upper)) return upper;
@@ -1751,7 +1751,7 @@ export const db = {
       .filter((s) => (s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher'))
       .map((s) => ({
         ...s,
-        avatarColor: normalizeLuxuryAccentColor(s.avatarColor, s.id, '#0A3D62'),
+        avatarColor: normalizeLuxuryAccentColor(s.avatarColor, s.id, '#293828'),
       }));
   },
 
@@ -1917,7 +1917,7 @@ export const db = {
       .filter((g) => (g.userId ? g.userId === currentUserId : currentUserId === 'acc_master_teacher'))
       .map((g) => ({
         ...g,
-        accentColor: normalizeLuxuryAccentColor(g.accentColor, g.id, g.type === 'private' ? '#16324F' : '#0A3D62'),
+        accentColor: normalizeLuxuryAccentColor(g.accentColor, g.id, g.type === 'private' ? '#0F1206' : '#293828'),
       }));
   },
 
@@ -2107,7 +2107,7 @@ export const db = {
       scheduleTime: options.scheduleTime || '04:00 م',
       scheduleTimes: options.scheduleTimes,
       roomOrLocation: options.roomOrLocation || 'منزل الطالب / أونلاين',
-      accentColor: '#16324F', // Navy accent for private lessons
+      accentColor: '#0F1206', // Navy accent for private lessons
       notes: options.notes || '',
       createdAt: new Date().toISOString(),
     };
@@ -2194,7 +2194,7 @@ export const db = {
       financialCredit: options?.financialCredit || 0,
       discount: options?.discount || 0,
       status: options?.status || 'active',
-      joinedAt: options?.joinedAt || new Date().toISOString().split('T')[0],
+      joinedAt: options?.joinedAt || toLocalISODate(),
       notes: options?.notes || '',
       updatedAt: now,
       createdAt: now,
@@ -2398,7 +2398,7 @@ export const db = {
     const totalSessionValue = multiplyMoney(count, effectiveSessionPrice);
     const packageId = isPackage ? (enrollment?.groupId || group?.id || `pkg_${enrollment?.id}`) : undefined;
 
-    const dateObj = new Date(params.date);
+    const dateObj = parseLocalDateStr(params.date);
     const month = !isNaN(dateObj.getTime()) ? dateObj.getMonth() + 1 : new Date().getMonth() + 1;
     const year = !isNaN(dateObj.getTime()) ? dateObj.getFullYear() : new Date().getFullYear();
     const dayName = !isNaN(dateObj.getTime()) ? getArabicDayName(params.date) : 'السبت';
@@ -2496,7 +2496,7 @@ export const db = {
     const results: BulkStudentResultItem[] = [];
     let totalCreated = 0;
 
-    const parsedDate = new Date(params.date);
+    const parsedDate = parseLocalDateStr(params.date);
     const month = !isNaN(parsedDate.getTime()) ? parsedDate.getMonth() + 1 : new Date().getMonth() + 1;
     const year = !isNaN(parsedDate.getTime()) ? parsedDate.getFullYear() : new Date().getFullYear();
     const dayName = !isNaN(parsedDate.getTime()) ? getArabicDayName(params.date) : 'السبت';
@@ -2726,7 +2726,7 @@ export const db = {
             balanceBefore,
             balanceAfter: enr.sessionCredit,
             reason: 'استرجاع رصيد حصة: تم حذف الحصة',
-            date: new Date().toISOString().split('T')[0],
+            date: toLocalISODate(),
             sessionId: id,
           });
         }
@@ -2838,7 +2838,7 @@ export const db = {
                 balanceBefore,
                 balanceAfter: enr.sessionCredit,
                 reason,
-                date: session?.date || new Date().toISOString().split('T')[0],
+                date: session?.date || toLocalISODate(),
                 sessionId,
               });
             } else {
@@ -2860,7 +2860,7 @@ export const db = {
                 balanceBefore: 0,
                 balanceAfter: 0,
                 reason,
-                date: session?.date || new Date().toISOString().split('T')[0],
+                date: session?.date || toLocalISODate(),
                 sessionId,
               });
             }
@@ -2880,7 +2880,7 @@ export const db = {
               balanceBefore,
               balanceAfter: enr.sessionCredit,
               reason: `استرجاع رصيد حصة: تغيير الحالة إلى غير محسوبة (${session?.date || ''})`,
-              date: session?.date || new Date().toISOString().split('T')[0],
+              date: session?.date || toLocalISODate(),
               sessionId,
             });
           }
@@ -3620,7 +3620,7 @@ export const db = {
     const group = db.getGroupById(enrollment.groupId);
     const groupName = group ? group.name : 'مجموعة محذوفة';
     const groupType = group ? group.type : enrollment.serviceType;
-    const accentColor = group ? group.accentColor : '#0A3D62';
+    const accentColor = group ? group.accentColor : '#293828';
 
     const allGroupSessions = db.getSessions().filter(
       (s) => s.groupId === enrollment.groupId || (s.enrollmentId && s.enrollmentId === enrollment.id)
@@ -3692,7 +3692,7 @@ export const db = {
 
       // Join date month
       if (enrollment.joinedAt) {
-        const d = new Date(enrollment.joinedAt);
+        const d = parseLocalDateStr(enrollment.joinedAt);
         if (!isNaN(d.getTime())) {
           monthsSet.add(`${d.getFullYear()}-${d.getMonth() + 1}`);
         }
@@ -4562,12 +4562,12 @@ export const db = {
       const groupBreakdown = initBreakdown();
       const privateBreakdown = initBreakdown();
       const methodStats: Record<string, { label: string; amount: number; count: number; color?: string }> = {
-        cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#0A3D62' },
-        vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#16324F' },
-        instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#6F7882' },
-        bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#0A3D62' },
-        prepaid_auto: { label: 'دفع مسبق للحصص', amount: 0, count: 0, color: '#16324F' },
-        other: { label: 'أخرى', amount: 0, count: 0, color: '#6F7882' },
+        cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#293828' },
+        vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#0F1206' },
+        instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#756046' },
+        bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#293828' },
+        prepaid_auto: { label: 'دفع مسبق للحصص', amount: 0, count: 0, color: '#0F1206' },
+        other: { label: 'أخرى', amount: 0, count: 0, color: '#756046' },
       };
 
       let totalCompleted = 0;

@@ -52,6 +52,7 @@ import {
   DetailedNetworkStatus,
 } from '../utils/network';
 import { useTranslation, Language } from '../utils/i18n';
+import { toLocalISODate } from '../utils/localDate';
 import {
   formatReminderTimeDisplay,
   scheduleDailyAttendanceReminder,
@@ -190,7 +191,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const a = document.createElement('a');
       a.href = url;
       const userName = (currentUser?.name || teacherProfile.name || 'teacher').replace(/\s+/g, '_');
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = toLocalISODate();
       a.download = `Classy_Backup_${userName}_${dateStr}.json`;
       a.click();
       URL.revokeObjectURL(url);
@@ -429,380 +430,869 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#16324F] pb-32 bg-[#FFFFFF] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F1206] pb-32 bg-[#F2E9DE] relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Ambient glows */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#0A3D62]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#0A3D62]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      {/* Ambient luxury glows */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#293828]/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#756046]/12 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* =========================================================================
-          1. SETTINGS HERO HEADER
+          1. SETTINGS EXECUTIVE HERO HEADER (WITH METALLIC LUSTRE)
           ========================================================================= */}
-      <div className="rounded-[24px] bg-gradient-to-r from-[#0A3D62] via-[#16324F] to-[#6F7882] p-5 sm:p-6 text-[#FFFFFF] relative overflow-hidden shadow-xl border border-[#C7CDD3]/15">
+      <div className="rounded-[26px] bg-gradient-to-br from-[#293828] via-[#0F1206] to-[#756046] p-5 sm:p-6 text-[#F8F2EC] relative overflow-hidden shadow-xl border border-[#DDD3C7]/35 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.32)]">
+        {/* Diagonal Metallic Sheen Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#F8F2EC]/8 to-[#DDD3C7]/15 pointer-events-none" />
+        <div className="absolute -top-14 -right-14 w-52 h-52 bg-[#DDD3C7]/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-14 -left-14 w-52 h-52 bg-[#293828]/35 rounded-full blur-2xl pointer-events-none" />
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#0A3D62] via-[#16324F] to-[#0A3D62] p-0.5 shadow-lg shadow-[#0A3D62]/35 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-[#0A3D62] flex items-center justify-center text-[#FFFFFF]">
-                <SettingsIcon className="w-6 h-6 text-[#FFFFFF]" />
+            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#DDD3C7] via-[#F8F2EC] to-[#756046] p-0.5 shadow-lg shadow-[#0F1206]/40 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-[#293828] to-[#0F1206] flex items-center justify-center text-[#F8F2EC] shadow-inner">
+                <SettingsIcon className="w-6 h-6 text-[#F8F2EC]" />
               </div>
             </div>
 
             <div className="space-y-0.5 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#C7CDD3]/90 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#C7CDD3]" />
-                  <span>{isEn ? 'Classy Control Center' : 'إعدادات الحساب والنظام'}</span>
+                <span className="text-xs font-bold text-[#DDD3C7] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                  <span>{isEn ? 'Classy Executive Control' : 'مركز التحكم والإعدادات الفاخرة'}</span>
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#FFFFFF] tracking-tight flex items-center gap-2.5 truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-[#F8F2EC] tracking-tight flex items-center gap-2.5 truncate">
                 <span>{t('settingsTitle')}</span>
               </h1>
-              <p className="text-xs sm:text-sm text-[#C7CDD3]/85 font-medium truncate">
-                {currentUser?.email || teacherProfile.name || (isEn ? 'Teacher Profile & Settings' : 'الملف الشخصي وإعدادات الحساب')}
+              <p className="text-xs sm:text-sm text-[#DDD3C7]/90 font-medium truncate">
+                {currentUser?.email || teacherProfile.name || (isEn ? 'Teacher Profile & System Preferences' : 'الملف الشخصي وتفضيلات النظام والمزامنة')}
               </p>
             </div>
           </div>
 
-          {currentUser && (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="px-4 py-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] font-bold text-xs flex items-center gap-2 border border-[#C7CDD3]/25 transition-all cursor-pointer self-end sm:self-auto"
-            >
-              <LogOut className="w-4 h-4 text-[#FFFFFF]" />
-              <span>{t('logout')}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            {activeSection !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setActiveSection('all')}
+                className="px-3.5 py-2 rounded-2xl bg-[#F8F2EC] text-[#293828] font-black text-xs flex items-center gap-1.5 border border-[#DDD3C7] shadow-sm transition-all cursor-pointer active:scale-95"
+              >
+                <Layers className="w-3.5 h-3.5 text-[#293828]" />
+                <span>{isEn ? 'Show All' : 'عرض الكل'}</span>
+              </button>
+            )}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="px-4 py-2 rounded-2xl bg-[#F8F2EC]/15 hover:bg-[#F8F2EC]/25 text-[#F8F2EC] font-bold text-xs flex items-center gap-2 border border-[#DDD3C7]/35 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.25)] transition-all cursor-pointer active:scale-95"
+              >
+                <LogOut className="w-4 h-4 text-[#F8F2EC]" />
+                <span>{t('logout')}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Sync Feedback Toast */}
       {syncFeedback && (
         <div
-          className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 ${
+          className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between shadow-md animate-in fade-in slide-in-from-top-2 border border-[#DDD3C7]/35 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.28)] ${
             syncFeedback.type === 'success'
-              ? 'bg-[#0A3D62] text-[#FFFFFF] shadow-[#0A3D62]/20'
+              ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC]'
               : syncFeedback.type === 'error'
-              ? 'bg-[#16324F] text-[#FFFFFF] shadow-[#16324F]/20'
-              : 'bg-[#0A3D62] text-[#FFFFFF] shadow-[#0A3D62]/20'
+              ? 'bg-gradient-to-r from-[#0F1206] to-[#756046] text-[#F8F2EC]'
+              : 'bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC]'
           }`}
         >
           <div className="flex items-center gap-2">
             {syncFeedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-4 h-4 text-[#F8F2EC]" />
             ) : (
-              <AlertTriangle className="w-4 h-4" />
+              <AlertTriangle className="w-4 h-4 text-[#DDD3C7]" />
             )}
             <span>{syncFeedback.message}</span>
           </div>
           <button onClick={() => setSyncFeedback(null)}>
-            <Check className="w-4 h-4 opacity-80 hover:opacity-100" />
+            <Check className="w-4 h-4 text-[#F8F2EC] opacity-85 hover:opacity-100" />
           </button>
         </div>
       )}
 
       {/* =========================================================================
-          2. LANGUAGE SWITCHER
+          2. DASHBOARD-STYLE SQUARE BENTO GRID (4 LUXURY SQUARE TILES)
           ========================================================================= */}
-      <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/25 flex items-center justify-center text-[#0A3D62]">
-            <Globe className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-[#16324F]">{t('languageSettings')}</h3>
-            <p className="text-[11px] text-[#6F7882] font-medium">{t('selectLanguage')}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-          <button
-            type="button"
-            onClick={() => setLanguage('ar')}
-            className={`p-3 rounded-2xl border flex items-center justify-between font-bold text-xs transition-all cursor-pointer ${
-              language === 'ar'
-                ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] border-[#0A3D62] shadow-sm'
-                : 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3] hover:bg-[#C7CDD3]/35'
-            }`}
-          >
-            <span>العربية (Egyptian Arabic)</span>
-            {language === 'ar' && <Check className="w-4 h-4 text-[#0A3D62]" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setLanguage('en-GB')}
-            className={`p-3 rounded-2xl border flex items-center justify-between font-bold text-xs transition-all cursor-pointer ${
-              language === 'en-GB'
-                ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] border-[#0A3D62] shadow-sm'
-                : 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3] hover:bg-[#C7CDD3]/35'
-            }`}
-          >
-            <span>English (UK)</span>
-            {language === 'en-GB' && <Check className="w-4 h-4 text-[#0A3D62]" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setLanguage('en-US')}
-            className={`p-3 rounded-2xl border flex items-center justify-between font-bold text-xs transition-all cursor-pointer ${
-              language === 'en-US'
-                ? 'bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] border-[#0A3D62] shadow-sm'
-                : 'bg-[#C7CDD3]/15 text-[#16324F] border-[#C7CDD3] hover:bg-[#C7CDD3]/35'
-            }`}
-          >
-            <span>English (US)</span>
-            {language === 'en-US' && <Check className="w-4 h-4 text-[#0A3D62]" />}
-          </button>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          3. TEACHER PROFILE FORM
-          ========================================================================= */}
-      <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/25 flex items-center justify-center text-[#0A3D62]">
-              <User className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-[#16324F]">{isEn ? 'Teacher Profile & Branding' : 'بيانات المعلم والسنتر'}</h3>
-              <p className="text-[11px] text-[#6F7882] font-medium">{isEn ? 'Displayed on reports and printouts' : 'تظهر في الكشوفات والمطبوعات'}</p>
-            </div>
-          </div>
-          {savedSuccess && (
-            <span className="text-xs text-[#0A3D62] font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{t('saveSuccess')}</span>
-            </span>
-          )}
-        </div>
-
-        <form onSubmit={handleSaveProfile} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-bold text-[#6F7882] block mb-1">{t('teacherName')}</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F] focus:outline-none focus:border-[#0A3D62]"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-[#6F7882] block mb-1">{t('subject')}</label>
-              <input
-                type="text"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F] focus:outline-none focus:border-[#0A3D62]"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-[#6F7882] block mb-1">{t('phone')}</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F] focus:outline-none focus:border-[#0A3D62]"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-[#6F7882] block mb-1">{isEn ? 'Center or School' : 'السنتر / المؤسسة التعليمية'}</label>
-              <input
-                type="text"
-                value={centerOrSchool}
-                onChange={(e) => setCenterOrSchool(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-[#C7CDD3]/15 border border-[#C7CDD3] font-bold text-xs text-[#16324F] focus:outline-none focus:border-[#0A3D62]"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-1">
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-2xl bg-[#0A3D62] hover:bg-[#16324F] text-[#FFFFFF] font-black text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer active:scale-95"
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        {/* Square Tile 1: Teacher Profile & Security (Sapphire Lustre) */}
+        <button
+          type="button"
+          onClick={() => setActiveSection(activeSection === 'account' ? 'all' : 'account')}
+          className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
+            activeSection === 'account'
+              ? 'bg-gradient-to-br from-[#293828] via-[#0F1206] to-[#293828] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#293828]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
+              : 'classy-bento-sapphire text-[#0F1206] hover:border-[#293828]'
+          }`}
+        >
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/25 rounded-full blur-xl pointer-events-none" />
+          <div className="flex items-center justify-between w-full mb-2 relative z-10">
+            <div
+              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
+                activeSection === 'account'
+                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
+                  : 'bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-[#293828]/25'
+              }`}
             >
-              <Save className="w-4 h-4 text-[#FFFFFF]" />
-              <span>{t('save')}</span>
-            </button>
+              <User className="w-4.5 h-4.5 text-[#F8F2EC]" />
+            </div>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                activeSection === 'account'
+                  ? 'bg-[#F8F2EC] text-[#293828] border-[#F8F2EC]'
+                  : 'bg-[#F8F2EC]/80 text-[#293828] border-[#293828]/25 shadow-2xs'
+              }`}
+            >
+              {subject || (isEn ? 'Profile' : 'حسابي')}
+            </span>
           </div>
-        </form>
+          <div className="w-full min-w-0 relative z-10">
+            <span className="text-xs sm:text-sm font-black block truncate">
+              {isEn ? 'Teacher & Security' : 'بيانات المعلم والأمان'}
+            </span>
+            <span
+              className={`text-[11px] font-bold block truncate mt-0.5 ${
+                activeSection === 'account' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+              }`}
+            >
+              {name || (isEn ? 'Profile & Password' : 'الاسم وكلمة المرور')}
+            </span>
+          </div>
+        </button>
+
+        {/* Square Tile 2: Cloud Sync & Backup (Navy Velvet Sheen) */}
+        <button
+          type="button"
+          onClick={() => setActiveSection(activeSection === 'sync' ? 'all' : 'sync')}
+          className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
+            activeSection === 'sync'
+              ? 'bg-gradient-to-br from-[#0F1206] via-[#293828] to-[#0F1206] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#0F1206]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
+              : 'classy-bento-navy text-[#0F1206] hover:border-[#0F1206]'
+          }`}
+        >
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/25 rounded-full blur-xl pointer-events-none" />
+          <div className="flex items-center justify-between w-full mb-2 relative z-10">
+            <div
+              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
+                activeSection === 'sync'
+                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
+                  : 'bg-gradient-to-tr from-[#0F1206] to-[#756046] text-[#F8F2EC] shadow-[#0F1206]/25'
+              }`}
+            >
+              <Database className="w-4.5 h-4.5 text-[#F8F2EC]" />
+            </div>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                activeSection === 'sync'
+                  ? 'bg-[#F8F2EC] text-[#0F1206] border-[#F8F2EC]'
+                  : 'bg-[#F8F2EC]/80 text-[#0F1206] border-[#0F1206]/25 shadow-2xs'
+              }`}
+            >
+              {networkStatus.isOnline ? (isEn ? 'Synced' : 'متصل') : (isEn ? 'Local' : 'محلي')}
+            </span>
+          </div>
+          <div className="w-full min-w-0 relative z-10">
+            <span className="text-xs sm:text-sm font-black block truncate">
+              {isEn ? 'Cloud & Backup' : 'المزامنة والنسخ'}
+            </span>
+            <span
+              className={`text-[11px] font-bold block truncate mt-0.5 ${
+                activeSection === 'sync' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+              }`}
+            >
+              {isEn ? 'Schedule & JSON Export' : 'جدولة وحفظ احتياطي'}
+            </span>
+          </div>
+        </button>
+
+        {/* Square Tile 3: Smart Notifications (Steel Grey Cashmere Sheen) */}
+        <button
+          type="button"
+          onClick={() => setActiveSection(activeSection === 'notif' ? 'all' : 'notif')}
+          className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
+            activeSection === 'notif'
+              ? 'bg-gradient-to-br from-[#293828] via-[#756046] to-[#0F1206] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#293828]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
+              : 'classy-bento-steel text-[#0F1206] hover:border-[#756046]'
+          }`}
+        >
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/25 rounded-full blur-xl pointer-events-none" />
+          <div className="flex items-center justify-between w-full mb-2 relative z-10">
+            <div
+              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
+                activeSection === 'notif'
+                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
+                  : 'bg-gradient-to-tr from-[#756046] to-[#293828] text-[#F8F2EC] shadow-[#756046]/25'
+              }`}
+            >
+              <Bell className="w-4.5 h-4.5 text-[#F8F2EC]" />
+            </div>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                activeSection === 'notif'
+                  ? 'bg-[#F8F2EC] text-[#293828] border-[#F8F2EC]'
+                  : 'bg-[#F8F2EC]/80 text-[#0F1206] border-[#756046]/35 shadow-2xs'
+              }`}
+            >
+              {notifSettings.enableDailyAttendanceReminder !== false
+                ? formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', isEn)
+                : (isEn ? 'Alerts' : 'تنبيهات')}
+            </span>
+          </div>
+          <div className="w-full min-w-0 relative z-10">
+            <span className="text-xs sm:text-sm font-black block truncate">
+              {isEn ? 'Smart Reminders' : 'التنبيهات والتذكيرات'}
+            </span>
+            <span
+              className={`text-[11px] font-bold block truncate mt-0.5 ${
+                activeSection === 'notif' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+              }`}
+            >
+              {isEn ? 'Daily Alerts & Sounds' : 'تذكير الحضور والنغمات'}
+            </span>
+          </div>
+        </button>
+
+        {/* Square Tile 4: Language & System Control (Silver Pearl Sheen) */}
+        <button
+          type="button"
+          onClick={() => setActiveSection(activeSection === 'language' ? 'all' : 'language')}
+          className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
+            activeSection === 'language'
+              ? 'bg-gradient-to-br from-[#0F1206] via-[#756046] to-[#293828] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#0F1206]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
+              : 'classy-bento-silver text-[#0F1206] hover:border-[#293828]'
+          }`}
+        >
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/35 rounded-full blur-xl pointer-events-none" />
+          <div className="flex items-center justify-between w-full mb-2 relative z-10">
+            <div
+              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
+                activeSection === 'language'
+                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
+                  : 'bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] shadow-[#293828]/25'
+              }`}
+            >
+              <Globe className="w-4.5 h-4.5 text-[#F8F2EC]" />
+            </div>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                activeSection === 'language'
+                  ? 'bg-[#F8F2EC] text-[#0F1206] border-[#F8F2EC]'
+                  : 'bg-[#F8F2EC]/85 text-[#293828] border-[#293828]/25 shadow-2xs'
+              }`}
+            >
+              {language === 'ar' ? 'العربية' : language === 'en-GB' ? 'EN-UK' : 'EN-US'}
+            </span>
+          </div>
+          <div className="w-full min-w-0 relative z-10">
+            <span className="text-xs sm:text-sm font-black block truncate">
+              {isEn ? 'Language & System' : 'اللغة وإدارة النظام'}
+            </span>
+            <span
+              className={`text-[11px] font-bold block truncate mt-0.5 ${
+                activeSection === 'language' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+              }`}
+            >
+              {isEn ? 'Interface & Data Reset' : 'واجهة التطبيق والبيانات'}
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* =========================================================================
-          4. CLOUD SYNC & BACKUP
+          3. LANGUAGE SWITCHER (SQUARE CARDS GRID)
           ========================================================================= */}
-      <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/65 flex items-center justify-center text-[#0A3D62]">
-              <Database className="w-4 h-4" />
+      {(activeSection === 'all' || activeSection === 'language') && (
+        <div className="classy-card p-4 sm:p-5 space-y-3.5 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#293828]/20">
+                <Globe className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-[#0F1206]">{t('languageSettings')}</h3>
+                <p className="text-[11px] text-[#756046] font-medium">{t('selectLanguage')}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-black text-[#16324F]">{isEn ? 'Cloud Sync & Data Security' : 'المزامنة السحابية والنسخ الاحتياطي'}</h3>
-              <p className="text-[11px] text-[#6F7882] font-medium">{syncStatus.label}</p>
-            </div>
+            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/30 text-[#0F1206] border border-[#DDD3C7]">
+              3 {isEn ? 'Languages' : 'لغات'}
+            </span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSyncNow}
-            disabled={isSyncing}
-            className="px-4 py-2 rounded-2xl bg-gradient-to-r from-[#0A3D62] to-[#16324F] text-[#FFFFFF] font-black text-xs flex items-center gap-2 shadow-md shadow-[#16324F]/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? (isEn ? 'Syncing...' : 'جاري المزامنة...') : (isEn ? 'Sync Now' : 'مزامنة الآن')}</span>
-          </button>
-        </div>
-
-        {/* Sync Frequency Options */}
-        <div className="space-y-1.5 pt-1">
-          <label className="text-xs font-bold text-[#6F7882] block">{isEn ? 'Auto Sync Schedule:' : 'جدولة المزامنة التلقائية:'}</label>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 gap-2.5 pt-1">
             {[
-              { key: 'off', label: isEn ? 'Off' : 'إيقاف' },
-              { key: 'hourly', label: isEn ? 'Hourly' : 'كل ساعة' },
-              { key: 'daily', label: isEn ? 'Daily' : 'كل يوم' },
-              { key: 'weekly', label: isEn ? 'Weekly' : 'كل أسبوع' },
-              { key: 'monthly', label: isEn ? 'Monthly' : 'كل شهر' },
-            ].map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => handleFrequencyChange(item.key as AutoSyncFrequency)}
-                className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer border ${
-                  autoSyncConfig.frequency === item.key
-                    ? 'bg-[#0A3D62] text-[#FFFFFF] border-[#0A3D62] shadow-xs'
-                    : 'bg-[#C7CDD3]/15 text-[#6F7882] border-[#C7CDD3] hover:bg-[#C7CDD3]/35'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+              { code: 'ar' as Language, badge: 'AR', title: 'العربية', sub: 'واجهة عربية كاملة' },
+              { code: 'en-GB' as Language, badge: 'UK', title: 'English (UK)', sub: 'British Standard' },
+              { code: 'en-US' as Language, badge: 'US', title: 'English (US)', sub: 'American Standard' },
+            ].map((langItem) => {
+              const isSelected = language === langItem.code;
+              return (
+                <button
+                  key={langItem.code}
+                  type="button"
+                  onClick={() => setLanguage(langItem.code)}
+                  className={`p-3 sm:p-3.5 rounded-[20px] border flex flex-col justify-between min-h-[92px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden ${
+                    isSelected
+                      ? 'bg-gradient-to-br from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] border-[#293828] shadow-md shadow-[#293828]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
+                      : 'classy-bento-silver text-[#0F1206] hover:border-[#293828]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${
+                        isSelected
+                          ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border-[#DDD3C7]/35'
+                          : 'bg-[#F8F2EC] text-[#293828] border-[#DDD3C7]'
+                      }`}
+                    >
+                      {langItem.badge}
+                    </span>
+                    {isSelected ? (
+                      <div className="w-5 h-5 rounded-full bg-[#293828] border border-[#F8F2EC]/60 flex items-center justify-center shadow-xs">
+                        <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />
+                      </div>
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-[#F8F2EC]/80 border border-[#DDD3C7]" />
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-xs sm:text-sm font-black block truncate">{langItem.title}</span>
+                    <span className={`text-[10px] font-bold block truncate mt-0.5 ${isSelected ? 'text-[#DDD3C7]' : 'text-[#756046]'}`}>
+                      {langItem.sub}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
-
-        {/* Export & Import Backup Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#C7CDD3]">
-          <button
-            type="button"
-            onClick={handleBackupNow}
-            className="p-3 rounded-2xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 border border-[#C7CDD3] text-[#16324F] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <Download className="w-4 h-4 text-[#0A3D62]" />
-            <span>{isEn ? 'Export Local Backup (.json)' : 'تصدير نسخة احتياطية (.json)'}</span>
-          </button>
-
-          <label className="p-3 rounded-2xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 border border-[#C7CDD3] text-[#16324F] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
-            <Upload className="w-4 h-4 text-[#0A3D62]" />
-            <span>{isEn ? 'Import Backup (.json)' : 'استعادة نسخة احتياطية (.json)'}</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportBackupFile}
-              className="hidden"
-            />
-          </label>
-        </div>
-      </div>
+      )}
 
       {/* =========================================================================
-          5. NOTIFICATIONS & SMART REMINDERS
+          4. TEACHER PROFILE & ACCOUNT SECURITY (2x2 SQUARE BENTO FORM + PASSWORD)
           ========================================================================= */}
-      <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/70 flex items-center justify-center text-[#16324F]">
-            <Bell className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-[#16324F]">{isEn ? 'Smart Notifications & Reminders' : 'التنبيهات والتذكيرات الذكية'}</h3>
-            <p className="text-[11px] text-[#6F7882] font-medium">{isEn ? 'Configure mobile notifications and proactive class alerts' : 'تفعيل التنبيهات المسبقة ومتابعة الحصص والمستحقات'}</p>
-          </div>
-        </div>
+      {(activeSection === 'all' || activeSection === 'account') && (
+        <div className="classy-card p-4 sm:p-5 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#293828]/20">
+                <User className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'Teacher Profile & Branding' : 'بيانات المعلم والسنتر'}</h3>
+                <p className="text-[11px] text-[#756046] font-medium">{isEn ? 'Displayed on reports and printouts' : 'تظهر في الكشوفات والتقارير المطبوعة'}</p>
+              </div>
+            </div>
 
-        {/* Daily Attendance Reminder Card */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-[#FFFFFF] to-[#C7CDD3]/30 border border-[#C7CDD3] space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-0.5 min-w-0">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#0A3D62] shrink-0" />
-                <span className="font-black text-xs sm:text-sm text-[#16324F]">
-                  {isEn ? 'Daily Attendance Reminder' : 'تذكير تسجيل الحضور اليومي'}
+            <div className="flex items-center gap-2">
+              {savedSuccess && (
+                <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] text-xs font-black flex items-center gap-1.5 shadow-sm">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                  <span>{t('saveSuccess')}</span>
+                </span>
+              )}
+              {currentUser && (
+                <button
+                  type="button"
+                  onClick={() => setIsChangingPassword(!isChangingPassword)}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#F8F2EC] to-[#DDD3C7]/35 hover:border-[#293828] border border-[#DDD3C7] text-[#0F1206] font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-[#293828]" />
+                  <span>{isEn ? 'Password' : 'كلمة المرور'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveProfile} className="space-y-3">
+            {/* 2x2 Square Field Cards */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-[20px] classy-bento-sapphire flex flex-col justify-between min-h-[88px]">
+                <label className="text-[11px] font-black text-[#293828] flex items-center gap-1.5 mb-1.5">
+                  <User className="w-3.5 h-3.5 text-[#293828]" />
+                  <span className="truncate">{t('teacherName')}</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                  required
+                />
+              </div>
+
+              <div className="p-3 rounded-[20px] classy-bento-navy flex flex-col justify-between min-h-[88px]">
+                <label className="text-[11px] font-black text-[#0F1206] flex items-center gap-1.5 mb-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[#0F1206]" />
+                  <span className="truncate">{t('subject')}</span>
+                </label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                  required
+                />
+              </div>
+
+              <div className="p-3 rounded-[20px] classy-bento-steel flex flex-col justify-between min-h-[88px]">
+                <label className="text-[11px] font-black text-[#0F1206] flex items-center gap-1.5 mb-1.5">
+                  <Phone className="w-3.5 h-3.5 text-[#756046]" />
+                  <span className="truncate">{t('phone')}</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                />
+              </div>
+
+              <div className="p-3 rounded-[20px] classy-bento-silver flex flex-col justify-between min-h-[88px]">
+                <label className="text-[11px] font-black text-[#293828] flex items-center gap-1.5 mb-1.5">
+                  <Building className="w-3.5 h-3.5 text-[#293828]" />
+                  <span className="truncate">{isEn ? 'Center / Academy' : 'السنتر / المؤسسة'}</span>
+                </label>
+                <input
+                  type="text"
+                  value={centerOrSchool}
+                  onChange={(e) => setCenterOrSchool(e.target.value)}
+                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                className="btn-primary px-5 py-2.5 text-xs flex items-center gap-2 cursor-pointer"
+              >
+                <Save className="w-4 h-4 text-[#F8F2EC]" />
+                <span>{t('save')}</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Optional Password Change Square Panel */}
+          {isChangingPassword && currentUser && (
+            <form
+              onSubmit={handleChangePassword}
+              className="p-3.5 sm:p-4 rounded-[20px] classy-bento-navy space-y-3 animate-in fade-in"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#293828]" />
+                  <span>{isEn ? 'Change Account Password' : 'تحديث كلمة مرور الحساب'}</span>
                 </span>
               </div>
-              <p className="text-[11px] text-[#6F7882] font-medium">
-                {isEn ? 'Sends a mobile reminder if sessions today are missing attendance' : 'تنبيه يومي على الهاتف في حال وجود حصص لم يتم تسجيل حضورها اليوم'}
-              </p>
+              {passMessage && (
+                <div className="p-2.5 rounded-xl bg-[#293828] text-[#F8F2EC] text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                  <span>{passMessage.text}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2.5">
+                <input
+                  type="password"
+                  placeholder={isEn ? 'Current password' : 'كلمة المرور الحالية'}
+                  value={currentPass}
+                  onChange={(e) => setCurrentPass(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-bold text-[#0F1206]"
+                />
+                <input
+                  type="password"
+                  placeholder={isEn ? 'New password (min 6)' : 'كلمة المرور الجديدة'}
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-bold text-[#0F1206]"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                  <span>{isEn ? 'Update Password' : 'حفظ كلمة المرور'}</span>
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* =========================================================================
+          5. CLOUD SYNC & BACKUP (SQUARE BENTO OPERATIONS GRID)
+          ========================================================================= */}
+      {(activeSection === 'all' || activeSection === 'sync') && (
+        <div className="classy-card p-4 sm:p-5 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F1206] to-[#756046] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#0F1206]/20">
+                <Database className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'Cloud Sync & Data Security' : 'المزامنة السحابية والنسخ الاحتياطي'}</h3>
+                <p className="text-[11px] text-[#756046] font-medium">{syncStatus.label}</p>
+              </div>
             </div>
 
+            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/35 text-[#0F1206] border border-[#DDD3C7]">
+              {lastSyncTime ? formatSyncTimeArabic(lastSyncTime) : (isEn ? 'Ready' : 'جاهز للمزامنة')}
+            </span>
+          </div>
+
+          {/* 2x2 Square Sync & Backup Action Tiles */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Square 1: Sync Now */}
+            <button
+              type="button"
+              onClick={handleSyncNow}
+              disabled={isSyncing}
+              className="p-3.5 rounded-[20px] classy-bento-sapphire hover:border-[#293828] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <RefreshCw className={`w-4 h-4 text-[#F8F2EC] ${isSyncing ? 'animate-spin' : ''}`} />
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#293828] border border-[#DDD3C7]">
+                  {isEn ? 'Cloud' : 'سحابي'}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isSyncing ? (isEn ? 'Syncing...' : 'جاري المزامنة...') : (isEn ? 'Sync Now' : 'مزامنة الآن')}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {isEn ? 'Instant cloud sync' : 'تحديث فوري للبيانات'}
+                </span>
+              </div>
+            </button>
+
+            {/* Square 2: Export JSON Backup */}
+            <button
+              type="button"
+              onClick={handleBackupNow}
+              className="p-3.5 rounded-[20px] classy-bento-navy hover:border-[#0F1206] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <Download className="w-4 h-4 text-[#F8F2EC]" />
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7]">
+                  JSON
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isEn ? 'Export Backup' : 'تصدير نسخة احتياطية'}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {isEn ? 'Save file to device' : 'حفظ ملف على الجهاز'}
+                </span>
+              </div>
+            </button>
+
+            {/* Square 3: Import JSON Backup */}
+            <label className="p-3.5 rounded-[20px] classy-bento-steel hover:border-[#756046] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]">
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#756046] to-[#293828] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <Upload className="w-4 h-4 text-[#F8F2EC]" />
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7]">
+                  {isEn ? 'Restore' : 'استيراد'}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isEn ? 'Import Backup' : 'استعادة نسخة (.json)'}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {isEn ? 'Load from backup file' : 'رفع ملف نسخة سابقة'}
+                </span>
+              </div>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportBackupFile}
+                className="hidden"
+              />
+            </label>
+
+            {/* Square 4: Restore Account Snapshot */}
+            <button
+              type="button"
+              onClick={handleRestoreFromAccount}
+              className="p-3.5 rounded-[20px] classy-bento-silver hover:border-[#293828] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <HardDriveDownload className="w-4 h-4 text-[#F8F2EC]" />
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#293828] border border-[#DDD3C7]">
+                  {isEn ? 'Account' : 'الحساب'}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isEn ? 'Account Restore' : 'استعادة بيانات الحساب'}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {isEn ? 'Reload synced records' : 'تحديث السجلات المحفوظة'}
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* Sync Frequency Square Pills */}
+          <div className="space-y-2 pt-2 border-t border-[#DDD3C7]/70">
+            <label className="text-xs font-black text-[#0F1206] block">{isEn ? 'Auto Sync Schedule:' : 'جدولة المزامنة التلقائية:'}</label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {[
+                { key: 'off', label: isEn ? 'Off' : 'إيقاف' },
+                { key: 'hourly', label: isEn ? 'Hourly' : 'كل ساعة' },
+                { key: 'daily', label: isEn ? 'Daily' : 'كل يوم' },
+                { key: 'weekly', label: isEn ? 'Weekly' : 'كل أسبوع' },
+                { key: 'monthly', label: isEn ? 'Monthly' : 'كل شهر' },
+              ].map((item) => {
+                const isSelected = autoSyncConfig.frequency === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => handleFrequencyChange(item.key as AutoSyncFrequency)}
+                    className={`py-2.5 px-2.5 rounded-xl font-black text-xs transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] border-[#293828] shadow-sm shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.28)]'
+                        : 'bg-[#DDD3C7]/20 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/40 hover:text-[#0F1206]'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[#F8F2EC] stroke-[3] shrink-0" />}
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          6. NOTIFICATIONS & SMART REMINDERS (2x2 SQUARE BENTO GRID)
+          ========================================================================= */}
+      {(activeSection === 'all' || activeSection === 'notif') && (
+        <div className="classy-card p-4 sm:p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#756046] to-[#293828] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#293828]/20">
+                <Bell className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'Smart Notifications & Reminders' : 'التنبيهات والتذكيرات الذكية'}</h3>
+                <p className="text-[11px] text-[#756046] font-medium">{isEn ? 'Proactive attendance & payment alerts in square cards' : 'تحكم كامل في تنبيهات الحضور والمستحقات والغياب'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 2x2 Square Notification Toggle Cards */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Square 1: Daily Mobile Attendance Reminder */}
             <button
               type="button"
               onClick={handleToggleDailyAttendanceReminder}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer border shrink-0 ${
+              className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
                 notifSettings.enableDailyAttendanceReminder !== false
-                  ? 'bg-gradient-to-r from-[#0A3D62] to-[#0A3D62] text-[#FFFFFF] border-transparent shadow-xs'
-                  : 'bg-[#FFFFFF] text-[#6F7882] border-[#C7CDD3] hover:bg-[#C7CDD3]/35'
+                  ? 'classy-bento-sapphire border-[#293828]/60'
+                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
               }`}
             >
-              {notifSettings.enableDailyAttendanceReminder !== false ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <Clock className="w-4 h-4 text-[#F8F2EC]" />
+                </div>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
+                    notifSettings.enableDailyAttendanceReminder !== false
+                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
+                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                  }`}
+                >
+                  {notifSettings.enableDailyAttendanceReminder !== false && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  <span>{notifSettings.enableDailyAttendanceReminder !== false ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isEn ? 'Daily Reminder' : 'تذكير الحضور اليومي'}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', isEn)}
+                </span>
+              </div>
+            </button>
+
+            {/* Square 2: In-App Attendance Alerts */}
+            <button
+              type="button"
+              onClick={() => handleToggleNotif('enableAttendanceReminders')}
+              className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
+                notifSettings.enableAttendanceReminders
+                  ? 'classy-bento-navy border-[#0F1206]/60'
+                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <CheckCircle2 className="w-4 h-4 text-[#F8F2EC]" />
+                </div>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
+                    notifSettings.enableAttendanceReminders
+                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
+                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                  }`}
+                >
+                  {notifSettings.enableAttendanceReminders && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  <span>{notifSettings.enableAttendanceReminders ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isEn ? 'Session Alerts' : 'تنبيهات رصد الحضور'}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {isEn ? 'In-app session tracking' : 'متابعة الحصص داخل التطبيق'}
+                </span>
+              </div>
+            </button>
+
+            {/* Square 3: Overdue Payment Reminders */}
+            <button
+              type="button"
+              onClick={() => handleToggleNotif('enableOverdueReminders')}
+              className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
+                notifSettings.enableOverdueReminders
+                  ? 'classy-bento-steel border-[#756046]/60'
+                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#756046] to-[#293828] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 text-[#F8F2EC]" />
+                </div>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
+                    notifSettings.enableOverdueReminders
+                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
+                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                  }`}
+                >
+                  {notifSettings.enableOverdueReminders && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  <span>{notifSettings.enableOverdueReminders ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isEn ? 'Overdue Dues' : 'تنبيهات المديونيات'}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {isEn ? 'Pending payment alerts' : 'تذكير بالمستحقات المتأخرة'}
+                </span>
+              </div>
+            </button>
+
+            {/* Square 4: Student Absence Alerts */}
+            <button
+              type="button"
+              onClick={() => handleToggleNotif('enableAbsenceReminders')}
+              className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
+                notifSettings.enableAbsenceReminders
+                  ? 'classy-bento-silver border-[#293828]/50'
+                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
+                  <Activity className="w-4 h-4 text-[#F8F2EC]" />
+                </div>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
+                    notifSettings.enableAbsenceReminders
+                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
+                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                  }`}
+                >
+                  {notifSettings.enableAbsenceReminders && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  <span>{notifSettings.enableAbsenceReminders ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-black text-[#0F1206] block truncate">
+                  {isEn ? 'Absence Alerts' : 'تنبيهات غياب الطلاب'}
+                </span>
+                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                  {isEn ? 'Repeated absence tracking' : 'متابعة الغياب المتكرر'}
+                </span>
+              </div>
             </button>
           </div>
 
+          {/* Reminder Time & Sound Configuration (2 Square Sub-Cards) */}
           {notifSettings.enableDailyAttendanceReminder !== false && (
-            <div className="pt-2 border-t border-[#C7CDD3]/80 space-y-2.5 animate-in fade-in">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#16324F]">
-                    {isEn ? 'Reminder Time:' : 'وقت التذكير:'}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-[#DDD3C7]/70 animate-in fade-in">
+              {/* Time Picker Card */}
+              <div className="p-3.5 rounded-[20px] classy-bento-sapphire flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#293828]" />
+                    <span>{isEn ? 'Reminder Time' : 'وقت التذكير اليومي'}</span>
                   </span>
-                  <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] text-[#0A3D62] shadow-2xs">
+                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-[#F8F2EC] border border-[#DDD3C7] text-[#293828]">
                     {formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', isEn)}
                   </span>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <input
                     type="time"
                     value={notifSettings.dailyAttendanceReminderTime || '22:00'}
                     onChange={(e) => handleReminderTimeChange(e.target.value)}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] font-bold text-xs text-[#16324F] focus:outline-none focus:border-[#0A3D62] cursor-pointer shadow-2xs"
+                    className="flex-1 px-2.5 py-1.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] cursor-pointer shadow-2xs"
                     aria-label={isEn ? 'Reminder Time' : 'وقت التذكير'}
                   />
                   <button
                     type="button"
                     onClick={handleSendTestNotification}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#FFFFFF] hover:bg-[#C7CDD3]/35 border border-[#C7CDD3] text-[#0A3D62] font-bold text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
-                    title={isEn ? 'Send test notification now' : 'إرسال تنبيه تجريبي للهاتف'}
+                    className="px-3 py-1.5 rounded-xl bg-[#F8F2EC] hover:bg-[#DDD3C7]/35 border border-[#DDD3C7] text-[#293828] font-black text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
                   >
                     {isEn ? 'Test Alert' : 'تجربة التنبيه'}
                   </button>
                 </div>
               </div>
 
-              {/* Notification Sound Selection */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-dashed border-[#C7CDD3]">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-[#16324F]">
-                    {isEn ? 'Alert Sound:' : 'نغمة التنبيه:'}
+              {/* Sound Picker Card */}
+              <div className="p-3.5 rounded-[20px] classy-bento-steel flex flex-col justify-between gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
+                    <Volume2 className="w-3.5 h-3.5 text-[#293828]" />
+                    <span>{isEn ? 'Alert Sound' : 'نغمة التنبيه المخصصة'}</span>
                   </span>
-                  <span className="text-[11px] font-bold text-[#6F7882]">
-                    {isEn ? '(Android Custom Channel Sound)' : '(قناة تنبيه أندرويد المخصصة)'}
+                  <span className="text-[10px] font-bold text-[#756046]">
+                    {isEn ? 'Custom Tone' : 'صوت الإشعار'}
                   </span>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <select
                     value={notifSettings.notificationSoundUri || 'beep.wav'}
                     onChange={(e) => handleSoundChange(e.target.value)}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#C7CDD3] font-bold text-xs text-[#16324F] focus:outline-none focus:border-[#0A3D62] cursor-pointer shadow-2xs"
+                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] cursor-pointer shadow-2xs"
                     aria-label={isEn ? 'Alert Sound' : 'نغمة التنبيه'}
                   >
                     {AVAILABLE_NOTIFICATION_SOUNDS.map((sound) => (
@@ -815,10 +1305,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <button
                     type="button"
                     onClick={handleTestSound}
-                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-[#0A3D62] to-[#0A3D62] text-[#FFFFFF] font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 shrink-0"
-                    title={isEn ? 'Play dummy notification with this sound' : 'تشغيل إشعار تجريبي بهذه النغمة'}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
                   >
-                    <Volume2 className="w-3.5 h-3.5 text-[#0A3D62]" />
+                    <Volume2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
                     <span>{isEn ? 'Test Sound' : 'تجربة الصوت'}</span>
                   </button>
                 </div>
@@ -826,62 +1315,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           )}
         </div>
-
-        <div className="space-y-2 pt-1">
-          <label className="flex items-center justify-between p-3 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] cursor-pointer">
-            <span className="font-bold text-xs text-[#16324F]">{isEn ? 'In-App Attendance Alerts' : 'تنبيهات رصد الحضور داخل التطبيق'}</span>
-            <input
-              type="checkbox"
-              checked={notifSettings.enableAttendanceReminders}
-              onChange={() => handleToggleNotif('enableAttendanceReminders')}
-              className="w-4 h-4 accent-[#0A3D62] rounded cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] cursor-pointer">
-            <span className="font-bold text-xs text-[#16324F]">{isEn ? 'Overdue Payment Reminders' : 'تنبيهات المديونيات المتأخرة'}</span>
-            <input
-              type="checkbox"
-              checked={notifSettings.enableOverdueReminders}
-              onChange={() => handleToggleNotif('enableOverdueReminders')}
-              className="w-4 h-4 accent-[#0A3D62] rounded cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3 rounded-2xl bg-[#C7CDD3]/15 border border-[#C7CDD3] cursor-pointer">
-            <span className="font-bold text-xs text-[#16324F]">{isEn ? 'Student Absence Alerts' : 'تنبيهات غياب الطلاب المتكرر'}</span>
-            <input
-              type="checkbox"
-              checked={notifSettings.enableAbsenceReminders}
-              onChange={() => handleToggleNotif('enableAbsenceReminders')}
-              className="w-4 h-4 accent-[#0A3D62] rounded cursor-pointer"
-            />
-          </label>
-        </div>
-      </div>
+      )}
 
       {/* =========================================================================
-          6. DANGER ZONE: DATA RESET
+          7. DANGER ZONE: DATA RESET
           ========================================================================= */}
-      <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] border border-[#C7CDD3] space-y-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#C7CDD3]/15 flex items-center justify-center text-[#16324F]">
-            <AlertTriangle className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-[#16324F]">{isEn ? 'Danger Zone: Data Reset' : 'المنطقة الحساسة: إعادة ضبط البيانات'}</h3>
-            <p className="text-[11px] text-[#6F7882] font-medium">{isEn ? 'Permanently delete local records from this device' : 'حذف وإعادة تهيئة جميع البيانات المحلية'}</p>
+      {(activeSection === 'all' || activeSection === 'language') && (
+        <div className="classy-bento-navy p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F1206] to-[#756046] flex items-center justify-center text-[#F8F2EC] shadow-xs">
+                <AlertTriangle className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'System Reset & Local Data' : 'المنطقة الحساسة: إعادة ضبط البيانات'}</h3>
+                <p className="text-[11px] text-[#756046] font-medium">{isEn ? 'Permanently clear local records on this device' : 'حذف وإعادة تهيئة جميع السجلات المحلية على هذا الجهاز'}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResetData}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#0F1206] to-[#756046] hover:from-[#293828] hover:to-[#0F1206] text-[#F8F2EC] font-black text-xs border border-[#DDD3C7]/40 shadow-sm shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.25)] transition-all cursor-pointer active:scale-95"
+            >
+              {isEn ? 'Erase All Local Data' : 'مسح جميع البيانات والبدء من جديد'}
+            </button>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={handleResetData}
-          className="w-full py-2.5 rounded-2xl bg-[#C7CDD3]/15 hover:bg-[#C7CDD3]/35 text-[#16324F] font-black text-xs border border-[#C7CDD3] transition-all cursor-pointer active:scale-95"
-        >
-          {isEn ? 'Erase All Local Data' : 'مسح جميع البيانات والبدء من جديد'}
-        </button>
-      </div>
+      )}
     </div>
   );
 };

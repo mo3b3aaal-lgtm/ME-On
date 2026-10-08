@@ -10,9 +10,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'positive',
     emoji: '🌟',
     points: 10,
-    color: 'text-[#0A3D62]',
-    bgColor: 'bg-[#0A3D62]/8',
-    borderColor: 'border-[#0A3D62]/25',
+    color: 'text-[#293828]',
+    bgColor: 'bg-[#293828]/8',
+    borderColor: 'border-[#293828]/25',
   },
   {
     id: 'outstanding_homework',
@@ -21,9 +21,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'positive',
     emoji: '📚',
     points: 10,
-    color: 'text-[#0A3D62]',
-    bgColor: 'bg-[#FFFFFF]',
-    borderColor: 'border-[#C7CDD3]',
+    color: 'text-[#293828]',
+    bgColor: 'bg-[#F8F2EC]',
+    borderColor: 'border-[#DDD3C7]',
   },
   {
     id: 'great_focus',
@@ -32,9 +32,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'positive',
     emoji: '🎯',
     points: 5,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#C7CDD3]/15',
-    borderColor: 'border-[#C7CDD3]',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#DDD3C7]/15',
+    borderColor: 'border-[#DDD3C7]',
   },
   {
     id: 'creative_answer',
@@ -43,9 +43,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'positive',
     emoji: '💡',
     points: 15,
-    color: 'text-[#0A3D62]',
-    bgColor: 'bg-[#0A3D62]/10',
-    borderColor: 'border-[#0A3D62]/30',
+    color: 'text-[#293828]',
+    bgColor: 'bg-[#293828]/10',
+    borderColor: 'border-[#293828]/30',
   },
   {
     id: 'exemplary_manners',
@@ -54,9 +54,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'positive',
     emoji: '🤝',
     points: 10,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#C7CDD3]/15',
-    borderColor: 'border-[#C7CDD3]',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#DDD3C7]/15',
+    borderColor: 'border-[#DDD3C7]',
   },
   {
     id: 'noticeable_improvement',
@@ -65,9 +65,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'positive',
     emoji: '🚀',
     points: 10,
-    color: 'text-[#0A3D62]',
-    bgColor: 'bg-[#0A3D62]/8',
-    borderColor: 'border-[#0A3D62]/25',
+    color: 'text-[#293828]',
+    bgColor: 'bg-[#293828]/8',
+    borderColor: 'border-[#293828]/25',
   },
   {
     id: 'helping_classmates',
@@ -76,9 +76,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'positive',
     emoji: '❤️',
     points: 5,
-    color: 'text-[#0A3D62]',
-    bgColor: 'bg-[#C7CDD3]/15',
-    borderColor: 'border-[#C7CDD3]',
+    color: 'text-[#293828]',
+    bgColor: 'bg-[#DDD3C7]/15',
+    borderColor: 'border-[#DDD3C7]',
   },
 
   // Needs Improvement Tags
@@ -89,9 +89,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'needs_improvement',
     emoji: '⚠️',
     points: -5,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#16324F]/10',
-    borderColor: 'border-[#16324F]/30',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#0F1206]/10',
+    borderColor: 'border-[#0F1206]/30',
   },
   {
     id: 'late_to_class',
@@ -100,9 +100,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'needs_improvement',
     emoji: '⏰',
     points: -5,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#16324F]/10',
-    borderColor: 'border-[#16324F]/30',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#0F1206]/10',
+    borderColor: 'border-[#0F1206]/30',
   },
   {
     id: 'incomplete_homework',
@@ -111,9 +111,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'needs_improvement',
     emoji: '❌',
     points: -10,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#16324F]/12',
-    borderColor: 'border-[#16324F]/35',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#0F1206]/12',
+    borderColor: 'border-[#0F1206]/35',
   },
   {
     id: 'missing_tools',
@@ -122,9 +122,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'needs_improvement',
     emoji: '📝',
     points: -5,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#16324F]/10',
-    borderColor: 'border-[#16324F]/30',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#0F1206]/10',
+    borderColor: 'border-[#0F1206]/30',
   },
   {
     id: 'disruptive_behavior',
@@ -133,9 +133,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'needs_improvement',
     emoji: '🔇',
     points: -5,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#16324F]/12',
-    borderColor: 'border-[#16324F]/35',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#0F1206]/12',
+    borderColor: 'border-[#0F1206]/35',
   },
   {
     id: 'needs_parent_followup',
@@ -144,9 +144,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'needs_improvement',
     emoji: '📞',
     points: 0,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#16324F]/15',
-    borderColor: 'border-[#16324F]/40',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#0F1206]/15',
+    borderColor: 'border-[#0F1206]/40',
   },
 
   // Neutral / Notes Tags
@@ -157,9 +157,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'neutral',
     emoji: '❓',
     points: 0,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#C7CDD3]/15',
-    borderColor: 'border-[#C7CDD3]',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#DDD3C7]/15',
+    borderColor: 'border-[#DDD3C7]',
   },
   {
     id: 'health_condition',
@@ -168,9 +168,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'neutral',
     emoji: '🩹',
     points: 0,
-    color: 'text-[#6F7882]',
-    bgColor: 'bg-[#C7CDD3]/15',
-    borderColor: 'border-[#C7CDD3]',
+    color: 'text-[#756046]',
+    bgColor: 'bg-[#DDD3C7]/15',
+    borderColor: 'border-[#DDD3C7]',
   },
   {
     id: 'special_arrangement',
@@ -179,9 +179,9 @@ export const PREDEFINED_BEHAVIOR_TAGS: PredefinedBehaviorTag[] = [
     category: 'neutral',
     emoji: '🗓️',
     points: 0,
-    color: 'text-[#16324F]',
-    bgColor: 'bg-[#C7CDD3]/15',
-    borderColor: 'border-[#C7CDD3]',
+    color: 'text-[#0F1206]',
+    bgColor: 'bg-[#DDD3C7]/15',
+    borderColor: 'border-[#DDD3C7]',
   },
 ];
 
@@ -211,21 +211,21 @@ export function getCategoryBadge(category: BehaviorCategory, lang?: string): {
     case 'positive':
       return {
         label: isEn ? 'Merit & Positive' : 'تميز وإيجابي',
-        badgeClass: 'bg-[#0A3D62]/10 text-[#0A3D62] border-[#0A3D62]/30',
-        dotClass: 'bg-[#0A3D62]',
+        badgeClass: 'bg-[#293828]/10 text-[#293828] border-[#293828]/30',
+        dotClass: 'bg-[#293828]',
       };
     case 'needs_improvement':
       return {
         label: isEn ? 'Needs Improvement' : 'يحتاج تحسين',
-        badgeClass: 'bg-[#16324F]/12 text-[#16324F] border-[#16324F]/35',
-        dotClass: 'bg-[#16324F]',
+        badgeClass: 'bg-[#0F1206]/12 text-[#0F1206] border-[#0F1206]/35',
+        dotClass: 'bg-[#0F1206]',
       };
     case 'neutral':
     default:
       return {
         label: isEn ? 'General Remark' : 'ملاحظة عامة',
-        badgeClass: 'bg-[#C7CDD3]/20 text-[#6F7882] border-[#C7CDD3]',
-        dotClass: 'bg-[#6F7882]',
+        badgeClass: 'bg-[#DDD3C7]/20 text-[#756046] border-[#DDD3C7]',
+        dotClass: 'bg-[#756046]',
       };
   }
 }

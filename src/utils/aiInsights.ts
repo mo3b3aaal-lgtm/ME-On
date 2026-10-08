@@ -1,5 +1,6 @@
 import { Student, Group, Session, Attendance } from '../types';
 import { getAppLanguage } from './i18n';
+import { parseLocalDateStr } from './localDate';
 
 export interface AttentionNeededStudent {
   studentId: string;
@@ -29,7 +30,7 @@ export function computeAttendanceSummaryForStudents(
   
   // Sort sessions chronologically descending
   const sortedSessions = [...sessions].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => parseLocalDateStr(b.date).getTime() - parseLocalDateStr(a.date).getTime()
   );
 
   return activeStudents.map((st) => {

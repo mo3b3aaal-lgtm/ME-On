@@ -51,15 +51,22 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Update its onClose callback while strictly preserving its original stack index.
         const updated = [...prev];
         updated[existingIdx] = { id, onClose };
+        stackRef.current = updated;
         return updated;
       }
       // Newly opened modal: append to the top of the stack
-      return [...prev, { id, onClose }];
+      const updated = [...prev, { id, onClose }];
+      stackRef.current = updated;
+      return updated;
     });
   }, []);
 
   const unregisterModal = useCallback((id: string) => {
-    setModalStack((prev) => prev.filter((m) => m.id !== id));
+    setModalStack((prev) => {
+      const updated = prev.filter((m) => m.id !== id);
+      stackRef.current = updated;
+      return updated;
+    });
   }, []);
 
   const getModalLayer = useCallback(

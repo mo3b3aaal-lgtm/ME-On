@@ -261,17 +261,17 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F1206] pb-32 bg-[#F2E9DE] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F2A4A] pb-32 bg-[#FFFFFF] relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Ambient background glows matching Classy visual identity */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#293828]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#293828]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#0F1206]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#17375E]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#17375E]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#0F2A4A]/6 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Top Header */}
       <header className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-2xl font-bold font-display text-[#0F1206] tracking-tight">
+        <h1 className="text-2xl font-bold font-display text-[#0F2A4A] tracking-tight">
           {t('sessionsTitle') || (isEn ? 'Sessions' : 'الحصص')}
         </h1>
         <div className="flex items-center gap-2">
@@ -279,22 +279,22 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
             <button
               type="button"
               onClick={onOpenNotificationsModal}
-              className="relative w-10 h-10 rounded-full bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] hover:bg-[#EDE3D9] transition-colors cursor-pointer shadow-xs"
+              className="relative w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
               title={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
               aria-label={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
             >
-              <Bell className="w-5 h-5 text-[#756046]" strokeWidth={1.7} />
+              <Bell className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
             </button>
           )}
           {onNavigateToTab && (
             <button
               type="button"
               onClick={() => onNavigateToTab('settings')}
-              className="w-10 h-10 rounded-full bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] hover:bg-[#EDE3D9] transition-colors cursor-pointer shadow-xs"
+              className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
               title={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
               aria-label={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
             >
-              <Settings className="w-5 h-5 text-[#756046]" strokeWidth={1.7} />
+              <Settings className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
             </button>
           )}
         </div>
@@ -303,44 +303,44 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       {/* =========================================================================
           1. SESSIONS HERO HEADER
           ========================================================================= */}
-      <div className="rounded-[24px] bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] p-5 sm:p-6 text-[#F8F2EC] relative overflow-hidden shadow-xl border border-[#DDD3C7]/15">
+      <div className="rounded-[24px] bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] p-5 sm:p-6 text-[#FFFFFF] relative overflow-hidden shadow-xl border border-[#E1EBEC]/15">
         {/* Soft internal gradient orbs */}
-        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#293828]/35 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#0F1206]/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#17375E]/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#0F2A4A]/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#293828] p-0.5 shadow-lg shadow-[#293828]/35 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-[#293828] flex items-center justify-center text-[#F8F2EC]">
-                <CalendarCheck2 className="w-6 h-6 text-[#F8F2EC]" />
+            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#17375E] p-0.5 shadow-lg shadow-[#17375E]/35 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-[#17375E] flex items-center justify-center text-[#FFFFFF]">
+                <CalendarCheck2 className="w-6 h-6 text-[#FFFFFF]" />
               </div>
             </div>
 
             <div className="space-y-0.5 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#DDD3C7]/90 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#DDD3C7]" />
+                <span className="text-xs font-bold text-[#E1EBEC]/90 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#E1EBEC]" />
                   <span>{isEn ? 'Session Scheduling & Tracking' : 'إدارة وجدولة الحصص'}</span>
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#F8F2EC] tracking-tight flex items-center gap-2.5 truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-[#FFFFFF] tracking-tight flex items-center gap-2.5 truncate">
                 <span>{t('sessionsTitle')}</span>
-                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/25 shadow-xs">
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/25 shadow-xs">
                   {todaySessions.length} {t('today')}
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm text-[#DDD3C7]/85 font-medium truncate">
+              <p className="text-xs sm:text-sm text-[#E1EBEC]/85 font-medium truncate">
                 {isEn ? 'Organize sessions, track attendance and billing all in one place.' : 'رتّب حصصك وتابع الحضور والتحصيل من مكان واحد.'}
               </p>
             </div>
           </div>
 
           {/* Primary Action Button */}
-          <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#DDD3C7]/20 justify-end">
+          <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E1EBEC]/20 justify-end">
             <button
               type="button"
               onClick={() => onOpenAddSession()}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#0F1206]/40 transition-all active:scale-95 cursor-pointer hover:brightness-105"
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#0F2A4A]/40 transition-all active:scale-95 cursor-pointer hover:brightness-105"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>+ {t('scheduleSessionBtn')}</span>
@@ -349,35 +349,35 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
         </div>
 
         {/* Real Statistics Grid */}
-        <div className="grid grid-cols-4 gap-2 pt-4 mt-4 border-t border-[#DDD3C7]/20 text-center">
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-xl p-2 border border-[#DDD3C7]/15">
-            <span className="text-[10px] text-[#DDD3C7]/80 block font-bold">{t('today')}</span>
-            <span className="text-base sm:text-lg font-black text-[#F8F2EC]">{todaySessions.length}</span>
+        <div className="grid grid-cols-4 gap-2 pt-4 mt-4 border-t border-[#E1EBEC]/20 text-center">
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-xl p-2 border border-[#E1EBEC]/15">
+            <span className="text-[10px] text-[#E1EBEC]/80 block font-bold">{t('today')}</span>
+            <span className="text-base sm:text-lg font-black text-[#FFFFFF]">{todaySessions.length}</span>
           </div>
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-xl p-2 border border-[#DDD3C7]/15">
-            <span className="text-[10px] text-[#DDD3C7]/80 block font-bold">{t('completedSessions')}</span>
-            <span className="text-base sm:text-lg font-black text-[#DDD3C7]">{completedCount}</span>
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-xl p-2 border border-[#E1EBEC]/15">
+            <span className="text-[10px] text-[#E1EBEC]/80 block font-bold">{t('completedSessions')}</span>
+            <span className="text-base sm:text-lg font-black text-[#E1EBEC]">{completedCount}</span>
           </div>
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-xl p-2 border border-[#DDD3C7]/15">
-            <span className="text-[10px] text-[#DDD3C7]/80 block font-bold">{t('upcomingSessions')}</span>
-            <span className="text-base sm:text-lg font-black text-[#F8F2EC]">{scheduledCount}</span>
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-xl p-2 border border-[#E1EBEC]/15">
+            <span className="text-[10px] text-[#E1EBEC]/80 block font-bold">{t('upcomingSessions')}</span>
+            <span className="text-base sm:text-lg font-black text-[#FFFFFF]">{scheduledCount}</span>
           </div>
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-xl p-2 border border-[#DDD3C7]/15">
-            <span className="text-[10px] text-[#DDD3C7]/80 block font-bold">{isEn ? 'Attendance %' : 'نسبة الحضور'}</span>
-            <span className="text-base sm:text-lg font-black text-[#F8F2EC]">{overallAttendanceRate}%</span>
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-xl p-2 border border-[#E1EBEC]/15">
+            <span className="text-[10px] text-[#E1EBEC]/80 block font-bold">{isEn ? 'Attendance %' : 'نسبة الحضور'}</span>
+            <span className="text-base sm:text-lg font-black text-[#FFFFFF]">{overallAttendanceRate}%</span>
           </div>
         </div>
       </div>
 
       {/* Quick Feedback Toast */}
       {quickFeedback && (
-        <div className="p-3.5 rounded-2xl bg-[#0F1206] text-[#F8F2EC] text-xs font-bold flex items-center justify-between shadow-lg shadow-[#0F1206]/20 animate-in fade-in slide-in-from-top-2">
+        <div className="p-3.5 rounded-2xl bg-[#0F2A4A] text-[#FFFFFF] text-xs font-bold flex items-center justify-between shadow-lg shadow-[#0F2A4A]/20 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             <span>{quickFeedback}</span>
           </div>
           <button onClick={() => setQuickFeedback(null)}>
-            <X className="w-4 h-4 text-[#DDD3C7] hover:text-[#F8F2EC]" />
+            <X className="w-4 h-4 text-[#E1EBEC] hover:text-[#FFFFFF]" />
           </button>
         </div>
       )}
@@ -385,14 +385,14 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       {/* =========================================================================
           2. View Mode Navigation Tabs (Segmented Bar)
           ========================================================================= */}
-      <div className="classy-card p-1.5 flex items-center gap-1.5 bg-[#F8F2EC]">
+      <div className="classy-card p-1.5 flex items-center gap-1.5 bg-[#FFFFFF]">
         <button
           type="button"
           onClick={() => setActiveSubTab('today')}
           className={`flex-1 py-2.5 px-3 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeSubTab === 'today'
-              ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-md shadow-[#0F1206]/20'
-              : 'text-[#756046] hover:text-[#0F1206] hover:bg-[#DDD3C7]/25'
+              ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-md shadow-[#0F2A4A]/20'
+              : 'text-[#5F7083] hover:text-[#0F2A4A] hover:bg-[#E1EBEC]/25'
           }`}
         >
           <Clock className="w-4 h-4" />
@@ -400,8 +400,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           <span
             className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
               activeSubTab === 'today'
-                ? 'bg-[#F8F2EC]/20 text-[#F8F2EC]'
-                : 'bg-[#DDD3C7]/25 text-[#293828]'
+                ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
+                : 'bg-[#E1EBEC]/25 text-[#17375E]'
             }`}
           >
             {todaySessions.length}
@@ -413,8 +413,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           onClick={() => setActiveSubTab('calendar')}
           className={`flex-1 py-2.5 px-3 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeSubTab === 'calendar'
-              ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-md shadow-[#0F1206]/20'
-              : 'text-[#756046] hover:text-[#0F1206] hover:bg-[#DDD3C7]/25'
+              ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-md shadow-[#0F2A4A]/20'
+              : 'text-[#5F7083] hover:text-[#0F2A4A] hover:bg-[#E1EBEC]/25'
           }`}
         >
           <CalendarDays className="w-4 h-4" />
@@ -426,8 +426,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           onClick={() => setActiveSubTab('list')}
           className={`flex-1 py-2.5 px-3 text-xs sm:text-sm font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeSubTab === 'list'
-              ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-md shadow-[#0F1206]/20'
-              : 'text-[#756046] hover:text-[#0F1206] hover:bg-[#DDD3C7]/25'
+              ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-md shadow-[#0F2A4A]/20'
+              : 'text-[#5F7083] hover:text-[#0F2A4A] hover:bg-[#E1EBEC]/25'
           }`}
         >
           <List className="w-4 h-4" />
@@ -435,8 +435,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           <span
             className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
               activeSubTab === 'list'
-                ? 'bg-[#F8F2EC]/20 text-[#F8F2EC]'
-                : 'bg-[#DDD3C7]/15 text-[#756046] border border-[#DDD3C7]'
+                ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
+                : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC]'
             }`}
           >
             {sessions.length}
@@ -452,33 +452,33 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           {/* Today Timeline Header */}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#DDD3C7]/650 animate-pulse" />
-              <h2 className="text-sm sm:text-base font-black text-[#0F1206]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E1EBEC]/650 animate-pulse" />
+              <h2 className="text-sm sm:text-base font-black text-[#0F2A4A]">
                 {isEn ? `Today's Schedule — ${todayLocalizedDay} (${todayStr})` : `جدول حصص اليوم — ${todayArabicDay} (${todayStr})`}
               </h2>
             </div>
-            <span className="text-xs font-bold text-[#756046]">
+            <span className="text-xs font-bold text-[#5F7083]">
               {todaySessions.length} {isEn ? 'scheduled' : 'حصص مجدولة'}
             </span>
           </div>
 
           {todaySessions.length === 0 ? (
             /* Friendly Empty State with Classy Owl Mascot */
-            <div className="classy-card p-8 sm:p-12 text-center space-y-4 flex flex-col items-center justify-center relative overflow-hidden bg-[#F8F2EC]">
+            <div className="classy-card p-8 sm:p-12 text-center space-y-4 flex flex-col items-center justify-center relative overflow-hidden bg-[#FFFFFF]">
               <div className="w-28 h-28 flex items-center justify-center">
                 <ClassyOwlMascot size="lg" glow={true} pose="happy" />
               </div>
               <div className="max-w-md space-y-1.5">
-                <h3 className="font-black text-base sm:text-lg text-[#0F1206]">
+                <h3 className="font-black text-base sm:text-lg text-[#0F2A4A]">
                   {isEn ? 'No sessions today' : 'مفيش حصص النهارده'}
                 </h3>
-                <p className="text-xs sm:text-sm text-[#756046] font-medium leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#5F7083] font-medium leading-relaxed">
                   {isEn ? 'A calm day 😌 You can organize your schedule or add a new session.' : 'يوم هادي 😌 تقدر تستغل الوقت في ترتيب جدولك أو إضافة حصة جديدة.'}
                 </p>
               </div>
               <button
                 onClick={() => onOpenAddSession(undefined, todayStr)}
-                className="mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-[#0F1206]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
+                className="mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-black text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-[#0F2A4A]/30 transition-all cursor-pointer active:scale-95 hover:brightness-105"
               >
                 <Plus className="w-4.5 h-4.5 stroke-[2.5]" />
                 <span>+ {isEn ? 'Schedule Session for Today' : 'جدولة حصة لليوم'}</span>
@@ -506,15 +506,15 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                 const isHourly = group?.billingMode === 'hourly' || group?.billingType === 'hourly';
                 const durationLabel = formatDurationLabel(session.hours, session.startTime, session.endTime, isEn);
 
-                const themeColor = isPrivate ? '#0F1206' : (group?.accentColor || '#293828');
+                const themeColor = isPrivate ? '#0F2A4A' : (group?.accentColor || '#17375E');
 
                 return (
                   <div
                     key={session.id}
-                    className={`classy-card classy-card-hover p-4 sm:p-5 transition-all space-y-3.5 relative overflow-hidden bg-[#F8F2EC] border ${
+                    className={`classy-card classy-card-hover p-4 sm:p-5 transition-all space-y-3.5 relative overflow-hidden bg-[#FFFFFF] border ${
                       session.status === 'completed'
-                        ? 'border-[#293828]/50 ring-1 ring-[#293828]/30'
-                        : 'border-[#DDD3C7]'
+                        ? 'border-[#17375E]/50 ring-1 ring-[#17375E]/30'
+                        : 'border-[#E1EBEC]'
                     }`}
                   >
                     {/* Top Accent Line */}
@@ -527,12 +527,12 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                     <div className="flex items-start justify-between gap-3 pt-1">
                       <div className="flex items-start gap-3 min-w-0">
                         {/* Time Slot Badge Box */}
-                        <div className="bg-[#293828] text-[#F8F2EC] p-2.5 rounded-2xl text-center shrink-0 min-w-[72px] shadow-sm">
+                        <div className="bg-[#17375E] text-[#FFFFFF] p-2.5 rounded-2xl text-center shrink-0 min-w-[72px] shadow-sm">
                           <span className="font-mono text-xs font-black block">
                             {formatTimeDisplay(session.startTime, isRTL)}
                           </span>
                           {session.endTime && (
-                            <span className="font-mono text-[10px] text-[#DDD3C7]/80 block border-t border-[#DDD3C7]/20 pt-0.5 mt-0.5">
+                            <span className="font-mono text-[10px] text-[#E1EBEC]/80 block border-t border-[#E1EBEC]/20 pt-0.5 mt-0.5">
                               {formatTimeDisplay(session.endTime, isRTL)}
                             </span>
                           )}
@@ -541,7 +541,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                         {/* Title & Identity */}
                         <div className="min-w-0 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-black text-sm sm:text-base text-[#0F1206] truncate">
+                            <h3 className="font-black text-sm sm:text-base text-[#0F2A4A] truncate">
                               {isPrivate
                                 ? (privateStudent ? `${isEn ? 'Private — ' : 'خاص — '}${privateStudent.name}` : session.title)
                                 : (session.title || group?.name || (isEn ? 'Academic Session' : 'حصة دراسية'))}
@@ -551,8 +551,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                             <span
                               className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
                                 isPrivate
-                                  ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
-                                  : 'bg-[#DDD3C7]/25 text-[#0F1206] border border-[#DDD3C7]'
+                                  ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
+                                  : 'bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#E1EBEC]'
                               }`}
                             >
                               {isPrivate ? (isEn ? 'Private' : 'درس خاص') : (group?.name || (isEn ? 'Group' : 'مجموعة'))}
@@ -560,27 +560,27 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                             {/* Dynamic Semantic Session Status Badge */}
                             {session.status === 'completed' ? (
-                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60 inline-flex items-center gap-1 shadow-2xs">
-                                <CheckCircle2 className="w-3 h-3 text-[#293828]" />
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/65 text-[#0F2A4A] border border-[#17375E]/60 inline-flex items-center gap-1 shadow-2xs">
+                                <CheckCircle2 className="w-3 h-3 text-[#17375E]" />
                                 <span>{isEn ? 'Completed (Recorded)' : 'مكتملة (تم الرصد)'}</span>
                               </span>
                             ) : session.status === 'cancelled' ? (
-                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7] inline-flex items-center gap-1 shadow-2xs">
-                                <AlertCircle className="w-3 h-3 text-[#0F1206]" />
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] inline-flex items-center gap-1 shadow-2xs">
+                                <AlertCircle className="w-3 h-3 text-[#0F2A4A]" />
                                 <span>{isEn ? 'Cancelled' : 'ملغاة'}</span>
                               </span>
                             ) : (
-                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/70 text-[#0F1206] border border-[#0F1206]/50 inline-flex items-center gap-1 shadow-2xs">
-                                <Clock className="w-3 h-3 text-[#0F1206]" />
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/70 text-[#0F2A4A] border border-[#0F2A4A]/50 inline-flex items-center gap-1 shadow-2xs">
+                                <Clock className="w-3 h-3 text-[#0F2A4A]" />
                                 <span>{isEn ? 'Scheduled' : 'مجدولة (بانتظار الرصد)'}</span>
                               </span>
                             )}
                           </div>
 
                           {/* Meta & Duration Details */}
-                          <div className="flex items-center gap-2 text-xs text-[#756046] font-medium flex-wrap">
+                          <div className="flex items-center gap-2 text-xs text-[#5F7083] font-medium flex-wrap">
                             {group?.subject && (
-                              <span className="text-[#0F1206] font-bold bg-[#DDD3C7]/15 px-2 py-0.5 rounded-lg border border-[#DDD3C7]">
+                              <span className="text-[#0F2A4A] font-bold bg-[#E1EBEC]/15 px-2 py-0.5 rounded-lg border border-[#E1EBEC]">
                                 {group.subject}
                               </span>
                             )}
@@ -592,7 +592,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                             {isHourly && (
                               <>
                                 <span>•</span>
-                                <span className="font-bold text-[#293828] bg-[#DDD3C7]/25 px-2 py-0.5 rounded-lg border border-[#DDD3C7]">
+                                <span className="font-bold text-[#17375E] bg-[#E1EBEC]/25 px-2 py-0.5 rounded-lg border border-[#E1EBEC]">
                                   {isEn ? 'Duration:' : 'المدة:'} {durationLabel}
                                 </span>
                               </>
@@ -600,7 +600,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                             <span>•</span>
                             <span className="flex items-center gap-1">
-                              <Users className="w-3.5 h-3.5 text-[#293828]" />
+                              <Users className="w-3.5 h-3.5 text-[#17375E]" />
                               <span>{isPrivate ? (isEn ? '1 Student' : 'طالب واحد') : (isEn ? `${groupStudents.length} Students` : `${groupStudents.length} طلاب`)}</span>
                             </span>
                           </div>
@@ -609,31 +609,31 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                       {/* Pricing / Effective Session Value */}
                       <div className="shrink-0 text-left">
-                        <span className="text-xs font-black px-3 py-1 rounded-xl inline-block bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/50 shadow-2xs">
+                        <span className="text-xs font-black px-3 py-1 rounded-xl inline-block bg-[#E1EBEC]/65 text-[#0F2A4A] border border-[#17375E]/50 shadow-2xs">
                           {session.pricePerStudent || group?.defaultPrice || 100} {t('currency')}
                         </span>
                       </div>
                     </div>
 
                     {/* Attendance State & Quick Actions Strip */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-[#DDD3C7]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-[#E1EBEC]">
                       {/* Attendance Summary */}
                       <div className="text-xs">
                         {isAttendanceRecorded ? (
                           <div className="flex items-center gap-2 font-bold">
-                            <span className="text-[#0F1206] flex items-center gap-1 bg-[#DDD3C7]/65 px-2.5 py-1 rounded-xl border border-[#293828]/50">
+                            <span className="text-[#0F2A4A] flex items-center gap-1 bg-[#E1EBEC]/65 px-2.5 py-1 rounded-xl border border-[#17375E]/50">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>{isEn ? 'Present:' : 'حاضر:'} {presentCount}</span>
                             </span>
                             {absentCount > 0 && (
-                              <span className="text-[#0F1206] bg-[#DDD3C7]/15 px-2.5 py-1 rounded-xl border border-[#DDD3C7]">
+                              <span className="text-[#0F2A4A] bg-[#E1EBEC]/15 px-2.5 py-1 rounded-xl border border-[#E1EBEC]">
                                 {isEn ? 'Absent:' : 'غياب:'} {absentCount}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-[#0F1206] bg-[#DDD3C7]/70 px-2.5 py-1 rounded-xl border border-[#DDD3C7] font-bold inline-flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-[#0F1206]" />
+                          <span className="text-[#0F2A4A] bg-[#E1EBEC]/70 px-2.5 py-1 rounded-xl border border-[#E1EBEC] font-bold inline-flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-[#0F2A4A]" />
                             <span>{isEn ? 'Attendance not recorded yet' : 'لم يُسجل الحضور بعد'}</span>
                           </span>
                         )}
@@ -646,10 +646,10 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleQuickMarkAllPresent(session)}
-                            className="px-3 py-1.5 rounded-xl bg-[#DDD3C7]/65 hover:bg-[#DDD3C7]/35 text-[#0F1206] border border-[#293828]/60 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+                            className="px-3 py-1.5 rounded-xl bg-[#E1EBEC]/65 hover:bg-[#E1EBEC]/35 text-[#0F2A4A] border border-[#17375E]/60 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
                             title={isEn ? 'Mark all present in one click' : 'تسجيل حضور جميع طلاب المجموعة بنقرة واحدة'}
                           >
-                            <CheckCheck className="w-3.5 h-3.5 text-[#293828] stroke-[2.5]" />
+                            <CheckCheck className="w-3.5 h-3.5 text-[#17375E] stroke-[2.5]" />
                             <span>{isEn ? 'All Present' : 'حضر الكل'}</span>
                           </button>
                         )}
@@ -658,9 +658,9 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onOpenAttendanceModal(session)}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] hover:from-[#0F1206] hover:to-[#293828] text-[#F8F2EC] font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] hover:from-[#0F2A4A] hover:to-[#17375E] text-[#FFFFFF] font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
                           <span>{isAttendanceRecorded ? (isEn ? 'Edit Attendance' : 'تعديل الحضور') : (isEn ? 'Take Attendance' : 'تسجيل الحضور')}</span>
                         </button>
 
@@ -668,7 +668,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onEditSession(session)}
-                          className="p-1.5 rounded-xl bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#756046] hover:text-[#0F1206] border border-[#DDD3C7] transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 text-[#5F7083] hover:text-[#0F2A4A] border border-[#E1EBEC] transition-colors cursor-pointer"
                           title={isEn ? 'Edit session details' : 'تعديل تفاصيل الحصة'}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -678,7 +678,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleDelete(session)}
-                          className="p-1.5 rounded-xl bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 text-[#0F1206] border border-[#DDD3C7] transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 text-[#0F2A4A] border border-[#E1EBEC] transition-colors cursor-pointer"
                           title={isEn ? 'Delete session' : 'حذف الحصة'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -715,16 +715,16 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       {activeSubTab === 'list' && (
         <div className="space-y-3.5">
           {/* Search & Filter Bar */}
-          <div className="classy-card p-4 space-y-3 bg-[#F8F2EC]">
+          <div className="classy-card p-4 space-y-3 bg-[#FFFFFF]">
             {/* Search Input */}
             <div className="relative">
-              <Search className={`w-4.5 h-4.5 text-[#756046] absolute top-3.5 ${isRTL ? 'right-3.5' : 'left-3.5'}`} />
+              <Search className={`w-4.5 h-4.5 text-[#5F7083] absolute top-3.5 ${isRTL ? 'right-3.5' : 'left-3.5'}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={isEn ? 'Search by session name, group, student, or notes...' : 'ابحث باسم الحصة، المجموعة، الطالب الخاص، أو الملاحظات...'}
-                className={`w-full bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-2xl py-3 text-xs sm:text-sm text-[#0F1206] font-medium focus:outline-none focus:border-[#293828] focus:bg-[#F8F2EC] placeholder:text-[#756046]/60 transition-all shadow-inner ${
+                className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl py-3 text-xs sm:text-sm text-[#0F2A4A] font-medium focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] placeholder:text-[#5F7083]/60 transition-all shadow-inner ${
                   isRTL ? 'pr-11 pl-9' : 'pl-11 pr-9'
                 }`}
               />
@@ -732,7 +732,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className={`absolute top-3 text-[#756046] hover:text-[#0F1206] p-1 rounded-full hover:bg-[#DDD3C7]/35 transition-colors ${
+                  className={`absolute top-3 text-[#5F7083] hover:text-[#0F2A4A] p-1 rounded-full hover:bg-[#E1EBEC]/35 transition-colors ${
                     isRTL ? 'left-3' : 'right-3'
                   }`}
                 >
@@ -742,14 +742,14 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
             </div>
 
             {/* Quick Time Range Tabs */}
-            <div className="classy-card p-1 flex items-center gap-1 bg-[#DDD3C7]/15 border-[#DDD3C7]">
+            <div className="classy-card p-1 flex items-center gap-1 bg-[#E1EBEC]/15 border-[#E1EBEC]">
               <button
                 type="button"
                 onClick={() => setTimeRangeFilter('all')}
                 className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   timeRangeFilter === 'all'
-                    ? 'bg-[#293828] text-[#F8F2EC] shadow-xs'
-                    : 'text-[#756046] hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
+                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
                 }`}
               >
                 {isEn ? `All (${sessions.length})` : `كل الحصص (${sessions.length})`}
@@ -759,8 +759,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                 onClick={() => setTimeRangeFilter('today')}
                 className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   timeRangeFilter === 'today'
-                    ? 'bg-[#293828] text-[#F8F2EC] shadow-xs'
-                    : 'text-[#756046] hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
+                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
                 }`}
               >
                 {t('today')} ({todaySessions.length})
@@ -770,8 +770,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                 onClick={() => setTimeRangeFilter('month')}
                 className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                   timeRangeFilter === 'month'
-                    ? 'bg-[#293828] text-[#F8F2EC] shadow-xs'
-                    : 'text-[#756046] hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
+                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
                 }`}
               >
                 {isEn ? 'This Month' : 'هذا الشهر'}
@@ -781,11 +781,11 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
             {/* Dropdown Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-0.5">
               <div>
-                <label className="block text-[11px] text-[#756046] font-bold mb-1">{isEn ? 'Group / Service' : 'المجموعة / الخدمة'}</label>
+                <label className="block text-[11px] text-[#5F7083] font-bold mb-1">{isEn ? 'Group / Service' : 'المجموعة / الخدمة'}</label>
                 <select
                   value={selectedGroupFilter}
                   onChange={(e) => setSelectedGroupFilter(e.target.value)}
-                  className="w-full bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-xl px-3 py-2 text-xs text-[#0F1206] font-bold focus:outline-none focus:border-[#293828] cursor-pointer"
+                  className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl px-3 py-2 text-xs text-[#0F2A4A] font-bold focus:outline-none focus:border-[#17375E] cursor-pointer"
                 >
                   <option value="all">{isEn ? 'All Groups & Services' : 'كل المجموعات والخدمات'}</option>
                   {groups.map((g) => (
@@ -797,11 +797,11 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] text-[#756046] font-bold mb-1">{isEn ? 'Session Status' : 'حالة الحصة'}</label>
+                <label className="block text-[11px] text-[#5F7083] font-bold mb-1">{isEn ? 'Session Status' : 'حالة الحصة'}</label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-xl px-3 py-2 text-xs text-[#0F1206] font-bold focus:outline-none focus:border-[#293828] cursor-pointer"
+                  className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl px-3 py-2 text-xs text-[#0F2A4A] font-bold focus:outline-none focus:border-[#17375E] cursor-pointer"
                 >
                   <option value="all">{isEn ? 'All Statuses' : 'كل الحالات'}</option>
                   <option value="completed">{isEn ? 'Completed' : 'مكتملة'}</option>
@@ -811,19 +811,19 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] text-[#756046] font-bold mb-1">{isEn ? 'Filter by Date' : 'تصفية بتاريخ محدد'}</label>
+                <label className="block text-[11px] text-[#5F7083] font-bold mb-1">{isEn ? 'Filter by Date' : 'تصفية بتاريخ محدد'}</label>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-xl px-3 py-1.5 text-xs text-[#0F1206] font-bold focus:outline-none focus:border-[#293828]"
+                    className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl px-3 py-1.5 text-xs text-[#0F2A4A] font-bold focus:outline-none focus:border-[#17375E]"
                   />
                   {selectedDate && (
                     <button
                       type="button"
                       onClick={() => setSelectedDate('')}
-                      className="px-2.5 py-1.5 text-xs bg-[#DDD3C7]/25 hover:bg-[#DDD3C7]/50 text-[#293828] rounded-xl font-bold cursor-pointer"
+                      className="px-2.5 py-1.5 text-xs bg-[#E1EBEC]/25 hover:bg-[#E1EBEC]/50 text-[#17375E] rounded-xl font-bold cursor-pointer"
                     >
                       {t('clear')}
                     </button>
@@ -837,7 +837,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleResetListFilters}
-                  className="px-3 py-1.5 rounded-xl bg-[#DDD3C7]/25 text-[#293828] font-bold text-xs hover:bg-[#293828] hover:text-[#F8F2EC] transition-all cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] font-bold text-xs hover:bg-[#17375E] hover:text-[#FFFFFF] transition-all cursor-pointer"
                 >
                   {t('resetFilters')}
                 </button>
@@ -847,32 +847,32 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
           {/* Sessions Stacked Cards */}
           {sessions.length === 0 ? (
-            <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center bg-[#F8F2EC]">
-              <div className="w-16 h-16 rounded-2xl bg-[#DDD3C7]/25 flex items-center justify-center p-2 shadow-inner">
+            <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center bg-[#FFFFFF]">
+              <div className="w-16 h-16 rounded-2xl bg-[#E1EBEC]/25 flex items-center justify-center p-2 shadow-inner">
                 <ClassyOwlMascot size="sm" glow={false} pose="smart" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-black text-sm text-[#0F1206]">{isEn ? 'No sessions recorded yet' : 'لا توجد حصص مسجلة بعد'}</h3>
-                <p className="text-xs text-[#756046] max-w-sm mx-auto">
+                <h3 className="font-black text-sm text-[#0F2A4A]">{isEn ? 'No sessions recorded yet' : 'لا توجد حصص مسجلة بعد'}</h3>
+                <p className="text-xs text-[#5F7083] max-w-sm mx-auto">
                   {isEn ? 'Schedule your first session to track attendance and follow up.' : 'قم بجدولة حصتك الأولى لتسجيل الحضور ومتابعة الطلاب'}
                 </p>
               </div>
               <button
                 onClick={() => onOpenAddSession()}
-                className="mt-1 px-4 py-2 rounded-2xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-bold text-xs inline-flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-md shadow-[#0F1206]/30"
+                className="mt-1 px-4 py-2 rounded-2xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-bold text-xs inline-flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-md shadow-[#0F2A4A]/30"
               >
                 <Plus className="w-4 h-4" />
                 <span>{t('scheduleSessionBtn')}</span>
               </button>
             </div>
           ) : filteredSessions.length === 0 ? (
-            <div className="classy-card p-8 text-center text-[#756046] space-y-2 bg-[#F8F2EC]">
-              <AlertCircle className="w-7 h-7 mx-auto text-[#0F1206]" />
-              <p className="font-bold text-[#0F1206] text-xs">{isEn ? 'No sessions match filters' : 'لا توجد حصص تطابق خيارات التصفية'}</p>
+            <div className="classy-card p-8 text-center text-[#5F7083] space-y-2 bg-[#FFFFFF]">
+              <AlertCircle className="w-7 h-7 mx-auto text-[#0F2A4A]" />
+              <p className="font-bold text-[#0F2A4A] text-xs">{isEn ? 'No sessions match filters' : 'لا توجد حصص تطابق خيارات التصفية'}</p>
               {hasActiveListFilters && (
                 <button
                   onClick={handleResetListFilters}
-                  className="px-3 py-1.5 rounded-xl bg-[#DDD3C7]/25 text-[#293828] font-bold text-xs hover:bg-[#293828] hover:text-[#F8F2EC] transition-all cursor-pointer mt-1"
+                  className="px-3 py-1.5 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] font-bold text-xs hover:bg-[#17375E] hover:text-[#FFFFFF] transition-all cursor-pointer mt-1"
                 >
                   {t('resetFilters')}
                 </button>
@@ -905,16 +905,16 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                 const isHourly = group?.billingMode === 'hourly' || group?.billingType === 'hourly';
                 const durationLabel = formatDurationLabel(session.hours, session.startTime, session.endTime, isEn);
 
-                const themeColor = isPrivate ? '#0F1206' : (group?.accentColor || '#293828');
+                const themeColor = isPrivate ? '#0F2A4A' : (group?.accentColor || '#17375E');
                 const localizedDay = getLocalizedWeekdayName(session.dayName);
 
                 return (
                   <div
                     key={session.id}
-                    className={`classy-card classy-card-hover p-4 transition-all shadow-xs space-y-2.5 bg-[#F8F2EC] ${
+                    className={`classy-card classy-card-hover p-4 transition-all shadow-xs space-y-2.5 bg-[#FFFFFF] ${
                       session.status === 'cancelled'
-                        ? 'border-[#DDD3C7] bg-[#DDD3C7]/15'
-                        : 'hover:border-[#293828]/40'
+                        ? 'border-[#E1EBEC] bg-[#E1EBEC]/15'
+                        : 'hover:border-[#17375E]/40'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -924,41 +924,41 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                             className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
                             style={{ backgroundColor: themeColor }}
                           />
-                          <h3 className="font-bold text-sm text-[#0F1206] truncate">
+                          <h3 className="font-bold text-sm text-[#0F2A4A] truncate">
                             {isPrivate ? (privateStudent ? `${isEn ? 'Private — ' : 'خاص — '}${privateStudent.name}` : session.title) : session.title}
                           </h3>
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                               isPrivate
-                                ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
-                                : 'bg-[#DDD3C7]/25 text-[#0F1206]'
+                                ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
+                                : 'bg-[#E1EBEC]/25 text-[#0F2A4A]'
                             }`}
                           >
                             {isPrivate ? (isEn ? 'Private' : 'درس خاص') : (group?.name || (isEn ? 'Group' : 'مجموعة'))}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-[#756046] flex-wrap font-medium">
-                          <span className="flex items-center gap-1 font-bold text-[#0F1206]">
-                            <Calendar className="w-3.5 h-3.5 text-[#756046]" />
+                        <div className="flex items-center gap-3 text-xs text-[#5F7083] flex-wrap font-medium">
+                          <span className="flex items-center gap-1 font-bold text-[#0F2A4A]">
+                            <Calendar className="w-3.5 h-3.5 text-[#5F7083]" />
                             <span>{localizedDay} {session.date}</span>
                           </span>
 
                           {session.startTime && (
                             <span className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-[#756046]" />
+                              <Clock className="w-3.5 h-3.5 text-[#5F7083]" />
                               <span>{formatTimeDisplay(session.startTime, isRTL)}</span>
                             </span>
                           )}
 
                           {isHourly && (
-                            <span className="font-bold text-[#293828] bg-[#DDD3C7]/25 px-1.5 py-0.2 rounded text-[11px]">
+                            <span className="font-bold text-[#17375E] bg-[#E1EBEC]/25 px-1.5 py-0.2 rounded text-[11px]">
                               {durationLabel}
                             </span>
                           )}
 
                           <span className="flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5 text-[#756046]" />
+                            <Users className="w-3.5 h-3.5 text-[#5F7083]" />
                             <span>{isPrivate ? (isEn ? '1 Student' : 'طالب واحد') : (isEn ? `${groupStudents.length} Students` : `${groupStudents.length} طلاب`)}</span>
                           </span>
                         </div>
@@ -966,43 +966,43 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
                       {/* Dynamic Semantic Session Status Badge */}
                       {session.status === 'completed' ? (
-                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/65 text-[#0F1206] border border-[#293828]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                          <CheckCircle2 className="w-3 h-3 text-[#293828]" />
+                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/65 text-[#0F2A4A] border border-[#17375E]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                          <CheckCircle2 className="w-3 h-3 text-[#17375E]" />
                           <span>{isEn ? 'Completed' : 'مكتملة'}</span>
                         </span>
                       ) : session.status === 'cancelled' ? (
-                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7] inline-flex items-center gap-1 shadow-2xs shrink-0">
-                          <AlertCircle className="w-3 h-3 text-[#0F1206]" />
+                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] inline-flex items-center gap-1 shadow-2xs shrink-0">
+                          <AlertCircle className="w-3 h-3 text-[#0F2A4A]" />
                           <span>{isEn ? 'Cancelled' : 'ملغاة'}</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/70 text-[#0F1206] border border-[#0F1206]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                          <Clock className="w-3 h-3 text-[#0F1206]" />
+                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/70 text-[#0F2A4A] border border-[#0F2A4A]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
+                          <Clock className="w-3 h-3 text-[#0F2A4A]" />
                           <span>{isEn ? 'Scheduled' : 'مجدولة'}</span>
                         </span>
                       )}
                     </div>
 
                     {session.notes && (
-                      <p className="text-xs text-[#756046] bg-[#DDD3C7]/15 p-2.5 rounded-xl border border-[#DDD3C7] font-medium">
+                      <p className="text-xs text-[#5F7083] bg-[#E1EBEC]/15 p-2.5 rounded-xl border border-[#E1EBEC] font-medium">
                         {session.notes}
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between pt-2 border-t border-[#DDD3C7]">
-                      <div className="text-xs text-[#756046]">
+                    <div className="flex items-center justify-between pt-2 border-t border-[#E1EBEC]">
+                      <div className="text-xs text-[#5F7083]">
                         {isAttendanceRecorded ? (
                           <div className="flex items-center gap-2 flex-wrap font-bold">
-                            <span className="text-[#0F1206]">{isEn ? 'Present:' : 'حاضر:'} {presentCount}</span>
+                            <span className="text-[#0F2A4A]">{isEn ? 'Present:' : 'حاضر:'} {presentCount}</span>
                             {chargedAbsentCount > 0 && (
-                              <span className="text-[#0F1206]">· {isEn ? 'Absent:' : 'غياب:'} {chargedAbsentCount}</span>
+                              <span className="text-[#0F2A4A]">· {isEn ? 'Absent:' : 'غياب:'} {chargedAbsentCount}</span>
                             )}
                             {freeAbsentCount > 0 && (
-                              <span className="text-[#756046]">· {isEn ? 'Excused:' : 'معذور:'} {freeAbsentCount}</span>
+                              <span className="text-[#5F7083]">· {isEn ? 'Excused:' : 'معذور:'} {freeAbsentCount}</span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-[#756046]/80">{isEn ? 'Attendance not taken' : 'لم يُرصد الحضور بعد'}</span>
+                          <span className="text-[#5F7083]/80">{isEn ? 'Attendance not taken' : 'لم يُرصد الحضور بعد'}</span>
                         )}
                       </div>
 
@@ -1010,16 +1010,16 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onOpenAttendanceModal(session)}
-                          className="px-3 py-1.5 rounded-xl bg-[#293828] hover:bg-[#0F1206] text-[#F8F2EC] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                          className="px-3 py-1.5 rounded-xl bg-[#17375E] hover:bg-[#0F2A4A] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
                           <span>{isAttendanceRecorded ? (isEn ? 'Edit Attendance' : 'تعديل الحضور') : (isEn ? 'Take Attendance' : 'رصد الحضور')}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => onEditSession(session)}
-                          className="p-1.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] text-[#756046] hover:text-[#0F1206] hover:bg-[#DDD3C7]/35 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-[#5F7083] hover:text-[#0F2A4A] hover:bg-[#E1EBEC]/35 transition-colors cursor-pointer"
                           title={isEn ? 'Edit session' : 'تعديل الحصة'}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -1028,7 +1028,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleDelete(session)}
-                          className="p-1.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] text-[#0F1206] hover:bg-[#DDD3C7]/35 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-[#0F2A4A] hover:bg-[#E1EBEC]/35 transition-colors cursor-pointer"
                           title={isEn ? 'Delete session' : 'حذف الحصة'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />

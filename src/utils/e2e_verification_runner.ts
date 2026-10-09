@@ -36,7 +36,7 @@ async function runEndToEndVerification() {
     userId,
     name: 'Mohamed',
     phone: '01012345678',
-    avatarColor: '#293828',
+    avatarColor: '#17375E',
     status: 'active' as const,
     createdAt: new Date().toISOString(),
   };
@@ -46,7 +46,7 @@ async function runEndToEndVerification() {
     userId,
     name: 'Math Prep 2',
     subject: 'Math',
-    accentColor: '#293828',
+    accentColor: '#17375E',
     type: 'group' as const,
     gradeLevel: 'prep_2' as const,
     defaultPrice: 100,
@@ -306,7 +306,7 @@ async function runEndToEndVerification() {
     id: 'st_ali_e2e',
     userId,
     name: 'Ali',
-    avatarColor: '#0F1206',
+    avatarColor: '#0F2A4A',
     status: 'active' as const,
     createdAt: new Date().toISOString(),
   };

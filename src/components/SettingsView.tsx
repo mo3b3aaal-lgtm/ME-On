@@ -430,41 +430,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F1206] pb-32 bg-[#F2E9DE] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F2A4A] pb-32 bg-[#FFFFFF] relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Ambient luxury glows */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#293828]/10 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#756046]/12 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#17375E]/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#5F7083]/12 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* =========================================================================
           1. SETTINGS EXECUTIVE HERO HEADER (WITH METALLIC LUSTRE)
           ========================================================================= */}
-      <div className="rounded-[26px] bg-gradient-to-br from-[#293828] via-[#0F1206] to-[#756046] p-5 sm:p-6 text-[#F8F2EC] relative overflow-hidden shadow-xl border border-[#DDD3C7]/35 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.32)]">
+      <div className="rounded-[26px] bg-gradient-to-br from-[#17375E] via-[#0F2A4A] to-[#5F7083] p-5 sm:p-6 text-[#FFFFFF] relative overflow-hidden shadow-xl border border-[#E1EBEC]/35 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.32)]">
         {/* Diagonal Metallic Sheen Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#F8F2EC]/8 to-[#DDD3C7]/15 pointer-events-none" />
-        <div className="absolute -top-14 -right-14 w-52 h-52 bg-[#DDD3C7]/15 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-14 -left-14 w-52 h-52 bg-[#293828]/35 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#FFFFFF]/8 to-[#E1EBEC]/15 pointer-events-none" />
+        <div className="absolute -top-14 -right-14 w-52 h-52 bg-[#E1EBEC]/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-14 -left-14 w-52 h-52 bg-[#17375E]/35 rounded-full blur-2xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#DDD3C7] via-[#F8F2EC] to-[#756046] p-0.5 shadow-lg shadow-[#0F1206]/40 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-[#293828] to-[#0F1206] flex items-center justify-center text-[#F8F2EC] shadow-inner">
-                <SettingsIcon className="w-6 h-6 text-[#F8F2EC]" />
+            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#E1EBEC] via-[#FFFFFF] to-[#5F7083] p-0.5 shadow-lg shadow-[#0F2A4A]/40 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-[#17375E] to-[#0F2A4A] flex items-center justify-center text-[#FFFFFF] shadow-inner">
+                <SettingsIcon className="w-6 h-6 text-[#FFFFFF]" />
               </div>
             </div>
 
             <div className="space-y-0.5 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#DDD3C7] flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                <span className="text-xs font-bold text-[#E1EBEC] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#FFFFFF]" />
                   <span>{isEn ? 'Classy Executive Control' : 'مركز التحكم والإعدادات الفاخرة'}</span>
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#F8F2EC] tracking-tight flex items-center gap-2.5 truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-[#FFFFFF] tracking-tight flex items-center gap-2.5 truncate">
                 <span>{t('settingsTitle')}</span>
               </h1>
-              <p className="text-xs sm:text-sm text-[#DDD3C7]/90 font-medium truncate">
+              <p className="text-xs sm:text-sm text-[#E1EBEC]/90 font-medium truncate">
                 {currentUser?.email || teacherProfile.name || (isEn ? 'Teacher Profile & System Preferences' : 'الملف الشخصي وتفضيلات النظام والمزامنة')}
               </p>
             </div>
@@ -475,9 +475,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveSection('all')}
-                className="px-3.5 py-2 rounded-2xl bg-[#F8F2EC] text-[#293828] font-black text-xs flex items-center gap-1.5 border border-[#DDD3C7] shadow-sm transition-all cursor-pointer active:scale-95"
+                className="px-3.5 py-2 rounded-2xl bg-[#FFFFFF] text-[#17375E] font-black text-xs flex items-center gap-1.5 border border-[#E1EBEC] shadow-sm transition-all cursor-pointer active:scale-95"
               >
-                <Layers className="w-3.5 h-3.5 text-[#293828]" />
+                <Layers className="w-3.5 h-3.5 text-[#17375E]" />
                 <span>{isEn ? 'Show All' : 'عرض الكل'}</span>
               </button>
             )}
@@ -485,9 +485,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={onLogout}
-                className="px-4 py-2 rounded-2xl bg-[#F8F2EC]/15 hover:bg-[#F8F2EC]/25 text-[#F8F2EC] font-bold text-xs flex items-center gap-2 border border-[#DDD3C7]/35 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.25)] transition-all cursor-pointer active:scale-95"
+                className="px-4 py-2 rounded-2xl bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/25 text-[#FFFFFF] font-bold text-xs flex items-center gap-2 border border-[#E1EBEC]/35 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.25)] transition-all cursor-pointer active:scale-95"
               >
-                <LogOut className="w-4 h-4 text-[#F8F2EC]" />
+                <LogOut className="w-4 h-4 text-[#FFFFFF]" />
                 <span>{t('logout')}</span>
               </button>
             )}
@@ -498,24 +498,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Sync Feedback Toast */}
       {syncFeedback && (
         <div
-          className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between shadow-md animate-in fade-in slide-in-from-top-2 border border-[#DDD3C7]/35 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.28)] ${
+          className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between shadow-md animate-in fade-in slide-in-from-top-2 border border-[#E1EBEC]/35 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.28)] ${
             syncFeedback.type === 'success'
-              ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC]'
+              ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF]'
               : syncFeedback.type === 'error'
-              ? 'bg-gradient-to-r from-[#0F1206] to-[#756046] text-[#F8F2EC]'
-              : 'bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC]'
+              ? 'bg-gradient-to-r from-[#0F2A4A] to-[#5F7083] text-[#FFFFFF]'
+              : 'bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF]'
           }`}
         >
           <div className="flex items-center gap-2">
             {syncFeedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-[#F8F2EC]" />
+              <CheckCircle2 className="w-4 h-4 text-[#FFFFFF]" />
             ) : (
-              <AlertTriangle className="w-4 h-4 text-[#DDD3C7]" />
+              <AlertTriangle className="w-4 h-4 text-[#E1EBEC]" />
             )}
             <span>{syncFeedback.message}</span>
           </div>
           <button onClick={() => setSyncFeedback(null)}>
-            <Check className="w-4 h-4 text-[#F8F2EC] opacity-85 hover:opacity-100" />
+            <Check className="w-4 h-4 text-[#FFFFFF] opacity-85 hover:opacity-100" />
           </button>
         </div>
       )}
@@ -530,26 +530,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setActiveSection(activeSection === 'account' ? 'all' : 'account')}
           className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
             activeSection === 'account'
-              ? 'bg-gradient-to-br from-[#293828] via-[#0F1206] to-[#293828] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#293828]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
-              : 'classy-bento-sapphire text-[#0F1206] hover:border-[#293828]'
+              ? 'bg-gradient-to-br from-[#17375E] via-[#0F2A4A] to-[#17375E] text-[#FFFFFF] border border-[#E1EBEC]/40 shadow-lg shadow-[#17375E]/25 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.3)]'
+              : 'classy-bento-sapphire text-[#0F2A4A] hover:border-[#17375E]'
           }`}
         >
-          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/25 rounded-full blur-xl pointer-events-none" />
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#FFFFFF]/25 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between w-full mb-2 relative z-10">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
                 activeSection === 'account'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
-                  : 'bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-[#293828]/25'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/30'
+                  : 'bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-[#17375E]/25'
               }`}
             >
-              <User className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <User className="w-4.5 h-4.5 text-[#FFFFFF]" />
             </div>
             <span
               className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
                 activeSection === 'account'
-                  ? 'bg-[#F8F2EC] text-[#293828] border-[#F8F2EC]'
-                  : 'bg-[#F8F2EC]/80 text-[#293828] border-[#293828]/25 shadow-2xs'
+                  ? 'bg-[#FFFFFF] text-[#17375E] border-[#FFFFFF]'
+                  : 'bg-[#FFFFFF]/80 text-[#17375E] border-[#17375E]/25 shadow-2xs'
               }`}
             >
               {subject || (isEn ? 'Profile' : 'حسابي')}
@@ -561,7 +561,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </span>
             <span
               className={`text-[11px] font-bold block truncate mt-0.5 ${
-                activeSection === 'account' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+                activeSection === 'account' ? 'text-[#E1EBEC]' : 'text-[#5F7083]'
               }`}
             >
               {name || (isEn ? 'Profile & Password' : 'الاسم وكلمة المرور')}
@@ -575,26 +575,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setActiveSection(activeSection === 'sync' ? 'all' : 'sync')}
           className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
             activeSection === 'sync'
-              ? 'bg-gradient-to-br from-[#0F1206] via-[#293828] to-[#0F1206] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#0F1206]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
-              : 'classy-bento-navy text-[#0F1206] hover:border-[#0F1206]'
+              ? 'bg-gradient-to-br from-[#0F2A4A] via-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border border-[#E1EBEC]/40 shadow-lg shadow-[#0F2A4A]/25 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.3)]'
+              : 'classy-bento-navy text-[#0F2A4A] hover:border-[#0F2A4A]'
           }`}
         >
-          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/25 rounded-full blur-xl pointer-events-none" />
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#FFFFFF]/25 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between w-full mb-2 relative z-10">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
                 activeSection === 'sync'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
-                  : 'bg-gradient-to-tr from-[#0F1206] to-[#756046] text-[#F8F2EC] shadow-[#0F1206]/25'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/30'
+                  : 'bg-gradient-to-tr from-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] shadow-[#0F2A4A]/25'
               }`}
             >
-              <Database className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <Database className="w-4.5 h-4.5 text-[#FFFFFF]" />
             </div>
             <span
               className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
                 activeSection === 'sync'
-                  ? 'bg-[#F8F2EC] text-[#0F1206] border-[#F8F2EC]'
-                  : 'bg-[#F8F2EC]/80 text-[#0F1206] border-[#0F1206]/25 shadow-2xs'
+                  ? 'bg-[#FFFFFF] text-[#0F2A4A] border-[#FFFFFF]'
+                  : 'bg-[#FFFFFF]/80 text-[#0F2A4A] border-[#0F2A4A]/25 shadow-2xs'
               }`}
             >
               {networkStatus.isOnline ? (isEn ? 'Synced' : 'متصل') : (isEn ? 'Local' : 'محلي')}
@@ -606,7 +606,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </span>
             <span
               className={`text-[11px] font-bold block truncate mt-0.5 ${
-                activeSection === 'sync' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+                activeSection === 'sync' ? 'text-[#E1EBEC]' : 'text-[#5F7083]'
               }`}
             >
               {isEn ? 'Schedule & JSON Export' : 'جدولة وحفظ احتياطي'}
@@ -620,26 +620,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setActiveSection(activeSection === 'notif' ? 'all' : 'notif')}
           className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
             activeSection === 'notif'
-              ? 'bg-gradient-to-br from-[#293828] via-[#756046] to-[#0F1206] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#293828]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
-              : 'classy-bento-steel text-[#0F1206] hover:border-[#756046]'
+              ? 'bg-gradient-to-br from-[#17375E] via-[#5F7083] to-[#0F2A4A] text-[#FFFFFF] border border-[#E1EBEC]/40 shadow-lg shadow-[#17375E]/25 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.3)]'
+              : 'classy-bento-steel text-[#0F2A4A] hover:border-[#5F7083]'
           }`}
         >
-          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/25 rounded-full blur-xl pointer-events-none" />
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#FFFFFF]/25 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between w-full mb-2 relative z-10">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
                 activeSection === 'notif'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
-                  : 'bg-gradient-to-tr from-[#756046] to-[#293828] text-[#F8F2EC] shadow-[#756046]/25'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/30'
+                  : 'bg-gradient-to-tr from-[#5F7083] to-[#17375E] text-[#FFFFFF] shadow-[#5F7083]/25'
               }`}
             >
-              <Bell className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <Bell className="w-4.5 h-4.5 text-[#FFFFFF]" />
             </div>
             <span
               className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
                 activeSection === 'notif'
-                  ? 'bg-[#F8F2EC] text-[#293828] border-[#F8F2EC]'
-                  : 'bg-[#F8F2EC]/80 text-[#0F1206] border-[#756046]/35 shadow-2xs'
+                  ? 'bg-[#FFFFFF] text-[#17375E] border-[#FFFFFF]'
+                  : 'bg-[#FFFFFF]/80 text-[#0F2A4A] border-[#5F7083]/35 shadow-2xs'
               }`}
             >
               {notifSettings.enableDailyAttendanceReminder !== false
@@ -653,7 +653,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </span>
             <span
               className={`text-[11px] font-bold block truncate mt-0.5 ${
-                activeSection === 'notif' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+                activeSection === 'notif' ? 'text-[#E1EBEC]' : 'text-[#5F7083]'
               }`}
             >
               {isEn ? 'Daily Alerts & Sounds' : 'تذكير الحضور والنغمات'}
@@ -667,26 +667,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setActiveSection(activeSection === 'language' ? 'all' : 'language')}
           className={`p-3.5 sm:p-4 rounded-[22px] flex flex-col justify-between min-h-[112px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden group ${
             activeSection === 'language'
-              ? 'bg-gradient-to-br from-[#0F1206] via-[#756046] to-[#293828] text-[#F8F2EC] border border-[#DDD3C7]/40 shadow-lg shadow-[#0F1206]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
-              : 'classy-bento-silver text-[#0F1206] hover:border-[#293828]'
+              ? 'bg-gradient-to-br from-[#0F2A4A] via-[#5F7083] to-[#17375E] text-[#FFFFFF] border border-[#E1EBEC]/40 shadow-lg shadow-[#0F2A4A]/25 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.3)]'
+              : 'classy-bento-silver text-[#0F2A4A] hover:border-[#17375E]'
           }`}
         >
-          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#F8F2EC]/35 rounded-full blur-xl pointer-events-none" />
+          <div className="absolute -top-8 -left-8 w-24 h-24 bg-[#FFFFFF]/35 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between w-full mb-2 relative z-10">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 ${
                 activeSection === 'language'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/30'
-                  : 'bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] shadow-[#293828]/25'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/30'
+                  : 'bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] shadow-[#17375E]/25'
               }`}
             >
-              <Globe className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <Globe className="w-4.5 h-4.5 text-[#FFFFFF]" />
             </div>
             <span
               className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
                 activeSection === 'language'
-                  ? 'bg-[#F8F2EC] text-[#0F1206] border-[#F8F2EC]'
-                  : 'bg-[#F8F2EC]/85 text-[#293828] border-[#293828]/25 shadow-2xs'
+                  ? 'bg-[#FFFFFF] text-[#0F2A4A] border-[#FFFFFF]'
+                  : 'bg-[#FFFFFF]/85 text-[#17375E] border-[#17375E]/25 shadow-2xs'
               }`}
             >
               {language === 'ar' ? 'العربية' : language === 'en-GB' ? 'EN-UK' : 'EN-US'}
@@ -698,7 +698,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </span>
             <span
               className={`text-[11px] font-bold block truncate mt-0.5 ${
-                activeSection === 'language' ? 'text-[#DDD3C7]' : 'text-[#756046]'
+                activeSection === 'language' ? 'text-[#E1EBEC]' : 'text-[#5F7083]'
               }`}
             >
               {isEn ? 'Interface & Data Reset' : 'واجهة التطبيق والبيانات'}
@@ -714,15 +714,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="classy-card p-4 sm:p-5 space-y-3.5 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#293828]/20">
-                <Globe className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] flex items-center justify-center text-[#FFFFFF] shadow-sm shadow-[#17375E]/20">
+                <Globe className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-[#0F1206]">{t('languageSettings')}</h3>
-                <p className="text-[11px] text-[#756046] font-medium">{t('selectLanguage')}</p>
+                <h3 className="text-sm font-black text-[#0F2A4A]">{t('languageSettings')}</h3>
+                <p className="text-[11px] text-[#5F7083] font-medium">{t('selectLanguage')}</p>
               </div>
             </div>
-            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/30 text-[#0F1206] border border-[#DDD3C7]">
+            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E1EBEC]/30 text-[#0F2A4A] border border-[#E1EBEC]">
               3 {isEn ? 'Languages' : 'لغات'}
             </span>
           </div>
@@ -741,31 +741,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   onClick={() => setLanguage(langItem.code)}
                   className={`p-3 sm:p-3.5 rounded-[20px] border flex flex-col justify-between min-h-[92px] text-start transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden ${
                     isSelected
-                      ? 'bg-gradient-to-br from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] border-[#293828] shadow-md shadow-[#293828]/25 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.3)]'
-                      : 'classy-bento-silver text-[#0F1206] hover:border-[#293828]'
+                      ? 'bg-gradient-to-br from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] border-[#17375E] shadow-md shadow-[#17375E]/25 shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.3)]'
+                      : 'classy-bento-silver text-[#0F2A4A] hover:border-[#17375E]'
                   }`}
                 >
                   <div className="flex items-center justify-between w-full mb-2">
                     <span
                       className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${
                         isSelected
-                          ? 'bg-[#F8F2EC]/20 text-[#F8F2EC] border-[#DDD3C7]/35'
-                          : 'bg-[#F8F2EC] text-[#293828] border-[#DDD3C7]'
+                          ? 'bg-[#FFFFFF]/20 text-[#FFFFFF] border-[#E1EBEC]/35'
+                          : 'bg-[#FFFFFF] text-[#17375E] border-[#E1EBEC]'
                       }`}
                     >
                       {langItem.badge}
                     </span>
                     {isSelected ? (
-                      <div className="w-5 h-5 rounded-full bg-[#293828] border border-[#F8F2EC]/60 flex items-center justify-center shadow-xs">
-                        <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />
+                      <div className="w-5 h-5 rounded-full bg-[#17375E] border border-[#FFFFFF]/60 flex items-center justify-center shadow-xs">
+                        <Check className="w-3 h-3 text-[#FFFFFF] stroke-[3]" />
                       </div>
                     ) : (
-                      <div className="w-5 h-5 rounded-full bg-[#F8F2EC]/80 border border-[#DDD3C7]" />
+                      <div className="w-5 h-5 rounded-full bg-[#FFFFFF]/80 border border-[#E1EBEC]" />
                     )}
                   </div>
                   <div>
                     <span className="text-xs sm:text-sm font-black block truncate">{langItem.title}</span>
-                    <span className={`text-[10px] font-bold block truncate mt-0.5 ${isSelected ? 'text-[#DDD3C7]' : 'text-[#756046]'}`}>
+                    <span className={`text-[10px] font-bold block truncate mt-0.5 ${isSelected ? 'text-[#E1EBEC]' : 'text-[#5F7083]'}`}>
                       {langItem.sub}
                     </span>
                   </div>
@@ -783,19 +783,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="classy-card p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#293828]/20">
-                <User className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] flex items-center justify-center text-[#FFFFFF] shadow-sm shadow-[#17375E]/20">
+                <User className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'Teacher Profile & Branding' : 'بيانات المعلم والسنتر'}</h3>
-                <p className="text-[11px] text-[#756046] font-medium">{isEn ? 'Displayed on reports and printouts' : 'تظهر في الكشوفات والتقارير المطبوعة'}</p>
+                <h3 className="text-sm font-black text-[#0F2A4A]">{isEn ? 'Teacher Profile & Branding' : 'بيانات المعلم والسنتر'}</h3>
+                <p className="text-[11px] text-[#5F7083] font-medium">{isEn ? 'Displayed on reports and printouts' : 'تظهر في الكشوفات والتقارير المطبوعة'}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {savedSuccess && (
-                <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] text-xs font-black flex items-center gap-1.5 shadow-sm">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] text-xs font-black flex items-center gap-1.5 shadow-sm">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
                   <span>{t('saveSuccess')}</span>
                 </span>
               )}
@@ -803,9 +803,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsChangingPassword(!isChangingPassword)}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#F8F2EC] to-[#DDD3C7]/35 hover:border-[#293828] border border-[#DDD3C7] text-[#0F1206] font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#FFFFFF] to-[#E1EBEC]/35 hover:border-[#17375E] border border-[#E1EBEC] text-[#0F2A4A] font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
-                  <KeyRound className="w-3.5 h-3.5 text-[#293828]" />
+                  <KeyRound className="w-3.5 h-3.5 text-[#17375E]" />
                   <span>{isEn ? 'Password' : 'كلمة المرور'}</span>
                 </button>
               )}
@@ -816,56 +816,56 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             {/* 2x2 Square Field Cards */}
             <div className="grid grid-cols-2 gap-2.5">
               <div className="p-3 rounded-[20px] classy-bento-sapphire flex flex-col justify-between min-h-[88px]">
-                <label className="text-[11px] font-black text-[#293828] flex items-center gap-1.5 mb-1.5">
-                  <User className="w-3.5 h-3.5 text-[#293828]" />
+                <label className="text-[11px] font-black text-[#17375E] flex items-center gap-1.5 mb-1.5">
+                  <User className="w-3.5 h-3.5 text-[#17375E]" />
                   <span className="truncate">{t('teacherName')}</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                  className="w-full p-2 rounded-xl bg-[#FFFFFF]/95 border border-[#E1EBEC] font-black text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E] shadow-2xs"
                   required
                 />
               </div>
 
               <div className="p-3 rounded-[20px] classy-bento-navy flex flex-col justify-between min-h-[88px]">
-                <label className="text-[11px] font-black text-[#0F1206] flex items-center gap-1.5 mb-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-[#0F1206]" />
+                <label className="text-[11px] font-black text-[#0F2A4A] flex items-center gap-1.5 mb-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[#0F2A4A]" />
                   <span className="truncate">{t('subject')}</span>
                 </label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                  className="w-full p-2 rounded-xl bg-[#FFFFFF]/95 border border-[#E1EBEC] font-black text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E] shadow-2xs"
                   required
                 />
               </div>
 
               <div className="p-3 rounded-[20px] classy-bento-steel flex flex-col justify-between min-h-[88px]">
-                <label className="text-[11px] font-black text-[#0F1206] flex items-center gap-1.5 mb-1.5">
-                  <Phone className="w-3.5 h-3.5 text-[#756046]" />
+                <label className="text-[11px] font-black text-[#0F2A4A] flex items-center gap-1.5 mb-1.5">
+                  <Phone className="w-3.5 h-3.5 text-[#5F7083]" />
                   <span className="truncate">{t('phone')}</span>
                 </label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                  className="w-full p-2 rounded-xl bg-[#FFFFFF]/95 border border-[#E1EBEC] font-black text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E] shadow-2xs"
                 />
               </div>
 
               <div className="p-3 rounded-[20px] classy-bento-silver flex flex-col justify-between min-h-[88px]">
-                <label className="text-[11px] font-black text-[#293828] flex items-center gap-1.5 mb-1.5">
-                  <Building className="w-3.5 h-3.5 text-[#293828]" />
+                <label className="text-[11px] font-black text-[#17375E] flex items-center gap-1.5 mb-1.5">
+                  <Building className="w-3.5 h-3.5 text-[#17375E]" />
                   <span className="truncate">{isEn ? 'Center / Academy' : 'السنتر / المؤسسة'}</span>
                 </label>
                 <input
                   type="text"
                   value={centerOrSchool}
                   onChange={(e) => setCenterOrSchool(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#F8F2EC]/95 border border-[#DDD3C7] font-black text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] shadow-2xs"
+                  className="w-full p-2 rounded-xl bg-[#FFFFFF]/95 border border-[#E1EBEC] font-black text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E] shadow-2xs"
                 />
               </div>
             </div>
@@ -875,7 +875,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="submit"
                 className="btn-primary px-5 py-2.5 text-xs flex items-center gap-2 cursor-pointer"
               >
-                <Save className="w-4 h-4 text-[#F8F2EC]" />
+                <Save className="w-4 h-4 text-[#FFFFFF]" />
                 <span>{t('save')}</span>
               </button>
             </div>
@@ -888,14 +888,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               className="p-3.5 sm:p-4 rounded-[20px] classy-bento-navy space-y-3 animate-in fade-in"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#293828]" />
+                <span className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#17375E]" />
                   <span>{isEn ? 'Change Account Password' : 'تحديث كلمة مرور الحساب'}</span>
                 </span>
               </div>
               {passMessage && (
-                <div className="p-2.5 rounded-xl bg-[#293828] text-[#F8F2EC] text-xs font-bold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                <div className="p-2.5 rounded-xl bg-[#17375E] text-[#FFFFFF] text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
                   <span>{passMessage.text}</span>
                 </div>
               )}
@@ -905,14 +905,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   placeholder={isEn ? 'Current password' : 'كلمة المرور الحالية'}
                   value={currentPass}
                   onChange={(e) => setCurrentPass(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-bold text-[#0F1206]"
+                  className="w-full p-2.5 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A]"
                 />
                 <input
                   type="password"
                   placeholder={isEn ? 'New password (min 6)' : 'كلمة المرور الجديدة'}
                   value={newPass}
                   onChange={(e) => setNewPass(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs font-bold text-[#0F1206]"
+                  className="w-full p-2.5 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A]"
                 />
               </div>
               <div className="flex justify-end">
@@ -920,7 +920,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="submit"
                   className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Check className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                  <Check className="w-3.5 h-3.5 text-[#FFFFFF]" />
                   <span>{isEn ? 'Update Password' : 'حفظ كلمة المرور'}</span>
                 </button>
               </div>
@@ -936,16 +936,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="classy-card p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F1206] to-[#756046] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#0F1206]/20">
-                <Database className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F2A4A] to-[#5F7083] flex items-center justify-center text-[#FFFFFF] shadow-sm shadow-[#0F2A4A]/20">
+                <Database className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'Cloud Sync & Data Security' : 'المزامنة السحابية والنسخ الاحتياطي'}</h3>
-                <p className="text-[11px] text-[#756046] font-medium">{syncStatus.label}</p>
+                <h3 className="text-sm font-black text-[#0F2A4A]">{isEn ? 'Cloud Sync & Data Security' : 'المزامنة السحابية والنسخ الاحتياطي'}</h3>
+                <p className="text-[11px] text-[#5F7083] font-medium">{syncStatus.label}</p>
               </div>
             </div>
 
-            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#DDD3C7]/35 text-[#0F1206] border border-[#DDD3C7]">
+            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E1EBEC]/35 text-[#0F2A4A] border border-[#E1EBEC]">
               {lastSyncTime ? formatSyncTimeArabic(lastSyncTime) : (isEn ? 'Ready' : 'جاهز للمزامنة')}
             </span>
           </div>
@@ -957,21 +957,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="button"
               onClick={handleSyncNow}
               disabled={isSyncing}
-              className="p-3.5 rounded-[20px] classy-bento-sapphire hover:border-[#293828] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50"
+              className="p-3.5 rounded-[20px] classy-bento-sapphire hover:border-[#17375E] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50"
             >
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <RefreshCw className={`w-4 h-4 text-[#F8F2EC] ${isSyncing ? 'animate-spin' : ''}`} />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <RefreshCw className={`w-4 h-4 text-[#FFFFFF] ${isSyncing ? 'animate-spin' : ''}`} />
                 </div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#293828] border border-[#DDD3C7]">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF] text-[#17375E] border border-[#E1EBEC]">
                   {isEn ? 'Cloud' : 'سحابي'}
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isSyncing ? (isEn ? 'Syncing...' : 'جاري المزامنة...') : (isEn ? 'Sync Now' : 'مزامنة الآن')}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {isEn ? 'Instant cloud sync' : 'تحديث فوري للبيانات'}
                 </span>
               </div>
@@ -981,41 +981,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={handleBackupNow}
-              className="p-3.5 rounded-[20px] classy-bento-navy hover:border-[#0F1206] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]"
+              className="p-3.5 rounded-[20px] classy-bento-navy hover:border-[#0F2A4A] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]"
             >
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <Download className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <Download className="w-4 h-4 text-[#FFFFFF]" />
                 </div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7]">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC]">
                   JSON
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isEn ? 'Export Backup' : 'تصدير نسخة احتياطية'}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {isEn ? 'Save file to device' : 'حفظ ملف على الجهاز'}
                 </span>
               </div>
             </button>
 
             {/* Square 3: Import JSON Backup */}
-            <label className="p-3.5 rounded-[20px] classy-bento-steel hover:border-[#756046] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]">
+            <label className="p-3.5 rounded-[20px] classy-bento-steel hover:border-[#5F7083] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]">
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#756046] to-[#293828] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <Upload className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5F7083] to-[#17375E] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <Upload className="w-4 h-4 text-[#FFFFFF]" />
                 </div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7]">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC]">
                   {isEn ? 'Restore' : 'استيراد'}
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isEn ? 'Import Backup' : 'استعادة نسخة (.json)'}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {isEn ? 'Load from backup file' : 'رفع ملف نسخة سابقة'}
                 </span>
               </div>
@@ -1031,21 +1031,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={handleRestoreFromAccount}
-              className="p-3.5 rounded-[20px] classy-bento-silver hover:border-[#293828] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]"
+              className="p-3.5 rounded-[20px] classy-bento-silver hover:border-[#17375E] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98]"
             >
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <HardDriveDownload className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <HardDriveDownload className="w-4 h-4 text-[#FFFFFF]" />
                 </div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#293828] border border-[#DDD3C7]">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF] text-[#17375E] border border-[#E1EBEC]">
                   {isEn ? 'Account' : 'الحساب'}
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isEn ? 'Account Restore' : 'استعادة بيانات الحساب'}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {isEn ? 'Reload synced records' : 'تحديث السجلات المحفوظة'}
                 </span>
               </div>
@@ -1053,8 +1053,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Sync Frequency Square Pills */}
-          <div className="space-y-2 pt-2 border-t border-[#DDD3C7]/70">
-            <label className="text-xs font-black text-[#0F1206] block">{isEn ? 'Auto Sync Schedule:' : 'جدولة المزامنة التلقائية:'}</label>
+          <div className="space-y-2 pt-2 border-t border-[#E1EBEC]/70">
+            <label className="text-xs font-black text-[#0F2A4A] block">{isEn ? 'Auto Sync Schedule:' : 'جدولة المزامنة التلقائية:'}</label>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {[
                 { key: 'off', label: isEn ? 'Off' : 'إيقاف' },
@@ -1071,11 +1071,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onClick={() => handleFrequencyChange(item.key as AutoSyncFrequency)}
                     className={`py-2.5 px-2.5 rounded-xl font-black text-xs transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
                       isSelected
-                        ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] border-[#293828] shadow-sm shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.28)]'
-                        : 'bg-[#DDD3C7]/20 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/40 hover:text-[#0F1206]'
+                        ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#17375E] shadow-sm shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.28)]'
+                        : 'bg-[#E1EBEC]/20 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/40 hover:text-[#0F2A4A]'
                     }`}
                   >
-                    {isSelected && <Check className="w-3.5 h-3.5 text-[#F8F2EC] stroke-[3] shrink-0" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[#FFFFFF] stroke-[3] shrink-0" />}
                     <span>{item.label}</span>
                   </button>
                 );
@@ -1092,12 +1092,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="classy-card p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#756046] to-[#293828] flex items-center justify-center text-[#F8F2EC] shadow-sm shadow-[#293828]/20">
-                <Bell className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#5F7083] to-[#17375E] flex items-center justify-center text-[#FFFFFF] shadow-sm shadow-[#17375E]/20">
+                <Bell className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'Smart Notifications & Reminders' : 'التنبيهات والتذكيرات الذكية'}</h3>
-                <p className="text-[11px] text-[#756046] font-medium">{isEn ? 'Proactive attendance & payment alerts in square cards' : 'تحكم كامل في تنبيهات الحضور والمستحقات والغياب'}</p>
+                <h3 className="text-sm font-black text-[#0F2A4A]">{isEn ? 'Smart Notifications & Reminders' : 'التنبيهات والتذكيرات الذكية'}</h3>
+                <p className="text-[11px] text-[#5F7083] font-medium">{isEn ? 'Proactive attendance & payment alerts in square cards' : 'تحكم كامل في تنبيهات الحضور والمستحقات والغياب'}</p>
               </div>
             </div>
           </div>
@@ -1110,30 +1110,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={handleToggleDailyAttendanceReminder}
               className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
                 notifSettings.enableDailyAttendanceReminder !== false
-                  ? 'classy-bento-sapphire border-[#293828]/60'
-                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
+                  ? 'classy-bento-sapphire border-[#17375E]/60'
+                  : 'bg-[#E1EBEC]/15 border-[#E1EBEC] text-[#5F7083]'
               }`}
             >
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <Clock className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <Clock className="w-4 h-4 text-[#FFFFFF]" />
                 </div>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
                     notifSettings.enableDailyAttendanceReminder !== false
-                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
-                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                      ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
+                      : 'bg-[#FFFFFF] text-[#5F7083] border border-[#E1EBEC]'
                   }`}
                 >
-                  {notifSettings.enableDailyAttendanceReminder !== false && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  {notifSettings.enableDailyAttendanceReminder !== false && <Check className="w-3 h-3 text-[#FFFFFF] stroke-[3]" />}
                   <span>{notifSettings.enableDailyAttendanceReminder !== false ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isEn ? 'Daily Reminder' : 'تذكير الحضور اليومي'}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', isEn)}
                 </span>
               </div>
@@ -1145,30 +1145,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => handleToggleNotif('enableAttendanceReminders')}
               className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
                 notifSettings.enableAttendanceReminders
-                  ? 'classy-bento-navy border-[#0F1206]/60'
-                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
+                  ? 'classy-bento-navy border-[#0F2A4A]/60'
+                  : 'bg-[#E1EBEC]/15 border-[#E1EBEC] text-[#5F7083]'
               }`}
             >
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <CheckCircle2 className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <CheckCircle2 className="w-4 h-4 text-[#FFFFFF]" />
                 </div>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
                     notifSettings.enableAttendanceReminders
-                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
-                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                      ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
+                      : 'bg-[#FFFFFF] text-[#5F7083] border border-[#E1EBEC]'
                   }`}
                 >
-                  {notifSettings.enableAttendanceReminders && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  {notifSettings.enableAttendanceReminders && <Check className="w-3 h-3 text-[#FFFFFF] stroke-[3]" />}
                   <span>{notifSettings.enableAttendanceReminders ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isEn ? 'Session Alerts' : 'تنبيهات رصد الحضور'}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {isEn ? 'In-app session tracking' : 'متابعة الحصص داخل التطبيق'}
                 </span>
               </div>
@@ -1180,30 +1180,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => handleToggleNotif('enableOverdueReminders')}
               className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
                 notifSettings.enableOverdueReminders
-                  ? 'classy-bento-steel border-[#756046]/60'
-                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
+                  ? 'classy-bento-steel border-[#5F7083]/60'
+                  : 'bg-[#E1EBEC]/15 border-[#E1EBEC] text-[#5F7083]'
               }`}
             >
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#756046] to-[#293828] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <Zap className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#5F7083] to-[#17375E] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 text-[#FFFFFF]" />
                 </div>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
                     notifSettings.enableOverdueReminders
-                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
-                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                      ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
+                      : 'bg-[#FFFFFF] text-[#5F7083] border border-[#E1EBEC]'
                   }`}
                 >
-                  {notifSettings.enableOverdueReminders && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  {notifSettings.enableOverdueReminders && <Check className="w-3 h-3 text-[#FFFFFF] stroke-[3]" />}
                   <span>{notifSettings.enableOverdueReminders ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isEn ? 'Overdue Dues' : 'تنبيهات المديونيات'}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {isEn ? 'Pending payment alerts' : 'تذكير بالمستحقات المتأخرة'}
                 </span>
               </div>
@@ -1215,30 +1215,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => handleToggleNotif('enableAbsenceReminders')}
               className={`p-3.5 rounded-[20px] flex flex-col justify-between min-h-[100px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
                 notifSettings.enableAbsenceReminders
-                  ? 'classy-bento-silver border-[#293828]/50'
-                  : 'bg-[#DDD3C7]/15 border-[#DDD3C7] text-[#756046]'
+                  ? 'classy-bento-silver border-[#17375E]/50'
+                  : 'bg-[#E1EBEC]/15 border-[#E1EBEC] text-[#5F7083]'
               }`}
             >
               <div className="flex items-center justify-between w-full mb-1.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-xs">
-                  <Activity className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-center shadow-xs">
+                  <Activity className="w-4 h-4 text-[#FFFFFF]" />
                 </div>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
                     notifSettings.enableAbsenceReminders
-                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
-                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7]'
+                      ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
+                      : 'bg-[#FFFFFF] text-[#5F7083] border border-[#E1EBEC]'
                   }`}
                 >
-                  {notifSettings.enableAbsenceReminders && <Check className="w-3 h-3 text-[#F8F2EC] stroke-[3]" />}
+                  {notifSettings.enableAbsenceReminders && <Check className="w-3 h-3 text-[#FFFFFF] stroke-[3]" />}
                   <span>{notifSettings.enableAbsenceReminders ? (isEn ? 'ON' : 'مفعّل') : (isEn ? 'OFF' : 'معطّل')}</span>
                 </span>
               </div>
               <div>
-                <span className="text-xs font-black text-[#0F1206] block truncate">
+                <span className="text-xs font-black text-[#0F2A4A] block truncate">
                   {isEn ? 'Absence Alerts' : 'تنبيهات غياب الطلاب'}
                 </span>
-                <span className="text-[10px] font-bold text-[#756046] block truncate mt-0.5">
+                <span className="text-[10px] font-bold text-[#5F7083] block truncate mt-0.5">
                   {isEn ? 'Repeated absence tracking' : 'متابعة الغياب المتكرر'}
                 </span>
               </div>
@@ -1247,15 +1247,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {/* Reminder Time & Sound Configuration (2 Square Sub-Cards) */}
           {notifSettings.enableDailyAttendanceReminder !== false && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-[#DDD3C7]/70 animate-in fade-in">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-[#E1EBEC]/70 animate-in fade-in">
               {/* Time Picker Card */}
               <div className="p-3.5 rounded-[20px] classy-bento-sapphire flex flex-col justify-between gap-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-[#293828]" />
+                  <span className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#17375E]" />
                     <span>{isEn ? 'Reminder Time' : 'وقت التذكير اليومي'}</span>
                   </span>
-                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-[#F8F2EC] border border-[#DDD3C7] text-[#293828]">
+                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-[#FFFFFF] border border-[#E1EBEC] text-[#17375E]">
                     {formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', isEn)}
                   </span>
                 </div>
@@ -1264,13 +1264,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type="time"
                     value={notifSettings.dailyAttendanceReminderTime || '22:00'}
                     onChange={(e) => handleReminderTimeChange(e.target.value)}
-                    className="flex-1 px-2.5 py-1.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] cursor-pointer shadow-2xs"
+                    className="flex-1 px-2.5 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E] cursor-pointer shadow-2xs"
                     aria-label={isEn ? 'Reminder Time' : 'وقت التذكير'}
                   />
                   <button
                     type="button"
                     onClick={handleSendTestNotification}
-                    className="px-3 py-1.5 rounded-xl bg-[#F8F2EC] hover:bg-[#DDD3C7]/35 border border-[#DDD3C7] text-[#293828] font-black text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
+                    className="px-3 py-1.5 rounded-xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC] text-[#17375E] font-black text-[11px] transition-colors cursor-pointer shadow-2xs shrink-0"
                   >
                     {isEn ? 'Test Alert' : 'تجربة التنبيه'}
                   </button>
@@ -1280,11 +1280,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {/* Sound Picker Card */}
               <div className="p-3.5 rounded-[20px] classy-bento-steel flex flex-col justify-between gap-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
-                    <Volume2 className="w-3.5 h-3.5 text-[#293828]" />
+                  <span className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
+                    <Volume2 className="w-3.5 h-3.5 text-[#17375E]" />
                     <span>{isEn ? 'Alert Sound' : 'نغمة التنبيه المخصصة'}</span>
                   </span>
-                  <span className="text-[10px] font-bold text-[#756046]">
+                  <span className="text-[10px] font-bold text-[#5F7083]">
                     {isEn ? 'Custom Tone' : 'صوت الإشعار'}
                   </span>
                 </div>
@@ -1292,7 +1292,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <select
                     value={notifSettings.notificationSoundUri || 'beep.wav'}
                     onChange={(e) => handleSoundChange(e.target.value)}
-                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828] cursor-pointer shadow-2xs"
+                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E] cursor-pointer shadow-2xs"
                     aria-label={isEn ? 'Alert Sound' : 'نغمة التنبيه'}
                   >
                     {AVAILABLE_NOTIFICATION_SOUNDS.map((sound) => (
@@ -1305,9 +1305,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <button
                     type="button"
                     onClick={handleTestSound}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-black text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-black text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
                   >
-                    <Volume2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                    <Volume2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
                     <span>{isEn ? 'Test Sound' : 'تجربة الصوت'}</span>
                   </button>
                 </div>
@@ -1324,19 +1324,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="classy-bento-navy p-4 sm:p-5 space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F1206] to-[#756046] flex items-center justify-center text-[#F8F2EC] shadow-xs">
-                <AlertTriangle className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F2A4A] to-[#5F7083] flex items-center justify-center text-[#FFFFFF] shadow-xs">
+                <AlertTriangle className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-[#0F1206]">{isEn ? 'System Reset & Local Data' : 'المنطقة الحساسة: إعادة ضبط البيانات'}</h3>
-                <p className="text-[11px] text-[#756046] font-medium">{isEn ? 'Permanently clear local records on this device' : 'حذف وإعادة تهيئة جميع السجلات المحلية على هذا الجهاز'}</p>
+                <h3 className="text-sm font-black text-[#0F2A4A]">{isEn ? 'System Reset & Local Data' : 'المنطقة الحساسة: إعادة ضبط البيانات'}</h3>
+                <p className="text-[11px] text-[#5F7083] font-medium">{isEn ? 'Permanently clear local records on this device' : 'حذف وإعادة تهيئة جميع السجلات المحلية على هذا الجهاز'}</p>
               </div>
             </div>
 
             <button
               type="button"
               onClick={handleResetData}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#0F1206] to-[#756046] hover:from-[#293828] hover:to-[#0F1206] text-[#F8F2EC] font-black text-xs border border-[#DDD3C7]/40 shadow-sm shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.25)] transition-all cursor-pointer active:scale-95"
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#0F2A4A] to-[#5F7083] hover:from-[#17375E] hover:to-[#0F2A4A] text-[#FFFFFF] font-black text-xs border border-[#E1EBEC]/40 shadow-sm shadow-[inset_0_1px_0_0_rgba(255, 255, 255,0.25)] transition-all cursor-pointer active:scale-95"
             >
               {isEn ? 'Erase All Local Data' : 'مسح جميع البيانات والبدء من جديد'}
             </button>

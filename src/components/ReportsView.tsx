@@ -348,11 +348,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Payment Methods Breakdown
   const methodStats = useMemo(() => {
     const stats = {
-      cash: { label: isEn ? 'Cash' : 'كاش (نقداً)', amount: 0, count: 0, color: '#0F1206' },
-      vodafone_cash: { label: isEn ? 'Vodafone Cash' : 'فودافون كاش', amount: 0, count: 0, color: '#0F1206' },
-      instapay: { label: isEn ? 'InstaPay' : 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#293828' },
-      bank_transfer: { label: isEn ? 'Bank Transfer' : 'تحويل بنكي', amount: 0, count: 0, color: '#293828' },
-      other: { label: isEn ? 'Other' : 'أخرى', amount: 0, count: 0, color: '#756046' },
+      cash: { label: isEn ? 'Cash' : 'كاش (نقداً)', amount: 0, count: 0, color: '#0F2A4A' },
+      vodafone_cash: { label: isEn ? 'Vodafone Cash' : 'فودافون كاش', amount: 0, count: 0, color: '#0F2A4A' },
+      instapay: { label: isEn ? 'InstaPay' : 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#17375E' },
+      bank_transfer: { label: isEn ? 'Bank Transfer' : 'تحويل بنكي', amount: 0, count: 0, color: '#17375E' },
+      other: { label: isEn ? 'Other' : 'أخرى', amount: 0, count: 0, color: '#5F7083' },
     };
 
     filteredPayments.forEach((p) => {
@@ -466,17 +466,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F1206] pb-32 bg-[#F2E9DE] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F2A4A] pb-32 bg-[#FFFFFF] relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Ambient background glows matching Classy visual identity */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#293828]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#293828]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#0F1206]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#17375E]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#17375E]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#0F2A4A]/6 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Top Header */}
       <header className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-2xl font-bold font-display text-[#0F1206] tracking-tight">
+        <h1 className="text-2xl font-bold font-display text-[#0F2A4A] tracking-tight">
           {t('reportsTitle') || (isEn ? 'Reports' : 'التقارير')}
         </h1>
         <div className="flex items-center gap-2">
@@ -484,22 +484,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <button
               type="button"
               onClick={onOpenNotificationsModal}
-              className="relative w-10 h-10 rounded-full bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] hover:bg-[#EDE3D9] transition-colors cursor-pointer shadow-xs"
+              className="relative w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
               title={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
               aria-label={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
             >
-              <Bell className="w-5 h-5 text-[#756046]" strokeWidth={1.7} />
+              <Bell className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
             </button>
           )}
           {onNavigateToTab && (
             <button
               type="button"
               onClick={() => onNavigateToTab('settings')}
-              className="w-10 h-10 rounded-full bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] hover:bg-[#EDE3D9] transition-colors cursor-pointer shadow-xs"
+              className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
               title={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
               aria-label={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
             >
-              <Settings className="w-5 h-5 text-[#756046]" strokeWidth={1.7} />
+              <Settings className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
             </button>
           )}
         </div>
@@ -508,31 +508,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {/* =========================================================================
           1. REPORTS HERO HEADER
           ========================================================================= */}
-      <div className="rounded-[24px] bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] p-4 sm:p-5 text-[#F8F2EC] relative overflow-hidden shadow-xl border border-[#DDD3C7]/15">
+      <div className="rounded-[24px] bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] p-4 sm:p-5 text-[#FFFFFF] relative overflow-hidden shadow-xl border border-[#E1EBEC]/15">
         {/* Soft internal gradient orbs */}
-        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#293828]/35 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#0F1206]/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#17375E]/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#0F2A4A]/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex items-start justify-between gap-3 relative z-10 flex-wrap">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#293828] p-0.5 shadow-lg shadow-[#293828]/35 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-[#293828] flex items-center justify-center text-[#F8F2EC]">
-                <BarChart3 className="w-5 h-5 text-[#F8F2EC]" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#17375E] p-0.5 shadow-lg shadow-[#17375E]/35 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-[#17375E] flex items-center justify-center text-[#FFFFFF]">
+                <BarChart3 className="w-5 h-5 text-[#FFFFFF]" />
               </div>
             </div>
 
             <div className="space-y-0.5 min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-[#DDD3C7]/90 flex items-center gap-1 truncate">
-                  <Sparkles className="w-3 h-3 text-[#DDD3C7] shrink-0" />
+                <span className="text-[11px] font-bold text-[#E1EBEC]/90 flex items-center gap-1 truncate">
+                  <Sparkles className="w-3 h-3 text-[#E1EBEC] shrink-0" />
                   <span className="truncate">{isEn ? 'Financial Analytics & Audit Center' : 'مركز التحليلات والكشوف المالية'}</span>
                 </span>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-black text-[#F8F2EC] tracking-tight">
+                <h1 className="text-lg sm:text-xl font-black text-[#FFFFFF] tracking-tight">
                   {t('reportsTitle')}
                 </h1>
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/25 shadow-xs truncate max-w-full">
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/25 shadow-xs truncate max-w-full">
                   {currentPeriodLabel}
                 </span>
               </div>
@@ -543,37 +543,37 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <button
             type="button"
             onClick={handlePrint}
-            className="px-3 py-2 rounded-2xl bg-[#F8F2EC] text-[#0F1206] font-bold text-xs flex items-center gap-1.5 shadow-md hover:bg-[#F8F2EC] transition-all active:scale-95 cursor-pointer shrink-0"
+            className="px-3 py-2 rounded-2xl bg-[#FFFFFF] text-[#0F2A4A] font-bold text-xs flex items-center gap-1.5 shadow-md hover:bg-[#FFFFFF] transition-all active:scale-95 cursor-pointer shrink-0"
             title={isEn ? 'Print Statement' : 'طباعة التقرير والكشف المالي'}
           >
-            <Printer className="w-3.5 h-3.5 text-[#293828]" />
+            <Printer className="w-3.5 h-3.5 text-[#17375E]" />
             <span>{isEn ? 'Print' : 'طباعة'}</span>
           </button>
         </div>
 
         {/* Square 2x2 Hero KPIs Grid */}
-        <div className="grid grid-cols-2 gap-2.5 pt-4 mt-4 border-t border-[#DDD3C7]/20">
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-2xl p-3 border border-[#DDD3C7]/20 flex flex-col justify-between min-h-[78px]">
-            <span className="text-[11px] text-[#DDD3C7]/85 block font-bold">{isEn ? 'Collected in Period' : 'المحصل بالفترة'}</span>
-            <span className="text-lg font-black text-[#DDD3C7] block truncate mt-1">
-              {periodRevenue} <span className="text-[10px] text-[#DDD3C7]">{t('currency')}</span>
+        <div className="grid grid-cols-2 gap-2.5 pt-4 mt-4 border-t border-[#E1EBEC]/20">
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
+            <span className="text-[11px] text-[#E1EBEC]/85 block font-bold">{isEn ? 'Collected in Period' : 'المحصل بالفترة'}</span>
+            <span className="text-lg font-black text-[#E1EBEC] block truncate mt-1">
+              {periodRevenue} <span className="text-[10px] text-[#E1EBEC]">{t('currency')}</span>
             </span>
           </div>
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-2xl p-3 border border-[#DDD3C7]/20 flex flex-col justify-between min-h-[78px]">
-            <span className="text-[11px] text-[#DDD3C7]/85 block font-bold">{isEn ? 'Remaining Dues' : 'المستحقات المتبقية'}</span>
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
+            <span className="text-[11px] text-[#E1EBEC]/85 block font-bold">{isEn ? 'Remaining Dues' : 'المستحقات المتبقية'}</span>
             <span
               className={`text-lg font-black block truncate mt-1 ${
-                teacherSummary.totalRemaining > 0 ? 'text-[#F8F2EC]' : 'text-[#DDD3C7]'
+                teacherSummary.totalRemaining > 0 ? 'text-[#FFFFFF]' : 'text-[#E1EBEC]'
               }`}
             >
               {teacherSummary.totalRemaining} <span className="text-[10px]">{t('currency')}</span>
             </span>
           </div>
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-2xl p-3 border border-[#DDD3C7]/20 flex flex-col justify-between min-h-[78px]">
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] text-[#DDD3C7]/85 font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
+              <span className="text-[11px] text-[#E1EBEC]/85 font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
               {attendanceAnalytics.completedAppointmentsCount > 0 && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#F8F2EC]/15 text-[#DDD3C7] font-bold">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#FFFFFF]/15 text-[#E1EBEC] font-bold">
                   {attendanceAnalytics.completedAppointmentsCount}{' '}
                   {isEn
                     ? attendanceAnalytics.completedAppointmentsCount === 1
@@ -585,13 +585,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </span>
               )}
             </div>
-            <span className="text-lg font-black text-[#F8F2EC] block leading-tight mt-1">
+            <span className="text-lg font-black text-[#FFFFFF] block leading-tight mt-1">
               {attendanceAnalytics.completedSessionsCount}
             </span>
           </div>
-          <div className="bg-[#F8F2EC]/10 backdrop-blur-md rounded-2xl p-3 border border-[#DDD3C7]/20 flex flex-col justify-between min-h-[78px]">
-            <span className="text-[11px] text-[#DDD3C7]/85 block font-bold">{isEn ? 'Attendance Rate' : 'نسبة الالتزام والحضور'}</span>
-            <span className="text-lg font-black text-[#F8F2EC] block mt-1">
+          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
+            <span className="text-[11px] text-[#E1EBEC]/85 block font-bold">{isEn ? 'Attendance Rate' : 'نسبة الالتزام والحضور'}</span>
+            <span className="text-lg font-black text-[#FFFFFF] block mt-1">
               {attendanceAnalytics.commitmentRate}%
             </span>
           </div>
@@ -607,16 +607,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           onClick={() => setReportType('teacher_overview')}
           className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
             reportType === 'teacher_overview'
-              ? 'bg-gradient-to-br from-[#293828] to-[#0F1206] text-[#F8F2EC] border-[#293828]/50 shadow-lg shadow-[#0F1206]/20'
-              : 'classy-lavender-card text-[#0F1206] hover:border-[#293828]/50'
+              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#17375E]/50 shadow-lg shadow-[#0F2A4A]/20'
+              : 'classy-lavender-card text-[#0F2A4A] hover:border-[#17375E]/50'
           }`}
         >
           <div className="flex items-center justify-between w-full mb-1.5">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
                 reportType === 'teacher_overview'
-                  ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]'
-                  : 'bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC]'
+                  ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]'
+                  : 'bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF]'
               }`}
             >
               <BarChart3 className="w-4.5 h-4.5" />
@@ -624,8 +624,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <span
               className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                 reportType === 'teacher_overview'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC]'
-                  : 'bg-[#DDD3C7]/25 text-[#293828] border border-[#DDD3C7]'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
+                  : 'bg-[#E1EBEC]/25 text-[#17375E] border border-[#E1EBEC]'
               }`}
             >
               {isEn ? 'Executive' : 'شامل'}
@@ -637,7 +637,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </span>
             <span
               className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'teacher_overview' ? 'text-[#DDD3C7]/80' : 'text-[#756046]'
+                reportType === 'teacher_overview' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
               }`}
             >
               {isEn ? 'Revenues & Analytics' : 'الأرباح والإحصائيات'}
@@ -650,16 +650,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           onClick={() => setReportType('overdue_list')}
           className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
             reportType === 'overdue_list'
-              ? 'bg-gradient-to-br from-[#293828] to-[#0F1206] text-[#F8F2EC] border-[#0F1206]/50 shadow-lg shadow-[#0F1206]/20'
-              : 'classy-rose-card text-[#0F1206] hover:border-[#0F1206]/50'
+              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#0F2A4A]/50 shadow-lg shadow-[#0F2A4A]/20'
+              : 'classy-rose-card text-[#0F2A4A] hover:border-[#0F2A4A]/50'
           }`}
         >
           <div className="flex items-center justify-between w-full mb-1.5">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
                 reportType === 'overdue_list'
-                  ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]'
-                  : 'bg-gradient-to-tr from-[#0F1206] to-[#293828] text-[#F8F2EC]'
+                  ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]'
+                  : 'bg-gradient-to-tr from-[#0F2A4A] to-[#17375E] text-[#FFFFFF]'
               }`}
             >
               <Receipt className="w-4.5 h-4.5" />
@@ -667,8 +667,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <span
               className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                 reportType === 'overdue_list'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC]'
-                  : 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
+                  : 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
               }`}
             >
               {overdueStudentsList.length} {isEn ? 'dues' : 'طلاب'}
@@ -680,7 +680,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </span>
             <span
               className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'overdue_list' ? 'text-[#DDD3C7]/80' : 'text-[#756046]'
+                reportType === 'overdue_list' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
               }`}
             >
               {isEn ? 'Pending collections' : 'كشف المتأخرات والتحصيل'}
@@ -693,16 +693,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           onClick={() => setReportType('group_report')}
           className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
             reportType === 'group_report'
-              ? 'bg-gradient-to-br from-[#293828] to-[#0F1206] text-[#F8F2EC] border-[#293828]/50 shadow-lg shadow-[#0F1206]/20'
-              : 'rounded-[22px] bg-gradient-to-br from-[#F8F2EC] to-[#F8F2EC] border-[#293828]/50 text-[#0F1206] hover:border-[#293828]'
+              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#17375E]/50 shadow-lg shadow-[#0F2A4A]/20'
+              : 'rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border-[#17375E]/50 text-[#0F2A4A] hover:border-[#17375E]'
           }`}
         >
           <div className="flex items-center justify-between w-full mb-1.5">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
                 reportType === 'group_report'
-                  ? 'bg-[#F8F2EC]/15 text-[#DDD3C7]'
-                  : 'bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC]'
+                  ? 'bg-[#FFFFFF]/15 text-[#E1EBEC]'
+                  : 'bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF]'
               }`}
             >
               <Layers className="w-4.5 h-4.5" />
@@ -710,8 +710,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <span
               className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                 reportType === 'group_report'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC]'
-                  : 'bg-[#DDD3C7]/25 text-[#0F1206] border border-[#293828]/50'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
+                  : 'bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#17375E]/50'
               }`}
             >
               {groups.length} {isEn ? 'groups' : 'مجموعة'}
@@ -723,7 +723,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </span>
             <span
               className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'group_report' ? 'text-[#DDD3C7]/80' : 'text-[#756046]'
+                reportType === 'group_report' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
               }`}
             >
               {isEn ? 'Group performance' : 'تحليل المجموعات والخدمات'}
@@ -736,16 +736,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           onClick={() => setReportType('student_report')}
           className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
             reportType === 'student_report'
-              ? 'bg-gradient-to-br from-[#293828] to-[#0F1206] text-[#F8F2EC] border-[#293828]/50 shadow-lg shadow-[#0F1206]/20'
-              : 'classy-card bg-[#F8F2EC] text-[#0F1206] hover:border-[#0F1206]/40'
+              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#17375E]/50 shadow-lg shadow-[#0F2A4A]/20'
+              : 'classy-card bg-[#FFFFFF] text-[#0F2A4A] hover:border-[#0F2A4A]/40'
           }`}
         >
           <div className="flex items-center justify-between w-full mb-1.5">
             <div
               className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
                 reportType === 'student_report'
-                  ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]'
-                  : 'bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC]'
+                  ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]'
+                  : 'bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF]'
               }`}
             >
               <User className="w-4.5 h-4.5" />
@@ -753,8 +753,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <span
               className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                 reportType === 'student_report'
-                  ? 'bg-[#F8F2EC]/20 text-[#F8F2EC]'
-                  : 'bg-[#DDD3C7]/25 text-[#0F1206] border border-[#DDD3C7]'
+                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
+                  : 'bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#E1EBEC]'
               }`}
             >
               {students.length} {isEn ? 'students' : 'طالب'}
@@ -766,7 +766,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </span>
             <span
               className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'student_report' ? 'text-[#DDD3C7]/80' : 'text-[#756046]'
+                reportType === 'student_report' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
               }`}
             >
               {isEn ? 'Individual statement' : 'كشف حساب الطالب'}
@@ -779,9 +779,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           3. TIME PERIOD FILTER BAR (2-Column Square Grid)
           ========================================================================= */}
       {reportType !== 'overdue_list' && (
-        <div className="classy-card p-3.5 space-y-2.5 bg-[#F8F2EC]">
-          <div className="flex items-center gap-1.5 text-[#0F1206] font-black text-xs">
-            <Filter className="w-4 h-4 text-[#293828]" />
+        <div className="classy-card p-3.5 space-y-2.5 bg-[#FFFFFF]">
+          <div className="flex items-center gap-1.5 text-[#0F2A4A] font-black text-xs">
+            <Filter className="w-4 h-4 text-[#17375E]" />
             <span>{isEn ? 'Report Period:' : 'تحديد الفترة الزمنية للتقرير:'}</span>
           </div>
 
@@ -803,8 +803,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   idx === arr.length - 1 ? 'col-span-2' : ''
                 } ${
                   periodFilter === tab.key
-                    ? 'bg-[#293828] text-[#F8F2EC] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border border-[#DDD3C7] hover:bg-[#DDD3C7]/35'
+                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
                 }`}
               >
                 {tab.label}
@@ -814,11 +814,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           {/* Extended controls for specific month or custom range */}
           {periodFilter === 'specific_month' && (
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#DDD3C7]">
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E1EBEC]">
               <select
                 value={selectedSpecificMonth}
                 onChange={(e) => setSelectedSpecificMonth(Number(e.target.value))}
-                className="p-2 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828]"
+                className="p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>
@@ -829,7 +829,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <select
                 value={selectedSpecificYear}
                 onChange={(e) => setSelectedSpecificYear(Number(e.target.value))}
-                className="p-2 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828]"
+                className="p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
               >
                 {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map((y) => (
                   <option key={y} value={y}>
@@ -841,23 +841,23 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           )}
 
           {periodFilter === 'custom_range' && (
-            <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#DDD3C7]">
+            <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E1EBEC]">
               <div>
-                <span className="text-[#756046] text-[11px] block font-bold mb-1">{isEn ? 'From Date:' : 'من تاريخ:'}</span>
+                <span className="text-[#5F7083] text-[11px] block font-bold mb-1">{isEn ? 'From Date:' : 'من تاريخ:'}</span>
                 <input
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] text-xs font-bold text-[#0F1206] focus:outline-none focus:border-[#293828]"
+                  className="w-full p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
                 />
               </div>
               <div>
-                <span className="text-[#756046] text-[11px] block font-bold mb-1">{isEn ? 'To Date:' : 'إلى تاريخ:'}</span>
+                <span className="text-[#5F7083] text-[11px] block font-bold mb-1">{isEn ? 'To Date:' : 'إلى تاريخ:'}</span>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] text-xs font-bold text-[#0F1206] focus:outline-none focus:border-[#293828]"
+                  className="w-full p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
                 />
               </div>
             </div>
@@ -871,19 +871,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {reportType === 'teacher_overview' && (
         <div className="space-y-4">
           {/* Sub-Navigation Square Grid & Group vs Private Filter */}
-          <div className="classy-card p-3 space-y-2.5 bg-[#F8F2EC]">
+          <div className="classy-card p-3 space-y-2.5 bg-[#FFFFFF]">
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setFinancialSubTab('overview')}
                 className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
                   financialSubTab === 'overview'
-                    ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                 }`}
               >
                 <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'overview' ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]' : 'bg-[#F8F2EC] text-[#293828]'
+                  financialSubTab === 'overview' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
                 }`}>
                   <TrendingUp className="w-3.5 h-3.5" />
                 </div>
@@ -895,12 +895,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setFinancialSubTab('billing_streams')}
                 className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
                   financialSubTab === 'billing_streams'
-                    ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                 }`}
               >
                 <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'billing_streams' ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]' : 'bg-[#F8F2EC] text-[#293828]'
+                  financialSubTab === 'billing_streams' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
                 }`}>
                   <Layers className="w-3.5 h-3.5" />
                 </div>
@@ -912,12 +912,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setFinancialSubTab('attendance_trends')}
                 className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
                   financialSubTab === 'attendance_trends'
-                    ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                 }`}
               >
                 <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'attendance_trends' ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]' : 'bg-[#F8F2EC] text-[#293828]'
+                  financialSubTab === 'attendance_trends' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
                 }`}>
                   <Activity className="w-3.5 h-3.5" />
                 </div>
@@ -929,12 +929,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setFinancialSubTab('monthly_ledger')}
                 className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
                   financialSubTab === 'monthly_ledger'
-                    ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                 }`}
               >
                 <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'monthly_ledger' ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]' : 'bg-[#F8F2EC] text-[#293828]'
+                  financialSubTab === 'monthly_ledger' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
                 }`}>
                   <CalendarDays className="w-3.5 h-3.5" />
                 </div>
@@ -946,12 +946,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setFinancialSubTab('yearly_summary')}
                 className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
                   financialSubTab === 'yearly_summary'
-                    ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                 }`}
               >
                 <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'yearly_summary' ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]' : 'bg-[#F8F2EC] text-[#293828]'
+                  financialSubTab === 'yearly_summary' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
                 }`}>
                   <Calendar className="w-3.5 h-3.5" />
                 </div>
@@ -963,12 +963,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setFinancialSubTab('payments')}
                 className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
                   financialSubTab === 'payments'
-                    ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                 }`}
               >
                 <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'payments' ? 'bg-[#F8F2EC]/15 text-[#F8F2EC]' : 'bg-[#F8F2EC] text-[#0F1206]'
+                  financialSubTab === 'payments' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#0F2A4A]'
                 }`}>
                   <Receipt className="w-3.5 h-3.5" />
                 </div>
@@ -980,24 +980,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setFinancialSubTab('lifetime')}
                 className={`col-span-2 p-2.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer border ${
                   financialSubTab === 'lifetime'
-                    ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                    : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                 }`}
               >
-                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${financialSubTab === 'lifetime' ? 'text-[#F8F2EC]' : 'text-[#293828]'}`} />
+                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${financialSubTab === 'lifetime' ? 'text-[#FFFFFF]' : 'text-[#17375E]'}`} />
                 <span className="truncate">{isEn ? 'Lifetime Comprehensive Totals (All-Time)' : 'الإجمالي الشامل لكافة الفترات (All-Time)'}</span>
               </button>
             </div>
 
             {/* Group vs Private Segmented Control */}
-            <div className="grid grid-cols-3 gap-1.5 bg-[#DDD3C7]/15 p-1.5 rounded-xl border border-[#DDD3C7]">
+            <div className="grid grid-cols-3 gap-1.5 bg-[#E1EBEC]/15 p-1.5 rounded-xl border border-[#E1EBEC]">
               <button
                 type="button"
                 onClick={() => setServiceTypeFilter('all')}
                 className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
                   serviceTypeFilter === 'all'
-                    ? 'bg-[#293828] text-[#F8F2EC] shadow-2xs'
-                    : 'text-[#756046] hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
                 }`}
               >
                 {t('all')}
@@ -1007,8 +1007,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setServiceTypeFilter('group')}
                 className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
                   serviceTypeFilter === 'group'
-                    ? 'bg-[#293828] text-[#F8F2EC] shadow-2xs'
-                    : 'text-[#756046] hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
                 }`}
               >
                 {isEn ? 'Groups' : 'مجموعات'}
@@ -1018,8 +1018,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => setServiceTypeFilter('private')}
                 className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
                   serviceTypeFilter === 'private'
-                    ? 'bg-[#293828] text-[#F8F2EC] shadow-2xs'
-                    : 'text-[#756046] hover:text-[#0F1206]'
+                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
+                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
                 }`}
               >
                 {isEn ? 'Private' : 'خاص'}
@@ -1033,20 +1033,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               {/* Financial KPI Square 2x2 Bento Grid (Matches DashboardView) */}
               <div className="grid grid-cols-2 gap-2.5">
                 {/* Square Card 1: Total Expected Value */}
-                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#F8F2EC] to-[#F8F2EC] border border-[#293828]/50 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
+                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border border-[#17375E]/50 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
                   <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#293828]/20 shrink-0">
+                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/20 shrink-0">
                       <TrendingUp className="w-4.5 h-4.5" />
                     </div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#DDD3C7]/25 text-[#0F1206] border border-[#293828]/50 truncate">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#17375E]/50 truncate">
                       {attendanceAnalytics.completedAppointmentsCount} {isEn ? 'Appts' : 'موعد'}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <strong className="text-xl sm:text-2xl font-black text-[#0F1206] tracking-tight block truncate">
-                      {teacherSummary.totalDue ?? teacherSummary.totalDues} <span className="text-xs font-bold text-[#756046]">{t('currency')}</span>
+                    <strong className="text-xl sm:text-2xl font-black text-[#0F2A4A] tracking-tight block truncate">
+                      {teacherSummary.totalDue ?? teacherSummary.totalDues} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
                     </strong>
-                    <span className="text-xs font-bold text-[#756046] block mt-0.5 truncate">
+                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
                       {isEn ? 'Total Expected Value' : 'إجمالي القيمة المستحقة'}
                     </span>
                   </div>
@@ -1055,18 +1055,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 {/* Square Card 2: Completed Lessons */}
                 <div className="classy-lavender-card p-3.5 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
                   <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#293828]/25 shrink-0">
+                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/25 shrink-0">
                       <CheckCircle2 className="w-4.5 h-4.5" />
                     </div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#DDD3C7]/25 text-[#293828] border border-[#DDD3C7] truncate">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#17375E] border border-[#E1EBEC] truncate">
                       {attendanceAnalytics.commitmentRate}% {isEn ? 'Rate' : 'التزام'}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <strong className="text-xl sm:text-2xl font-black text-[#0F1206] tracking-tight block truncate">
+                    <strong className="text-xl sm:text-2xl font-black text-[#0F2A4A] tracking-tight block truncate">
                       {attendanceAnalytics.completedSessionsCount}
                     </strong>
-                    <span className="text-xs font-bold text-[#756046] block mt-0.5 truncate">
+                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
                       {isEn ? 'Completed Lessons' : 'الحصص المنفذة'}
                     </span>
                   </div>
@@ -1075,18 +1075,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 {/* Square Card 3: Total Collected */}
                 <div className="classy-card p-3.5 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
                   <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#0F1206]/25 shrink-0">
+                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#0F2A4A]/25 shrink-0">
                       <Wallet className="w-4.5 h-4.5" />
                     </div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#DDD3C7]/25 text-[#0F1206] border border-[#DDD3C7] truncate">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#E1EBEC] truncate">
                       {filteredPayments.length} {isEn ? 'paid' : 'دفعات'}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <strong className="text-xl sm:text-2xl font-black text-[#0F1206] tracking-tight block truncate">
-                      {periodRevenue} <span className="text-xs font-bold text-[#0F1206]">{t('currency')}</span>
+                    <strong className="text-xl sm:text-2xl font-black text-[#0F2A4A] tracking-tight block truncate">
+                      {periodRevenue} <span className="text-xs font-bold text-[#0F2A4A]">{t('currency')}</span>
                     </strong>
-                    <span className="text-xs font-bold text-[#756046] block mt-0.5 truncate">
+                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
                       {isEn ? 'Total Collected' : 'إجمالي المحصل الفعلي'}
                     </span>
                   </div>
@@ -1095,13 +1095,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 {/* Square Card 4: Remaining Dues */}
                 <div className="classy-rose-card p-3.5 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
                   <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F1206] to-[#293828] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#0F1206]/25 shrink-0">
+                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F2A4A] to-[#17375E] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#0F2A4A]/25 shrink-0">
                       <AlertCircle className="w-4.5 h-4.5" />
                     </div>
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border truncate ${
                       teacherSummary.totalRemaining > 0
-                        ? 'bg-[#DDD3C7]/15 text-[#0F1206] border-[#DDD3C7]'
-                        : 'bg-[#DDD3C7]/65 text-[#0F1206] border-[#293828]/50'
+                        ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC]'
+                        : 'bg-[#E1EBEC]/65 text-[#0F2A4A] border-[#17375E]/50'
                     }`}>
                       {overdueStudentsList.length} {isEn ? 'students' : 'طلاب'}
                     </span>
@@ -1109,12 +1109,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <div className="min-w-0">
                     <strong
                       className={`text-xl sm:text-2xl font-black tracking-tight block truncate ${
-                        teacherSummary.totalRemaining > 0 ? 'text-[#0F1206]' : 'text-[#0F1206]'
+                        teacherSummary.totalRemaining > 0 ? 'text-[#0F2A4A]' : 'text-[#0F2A4A]'
                       }`}
                     >
                       {teacherSummary.totalRemaining} <span className="text-xs font-bold">{t('currency')}</span>
                     </strong>
-                    <span className="text-xs font-bold text-[#756046] block mt-0.5 truncate">
+                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
                       {isEn ? 'Remaining Dues' : 'المستحقات المتبقية'}
                     </span>
                   </div>
@@ -1122,15 +1122,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </div>
 
               {/* Payment Methods Breakdown (2x2 Square Cards) */}
-              <div className="classy-card p-4 bg-[#F8F2EC] space-y-3">
+              <div className="classy-card p-4 bg-[#FFFFFF] space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <PieChart className="w-4 h-4 text-[#293828] shrink-0" />
-                    <h3 className="text-xs sm:text-sm font-black text-[#0F1206] truncate">
+                    <PieChart className="w-4 h-4 text-[#17375E] shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-black text-[#0F2A4A] truncate">
                       {isEn ? 'Collections by Payment Method' : 'توزيع التحصيل حسب طرق الدفع'}
                     </h3>
                   </div>
-                  <span className="text-xs font-bold text-[#756046] shrink-0">
+                  <span className="text-xs font-bold text-[#5F7083] shrink-0">
                     {periodRevenue} {t('currency')}
                   </span>
                 </div>
@@ -1141,18 +1141,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     .map(([key, item]) => (
                     <div
                       key={key}
-                      className="bg-[#DDD3C7]/15 p-3.5 rounded-2xl border border-[#DDD3C7] flex flex-col justify-between min-h-[84px]"
+                      className="bg-[#E1EBEC]/15 p-3.5 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]"
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-bold text-[#756046] truncate">
+                        <span className="text-[11px] font-bold text-[#5F7083] truncate">
                           {item.label}
                         </span>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7] shrink-0">
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC] shrink-0">
                           {item.count} {isEn ? 'pmts' : 'دفعات'}
                         </span>
                       </div>
-                      <strong className="text-base sm:text-lg font-black text-[#0F1206] block truncate mt-1">
-                        {item.amount} <span className="text-xs font-bold text-[#756046]">{t('currency')}</span>
+                      <strong className="text-base sm:text-lg font-black text-[#0F2A4A] block truncate mt-1">
+                        {item.amount} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
                       </strong>
                     </div>
                   ))}
@@ -1218,60 +1218,60 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               {/* Attendance Commitment Summary Cards (2x2 Square Grid) */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="classy-lavender-card p-3.5 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#293828] text-[11px] font-bold">
+                  <div className="flex items-center justify-between text-[#17375E] text-[11px] font-bold">
                     <span className="truncate">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
-                    <BarChart3 className="w-4 h-4 text-[#293828] shrink-0" />
+                    <BarChart3 className="w-4 h-4 text-[#17375E] shrink-0" />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F1206] block">
+                    <strong className="text-xl font-black text-[#0F2A4A] block">
                       {attendanceAnalytics.completedSessionsCount}
                     </strong>
-                    <p className="text-[10px] text-[#756046] font-bold truncate">
+                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
                       {attendanceAnalytics.completedAppointmentsCount} {isEn ? 'Appointments' : 'مواعيد فعلية'}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#F8F2EC] to-[#F8F2EC] border border-[#293828]/50 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#756046] text-[11px] font-bold">
+                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border border-[#17375E]/50 flex flex-col justify-between min-h-[104px] shadow-xs">
+                  <div className="flex items-center justify-between text-[#5F7083] text-[11px] font-bold">
                     <span className="truncate">{isEn ? 'Recorded Presences' : 'حالات الحضور'}</span>
-                    <CheckCircle2 className="w-4 h-4 text-[#293828] shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-[#17375E] shrink-0" />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F1206] block">
+                    <strong className="text-xl font-black text-[#0F2A4A] block">
                       {attendanceAnalytics.presentCount + attendanceAnalytics.lateCount}
                     </strong>
-                    <p className="text-[10px] text-[#756046] font-bold truncate">
+                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
                       {isEn ? `${attendanceAnalytics.lateCount} late arrivals` : `${attendanceAnalytics.lateCount} حضور بتأخير`}
                     </p>
                   </div>
                 </div>
 
                 <div className="classy-rose-card p-3.5 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#756046] text-[11px] font-bold">
+                  <div className="flex items-center justify-between text-[#5F7083] text-[11px] font-bold">
                     <span className="truncate">{isEn ? 'Charged Absences' : 'الغياب المحسوب'}</span>
-                    <AlertCircle className="w-4 h-4 text-[#0F1206] shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-[#0F2A4A] shrink-0" />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F1206] block">
+                    <strong className="text-xl font-black text-[#0F2A4A] block">
                       {attendanceAnalytics.absentChargedCount}
                     </strong>
-                    <p className="text-[10px] text-[#756046] font-bold truncate">
+                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
                       {isEn ? 'Charged from balance' : 'مخصوم من الرصيد'}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#F8F2EC] to-[#F8F2EC] border border-[#DDD3C7]/80 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#756046] text-[11px] font-bold">
+                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border border-[#E1EBEC]/80 flex flex-col justify-between min-h-[104px] shadow-xs">
+                  <div className="flex items-center justify-between text-[#5F7083] text-[11px] font-bold">
                     <span className="truncate">{isEn ? 'Excused Absences' : 'الغياب المعفى'}</span>
-                    <Sparkles className="w-4 h-4 text-[#293828] shrink-0" />
+                    <Sparkles className="w-4 h-4 text-[#17375E] shrink-0" />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F1206] block">
+                    <strong className="text-xl font-black text-[#0F2A4A] block">
                       {attendanceAnalytics.absentExcusedCount}
                     </strong>
-                    <p className="text-[10px] text-[#756046] font-bold truncate">
+                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
                       {isEn ? 'Without deduction' : 'بدون خصم مالي'}
                     </p>
                   </div>
@@ -1282,18 +1282,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           {/* Sub-Tab 2: Monthly Ledger */}
           {financialSubTab === 'monthly_ledger' && (
-            <div className="classy-card p-4 sm:p-5 bg-[#F8F2EC] space-y-3">
+            <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-[#293828]" />
-                  <h3 className="text-sm sm:text-base font-black text-[#0F1206]">
+                  <CalendarDays className="w-4 h-4 text-[#17375E]" />
+                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
                     {isEn ? 'Historical Monthly Ledger' : 'السجل المالي الشهري التاريخي'}
                   </h3>
                 </div>
               </div>
 
               {financialHistory.months.length === 0 ? (
-                <div className="p-8 text-center text-[#756046] text-xs">
+                <div className="p-8 text-center text-[#5F7083] text-xs">
                   {isEn ? 'No monthly records found yet' : 'لا توجد سجلات شهرية سابقة بعد'}
                 </div>
               ) : (
@@ -1301,16 +1301,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   {financialHistory.months.map((m) => (
                     <div
                       key={m.monthYear}
-                      className="p-3 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] flex items-center justify-between gap-2"
+                      className="p-3 rounded-2xl bg-[#E1EBEC]/15 border border-[#E1EBEC] flex items-center justify-between gap-2"
                     >
-                      <div className="font-bold text-xs sm:text-sm text-[#0F1206]">
+                      <div className="font-bold text-xs sm:text-sm text-[#0F2A4A]">
                         {isEn ? `${getArabicMonthName(m.month)} ${m.year}` : `شهر ${getArabicMonthName(m.month)} ${m.year}`}
                       </div>
                       <div className="flex items-center gap-3 text-xs">
-                        <span className="text-[#0F1206] font-black">
+                        <span className="text-[#0F2A4A] font-black">
                           {isEn ? 'Collected:' : 'المحصل:'} {m.totalCollected} {t('currency')}
                         </span>
-                        <span className="text-[#756046]">
+                        <span className="text-[#5F7083]">
                           {isEn ? 'Due:' : 'المستحق:'} {m.totalDue} {t('currency')}
                         </span>
                       </div>
@@ -1323,11 +1323,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           {/* Sub-Tab 3: Yearly Summary */}
           {financialSubTab === 'yearly_summary' && (
-            <div className="classy-card p-4 sm:p-5 bg-[#F8F2EC] space-y-3">
+            <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#293828]" />
-                  <h3 className="text-sm sm:text-base font-black text-[#0F1206]">
+                  <Calendar className="w-4 h-4 text-[#17375E]" />
+                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
                     {isEn ? 'Annual Summary' : 'الملخص المالي السنوي'}
                   </h3>
                 </div>
@@ -1337,14 +1337,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 {financialHistory.years.map((y) => (
                   <div
                     key={y.year}
-                    className="p-3.5 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] flex items-center justify-between gap-2"
+                    className="p-3.5 rounded-2xl bg-[#E1EBEC]/15 border border-[#E1EBEC] flex items-center justify-between gap-2"
                   >
-                    <div className="font-black text-sm text-[#0F1206]">{isEn ? `Year ${y.year}` : `سنة ${y.year}`}</div>
+                    <div className="font-black text-sm text-[#0F2A4A]">{isEn ? `Year ${y.year}` : `سنة ${y.year}`}</div>
                     <div className="flex items-center gap-4 text-xs">
-                      <span className="text-[#0F1206] font-black">
+                      <span className="text-[#0F2A4A] font-black">
                         {isEn ? 'Collected:' : 'المحصل:'} {y.totalCollected} {t('currency')}
                       </span>
-                      <span className="text-[#756046]">
+                      <span className="text-[#5F7083]">
                         {isEn ? 'Due:' : 'المستحق:'} {y.totalDue} {t('currency')}
                       </span>
                     </div>
@@ -1356,21 +1356,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           {/* Sub-Tab 4: Lifetime All-Time */}
           {financialSubTab === 'lifetime' && (
-            <div className="classy-card p-5 bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] rounded-3xl space-y-3">
+            <div className="classy-card p-5 bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] rounded-3xl space-y-3">
               <h3 className="font-black text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#F8F2EC]" />
+                <Sparkles className="w-4 h-4 text-[#FFFFFF]" />
                 <span>{isEn ? 'Lifetime All-Time Totals' : 'إجمالي كافة الفترات الشاملة (Lifetime)'}</span>
               </h3>
               <div className="grid grid-cols-2 gap-3 pt-2 text-center">
-                <div className="bg-[#F8F2EC]/10 rounded-2xl p-3 border border-[#DDD3C7]/15">
-                  <span className="text-xs text-[#DDD3C7]/80 block font-bold">{isEn ? 'Total All-Time Collected' : 'إجمالي ما تم تحصيله'}</span>
-                  <span className="text-xl font-black text-[#DDD3C7]">
+                <div className="bg-[#FFFFFF]/10 rounded-2xl p-3 border border-[#E1EBEC]/15">
+                  <span className="text-xs text-[#E1EBEC]/80 block font-bold">{isEn ? 'Total All-Time Collected' : 'إجمالي ما تم تحصيله'}</span>
+                  <span className="text-xl font-black text-[#E1EBEC]">
                     {financialHistory.totalCollected} {t('currency')}
                   </span>
                 </div>
-                <div className="bg-[#F8F2EC]/10 rounded-2xl p-3 border border-[#DDD3C7]/15">
-                  <span className="text-xs text-[#DDD3C7]/80 block font-bold">{isEn ? 'Total Expected' : 'إجمالي القيمة المستحقة'}</span>
-                  <span className="text-xl font-black text-[#F8F2EC]">
+                <div className="bg-[#FFFFFF]/10 rounded-2xl p-3 border border-[#E1EBEC]/15">
+                  <span className="text-xs text-[#E1EBEC]/80 block font-bold">{isEn ? 'Total Expected' : 'إجمالي القيمة المستحقة'}</span>
+                  <span className="text-xl font-black text-[#FFFFFF]">
                     {financialHistory.totalDue} {t('currency')}
                   </span>
                 </div>
@@ -1380,35 +1380,35 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           {/* Sub-Tab 5: Payments Audit */}
           {financialSubTab === 'payments' && (
-            <div className="classy-card p-4 sm:p-5 bg-[#F8F2EC] space-y-3">
+            <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-[#293828]" />
-                  <h3 className="text-sm sm:text-base font-black text-[#0F1206]">
+                  <Receipt className="w-4 h-4 text-[#17375E]" />
+                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
                     {isEn ? 'Recorded Payments Audit' : 'سجل المقبوضات والدفعات المفصل'}
                   </h3>
                 </div>
-                <span className="text-xs font-bold text-[#756046]">
+                <span className="text-xs font-bold text-[#5F7083]">
                   {filteredPayments.length} {isEn ? 'receipts' : 'إيصال'}
                 </span>
               </div>
 
               {/* Payment Search Bar */}
               <div className="relative">
-                <Search className={`w-4 h-4 text-[#756046] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
+                <Search className={`w-4 h-4 text-[#5F7083] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
                 <input
                   type="text"
                   placeholder={isEn ? 'Search receipts by student name or notes...' : 'البحث باسم الطالب أو الملاحظات في الإيصالات...'}
                   value={paymentSearchQuery}
                   onChange={(e) => setPaymentSearchQuery(e.target.value)}
-                  className={`w-full bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-xl py-2 text-xs text-[#0F1206] placeholder-[#756046]/70 focus:outline-none focus:border-[#293828] ${
+                  className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl py-2 text-xs text-[#0F2A4A] placeholder-[#5F7083]/70 focus:outline-none focus:border-[#17375E] ${
                     isRTL ? 'pr-9 pl-4' : 'pl-9 pr-4'
                   }`}
                 />
               </div>
 
               {filteredPayments.length === 0 ? (
-                <div className="p-8 text-center text-[#756046] text-xs">
+                <div className="p-8 text-center text-[#5F7083] text-xs">
                   {isEn ? 'No receipts recorded in this period' : 'لا توجد مقبوضات مسجلة في هذه الفترة'}
                 </div>
               ) : (
@@ -1418,17 +1418,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     return (
                       <div
                         key={p.id}
-                        className="p-3 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] flex items-center justify-between gap-2 text-xs"
+                        className="p-3 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] flex items-center justify-between gap-2 text-xs"
                       >
                         <div className="space-y-0.5 min-w-0">
-                          <strong className="font-bold text-[#0F1206] block truncate">
+                          <strong className="font-bold text-[#0F2A4A] block truncate">
                             {st?.name || (isEn ? 'Unknown Student' : 'طالب غير محدد')}
                           </strong>
-                          <span className="text-[11px] text-[#756046] block">
+                          <span className="text-[11px] text-[#5F7083] block">
                             {p.date} • {p.paymentMethod || 'cash'}
                           </span>
                         </div>
-                        <span className="text-[#0F1206] font-black text-sm shrink-0">
+                        <span className="text-[#0F2A4A] font-black text-sm shrink-0">
                           +{p.amount} {t('currency')}
                         </span>
                       </div>
@@ -1446,27 +1446,27 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           ========================================================================= */}
       {reportType === 'overdue_list' && (
         <div className="space-y-3.5">
-          <div className="classy-card p-4 space-y-3 bg-[#F8F2EC]">
+          <div className="classy-card p-4 space-y-3 bg-[#FFFFFF]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-[#0F1206]" />
-                <h3 className="text-sm sm:text-base font-black text-[#0F1206]">
+                <AlertCircle className="w-4 h-4 text-[#0F2A4A]" />
+                <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
                   {isEn ? 'Students with Overdue Balances' : 'كشف الطلاب المستحق عليهم مبالغ مالية'}
                 </h3>
               </div>
-              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]">
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]">
                 {overdueStudentsList.length} {isEn ? 'debtors' : 'طلاب'}
               </span>
             </div>
 
             <div className="relative">
-              <Search className={`w-4 h-4 text-[#756046] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
+              <Search className={`w-4 h-4 text-[#5F7083] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
               <input
                 type="text"
                 placeholder={isEn ? 'Search debtor students by name or phone...' : 'البحث في كشف المديونيات بالاسم أو الهاتف...'}
                 value={overdueSearchQuery}
                 onChange={(e) => setOverdueSearchQuery(e.target.value)}
-                className={`w-full bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-xl py-2 text-xs text-[#0F1206] placeholder-[#756046]/70 focus:outline-none focus:border-[#293828] ${
+                className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl py-2 text-xs text-[#0F2A4A] placeholder-[#5F7083]/70 focus:outline-none focus:border-[#17375E] ${
                   isRTL ? 'pr-9 pl-4' : 'pl-9 pr-4'
                 }`}
               />
@@ -1474,13 +1474,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
 
           {overdueStudentsList.length === 0 ? (
-            <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center bg-[#F8F2EC]">
-              <div className="w-16 h-16 rounded-2xl bg-[#DDD3C7]/65 flex items-center justify-center text-[#293828]">
+            <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center bg-[#FFFFFF]">
+              <div className="w-16 h-16 rounded-2xl bg-[#E1EBEC]/65 flex items-center justify-center text-[#17375E]">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-black text-sm text-[#0F1206]">{isEn ? 'All Accounts Settled' : 'لا توجد مديونيات متأخرة'}</h3>
-                <p className="text-xs text-[#756046]">{isEn ? 'All students have paid their dues in full! 🎉' : 'جميع الطلاب سددوا مستحقاتهم بالكامل! 🎉'}</p>
+                <h3 className="font-black text-sm text-[#0F2A4A]">{isEn ? 'All Accounts Settled' : 'لا توجد مديونيات متأخرة'}</h3>
+                <p className="text-xs text-[#5F7083]">{isEn ? 'All students have paid their dues in full! 🎉' : 'جميع الطلاب سددوا مستحقاتهم بالكامل! 🎉'}</p>
               </div>
             </div>
           ) : (
@@ -1488,22 +1488,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               {overdueStudentsList.map(({ student, grandRemaining, grandTotalDue, grandTotalPaid }) => (
                 <div
                   key={student.id}
-                  className="classy-card p-3.5 sm:p-4 bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-between gap-3 flex-wrap"
+                  className="classy-card p-3.5 sm:p-4 bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-between gap-3 flex-wrap"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <StudentAvatar student={student} size="sm" showBadge={false} />
                     <div className="min-w-0">
-                      <h4 className="font-bold text-xs sm:text-sm text-[#0F1206] truncate">{student.name}</h4>
-                      <span className="text-[11px] text-[#756046]">{student.phone || student.parentPhone || (isEn ? 'No phone' : 'بدون هاتف')}</span>
+                      <h4 className="font-bold text-xs sm:text-sm text-[#0F2A4A] truncate">{student.name}</h4>
+                      <span className="text-[11px] text-[#5F7083]">{student.phone || student.parentPhone || (isEn ? 'No phone' : 'بدون هاتف')}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <div className="text-left">
-                      <strong className="text-sm font-black text-[#0F1206] block">
+                      <strong className="text-sm font-black text-[#0F2A4A] block">
                         {grandRemaining} {t('currency')}
                       </strong>
-                      <span className="text-[10px] text-[#756046] block">
+                      <span className="text-[10px] text-[#5F7083] block">
                         {isEn ? `Paid ${grandTotalPaid} of ${grandTotalDue}` : `سدد ${grandTotalPaid} من ${grandTotalDue}`}
                       </span>
                     </div>
@@ -1512,7 +1512,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenAddPayment(student)}
-                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-bold text-xs active:scale-95 transition-all cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-bold text-xs active:scale-95 transition-all cursor-pointer"
                       >
                         {isEn ? 'Collect' : 'تحصيل'}
                       </button>
@@ -1530,12 +1530,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           ========================================================================= */}
       {reportType === 'group_report' && (
         <div className="space-y-3.5">
-          <div className="classy-card p-4 space-y-2 bg-[#F8F2EC]">
-            <label className="text-xs font-bold text-[#756046] block">{isEn ? 'Select Group / Service:' : 'اختر المجموعة أو الخدمة للتحليل:'}</label>
+          <div className="classy-card p-4 space-y-2 bg-[#FFFFFF]">
+            <label className="text-xs font-bold text-[#5F7083] block">{isEn ? 'Select Group / Service:' : 'اختر المجموعة أو الخدمة للتحليل:'}</label>
             <select
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828]"
+              className="w-full p-2.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -1546,31 +1546,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
 
           {selectedGroupFin && selectedGroupObj && (
-            <div className="classy-card p-4 bg-[#F8F2EC] space-y-4">
+            <div className="classy-card p-4 bg-[#FFFFFF] space-y-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
-                  <h3 className="text-sm sm:text-base font-black text-[#0F1206] truncate">{selectedGroupObj.name}</h3>
-                  <span className="text-xs text-[#756046] block truncate">{selectedGroupObj.subject} • {getLocalizedStageName(selectedGroupObj.gradeLevel)}</span>
+                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A] truncate">{selectedGroupObj.name}</h3>
+                  <span className="text-xs text-[#5F7083] block truncate">{selectedGroupObj.subject} • {getLocalizedStageName(selectedGroupObj.gradeLevel)}</span>
                 </div>
               </div>
 
               {/* 2x2 Square Cards for Group Report */}
-              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#DDD3C7]">
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#756046] block font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
-                  <strong className="text-lg font-black text-[#293828] block mt-1">{selectedGroupFin.totalCompletedSessions ?? selectedGroupFin.completedSessionsCount}</strong>
+              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E1EBEC]">
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
+                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
+                  <strong className="text-lg font-black text-[#17375E] block mt-1">{selectedGroupFin.totalCompletedSessions ?? selectedGroupFin.completedSessionsCount}</strong>
                 </div>
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#756046] block font-bold">{isEn ? 'Total Expected' : 'إجمالي المستحق'}</span>
-                  <strong className="text-lg font-black text-[#0F1206] block truncate mt-1">{selectedGroupFin.totalDue ?? selectedGroupFin.totalExpectedRevenue} <span className="text-xs font-bold text-[#756046]">{t('currency')}</span></strong>
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
+                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Total Expected' : 'إجمالي المستحق'}</span>
+                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedGroupFin.totalDue ?? selectedGroupFin.totalExpectedRevenue} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span></strong>
                 </div>
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#293828]/50 flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#756046] block font-bold">{isEn ? 'Collected' : 'المحصل الفعلي'}</span>
-                  <strong className="text-lg font-black text-[#0F1206] block truncate mt-1">{selectedGroupFin.totalPaid ?? selectedGroupFin.totalRevenue} <span className="text-xs font-bold">{t('currency')}</span></strong>
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#17375E]/50 flex flex-col justify-between min-h-[84px]">
+                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Collected' : 'المحصل الفعلي'}</span>
+                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedGroupFin.totalPaid ?? selectedGroupFin.totalRevenue} <span className="text-xs font-bold">{t('currency')}</span></strong>
                 </div>
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#756046] block font-bold">{isEn ? 'Remaining' : 'المتبقي'}</span>
-                  <strong className="text-lg font-black text-[#0F1206] block truncate mt-1">{selectedGroupFin.remaining ?? selectedGroupFin.totalRemainingDues} <span className="text-xs font-bold">{t('currency')}</span></strong>
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
+                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Remaining' : 'المتبقي'}</span>
+                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedGroupFin.remaining ?? selectedGroupFin.totalRemainingDues} <span className="text-xs font-bold">{t('currency')}</span></strong>
                 </div>
               </div>
 
@@ -1595,12 +1595,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           ========================================================================= */}
       {reportType === 'student_report' && (
         <div className="space-y-3.5">
-          <div className="classy-card p-4 space-y-2 bg-[#F8F2EC]">
-            <label className="text-xs font-bold text-[#756046] block">{isEn ? 'Select Student:' : 'اختر الطالب لعرض كشف الحساب والتقرير:'}</label>
+          <div className="classy-card p-4 space-y-2 bg-[#FFFFFF]">
+            <label className="text-xs font-bold text-[#5F7083] block">{isEn ? 'Select Student:' : 'اختر الطالب لعرض كشف الحساب والتقرير:'}</label>
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-[#DDD3C7]/15 border border-[#DDD3C7] font-bold text-xs text-[#0F1206] focus:outline-none focus:border-[#293828]"
+              className="w-full p-2.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
             >
               {students.map((st) => (
                 <option key={st.id} value={st.id}>
@@ -1611,13 +1611,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
 
           {selectedStudentGrandFin && selectedStudentObj && (
-            <div className="classy-card p-4 bg-[#F8F2EC] space-y-4">
+            <div className="classy-card p-4 bg-[#FFFFFF] space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <StudentAvatar student={selectedStudentObj} size="md" />
                   <div className="min-w-0">
-                    <h3 className="text-sm sm:text-base font-black text-[#0F1206] truncate">{selectedStudentObj.name}</h3>
-                    <span className="text-xs text-[#756046] block truncate">{getLocalizedStageName(selectedStudentObj.gradeLevel)}</span>
+                    <h3 className="text-sm sm:text-base font-black text-[#0F2A4A] truncate">{selectedStudentObj.name}</h3>
+                    <span className="text-xs text-[#5F7083] block truncate">{getLocalizedStageName(selectedStudentObj.gradeLevel)}</span>
                   </div>
                 </div>
 
@@ -1625,7 +1625,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenStudentProfile(selectedStudentObj)}
-                    className="px-3 py-1.5 rounded-xl bg-[#293828] text-[#F8F2EC] font-bold text-xs active:scale-95 transition-all cursor-pointer shrink-0"
+                    className="px-3 py-1.5 rounded-xl bg-[#17375E] text-[#FFFFFF] font-bold text-xs active:scale-95 transition-all cursor-pointer shrink-0"
                   >
                     {t('profile')}
                   </button>
@@ -1633,29 +1633,29 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </div>
 
               {/* 2x2 Square Cards for Student Report */}
-              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#DDD3C7]">
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] flex flex-col justify-between min-h-[84px]">
+              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E1EBEC]">
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[11px] text-[#756046] font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#DDD3C7]/25 text-[#293828] font-bold">
+                    <span className="text-[11px] text-[#5F7083] font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#17375E] font-bold">
                       {selectedStudentGrandFin.grandAppointmentsCount} {isEn ? 'Appts' : 'مواعيد'}
                     </span>
                   </div>
-                  <strong className="text-lg font-black text-[#293828] block mt-1">{selectedStudentGrandFin.grandCompletedLessons}</strong>
+                  <strong className="text-lg font-black text-[#17375E] block mt-1">{selectedStudentGrandFin.grandCompletedLessons}</strong>
                 </div>
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#756046] block font-bold">{isEn ? 'Grand Total Due' : 'إجمالي المطلوب'}</span>
-                  <strong className="text-lg font-black text-[#0F1206] block truncate mt-1">{selectedStudentGrandFin.grandTotalDue} <span className="text-xs font-bold text-[#756046]">{t('currency')}</span></strong>
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
+                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Grand Total Due' : 'إجمالي المطلوب'}</span>
+                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedStudentGrandFin.grandTotalDue} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span></strong>
                 </div>
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#293828]/50 flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#756046] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
-                  <strong className="text-lg font-black text-[#0F1206] block truncate mt-1">{selectedStudentGrandFin.grandTotalPaid} <span className="text-xs font-bold">{t('currency')}</span></strong>
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#17375E]/50 flex flex-col justify-between min-h-[84px]">
+                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
+                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedStudentGrandFin.grandTotalPaid} <span className="text-xs font-bold">{t('currency')}</span></strong>
                 </div>
-                <div className="p-3.5 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#756046] block font-bold">{isEn ? 'Remaining Due' : 'المتبقي'}</span>
+                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
+                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Remaining Due' : 'المتبقي'}</span>
                   <strong
                     className={`text-lg font-black block truncate mt-1 ${
-                      selectedStudentGrandFin.grandRemaining > 0 ? 'text-[#0F1206]' : 'text-[#0F1206]'
+                      selectedStudentGrandFin.grandRemaining > 0 ? 'text-[#0F2A4A]' : 'text-[#0F2A4A]'
                     }`}
                   >
                     {selectedStudentGrandFin.grandRemaining} <span className="text-xs font-bold">{t('currency')}</span>

@@ -163,30 +163,30 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#293828]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-t-[28px] sm:rounded-[28px] max-w-xl w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <div className="bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-xl w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative">
           
           {/* Signature Classy Header */}
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-between shrink-0 relative overflow-hidden">
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden">
             <div className="flex items-center gap-3 relative z-10 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-[#F8F2EC]/15 backdrop-blur-md border border-[#DDD3C7]/25 text-[#F8F2EC] flex items-center justify-center shrink-0 shadow-sm">
-                <Zap className="w-5 h-5 text-[#F8F2EC]" />
+              <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 text-[#FFFFFF] flex items-center justify-center shrink-0 shadow-sm">
+                <Zap className="w-5 h-5 text-[#FFFFFF]" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-black text-[#F8F2EC] tracking-tight flex items-center gap-2 truncate">
+                <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight flex items-center gap-2 truncate">
                   <span>{isEn ? 'Record Behavior & Participation' : 'تسجيل سلوك وتفاعل سريع'}</span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/25">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/25">
                     Quick Log
                   </span>
                 </h2>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs font-bold text-[#DDD3C7]">{student.name}</span>
+                  <span className="text-xs font-bold text-[#E1EBEC]">{student.name}</span>
                   {student.gradeLevel && (
                     <>
-                      <span className="text-[#DDD3C7]/50">•</span>
-                      <span className="text-[11px] text-[#DDD3C7]/80 font-medium">{student.gradeLevel}</span>
+                      <span className="text-[#E1EBEC]/50">•</span>
+                      <span className="text-[11px] text-[#E1EBEC]/80 font-medium">{student.gradeLevel}</span>
                     </>
                   )}
                 </div>
@@ -196,7 +196,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             <button
               onClick={onClose}
               type="button"
-              className="p-2 rounded-2xl bg-[#F8F2EC]/10 hover:bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/20 transition-all cursor-pointer relative z-10 active:scale-95"
+              className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
               title={t('close')}
             >
               <X className="w-4 h-4" />
@@ -204,7 +204,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
           </div>
 
           {/* Form Content */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto android-scrollbar p-4 sm:p-5 space-y-4 text-xs text-[#0F1206]">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto android-scrollbar p-4 sm:p-5 space-y-4 text-xs text-[#0F2A4A]">
             
             {/* Student Pill Bar */}
             <div className="classy-card p-3 flex items-center justify-between gap-2">
@@ -216,15 +216,15 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   className="shrink-0"
                 />
                 <div className="min-w-0">
-                  <h4 className="text-xs font-black text-[#0F1206] leading-tight truncate">{student.name}</h4>
-                  <p className="text-[10px] text-[#756046] mt-0.5">{isEn ? 'Quick feedback and class evaluation' : 'رصد فوري لتقييم الحصة والأداء'}</p>
+                  <h4 className="text-xs font-black text-[#0F2A4A] leading-tight truncate">{student.name}</h4>
+                  <p className="text-[10px] text-[#5F7083] mt-0.5">{isEn ? 'Quick feedback and class evaluation' : 'رصد فوري لتقييم الحصة والأداء'}</p>
                 </div>
               </div>
 
               {/* Quick Points Display Badge */}
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#DDD3C7]/50 border border-[#DDD3C7] shrink-0">
-                <Award className="w-3.5 h-3.5 text-[#293828]" />
-                <span className="text-xs font-black text-[#0F1206]">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#E1EBEC]/50 border border-[#E1EBEC] shrink-0">
+                <Award className="w-3.5 h-3.5 text-[#17375E]" />
+                <span className="text-xs font-black text-[#0F2A4A]">
                   {points > 0 ? `+${points}` : points} {t('points')}
                 </span>
               </div>
@@ -233,14 +233,14 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             {/* Category Filter Tabs */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-[#0F1206]">{isEn ? 'Select Assessment / Tag:' : 'اختر نوع التقييم / الوسم:'}</label>
+                <label className="text-xs font-black text-[#0F2A4A]">{isEn ? 'Select Assessment / Tag:' : 'اختر نوع التقييم / الوسم:'}</label>
                 <button
                   type="button"
                   onClick={handleEnableCustomTag}
                   className={`text-[11px] font-black px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
                     isCustomMode
-                      ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                      : 'bg-[#F8F2EC] text-[#293828] border-[#DDD3C7] hover:bg-[#DDD3C7]/35'
+                      ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                      : 'bg-[#FFFFFF] text-[#17375E] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
                   }`}
                 >
                   <Plus className="w-3 h-3" />
@@ -254,8 +254,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   onClick={() => setActiveCategory('all')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                     activeCategory === 'all'
-                      ? 'bg-[#293828] text-[#F8F2EC] shadow-xs'
-                      : 'bg-[#F8F2EC] text-[#756046] border border-[#DDD3C7] hover:bg-[#DDD3C7]/25'
+                      ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
+                      : 'bg-[#FFFFFF] text-[#5F7083] border border-[#E1EBEC] hover:bg-[#E1EBEC]/25'
                   }`}
                 >
                   {isEn ? 'All' : 'الكل'}
@@ -265,8 +265,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   onClick={() => setActiveCategory('positive')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeCategory === 'positive'
-                      ? 'bg-[#0F1206] text-[#F8F2EC] shadow-xs'
-                      : 'bg-[#F8F2EC] text-[#0F1206] border border-[#293828]/50 hover:bg-[#DDD3C7]/35'
+                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-xs'
+                      : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#17375E]/50 hover:bg-[#E1EBEC]/35'
                   }`}
                 >
                   <span>🌟</span>
@@ -277,8 +277,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   onClick={() => setActiveCategory('needs_improvement')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeCategory === 'needs_improvement'
-                      ? 'bg-[#0F1206] text-[#F8F2EC] shadow-xs'
-                      : 'bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7] hover:bg-[#DDD3C7]/25'
+                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-xs'
+                      : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC] hover:bg-[#E1EBEC]/25'
                   }`}
                 >
                   <span>⚠️</span>
@@ -289,8 +289,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   onClick={() => setActiveCategory('neutral')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeCategory === 'neutral'
-                      ? 'bg-[#0F1206] text-[#F8F2EC] shadow-xs'
-                      : 'bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7] hover:bg-[#DDD3C7]/35'
+                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-xs'
+                      : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
                   }`}
                 >
                   <span>📝</span>
@@ -301,10 +301,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
 
             {/* Custom Mode Tag Input */}
             {isCustomMode && (
-              <div className="classy-card p-3.5 space-y-2.5 bg-[#DDD3C7]/30 border-[#DDD3C7] animate-in fade-in duration-150">
+              <div className="classy-card p-3.5 space-y-2.5 bg-[#E1EBEC]/30 border-[#E1EBEC] animate-in fade-in duration-150">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#293828]" />
+                  <span className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#17375E]" />
                     {isEn ? 'Write Custom Tag' : 'كتابة وسم مخصص'}
                   </span>
                   <div className="flex items-center gap-1">
@@ -313,8 +313,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       onClick={() => setCategory('positive')}
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
                         category === 'positive'
-                          ? 'bg-[#0F1206] text-[#F8F2EC]'
-                          : 'bg-[#F8F2EC] text-[#0F1206] border border-[#293828]/50'
+                          ? 'bg-[#0F2A4A] text-[#FFFFFF]'
+                          : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#17375E]/50'
                       }`}
                     >
                       {isEn ? 'Positive' : 'إيجابي'}
@@ -324,8 +324,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       onClick={() => setCategory('needs_improvement')}
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
                         category === 'needs_improvement'
-                          ? 'bg-[#0F1206] text-[#F8F2EC]'
-                          : 'bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7]'
+                          ? 'bg-[#0F2A4A] text-[#FFFFFF]'
+                          : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC]'
                       }`}
                     >
                       {isEn ? 'Needs Attention' : 'يحتاج تحسين'}
@@ -335,8 +335,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       onClick={() => setCategory('neutral')}
                       className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
                         category === 'neutral'
-                          ? 'bg-[#293828] text-[#F8F2EC]'
-                          : 'bg-[#F8F2EC] text-[#0F1206] border border-[#DDD3C7]'
+                          ? 'bg-[#17375E] text-[#FFFFFF]'
+                          : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC]'
                       }`}
                     >
                       {isEn ? 'General' : 'عام'}
@@ -368,24 +368,24 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     onClick={() => handleSelectPredefinedTag(tag)}
                     className={`p-3 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex flex-col justify-between gap-2 cursor-pointer text-xs ${
                       isSelected
-                        ? 'border-[#293828] bg-[#DDD3C7]/40 ring-2 ring-[#293828]/25 shadow-xs'
-                        : 'border-[#DDD3C7] bg-[#F8F2EC] hover:border-[#756046] hover:bg-[#DDD3C7]/25'
+                        ? 'border-[#17375E] bg-[#E1EBEC]/40 ring-2 ring-[#17375E]/25 shadow-xs'
+                        : 'border-[#E1EBEC] bg-[#FFFFFF] hover:border-[#5F7083] hover:bg-[#E1EBEC]/25'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1 w-full">
                       <span className="text-lg leading-none">{tag.emoji}</span>
                       {isSelected ? (
-                        <span className="p-1 rounded-full bg-[#293828] text-[#F8F2EC]">
+                        <span className="p-1 rounded-full bg-[#17375E] text-[#FFFFFF]">
                           <Check className="w-3 h-3 stroke-[3]" />
                         </span>
                       ) : (
                         <span
                           className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
                             (tag.points ?? 0) > 0
-                              ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#293828]'
+                              ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#17375E]'
                               : (tag.points ?? 0) < 0
-                              ? 'bg-[#DDD3C7]/15 text-[#0F1206] border border-[#DDD3C7]'
-                              : 'bg-[#DDD3C7]/15 text-[#756046] border border-[#DDD3C7]'
+                              ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
+                              : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC]'
                           }`}
                         >
                           {(tag.points ?? 0) > 0 ? `+${tag.points}` : tag.points}
@@ -393,9 +393,9 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       )}
                     </div>
                     <div>
-                      <h4 className="font-black text-[#0F1206] text-xs leading-tight line-clamp-1">{displayTitle}</h4>
+                      <h4 className="font-black text-[#0F2A4A] text-xs leading-tight line-clamp-1">{displayTitle}</h4>
                       {displaySubtitle && (
-                        <p className="text-[10px] text-[#756046] mt-0.5 line-clamp-1 font-medium">{displaySubtitle}</p>
+                        <p className="text-[10px] text-[#5F7083] mt-0.5 line-clamp-1 font-medium">{displaySubtitle}</p>
                       )}
                     </div>
                   </button>
@@ -406,8 +406,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
             {/* Timestamp & Timing Controls */}
             <div className="classy-card p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-[#0F1206]">
-                  <Clock className="w-3.5 h-3.5 text-[#293828]" />
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#0F2A4A]">
+                  <Clock className="w-3.5 h-3.5 text-[#17375E]" />
                   <span>{isEn ? 'Timestamp:' : 'توقيت التسجيل (Timestamp):'}</span>
                 </div>
 
@@ -417,8 +417,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     onClick={() => setIsCustomTimestamp(false)}
                     className={`px-2.5 py-1 rounded-xl font-black transition-all cursor-pointer text-[11px] ${
                       !isCustomTimestamp
-                        ? 'bg-[#293828] text-[#F8F2EC] shadow-xs'
-                        : 'bg-[#DDD3C7]/15 text-[#756046] hover:bg-[#DDD3C7]/35'
+                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
+                        : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35'
                     }`}
                   >
                     {isEn ? 'Now (Auto)' : 'الآن (تلقائي)'}
@@ -428,8 +428,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     onClick={() => setIsCustomTimestamp(true)}
                     className={`px-2.5 py-1 rounded-xl font-black transition-all cursor-pointer text-[11px] ${
                       isCustomTimestamp
-                        ? 'bg-[#293828] text-[#F8F2EC] shadow-xs'
-                        : 'bg-[#DDD3C7]/15 text-[#756046] hover:bg-[#DDD3C7]/35'
+                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
+                        : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35'
                     }`}
                   >
                     {isEn ? 'Custom Date/Time' : 'تحديد وقت سابق'}
@@ -440,7 +440,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               {isCustomTimestamp ? (
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
-                    <label className="text-[10px] font-bold text-[#756046] mb-1 block">{isEn ? 'Date:' : 'التاريخ:'}</label>
+                    <label className="text-[10px] font-bold text-[#5F7083] mb-1 block">{isEn ? 'Date:' : 'التاريخ:'}</label>
                     <input
                       type="date"
                       value={customDate}
@@ -449,7 +449,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-[#756046] mb-1 block">{isEn ? 'Time:' : 'الوقت:'}</label>
+                    <label className="text-[10px] font-bold text-[#5F7083] mb-1 block">{isEn ? 'Time:' : 'الوقت:'}</label>
                     <input
                       type="time"
                       value={customTime}
@@ -459,9 +459,9 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-2.5 bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-xl flex items-center justify-between text-[11px] text-[#756046]">
+                <div className="p-2.5 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl flex items-center justify-between text-[11px] text-[#5F7083]">
                   <span>{isEn ? 'Evaluation will be recorded at current time.' : 'سيتم حفظ التقييم بتوقيت اللحظة الحالية بدقة.'}</span>
-                  <span className="font-black text-[#0F1206]">
+                  <span className="font-black text-[#0F2A4A]">
                     {new Date().toLocaleTimeString(isEn ? 'en-US' : 'ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}
                   </span>
                 </div>
@@ -473,8 +473,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               {/* Group selection */}
               {studentGroups.length > 0 && (
                 <div className="classy-card p-3 space-y-1.5">
-                  <label className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-[#293828]" />
+                  <label className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-[#17375E]" />
                     <span>{isEn ? 'Linked Class / Group:' : 'المجموعة / الحصة المرتبطة:'}</span>
                   </label>
                   <select
@@ -494,8 +494,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
 
               {/* Points Adjustment */}
               <div className="classy-card p-3 space-y-1.5">
-                <label className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-[#293828]" />
+                <label className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-[#17375E]" />
                   <span>{isEn ? 'Points Impact:' : 'النقاط / التأثير:'}</span>
                 </label>
                 <div className="flex items-center gap-1">
@@ -506,8 +506,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                       onClick={() => setPoints(val)}
                       className={`flex-1 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
                         points === val
-                          ? 'bg-[#293828] text-[#F8F2EC] shadow-xs ring-1 ring-[#293828]'
-                          : 'bg-[#DDD3C7]/15 text-[#756046] border border-[#DDD3C7] hover:bg-[#DDD3C7]/35'
+                          ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs ring-1 ring-[#17375E]'
+                          : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
                       }`}
                     >
                       {val > 0 ? `+${val}` : val}
@@ -519,8 +519,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
 
             {/* Note & Comments */}
             <div className="classy-card p-3 space-y-1.5">
-              <label className="text-xs font-black text-[#0F1206] flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[#293828]" />
+              <label className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-[#17375E]" />
                 <span>{isEn ? 'Additional Note (Optional):' : 'ملاحظة أو تفاصيل إضافية (اختياري):'}</span>
               </label>
               <textarea
@@ -535,12 +535,12 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
           </form>
 
           {/* Footer Actions */}
-          <div className="p-4 bg-[#F8F2EC] border-t border-[#DDD3C7] flex items-center gap-2.5">
+          <div className="p-4 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting || isSavedSuccess}
-              className="flex-1 py-3 rounded-2xl border border-[#DDD3C7] bg-[#F8F2EC] text-[#756046] font-black text-xs hover:bg-[#DDD3C7]/25 transition-all disabled:opacity-50 cursor-pointer"
+              className="flex-1 py-3 rounded-2xl border border-[#E1EBEC] bg-[#FFFFFF] text-[#5F7083] font-black text-xs hover:bg-[#E1EBEC]/25 transition-all disabled:opacity-50 cursor-pointer"
             >
               {t('cancel')}
             </button>
@@ -549,10 +549,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || isSavedSuccess || (isCustomMode && !customTagName.trim())}
-              className={`flex-1 py-3 rounded-2xl text-[#F8F2EC] font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-3 rounded-2xl text-[#FFFFFF] font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 isSavedSuccess
-                  ? 'bg-[#0F1206] ring-2 ring-[#293828]/50'
-                  : 'bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] shadow-[#293828]/30 hover:brightness-105 active:scale-95'
+                  ? 'bg-[#0F2A4A] ring-2 ring-[#17375E]/50'
+                  : 'bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] shadow-[#17375E]/30 hover:brightness-105 active:scale-95'
               }`}
             >
               {isSavedSuccess ? (
@@ -562,7 +562,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
                 </>
               ) : (
                 <>
-                  <Zap className="w-4 h-4 text-[#F8F2EC]" />
+                  <Zap className="w-4 h-4 text-[#FFFFFF]" />
                   <span>{isEn ? 'Save Behavior Rating' : 'حفظ تقييم السلوك'}</span>
                 </>
               )}

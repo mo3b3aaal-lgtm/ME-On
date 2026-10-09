@@ -466,7 +466,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           rawTime: s.startTime || '16:00',
           sortMinutes,
           location: group?.roomOrLocation,
-          accentColor: group?.accentColor || (isPrivate ? '#0F1206' : '#293828'),
+          accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
         });
       }
     });
@@ -558,17 +558,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F1206] pb-32 bg-[#F2E9DE] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F2A4A] pb-32 bg-[#FFFFFF] relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Soft Ambient Warm Luxury Light Glow in Background */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#293828]/10 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#0F1206]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#293828]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#17375E]/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#0F2A4A]/8 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#17375E]/6 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Top Header */}
       <header className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-2xl font-bold font-display text-[#0F1206] tracking-tight">
+        <h1 className="text-2xl font-bold font-display text-[#0F2A4A] tracking-tight">
           {isEn ? 'Dashboard' : 'لوحة التحكم'}
         </h1>
         <div className="flex items-center gap-2">
@@ -576,13 +576,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onOpenNotificationsModal}
-              className="relative w-10 h-10 rounded-full bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] hover:bg-[#EDE3D9] transition-colors cursor-pointer shadow-xs"
+              className="relative w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
               title={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
               aria-label={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
             >
-              <Bell className="w-5 h-5 text-[#756046]" strokeWidth={1.7} />
+              <Bell className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
               {smartReminders.length > 0 && (
-                <span className="absolute top-2.5 end-2.5 w-2 h-2 rounded-full bg-[#A4452C] ring-2 ring-[#F8F2EC]" />
+                <span className="absolute top-2.5 end-2.5 w-2 h-2 rounded-full bg-[#D64545] ring-2 ring-[#FFFFFF]" />
               )}
             </button>
           )}
@@ -590,11 +590,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={() => onNavigateToTab('settings')}
-              className="w-10 h-10 rounded-full bg-[#F8F2EC] border border-[#DDD3C7] flex items-center justify-center text-[#0F1206] hover:bg-[#EDE3D9] transition-colors cursor-pointer shadow-xs"
+              className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
               title={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
               aria-label={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
             >
-              <Settings className="w-5 h-5 text-[#756046]" strokeWidth={1.7} />
+              <Settings className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
             </button>
           )}
         </div>
@@ -603,50 +603,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* =========================================================================
           1. Profile & Signature Executive Hero Header
           ========================================================================= */}
-      <div className="rounded-[26px] bg-gradient-to-br from-[#293828] via-[#0F1206] to-[#756046] p-5 sm:p-6 text-[#F8F2EC] relative overflow-hidden shadow-xl border border-[#DDD3C7]/35 shadow-[inset_0_1px_0_0_rgba(248, 242, 236,0.32)]">
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#F8F2EC]/8 to-[#DDD3C7]/15 pointer-events-none" />
-        <div className="absolute -top-16 -right-16 w-60 h-60 bg-[#293828]/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-[#0F1206]/25 rounded-full blur-3xl pointer-events-none" />
+      <div className="rounded-[26px] bg-gradient-to-br from-[#17375E] via-[#0F2A4A] to-[#5F7083] p-5 sm:p-6 text-[#FFFFFF] relative overflow-hidden shadow-xl border border-[#E1EBEC]/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.32)]">
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#FFFFFF]/8 to-[#E1EBEC]/15 pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-60 h-60 bg-[#17375E]/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-[#0F2A4A]/25 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           {/* Teacher Profile & Greeting */}
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#DDD3C7] via-[#F8F2EC] to-[#756046] p-0.5 shadow-lg shadow-[#0F1206]/35 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-[#293828] to-[#0F1206] flex items-center justify-center text-[#F8F2EC] font-black text-2xl overflow-hidden">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#E1EBEC] via-[#FFFFFF] to-[#5F7083] p-0.5 shadow-lg shadow-[#0F2A4A]/35 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-[#17375E] to-[#0F2A4A] flex items-center justify-center text-[#FFFFFF] font-black text-2xl overflow-hidden">
                 {teacherProfile.name ? teacherProfile.name.charAt(0) : 'C'}
               </div>
             </div>
 
             <div className="space-y-0.5 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#DDD3C7] flex items-center gap-1">
+                <span className="text-xs font-bold text-[#E1EBEC] flex items-center gap-1">
                   {greetingText}
                 </span>
               </div>
-              <h1 className="text-lg sm:text-2xl font-black text-[#F8F2EC] tracking-tight truncate">
+              <h1 className="text-lg sm:text-2xl font-black text-[#FFFFFF] tracking-tight truncate">
                 {teacherProfile.name ? `${isEn ? 'Teacher ' : 'أ. '}${teacherProfile.name}` : (isEn ? 'Teacher' : 'أستاذنا الفاضل')}
               </h1>
-              <p className="text-xs sm:text-sm text-[#DDD3C7]/90 font-medium truncate">
+              <p className="text-xs sm:text-sm text-[#E1EBEC]/90 font-medium truncate">
                 {teacherProfile.subject || (isEn ? 'Subject' : 'المادة التعليمية')} • {teacherProfile.centerOrSchool || (isEn ? 'Classy Education' : 'منظومة كلاسي الذكية')}
               </p>
             </div>
           </div>
 
           {/* Action Hub & Mascot */}
-          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#DDD3C7]/20">
-            <div className="hidden md:flex items-center gap-2 bg-[#F8F2EC]/10 backdrop-blur-md border border-[#DDD3C7]/25 px-3 py-1.5 rounded-2xl shadow-xs">
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E1EBEC]/20">
+            <div className="hidden md:flex items-center gap-2 bg-[#FFFFFF]/10 backdrop-blur-md border border-[#E1EBEC]/25 px-3 py-1.5 rounded-2xl shadow-xs">
               <div className="w-9 h-9 flex items-center justify-center">
                 <ClassyOwlMascot size="sm" pose="welcome" glow={false} />
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-extrabold text-[#DDD3C7] block leading-none">{isEn ? 'Smart Assistant' : 'مساعدك الذكي'}</span>
-                <span className="text-xs font-bold text-[#F8F2EC] block mt-0.5">{isEn ? 'Ready to help' : 'جاهز لخدمتك'}</span>
+                <span className="text-[10px] font-extrabold text-[#E1EBEC] block leading-none">{isEn ? 'Smart Assistant' : 'مساعدك الذكي'}</span>
+                <span className="text-xs font-bold text-[#FFFFFF] block mt-0.5">{isEn ? 'Ready to help' : 'جاهز لخدمتك'}</span>
               </div>
             </div>
 
             {/* Date Badge */}
-            <div className="flex items-center gap-1.5 bg-[#F8F2EC]/10 backdrop-blur-md border border-[#DDD3C7]/25 px-3 py-2 rounded-2xl text-xs font-bold text-[#F8F2EC] shadow-xs">
-              <Calendar className="w-3.5 h-3.5 text-[#DDD3C7]" />
+            <div className="flex items-center gap-1.5 bg-[#FFFFFF]/10 backdrop-blur-md border border-[#E1EBEC]/25 px-3 py-2 rounded-2xl text-xs font-bold text-[#FFFFFF] shadow-xs">
+              <Calendar className="w-3.5 h-3.5 text-[#E1EBEC]" />
               <span>
                 {new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
               </span>
@@ -657,33 +657,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 onClick={handleTriggerSync}
                 disabled={isSyncing}
-                className="relative p-2.5 rounded-2xl bg-[#0F1206]/30 hover:bg-[#0F1206]/45 border border-[#293828]/50 text-[#DDD3C7] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
+                className="relative p-2.5 rounded-2xl bg-[#0F2A4A]/30 hover:bg-[#0F2A4A]/45 border border-[#17375E]/50 text-[#E1EBEC] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
                 title={isEn ? 'Working Offline - Click to sync when online' : 'العمل بدون إنترنت - انقر للمزامنة عند الاتصال'}
               >
-                <WifiOff className="w-4.5 h-4.5 text-[#DDD3C7]" />
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#293828] ring-2 ring-[#0F1206] animate-ping" />
+                <WifiOff className="w-4.5 h-4.5 text-[#E1EBEC]" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#17375E] ring-2 ring-[#0F2A4A] animate-ping" />
               </button>
             )}
 
             <button
               onClick={handleTriggerSync}
               disabled={isSyncing}
-              className="p-2.5 rounded-2xl bg-[#F8F2EC]/10 hover:bg-[#F8F2EC]/20 border border-[#DDD3C7]/25 text-[#F8F2EC] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
+              className="p-2.5 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 border border-[#E1EBEC]/25 text-[#FFFFFF] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
               title={isEn ? 'Sync Cloud Data' : 'مزامنة البيانات السحابية'}
             >
-              <RefreshCw className={`w-4.5 h-4.5 text-[#F8F2EC] ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4.5 h-4.5 text-[#FFFFFF] ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
 
             {/* Notifications Bell */}
             {onOpenNotificationsModal && (
               <button
                 onClick={onOpenNotificationsModal}
-                className="relative p-2.5 rounded-2xl bg-[#F8F2EC]/10 hover:bg-[#F8F2EC]/20 border border-[#DDD3C7]/25 text-[#F8F2EC] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
+                className="relative p-2.5 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 border border-[#E1EBEC]/25 text-[#FFFFFF] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
                 title={t('smartNotifications')}
               >
-                <Bell className="w-4.5 h-4.5 text-[#F8F2EC]" />
+                <Bell className="w-4.5 h-4.5 text-[#FFFFFF]" />
                 {smartReminders.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#0F1206] text-[#F8F2EC] text-[9px] font-black flex items-center justify-center shadow-md ring-2 ring-[#293828] animate-pulse">
+                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#0F2A4A] text-[#FFFFFF] text-[9px] font-black flex items-center justify-center shadow-md ring-2 ring-[#17375E] animate-pulse">
                     {smartReminders.length}
                   </span>
                 )}
@@ -695,13 +695,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Quick Success Toast */}
       {quickSuccessMsg && (
-        <div className="p-3.5 rounded-2xl bg-[#0F1206] text-[#F8F2EC] border border-[#293828] text-xs font-bold flex items-center justify-between shadow-lg shadow-[#0F1206]/20 animate-in fade-in slide-in-from-top-2">
+        <div className="p-3.5 rounded-2xl bg-[#0F2A4A] text-[#FFFFFF] border border-[#17375E] text-xs font-bold flex items-center justify-between shadow-lg shadow-[#0F2A4A]/20 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#DDD3C7]" />
+            <CheckCircle2 className="w-4 h-4 text-[#E1EBEC]" />
             <span>{quickSuccessMsg}</span>
           </div>
           <button onClick={() => setQuickSuccessMsg(null)}>
-            <X className="w-4 h-4 text-[#DDD3C7] hover:text-[#F8F2EC]" />
+            <X className="w-4 h-4 text-[#E1EBEC] hover:text-[#FFFFFF]" />
           </button>
         </div>
       )}
@@ -711,58 +711,58 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
         {/* Main Today Activity Hero Card */}
-        <div className="lg:col-span-7 rounded-[24px] bg-gradient-to-br from-[#0F1206] via-[#756046] to-[#293828] p-5 text-[#F8F2EC] flex flex-col justify-between relative overflow-hidden shadow-xl border border-[#293828]/35">
-          <div className="absolute -top-10 -left-10 w-44 h-44 bg-[#293828]/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-10 -right-10 w-44 h-44 bg-[#0F1206]/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="lg:col-span-7 rounded-[24px] bg-gradient-to-br from-[#0F2A4A] via-[#5F7083] to-[#17375E] p-5 text-[#FFFFFF] flex flex-col justify-between relative overflow-hidden shadow-xl border border-[#17375E]/35">
+          <div className="absolute -top-10 -left-10 w-44 h-44 bg-[#17375E]/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-10 -right-10 w-44 h-44 bg-[#0F2A4A]/20 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#293828] animate-pulse" />
-                <span className="text-xs font-black uppercase tracking-wider text-[#DDD3C7]">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#17375E] animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-wider text-[#E1EBEC]">
                   {isEn ? "Today's Academic Activity" : 'نشاط اليوم الدراسي'}
                 </span>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F8F2EC]/15 text-[#F8F2EC] border border-[#293828]/40 shadow-xs">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-[#FFFFFF]/15 text-[#FFFFFF] border border-[#17375E]/40 shadow-xs">
                 {totalTodayClassesCount} {isEn ? 'scheduled' : 'حصص مجدولة'}
               </span>
             </div>
 
             <div className="space-y-1">
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-[#F8F2EC]">
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-[#FFFFFF]">
                 {completedTodaySessionsCount === totalTodayClassesCount && totalTodayClassesCount > 0
                   ? (isEn ? "🎉 All today's sessions completed successfully!" : '🎉 اكتملت جميع حصص اليوم بنجاح!')
                   : (isEn ? `${remainingTodaySessionsCount} sessions pending attendance` : `متبقي ${remainingTodaySessionsCount} حصص للرصد والمتابعة`)}
               </h2>
-              <div className="flex items-center gap-3 text-xs text-[#DDD3C7] font-medium flex-wrap">
-                <span>{isEn ? "Today's Revenue:" : 'تحصيل اليوم:'} <strong className="text-[#F8F2EC] font-bold">{totalTodayRevenue} {t('currency')}</strong></span>
+              <div className="flex items-center gap-3 text-xs text-[#E1EBEC] font-medium flex-wrap">
+                <span>{isEn ? "Today's Revenue:" : 'تحصيل اليوم:'} <strong className="text-[#FFFFFF] font-bold">{totalTodayRevenue} {t('currency')}</strong></span>
                 <span>•</span>
-                <span>{isEn ? 'Appointments: ' : 'المواعيد: '}<strong className="text-[#F8F2EC] font-bold">{completedTodaySessionsCount}</strong> {isEn ? 'of ' : 'من '}<strong className="text-[#F8F2EC] font-bold">{totalTodayClassesCount}</strong></span>
+                <span>{isEn ? 'Appointments: ' : 'المواعيد: '}<strong className="text-[#FFFFFF] font-bold">{completedTodaySessionsCount}</strong> {isEn ? 'of ' : 'من '}<strong className="text-[#FFFFFF] font-bold">{totalTodayClassesCount}</strong></span>
                 {todayWorkload.completedLessonUnits > 0 && (
                   <>
                     <span>•</span>
-                    <span>{isEn ? 'Lessons: ' : 'الحصص: '}<strong className="text-[#F8F2EC] font-black">{todayWorkload.completedLessonUnits} {isEn ? 'Lessons' : 'حصة'}</strong></span>
+                    <span>{isEn ? 'Lessons: ' : 'الحصص: '}<strong className="text-[#FFFFFF] font-black">{todayWorkload.completedLessonUnits} {isEn ? 'Lessons' : 'حصة'}</strong></span>
                   </>
                 )}
                 {todayWorkload.completedHours > 0 && (
                   <>
                     <span>•</span>
-                    <span>{isEn ? 'Hours: ' : 'الساعات: '}<strong className="text-[#F8F2EC] font-black">{todayWorkload.completedHours} {isEn ? 'Hours' : 'ساعة'}</strong></span>
+                    <span>{isEn ? 'Hours: ' : 'الساعات: '}<strong className="text-[#FFFFFF] font-black">{todayWorkload.completedHours} {isEn ? 'Hours' : 'ساعة'}</strong></span>
                   </>
                 )}
               </div>
             </div>
 
             <div className="space-y-1.5 pt-1">
-              <div className="w-full bg-[#0F1206]/40 h-3 rounded-full overflow-hidden p-0.5 border border-[#DDD3C7]/20">
+              <div className="w-full bg-[#0F2A4A]/40 h-3 rounded-full overflow-hidden p-0.5 border border-[#E1EBEC]/20">
                 <div
-                  className="bg-gradient-to-r from-[#DDD3C7] via-[#F8F2EC] to-[#DDD3C7] h-full rounded-full transition-all duration-500 shadow-sm"
+                  className="bg-gradient-to-r from-[#E1EBEC] via-[#FFFFFF] to-[#E1EBEC] h-full rounded-full transition-all duration-500 shadow-sm"
                   style={{
                     width: `${totalTodayClassesCount > 0 ? (completedTodaySessionsCount / totalTodayClassesCount) * 100 : 0}%`,
                   }}
                 />
               </div>
-              <div className="flex justify-between text-[11px] font-bold text-[#DDD3C7]/90">
+              <div className="flex justify-between text-[11px] font-bold text-[#E1EBEC]/90">
                 <span>{isEn ? 'Progress:' : 'نسبة الإنجاز:'} {totalTodayClassesCount > 0 ? Math.round((completedTodaySessionsCount / totalTodayClassesCount) * 100) : 0}%</span>
                 <span>{completedTodaySessionsCount}/{totalTodayClassesCount} {isEn ? 'completed' : 'تم رصدها'}</span>
               </div>
@@ -775,21 +775,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 1: Active Students (Sapphire Lustre) */}
           <div
             onClick={() => onNavigateToTab('students')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-sapphire flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#293828]"
+            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-sapphire flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#17375E]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#293828]/20">
-                <Users className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/20">
+                <Users className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/85 text-[#293828] border border-[#293828]/25 shadow-2xs">
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/85 text-[#17375E] border border-[#17375E]/25 shadow-2xs">
                 {isEn ? 'Active' : 'نشط'}
               </span>
             </div>
             <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#0F1206] tracking-tight block">
+              <span className="text-2xl sm:text-3xl font-black text-[#0F2A4A] tracking-tight block">
                 {activeStudentsList.length}
               </span>
-              <span className="text-xs font-bold text-[#756046] block mt-0.5">
+              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
                 {t('activeStudents')}
               </span>
             </div>
@@ -798,21 +798,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 2: Attendance Rate (Navy Velvet Sheen) */}
           <div
             onClick={() => onNavigateToTab('reports')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-navy flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#0F1206]"
+            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-navy flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#0F2A4A]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F1206] to-[#293828] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#0F1206]/25">
-                <TrendingUp className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F2A4A] to-[#17375E] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#0F2A4A]/25">
+                <TrendingUp className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/85 text-[#0F1206] border border-[#0F1206]/25 shadow-2xs">
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/85 text-[#0F2A4A] border border-[#0F2A4A]/25 shadow-2xs">
                 {isEn ? 'Rate' : 'التزام'}
               </span>
             </div>
             <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#0F1206] tracking-tight block">
+              <span className="text-2xl sm:text-3xl font-black text-[#0F2A4A] tracking-tight block">
                 {overallAttendanceRate}%
               </span>
-              <span className="text-xs font-bold text-[#756046] block mt-0.5">
+              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
                 {t('attendanceRate')}
               </span>
             </div>
@@ -821,21 +821,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 3: Month Revenue (Steel Grey Cashmere Sheen) */}
           <div
             onClick={() => onNavigateToTab('reports')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-steel flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#756046]"
+            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-steel flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#5F7083]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#756046] to-[#0F1206] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#756046]/25">
-                <DollarSign className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#5F7083] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#5F7083]/25">
+                <DollarSign className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#F8F2EC]/85 text-[#0F1206] border border-[#756046]/35 shadow-2xs">
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/85 text-[#0F2A4A] border border-[#5F7083]/35 shadow-2xs">
                 {isEn ? `Month ${currentMonth}` : `شهر ${currentMonth}`}
               </span>
             </div>
             <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#0F1206] tracking-tight block truncate">
-                {totalMonthRevenue} <span className="text-xs font-bold text-[#756046]">{t('currency')}</span>
+              <span className="text-2xl sm:text-3xl font-black text-[#0F2A4A] tracking-tight block truncate">
+                {totalMonthRevenue} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
               </span>
-              <span className="text-xs font-bold text-[#756046] block mt-0.5">
+              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
                 {t('monthlyRevenue')}
               </span>
             </div>
@@ -844,27 +844,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Metric 4: Outstanding Dues (Silver Pearl Sheen) */}
           <div
             onClick={() => onNavigateToTab('reports')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-silver flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#293828]"
+            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-silver flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#17375E]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-center shadow-md shadow-[#293828]/20">
-                <Receipt className="w-4.5 h-4.5 text-[#F8F2EC]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/20">
+                <Receipt className="w-4.5 h-4.5 text-[#FFFFFF]" />
               </div>
               <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs ${
                 totalOutstandingDues > 0
-                  ? 'bg-[#F8F2EC]/90 text-[#293828] border-[#293828]/30'
-                  : 'bg-[#F8F2EC]/90 text-[#0F1206] border-[#DDD3C7]'
+                  ? 'bg-[#FFFFFF]/90 text-[#17375E] border-[#17375E]/30'
+                  : 'bg-[#FFFFFF]/90 text-[#0F2A4A] border-[#E1EBEC]'
               }`}>
                 {totalOutstandingDues > 0 ? (isEn ? `${overdueStudentsCount} dues` : `${overdueStudentsCount} طلاب`) : t('settled')}
               </span>
             </div>
             <div>
               <span className={`text-2xl sm:text-3xl font-black tracking-tight block truncate ${
-                totalOutstandingDues > 0 ? 'text-[#293828]' : 'text-[#0F1206]'
+                totalOutstandingDues > 0 ? 'text-[#17375E]' : 'text-[#0F2A4A]'
               }`}>
-                {totalOutstandingDues} <span className="text-xs font-bold text-[#756046]">{t('currency')}</span>
+                {totalOutstandingDues} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
               </span>
-              <span className="text-xs font-bold text-[#756046] block mt-0.5">
+              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
                 {t('totalPendingDues')}
               </span>
             </div>
@@ -875,52 +875,52 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* =========================================================================
           3. Quick Actions Bar
           ========================================================================= */}
-      <div className="classy-card p-2 sm:p-3 bg-[#DDD3C7]/15 border border-[#DDD3C7]">
+      <div className="classy-card p-2 sm:p-3 bg-[#E1EBEC]/15 border border-[#E1EBEC]">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <button
             onClick={onOpenAddStudent}
-            className="py-3 px-3.5 rounded-2xl bg-[#F8F2EC] hover:bg-[#DDD3C7]/35 border border-[#DDD3C7]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/25 text-[#293828] flex items-center justify-center shrink-0 group-hover:bg-[#293828] group-hover:text-[#F8F2EC] transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] flex items-center justify-center shrink-0 group-hover:bg-[#17375E] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
               <UserPlus className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F1206] group-hover:text-[#293828] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#17375E] transition-colors truncate">
               {t('addStudent')}
             </span>
           </button>
 
           <button
             onClick={onOpenAddGroup}
-            className="py-3 px-3.5 rounded-2xl bg-[#F8F2EC] hover:bg-[#DDD3C7]/35 border border-[#DDD3C7]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/25 text-[#0F1206] flex items-center justify-center shrink-0 group-hover:bg-[#0F1206] group-hover:text-[#F8F2EC] transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#0F2A4A] flex items-center justify-center shrink-0 group-hover:bg-[#0F2A4A] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
               <Layers className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F1206] group-hover:text-[#0F1206] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#0F2A4A] transition-colors truncate">
               {t('createGroupBtn')}
             </span>
           </button>
 
           <button
             onClick={onOpenAddSession}
-            className="py-3 px-3.5 rounded-2xl bg-[#F8F2EC] hover:bg-[#DDD3C7]/35 border border-[#DDD3C7]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/25 text-[#293828] border border-[#293828]/40 flex items-center justify-center shrink-0 group-hover:bg-[#293828] group-hover:text-[#F8F2EC] transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] border border-[#17375E]/40 flex items-center justify-center shrink-0 group-hover:bg-[#17375E] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
               <CalendarCheck2 className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F1206] group-hover:text-[#0F1206] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#0F2A4A] transition-colors truncate">
               {t('scheduleSessionBtn')}
             </span>
           </button>
 
           <button
             onClick={onOpenAddPayment}
-            className="py-3 px-3.5 rounded-2xl bg-[#F8F2EC] hover:bg-[#DDD3C7]/35 border border-[#DDD3C7]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
+            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/25 text-[#0F1206] border border-[#0F1206]/40 flex items-center justify-center shrink-0 group-hover:bg-[#0F1206] group-hover:text-[#F8F2EC] transition-colors shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#0F2A4A]/40 flex items-center justify-center shrink-0 group-hover:bg-[#0F2A4A] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
               <DollarSign className="w-4 h-4" />
             </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F1206] group-hover:text-[#0F1206] transition-colors truncate">
+            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#0F2A4A] transition-colors truncate">
               {t('recordPayment')}
             </span>
           </button>
@@ -933,50 +933,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#DDD3C7]/25 text-[#293828] flex items-center justify-center font-bold shadow-2xs border border-[#DDD3C7]/50">
+            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] flex items-center justify-center font-bold shadow-2xs border border-[#E1EBEC]/50">
               <Clock className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black text-[#0F1206]">
+              <h2 className="text-sm sm:text-base font-black text-[#0F2A4A]">
                 {isEn ? `Today's Sessions (${scheduledToday.length})` : `حصص اليوم الدراسي (${scheduledToday.length})`}
               </h2>
             </div>
           </div>
           <button
             onClick={() => onNavigateToTab('sessions')}
-            className="text-xs font-bold text-[#293828] hover:text-[#0F1206] flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-[#17375E] hover:text-[#0F2A4A] flex items-center gap-1 cursor-pointer"
           >
             <span>{t('sessionsTitle')}</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-[#293828]" />
+            <ArrowUpRight className="w-3.5 h-3.5 text-[#17375E]" />
           </button>
         </div>
 
         {/* Today's Private Lessons Summary Banner (Feature 1) */}
         {todayPrivateStudentsSummary.length > 0 && (
-          <div className="p-3.5 bg-gradient-to-r from-[#F8F2EC] to-[#DDD3C7]/60 rounded-2xl border border-[#293828]/50 space-y-2.5 shadow-2xs">
+          <div className="p-3.5 bg-gradient-to-r from-[#FFFFFF] to-[#E1EBEC]/60 rounded-2xl border border-[#17375E]/50 space-y-2.5 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#0F1206]" />
+              <span className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#0F2A4A]" />
                 <span>{isEn ? "Today's Private Lessons Summary" : 'ملخص الدروس الخاصة لليوم'}</span>
               </span>
-              <span className="text-[10px] font-black text-[#293828] bg-[#F8F2EC] px-2 py-0.5 rounded-full border border-[#DDD3C7]">
+              <span className="text-[10px] font-black text-[#17375E] bg-[#FFFFFF] px-2 py-0.5 rounded-full border border-[#E1EBEC]">
                 {todayPrivateStudentsSummary.length} {isEn ? 'Students' : 'طلاب'}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {todayPrivateStudentsSummary.map((summary) => (
-                <div key={summary.studentId} className="p-2.5 rounded-xl bg-[#F8F2EC] border border-[#DDD3C7] text-xs space-y-1 shadow-2xs">
-                  <div className="flex items-center justify-between font-black text-[#0F1206]">
+                <div key={summary.studentId} className="p-2.5 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between font-black text-[#0F2A4A]">
                     <span className="truncate">{summary.studentName}</span>
-                    <span className="text-[#293828] shrink-0 font-black">{summary.totalUnitsOrHoursText}</span>
+                    <span className="text-[#17375E] shrink-0 font-black">{summary.totalUnitsOrHoursText}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-[#756046]">
+                  <div className="flex items-center justify-between text-[11px] text-[#5F7083]">
                     <span>{isEn ? `${summary.recordedSessionsCount} appointment(s)` : `${summary.recordedSessionsCount} موعد مسجل`}</span>
-                    <strong className="text-[#0F1206] font-black">{summary.totalValue} {t('currency')}</strong>
+                    <strong className="text-[#0F2A4A] font-black">{summary.totalValue} {t('currency')}</strong>
                   </div>
                   {summary.hasIncomplete && (
-                    <div className="pt-1 text-[10px] font-black text-[#0F1206] flex items-center gap-1">
+                    <div className="pt-1 text-[10px] font-black text-[#0F2A4A] flex items-center gap-1">
                       <span>⚠️</span>
                       <span>{isEn ? 'Incomplete session details' : 'حصة غير مكتملة التفاصيل'}</span>
                     </div>
@@ -988,23 +988,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
 
         {allTodayDisplayItems.length === 0 ? (
-          <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-[#DDD3C7]/15">
+          <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-[#E1EBEC]/15">
             <div className="w-28 h-28 flex items-center justify-center">
               <ClassyOwlMascot size="lg" pose="waving" glow={true} />
             </div>
             <div className="max-w-md space-y-1">
-              <h3 className="font-black text-[#0F1206] text-sm sm:text-base">
+              <h3 className="font-black text-[#0F2A4A] text-sm sm:text-base">
                 {isEn ? 'No sessions scheduled for today!' : 'لا توجد حصص مجدولة لليوم!'}
               </h3>
-              <p className="text-xs text-[#756046] font-medium leading-relaxed">
+              <p className="text-xs text-[#5F7083] font-medium leading-relaxed">
                 {isEn ? 'Enjoy your calm day or schedule a new teaching session now.' : 'استمتع بيومك الهادئ أو قم بجدولة حصة تدريسية جديدة الآن بضغطة زر.'}
               </p>
             </div>
             <button
               onClick={onOpenAddSession}
-              className="mt-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+              className="mt-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-[#F8F2EC]" />
+              <Plus className="w-4 h-4 text-[#FFFFFF]" />
               <span>{isEn ? "Add Today's Session" : 'إضافة حصة اليوم'}</span>
             </button>
           </div>
@@ -1026,17 +1026,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`classy-card overflow-hidden transition-all bg-[#F8F2EC] ${
-                    isRecorded ? 'border-[#293828]/60 bg-gradient-to-r from-[#DDD3C7]/45 to-[#F8F2EC]' : 'hover:border-[#293828]/50'
+                  className={`classy-card overflow-hidden transition-all bg-[#FFFFFF] ${
+                    isRecorded ? 'border-[#17375E]/60 bg-gradient-to-r from-[#E1EBEC]/45 to-[#FFFFFF]' : 'hover:border-[#17375E]/50'
                   }`}
                 >
                   <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Time slot pill */}
-                      <div className="px-3 py-1.5 rounded-2xl bg-[#DDD3C7]/15 border border-[#DDD3C7] text-center shrink-0 min-w-[66px]">
-                        <span className="text-xs font-black text-[#0F1206] block leading-tight">{item.time}</span>
+                      <div className="px-3 py-1.5 rounded-2xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-center shrink-0 min-w-[66px]">
+                        <span className="text-xs font-black text-[#0F2A4A] block leading-tight">{item.time}</span>
                         <span className={`text-[9px] font-extrabold block mt-0.5 px-2 py-0.2 rounded-full ${
-                          item.isPrivate ? 'bg-[#0F1206]/15 text-[#0F1206]' : 'bg-[#DDD3C7]/25 text-[#0F1206]'
+                          item.isPrivate ? 'bg-[#0F2A4A]/15 text-[#0F2A4A]' : 'bg-[#E1EBEC]/25 text-[#0F2A4A]'
                         }`}>
                           {item.isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
                         </span>
@@ -1046,14 +1046,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div className="flex items-center gap-2">
                           <span
                             className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
-                            style={{ backgroundColor: item.accentColor || '#293828' }}
+                            style={{ backgroundColor: item.accentColor || '#17375E' }}
                           />
-                          <h3 className="font-black text-xs sm:text-sm text-[#0F1206] truncate">
+                          <h3 className="font-black text-xs sm:text-sm text-[#0F2A4A] truncate">
                             {item.isPrivate ? (item.studentName || (isEn ? 'Private Lesson' : 'درس خاص')) : item.groupName}
                           </h3>
                         </div>
 
-                        <div className="flex items-center gap-2 text-[11px] text-[#756046] flex-wrap font-medium">
+                        <div className="flex items-center gap-2 text-[11px] text-[#5F7083] flex-wrap font-medium">
                           <span>{item.isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (item.subject || (isEn ? 'General' : 'عام'))}</span>
                           {!item.isPrivate && (
                             <>
@@ -1090,7 +1090,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
-                                  className="px-2.5 py-1 rounded-xl bg-[#DDD3C7]/25 text-[#0F1206] border border-[#0F1206] text-[10px] font-black flex items-center gap-1 cursor-pointer hover:bg-[#293828]/30 transition-all shadow-2xs animate-pulse"
+                                  className="px-2.5 py-1 rounded-xl bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#0F2A4A] text-[10px] font-black flex items-center gap-1 cursor-pointer hover:bg-[#17375E]/30 transition-all shadow-2xs animate-pulse"
                                   title={isEn ? 'Click to complete session details' : 'اضغط لاستكمال تفاصيل الدرس'}
                                 >
                                   <span>⚠️</span>
@@ -1103,12 +1103,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <div className="flex items-center gap-1">
                                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs ${
                                   presentCount > 0
-                                    ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] border border-[#293828]'
-                                    : 'bg-[#293828]/10 text-[#293828] border border-[#293828]/30'
+                                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border border-[#17375E]'
+                                    : 'bg-[#17375E]/10 text-[#17375E] border border-[#17375E]/30'
                                 }`}>
                                   {presentCount > 0 ? (
                                     <>
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
                                       <span>
                                         {firstAtt?.hours
                                           ? `${firstAtt.hours} ${isEn ? 'hrs' : 'ساعة'}`
@@ -1123,7 +1123,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
-                                    className="p-1.5 rounded-lg bg-[#DDD3C7]/15 border border-[#DDD3C7] text-[#293828] hover:bg-[#DDD3C7]/35 transition-colors cursor-pointer"
+                                    className="p-1.5 rounded-lg bg-[#E1EBEC]/15 border border-[#E1EBEC] text-[#17375E] hover:bg-[#E1EBEC]/35 transition-colors cursor-pointer"
                                     title={isEn ? 'Edit Intake' : 'تعديل التفاصيل'}
                                   >
                                     <Edit3 className="w-3 h-3" />
@@ -1133,8 +1133,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             );
                           })()
                         ) : (
-                          <span className="text-[10px] font-bold bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] border border-[#293828] px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                          <span className="text-[10px] font-bold bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border border-[#17375E] px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
                             <span>{isEn ? 'Present' : 'حاضر'} {presentCount}/{groupStudents.length}</span>
                           </span>
                         )
@@ -1142,10 +1142,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleMarkAllPresent(item)}
-                          className="min-h-[34px] px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                          className="min-h-[34px] px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                           title={item.isPrivate ? (isEn ? 'Record attendance' : 'تسجيل حضور الطالب') : (isEn ? 'Mark all present' : 'تسجيل حضور جميع الطلاب دفعة واحدة')}
                         >
-                          <UserCheck className="w-3.5 h-3.5 text-[#F8F2EC]" />
+                          <UserCheck className="w-3.5 h-3.5 text-[#FFFFFF]" />
                           <span>{item.isPrivate ? (isEn ? 'Attended' : 'حضر') : (isEn ? 'All Present' : 'حضور الكل')}</span>
                         </button>
                       )}
@@ -1154,7 +1154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setExpandedAttendanceCardId(isExpanded ? null : item.id)}
-                        className="p-1.5 rounded-xl bg-[#DDD3C7]/15 hover:bg-[#DDD3C7]/35 border border-[#DDD3C7]/50 text-[#0F1206] transition-colors cursor-pointer"
+                        className="p-1.5 rounded-xl bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 text-[#0F2A4A] transition-colors cursor-pointer"
                         title={isEn ? 'Details & individual marking' : 'تفاصيل ورصد فردي'}
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1164,8 +1164,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                   {/* Expanded Student List */}
                   {isExpanded && (
-                    <div className="p-3 bg-[#DDD3C7]/15 border-t border-[#DDD3C7] space-y-2 animate-in slide-in-from-top-1 duration-150">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-[#756046] mb-1">
+                    <div className="p-3 bg-[#E1EBEC]/15 border-t border-[#E1EBEC] space-y-2 animate-in slide-in-from-top-1 duration-150">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-[#5F7083] mb-1">
                         <span>{isEn ? `Students List (${groupStudents.length})` : `قائمة الطلاب (${groupStudents.length})`}</span>
                         <span>{isEn ? 'Direct Individual Marking' : 'رصد فردي مباشر'}</span>
                       </div>
@@ -1178,9 +1178,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           return (
                             <div
                               key={st.id}
-                              className="p-2.5 bg-[#F8F2EC] rounded-2xl border border-[#DDD3C7] flex items-center justify-between gap-2 shadow-2xs"
+                              className="p-2.5 bg-[#FFFFFF] rounded-2xl border border-[#E1EBEC] flex items-center justify-between gap-2 shadow-2xs"
                             >
-                              <span className="font-bold text-xs text-[#0F1206] truncate min-w-0">
+                              <span className="font-bold text-xs text-[#0F2A4A] truncate min-w-0">
                                 {st.name}
                               </span>
 
@@ -1190,11 +1190,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'present', true)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
                                     stStatus === 'present'
-                                      ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-2xs'
-                                      : 'bg-[#DDD3C7]/15 text-[#756046] hover:bg-[#DDD3C7]/35 hover:text-[#0F1206]'
+                                      ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
+                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
                                   }`}
                                 >
-                                  {stStatus === 'present' && <CheckCircle2 className="w-3 h-3 text-[#F8F2EC]" />}
+                                  {stStatus === 'present' && <CheckCircle2 className="w-3 h-3 text-[#FFFFFF]" />}
                                   <span>{isEn ? 'Present' : 'حاضر'}</span>
                                 </button>
 
@@ -1203,8 +1203,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_charged', true)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
                                     stStatus === 'absent_charged' || (stStatus === 'absent' && currentRecord?.isCharged !== false)
-                                      ? 'bg-[#293828] text-[#F8F2EC] shadow-2xs'
-                                      : 'bg-[#DDD3C7]/15 text-[#756046] hover:bg-[#293828]/15 hover:text-[#293828]'
+                                      ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
+                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#17375E]/15 hover:text-[#17375E]'
                                   }`}
                                 >
                                   {isEn ? 'Absent (Paid)' : 'غياب محسوب'}
@@ -1215,8 +1215,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_free', false)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
                                     stStatus === 'absent_free' || stStatus === 'excused' || (stStatus === 'absent' && currentRecord?.isCharged === false)
-                                      ? 'bg-[#756046] text-[#F8F2EC] shadow-2xs'
-                                      : 'bg-[#DDD3C7]/15 text-[#756046] hover:bg-[#DDD3C7]/35'
+                                      ? 'bg-[#5F7083] text-[#FFFFFF] shadow-2xs'
+                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35'
                                   }`}
                                 >
                                   {isEn ? 'Excused' : 'معتذر'}
@@ -1227,8 +1227,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   onClick={() => handleQuickStudentAttendance(item, st.id, 'late', true)}
                                   className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
                                     stStatus === 'late'
-                                      ? 'bg-[#0F1206] text-[#F8F2EC] shadow-2xs'
-                                      : 'bg-[#DDD3C7]/15 text-[#756046] hover:bg-[#0F1206]/15 hover:text-[#0F1206]'
+                                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
+                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#0F2A4A]/15 hover:text-[#0F2A4A]'
                                   }`}
                                 >
                                   {isEn ? 'Late' : 'متأخر'}
@@ -1244,10 +1244,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onOpenAttendanceModal(matchingSession)}
-                            className="text-[11px] font-bold text-[#293828] hover:text-[#0F1206] hover:underline flex items-center gap-1 cursor-pointer"
+                            className="text-[11px] font-bold text-[#17375E] hover:text-[#0F2A4A] hover:underline flex items-center gap-1 cursor-pointer"
                           >
                             <span>{isEn ? 'Open Full Attendance Modal' : 'فتح نافذة الحضور الشاملة'}</span>
-                            <ArrowUpRight className="w-3.5 h-3.5 text-[#293828]" />
+                            <ArrowUpRight className="w-3.5 h-3.5 text-[#17375E]" />
                           </button>
                         </div>
                       )}

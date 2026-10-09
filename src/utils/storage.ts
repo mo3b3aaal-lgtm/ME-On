@@ -1621,7 +1621,7 @@ export function formatSyncStatusArabic(
         label: isEn
           ? 'Deferred - Cannot reach Cloud Server (Data saved safely locally)'
           : 'مؤجل - تعذر الوصول للسيرفر السحابي (البيانات محفوظة محلياً)',
-        badgeClass: 'bg-[#0F1206]/12 text-[#0F1206] border border-[#0F1206]/30',
+        badgeClass: 'bg-[#0F2A4A]/12 text-[#0F2A4A] border border-[#0F2A4A]/30',
         iconType: 'offline',
       };
     }
@@ -1629,7 +1629,7 @@ export function formatSyncStatusArabic(
       label: isEn
         ? 'Deferred - No Internet connection (Data saved safely locally)'
         : 'مؤجل - لا يوجد اتصال بالإنترنت (البيانات محفوظة محلياً)',
-      badgeClass: 'bg-[#0F1206]/12 text-[#0F1206] border border-[#0F1206]/30',
+      badgeClass: 'bg-[#0F2A4A]/12 text-[#0F2A4A] border border-[#0F2A4A]/30',
       iconType: 'offline',
     };
   }
@@ -1638,26 +1638,26 @@ export function formatSyncStatusArabic(
     case 'syncing':
       return {
         label: isEn ? 'Syncing data with cloud...' : 'جاري مزامنة البيانات مع السحابة...',
-        badgeClass: 'bg-[#293828]/12 text-[#293828] border border-[#293828]/30',
+        badgeClass: 'bg-[#17375E]/12 text-[#17375E] border border-[#17375E]/30',
         iconType: 'syncing',
       };
     case 'success':
     case 'idle':
       return {
         label: isEn ? 'Synced & Ready (All data secured on Cloud)' : 'متزامن وجاهز (جميع البيانات مؤمنة بالسحابة)',
-        badgeClass: 'bg-[#293828]/10 text-[#293828] border border-[#293828]/25',
+        badgeClass: 'bg-[#17375E]/10 text-[#17375E] border border-[#17375E]/25',
         iconType: 'success',
       };
     case 'error':
       return {
         label: isEn ? 'Last sync failed (Data preserved locally)' : 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
-        badgeClass: 'bg-[#0F1206]/15 text-[#0F1206] border border-[#0F1206]/35',
+        badgeClass: 'bg-[#0F2A4A]/15 text-[#0F2A4A] border border-[#0F2A4A]/35',
         iconType: 'error',
       };
     default:
       return {
         label: isEn ? 'Synced & Ready' : 'متزامن وجاهز',
-        badgeClass: 'bg-[#DDD3C7]/25 text-[#0F1206] border border-[#DDD3C7]',
+        badgeClass: 'bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#E1EBEC]',
         iconType: 'idle',
       };
   }
@@ -1727,9 +1727,9 @@ export function calculateCustomEnrollmentPrice(
 
 // ==========================================
 // Database Engine API
-const ALLOWED_LUXURY_HEX = ['#293828', '#0F1206', '#756046'];
+const ALLOWED_LUXURY_HEX = ['#17375E', '#0F2A4A', '#5F7083'];
 
-function normalizeLuxuryAccentColor(color: string | undefined, idSeed: string, fallback = '#293828'): string {
+function normalizeLuxuryAccentColor(color: string | undefined, idSeed: string, fallback = '#17375E'): string {
   if (!color) return fallback;
   const upper = color.toUpperCase();
   if (ALLOWED_LUXURY_HEX.includes(upper)) return upper;
@@ -1751,7 +1751,7 @@ export const db = {
       .filter((s) => (s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher'))
       .map((s) => ({
         ...s,
-        avatarColor: normalizeLuxuryAccentColor(s.avatarColor, s.id, '#293828'),
+        avatarColor: normalizeLuxuryAccentColor(s.avatarColor, s.id, '#17375E'),
       }));
   },
 
@@ -1917,7 +1917,7 @@ export const db = {
       .filter((g) => (g.userId ? g.userId === currentUserId : currentUserId === 'acc_master_teacher'))
       .map((g) => ({
         ...g,
-        accentColor: normalizeLuxuryAccentColor(g.accentColor, g.id, g.type === 'private' ? '#0F1206' : '#293828'),
+        accentColor: normalizeLuxuryAccentColor(g.accentColor, g.id, g.type === 'private' ? '#0F2A4A' : '#17375E'),
       }));
   },
 
@@ -2107,7 +2107,7 @@ export const db = {
       scheduleTime: options.scheduleTime || '04:00 م',
       scheduleTimes: options.scheduleTimes,
       roomOrLocation: options.roomOrLocation || 'منزل الطالب / أونلاين',
-      accentColor: '#0F1206', // Navy accent for private lessons
+      accentColor: '#0F2A4A', // Navy accent for private lessons
       notes: options.notes || '',
       createdAt: new Date().toISOString(),
     };
@@ -3620,7 +3620,7 @@ export const db = {
     const group = db.getGroupById(enrollment.groupId);
     const groupName = group ? group.name : 'مجموعة محذوفة';
     const groupType = group ? group.type : enrollment.serviceType;
-    const accentColor = group ? group.accentColor : '#293828';
+    const accentColor = group ? group.accentColor : '#17375E';
 
     const allGroupSessions = db.getSessions().filter(
       (s) => s.groupId === enrollment.groupId || (s.enrollmentId && s.enrollmentId === enrollment.id)
@@ -4562,12 +4562,12 @@ export const db = {
       const groupBreakdown = initBreakdown();
       const privateBreakdown = initBreakdown();
       const methodStats: Record<string, { label: string; amount: number; count: number; color?: string }> = {
-        cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#293828' },
-        vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#0F1206' },
-        instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#756046' },
-        bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#293828' },
-        prepaid_auto: { label: 'دفع مسبق للحصص', amount: 0, count: 0, color: '#0F1206' },
-        other: { label: 'أخرى', amount: 0, count: 0, color: '#756046' },
+        cash: { label: 'كاش (نقداً)', amount: 0, count: 0, color: '#17375E' },
+        vodafone_cash: { label: 'فودافون كاش', amount: 0, count: 0, color: '#0F2A4A' },
+        instapay: { label: 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#5F7083' },
+        bank_transfer: { label: 'تحويل بنكي', amount: 0, count: 0, color: '#17375E' },
+        prepaid_auto: { label: 'دفع مسبق للحصص', amount: 0, count: 0, color: '#0F2A4A' },
+        other: { label: 'أخرى', amount: 0, count: 0, color: '#5F7083' },
       };
 
       let totalCompleted = 0;

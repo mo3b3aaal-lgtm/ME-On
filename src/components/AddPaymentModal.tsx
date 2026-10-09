@@ -196,22 +196,22 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     <ModalPortal>
       <div
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#293828]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Signature Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#293828] via-[#0F1206] to-[#756046] text-[#F8F2EC] flex items-center justify-between shrink-0 relative overflow-hidden">
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#F8F2EC]/15 backdrop-blur-md border border-[#DDD3C7]/25 text-[#F8F2EC] flex items-center justify-center shrink-0 shadow-sm">
-              <DollarSign className="w-5 h-5 text-[#F8F2EC]" />
+            <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 text-[#FFFFFF] flex items-center justify-center shrink-0 shadow-sm">
+              <DollarSign className="w-5 h-5 text-[#FFFFFF]" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-[#F8F2EC] tracking-tight truncate">
+              <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight truncate">
                 تسجيل دفعة مالية
               </h2>
-              <p className="text-xs text-[#DDD3C7]/85 font-medium truncate">
+              <p className="text-xs text-[#E1EBEC]/85 font-medium truncate">
                 {selectedStudent ? `للطالب: ${selectedStudent.name}` : 'سداد الاشتراكات وتجديد رصيد الحصص'}
               </p>
             </div>
@@ -220,20 +220,20 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-2xl bg-[#F8F2EC]/10 hover:bg-[#F8F2EC]/20 text-[#F8F2EC] border border-[#DDD3C7]/20 transition-all cursor-pointer relative z-10 active:scale-95"
+            className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Form Body */}
-        <form id="add-payment-form" onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto overscroll-contain android-scrollbar flex-1 space-y-4 text-xs text-[#0F1206]">
+        <form id="add-payment-form" onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto overscroll-contain android-scrollbar flex-1 space-y-4 text-xs text-[#0F2A4A]">
           
           {/* 1. Student Picker (if not fixed) */}
           {!targetStudent && (
             <div className="classy-card p-3.5 space-y-2">
-              <label className="font-black text-xs text-[#0F1206] flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#293828]" />
+              <label className="font-black text-xs text-[#0F2A4A] flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#17375E]" />
                 <span>اختر الطالب المستهدف:</span>
               </label>
               <select
@@ -254,11 +254,11 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           {studentEnrollments.length > 0 ? (
             <div className="classy-card p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="font-black text-xs text-[#0F1206] flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#293828]" />
+                <label className="font-black text-xs text-[#0F2A4A] flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#17375E]" />
                   <span>الاشتراك المستهدف للسداد:</span>
                 </label>
-                <span className="text-[10px] text-[#756046] font-bold">ذمة مالية مستقلة</span>
+                <span className="text-[10px] text-[#5F7083] font-bold">ذمة مالية مستقلة</span>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -272,29 +272,29 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                       onClick={() => setSelectedEnrollmentId(enr.id)}
                       className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between cursor-pointer ${
                         isSelected
-                          ? 'bg-[#DDD3C7]/40 border-[#293828] ring-2 ring-[#293828]/20 shadow-sm'
-                          : 'bg-[#DDD3C7]/15 border-[#DDD3C7] hover:bg-[#F8F2EC]'
+                          ? 'bg-[#E1EBEC]/40 border-[#17375E] ring-2 ring-[#17375E]/20 shadow-sm'
+                          : 'bg-[#E1EBEC]/15 border-[#E1EBEC] hover:bg-[#FFFFFF]'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-black text-[#0F1206] text-xs truncate">{grp?.name || 'مجموعة'}</span>
+                        <span className="font-black text-[#0F2A4A] text-xs truncate">{grp?.name || 'مجموعة'}</span>
                         <span
                           className="text-[10px] font-black px-2 py-0.5 rounded-full"
                           style={{
-                            backgroundColor: `${grp?.accentColor || '#293828'}18`,
-                            color: grp?.accentColor || '#293828',
+                            backgroundColor: `${grp?.accentColor || '#17375E'}18`,
+                            color: grp?.accentColor || '#17375E',
                           }}
                         >
                           {enr.serviceType === 'private' ? 'درس خاص' : 'مجموعة'}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#DDD3C7] text-[11px]">
-                        <span className="text-[#756046] font-medium">
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#E1EBEC] text-[11px]">
+                        <span className="text-[#5F7083] font-medium">
                           {getBillingModeLabel(enr.billingType, enr.billingMode)}:
-                          <strong className="text-[#0F1206] font-bold mr-1">{enr.customPrice} ج</strong>
+                          <strong className="text-[#0F2A4A] font-bold mr-1">{enr.customPrice} ج</strong>
                         </span>
-                        <span className="text-[#293828] font-black">
+                        <span className="text-[#17375E] font-black">
                           رصيد: {enr.sessionCredit || 0} حصص
                         </span>
                       </div>
@@ -304,7 +304,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-[#DDD3C7]/15 text-[#0F1206] rounded-2xl border border-[#DDD3C7] flex items-center gap-2 font-bold text-xs">
+            <div className="p-3 bg-[#E1EBEC]/15 text-[#0F2A4A] rounded-2xl border border-[#E1EBEC] flex items-center gap-2 font-bold text-xs">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span>هذا الطالب غير مسجل في أي مجموعة حالياً. يرجى إضافته لمجموعة أولاً.</span>
             </div>
@@ -313,23 +313,23 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           {/* 3. Payment Target Type Selector (4 Types) */}
           <div className="classy-card p-3.5 space-y-2.5">
             <div className="flex items-center justify-between">
-              <label className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
-                <Coins className="w-4 h-4 text-[#293828]" />
+              <label className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
+                <Coins className="w-4 h-4 text-[#17375E]" />
                 <span>نوع السداد:</span>
               </label>
-              <span className="text-[11px] text-[#293828] font-black bg-[#DDD3C7]/25 px-2 py-0.5 rounded-lg">
+              <span className="text-[11px] text-[#17375E] font-black bg-[#E1EBEC]/25 px-2 py-0.5 rounded-lg">
                 سعر الحصة: {sessionUnitPrice} ج.م
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-2xl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl">
               <button
                 type="button"
                 onClick={() => setPaymentType('specific_month')}
                 className={`py-2 px-1 rounded-xl text-center font-black transition-all text-xs cursor-pointer ${
                   paymentType === 'specific_month'
-                    ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-xs'
-                    : 'text-[#756046] hover:bg-[#DDD3C7]/35'
+                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
+                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
                 }`}
               >
                 شهر معين
@@ -340,8 +340,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 onClick={() => setPaymentType('single_session')}
                 className={`py-2 px-1 rounded-xl text-center font-black transition-all text-xs cursor-pointer ${
                   paymentType === 'single_session'
-                    ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-xs'
-                    : 'text-[#756046] hover:bg-[#DDD3C7]/35'
+                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
+                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
                 }`}
               >
                 حصة واحدة
@@ -352,8 +352,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 onClick={() => setPaymentType('session_count')}
                 className={`py-2 px-1 rounded-xl text-center font-black transition-all text-xs cursor-pointer ${
                   paymentType === 'session_count'
-                    ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-xs'
-                    : 'text-[#756046] hover:bg-[#DDD3C7]/35'
+                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
+                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
                 }`}
               >
                 عدد حصص
@@ -364,8 +364,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 onClick={() => setPaymentType('custom_amount')}
                 className={`py-2 px-1 rounded-xl text-center font-black transition-all text-xs cursor-pointer ${
                   paymentType === 'custom_amount'
-                    ? 'bg-gradient-to-r from-[#293828] to-[#0F1206] text-[#F8F2EC] shadow-xs'
-                    : 'text-[#756046] hover:bg-[#DDD3C7]/35'
+                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
+                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
                 }`}
               >
                 مبلغ مالي
@@ -377,7 +377,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           {paymentType === 'specific_month' && (
             <div className="classy-card p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-black text-[#0F1206] text-xs">حدد الشهر والسنة المستهدفة:</span>
+                <span className="font-black text-[#0F2A4A] text-xs">حدد الشهر والسنة المستهدفة:</span>
                 <div className="flex items-center gap-2">
                   <select
                     value={targetMonth}
@@ -406,25 +406,25 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
               </div>
 
               {/* Month Financial Status Card */}
-              <div className="p-3 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] grid grid-cols-3 gap-2 text-center text-[11px]">
+              <div className="p-3 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] grid grid-cols-3 gap-2 text-center text-[11px]">
                 <div>
-                  <p className="text-[#756046] font-bold">قيمة الشهر</p>
-                  <p className="font-black text-xs sm:text-sm text-[#0F1206] mt-0.5">{monthTotalRequired} ج</p>
+                  <p className="text-[#5F7083] font-bold">قيمة الشهر</p>
+                  <p className="font-black text-xs sm:text-sm text-[#0F2A4A] mt-0.5">{monthTotalRequired} ج</p>
                 </div>
                 <div>
-                  <p className="text-[#756046] font-bold">المدفوع سابقاً</p>
-                  <p className="font-black text-xs sm:text-sm text-[#293828] mt-0.5">{monthPaidSoFar} ج</p>
+                  <p className="text-[#5F7083] font-bold">المدفوع سابقاً</p>
+                  <p className="font-black text-xs sm:text-sm text-[#17375E] mt-0.5">{monthPaidSoFar} ج</p>
                 </div>
                 <div>
-                  <p className="text-[#756046] font-bold">المتبقي</p>
-                  <p className={`font-black text-xs sm:text-sm mt-0.5 ${monthRemaining > 0 ? 'text-[#0F1206]' : 'text-[#293828]'}`}>
+                  <p className="text-[#5F7083] font-bold">المتبقي</p>
+                  <p className={`font-black text-xs sm:text-sm mt-0.5 ${monthRemaining > 0 ? 'text-[#0F2A4A]' : 'text-[#17375E]'}`}>
                     {monthRemaining} ج
                   </p>
                 </div>
               </div>
 
-              <div className="text-[11px] text-[#293828] font-medium flex items-center gap-1.5 bg-[#DDD3C7]/40 p-2.5 rounded-xl border border-[#DDD3C7]">
-                <Info className="w-4 h-4 text-[#293828] shrink-0" />
+              <div className="text-[11px] text-[#17375E] font-medium flex items-center gap-1.5 bg-[#E1EBEC]/40 p-2.5 rounded-xl border border-[#E1EBEC]">
+                <Info className="w-4 h-4 text-[#17375E] shrink-0" />
                 <span>يدعم النظام الدفع على دفعات؛ يمكنك سداد جزء من المبلغ الآن وإكمال الباقي لاحقاً.</span>
               </div>
             </div>
@@ -434,10 +434,10 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           {paymentType === 'single_session' && (
             <div className="classy-card p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-black text-[#0F1206] text-xs">سداد حصة واحدة:</span>
-                <span className="font-black text-sm text-[#293828]">{sessionUnitPrice} ج.م</span>
+                <span className="font-black text-[#0F2A4A] text-xs">سداد حصة واحدة:</span>
+                <span className="font-black text-sm text-[#17375E]">{sessionUnitPrice} ج.م</span>
               </div>
-              <p className="text-[11px] text-[#756046] font-medium">
+              <p className="text-[11px] text-[#5F7083] font-medium">
                 سيتم إضافة <strong>+١ حصة</strong> فوراً إلى رصيد حصص الطالب.
               </p>
             </div>
@@ -447,7 +447,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           {paymentType === 'session_count' && (
             <div className="classy-card p-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <label className="font-black text-[#0F1206] text-xs">عدد الحصص المطلوبة:</label>
+                <label className="font-black text-[#0F2A4A] text-xs">عدد الحصص المطلوبة:</label>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[4, 8, 10, 12, 16].map((cnt) => (
                     <button
@@ -456,8 +456,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                       onClick={() => setSessionCount(cnt)}
                       className={`px-2.5 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer ${
                         sessionCount === cnt
-                          ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-xs'
-                          : 'bg-[#DDD3C7]/15 text-[#756046] border-[#DDD3C7] hover:bg-[#DDD3C7]/35'
+                          ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
+                          : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
                       }`}
                     >
                       {cnt}
@@ -469,23 +469,23 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                       min="1"
                       value={sessionCount}
                       onChange={(e) => setSessionCount(Math.max(1, Number(e.target.value)))}
-                      className="w-14 p-1 text-center font-black bg-[#DDD3C7]/15 border border-[#DDD3C7] rounded-xl text-xs text-[#0F1206] focus:outline-none focus:border-[#293828]"
+                      className="w-14 p-1 text-center font-black bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] flex items-center justify-between">
-                <span className="text-[11px] text-[#756046] font-bold">
+              <div className="p-3 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex items-center justify-between">
+                <span className="text-[11px] text-[#5F7083] font-bold">
                   {sessionCount} حصص × {sessionUnitPrice} ج.م =
                 </span>
-                <span className="font-black text-sm sm:text-base text-[#0F1206]">
+                <span className="font-black text-sm sm:text-base text-[#0F2A4A]">
                   {multiplyMoney(sessionCount, sessionUnitPrice)} ج.م
                 </span>
               </div>
 
-              <p className="text-[11px] text-[#0F1206] font-medium flex items-center gap-1.5 bg-[#DDD3C7]/30 p-2 rounded-xl">
-                <CheckCircle2 className="w-4 h-4 text-[#293828] shrink-0" />
+              <p className="text-[11px] text-[#0F2A4A] font-medium flex items-center gap-1.5 bg-[#E1EBEC]/30 p-2 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-[#17375E] shrink-0" />
                 <span>
                   {activeEnrollment?.billingMode === 'postpaid' || activeEnrollment?.billingType === 'postpaid'
                     ? `سيتم تسوية الحصص المستحقة أولاً، والمبلغ الفائض يُضاف كرصيد حصص.`
@@ -498,7 +498,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           {/* --- DETAILS FOR TYPE 4: CUSTOM AMOUNT --- */}
           {paymentType === 'custom_amount' && (
             <div className="classy-card p-4 space-y-3">
-              <label className="font-black text-[#0F1206] text-xs block">أدخل المبلغ المدفوع:</label>
+              <label className="font-black text-[#0F2A4A] text-xs block">أدخل المبلغ المدفوع:</label>
               
               <div className="relative">
                 <input
@@ -510,28 +510,28 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   placeholder="مثال: 500 أو 250"
                   className="classy-input text-base font-black py-3 pr-4 pl-10"
                 />
-                <span className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-3.5 font-bold text-xs text-[#756046]`}>ج.م</span>
+                <span className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-3.5 font-bold text-xs text-[#5F7083]`}>ج.م</span>
               </div>
 
               {/* Dynamic breakdown preview */}
-              <div className="p-3 bg-[#DDD3C7]/15 rounded-2xl border border-[#DDD3C7] space-y-2 text-[11px]">
+              <div className="p-3 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] space-y-2 text-[11px]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[#756046] font-bold">عدد الحصص التي يغطيها المبلغ:</span>
-                  <strong className="text-xs sm:text-sm text-[#293828] font-black">
+                  <span className="text-[#5F7083] font-bold">عدد الحصص التي يغطيها المبلغ:</span>
+                  <strong className="text-xs sm:text-sm text-[#17375E] font-black">
                     +{coveredSessionsFromCustom} حصص
                   </strong>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-[#DDD3C7] pt-1.5">
-                  <span className="text-[#756046] font-bold">الرصيد المالي المتبقي (Financial Credit):</span>
-                  <strong className="text-xs text-[#0F1206] font-black">
+                <div className="flex items-center justify-between border-t border-[#E1EBEC] pt-1.5">
+                  <span className="text-[#5F7083] font-bold">الرصيد المالي المتبقي (Financial Credit):</span>
+                  <strong className="text-xs text-[#0F2A4A] font-black">
                     {remainderFromCustom} ج.م
                   </strong>
                 </div>
 
                 {potentialAutoConvertedSessions > 0 && (
-                  <div className="bg-[#DDD3C7]/50 p-2 rounded-xl text-[#0F1206] font-bold flex items-center gap-1.5 border border-[#DDD3C7]">
-                    <Sparkles className="w-4 h-4 text-[#293828] shrink-0" />
+                  <div className="bg-[#E1EBEC]/50 p-2 rounded-xl text-[#0F2A4A] font-bold flex items-center gap-1.5 border border-[#E1EBEC]">
+                    <Sparkles className="w-4 h-4 text-[#17375E] shrink-0" />
                     <span>
                       تراكم الرصيد المالي سيتحول تلقائياً إلى +{potentialAutoConvertedSessions} حصة إضافية!
                     </span>
@@ -544,8 +544,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           {/* Amount Confirmation Field */}
           <div className="classy-card p-3.5 space-y-2">
             <div className="flex items-center justify-between">
-              <label className="font-black text-xs text-[#0F1206]">المبلغ الإجمالي للدفع:</label>
-              <span className="text-sm sm:text-base font-black text-[#293828]">
+              <label className="font-black text-xs text-[#0F2A4A]">المبلغ الإجمالي للدفع:</label>
+              <span className="text-sm sm:text-base font-black text-[#17375E]">
                 {customAmountInput} ج.م
               </span>
             </div>
@@ -559,15 +559,15 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 onChange={(e) => setCustomAmountInput(Math.max(0, Number(e.target.value)))}
                 className="classy-input font-black text-sm py-2.5 pr-4 pl-10"
               />
-              <span className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-2.5 font-bold text-xs text-[#756046]`}>ج.م</span>
+              <span className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-2.5 font-bold text-xs text-[#5F7083]`}>ج.م</span>
             </div>
           </div>
 
           {/* Payment Method & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="classy-card p-3 space-y-1.5">
-              <label className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5 text-[#293828]" />
+              <label className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-[#17375E]" />
                 <span>طريقة الدفع:</span>
               </label>
               <select
@@ -584,8 +584,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
             </div>
 
             <div className="classy-card p-3 space-y-1.5">
-              <label className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#293828]" />
+              <label className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#17375E]" />
                 <span>تاريخ السداد:</span>
               </label>
               <input
@@ -599,8 +599,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
           {/* Notes & Reference */}
           <div className="classy-card p-3 space-y-1.5">
-            <label className="font-black text-xs text-[#0F1206] flex items-center gap-1.5">
-              <Receipt className="w-3.5 h-3.5 text-[#293828]" />
+            <label className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
+              <Receipt className="w-3.5 h-3.5 text-[#17375E]" />
               <span>ملاحظات أو رقم الإيصال / المعاملة:</span>
             </label>
             <input
@@ -613,9 +613,9 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           </div>
 
           {/* Summary Indicator */}
-          <div className="p-3 rounded-2xl bg-[#DDD3C7]/40 border border-[#DDD3C7] flex items-center justify-between text-xs">
-            <span className="text-[#756046] font-bold">الرصيد المالي الحالي للاشتراك:</span>
-            <span className="font-black text-[#0F1206]">
+          <div className="p-3 rounded-2xl bg-[#E1EBEC]/40 border border-[#E1EBEC] flex items-center justify-between text-xs">
+            <span className="text-[#5F7083] font-bold">الرصيد المالي الحالي للاشتراك:</span>
+            <span className="font-black text-[#0F2A4A]">
               {(activeEnrollment?.financialCredit || 0)} ج.م (Financial Credit)
             </span>
           </div>
@@ -623,7 +623,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
         </form>
 
         {/* Pinned Action Footer */}
-        <div className="p-4 bg-[#F8F2EC] border-t border-[#DDD3C7] flex items-center gap-2.5 shrink-0">
+        <div className="p-4 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}

@@ -151,24 +151,24 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
   return (
     <ModalPortal>
       <div
-        className="fixed inset-0 bg-[#0F1206]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#0F2A4A]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
         style={{ zIndex: modalLayer.zIndex }}
       >
         <div
           dir={isRtl ? 'rtl' : 'ltr'}
-          className="bg-[#F8F2EC] rounded-3xl shadow-2xl max-w-2xl w-full border border-[#DDD3C7]/60 overflow-hidden max-h-[90vh] flex flex-col"
+          className="bg-[#FFFFFF] rounded-3xl shadow-2xl max-w-2xl w-full border border-[#E1EBEC]/60 overflow-hidden max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="p-5 sm:p-6 bg-gradient-to-l from-[#293828]/10 via-[#293828]/10 to-transparent border-b border-[#DDD3C7] flex items-center justify-between gap-4">
+          <div className="p-5 sm:p-6 bg-gradient-to-l from-[#17375E]/10 via-[#17375E]/10 to-transparent border-b border-[#E1EBEC] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#293828] text-[#F8F2EC] flex items-center justify-center shadow-lg shadow-[#293828]/20">
-                <CalendarCheck2 className="w-6 h-6 text-[#F8F2EC]" />
+              <div className="w-12 h-12 rounded-2xl bg-[#17375E] text-[#FFFFFF] flex items-center justify-center shadow-lg shadow-[#17375E]/20">
+                <CalendarCheck2 className="w-6 h-6 text-[#FFFFFF]" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-black text-[#0F1206] flex items-center gap-2">
+                <h3 className="text-lg sm:text-xl font-black text-[#0F2A4A] flex items-center gap-2">
                   {isRtl ? 'إنشاء جدول حصص مجمع' : 'Bulk Schedule Sessions'}
                 </h3>
-                <p className="text-xs sm:text-sm text-[#756046]">
+                <p className="text-xs sm:text-sm text-[#5F7083]">
                   {isRtl
                     ? 'أنشئ جدول الحصص لشهر أو أكثر بضغطة واحدة لمجموعتك'
                     : 'Schedule recurring sessions across multiple weeks in one step'}
@@ -177,7 +177,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-[#756046] hover:text-[#0F1206] hover:bg-[#DDD3C7]/35 rounded-xl transition-colors"
+              className="p-2 text-[#5F7083] hover:text-[#0F2A4A] hover:bg-[#E1EBEC]/35 rounded-xl transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -187,14 +187,14 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
           <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5 custom-scrollbar">
             {result?.success ? (
               <div className="py-8 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-[#DDD3C7]/15 border border-[#293828]/50 text-[#293828] flex items-center justify-center mx-auto shadow-inner">
+                <div className="w-16 h-16 rounded-full bg-[#E1EBEC]/15 border border-[#17375E]/50 text-[#17375E] flex items-center justify-center mx-auto shadow-inner">
                   <CheckCircle2 className="w-9 h-9" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-black text-[#0F1206]">
+                  <h4 className="text-xl font-black text-[#0F2A4A]">
                     {isRtl ? 'تم إنشاء الحصص بنجاح!' : 'Sessions Created Successfully!'}
                   </h4>
-                  <p className="text-sm text-[#0F1206] mt-1">
+                  <p className="text-sm text-[#0F2A4A] mt-1">
                     {isRtl
                       ? `تمت إضافة ${result.count} حصة بنجاح إلى جدول المجموعة.`
                       : `Successfully scheduled ${result.count} sessions for this group.`}
@@ -203,7 +203,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                 <div className="pt-4 flex justify-center">
                   <button
                     onClick={onClose}
-                    className="px-6 py-2.5 bg-[#293828] hover:bg-[#0F1206] text-[#F8F2EC] rounded-xl font-bold shadow-md shadow-[#293828]/20 transition-all text-sm"
+                    className="px-6 py-2.5 bg-[#17375E] hover:bg-[#0F2A4A] text-[#FFFFFF] rounded-xl font-bold shadow-md shadow-[#17375E]/20 transition-all text-sm"
                   >
                     {t('confirm')}
                   </button>
@@ -212,7 +212,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 {result?.error && (
-                  <div className="p-4 rounded-2xl bg-[#293828]/10 border border-[#293828]/30 text-[#293828] text-xs flex items-center gap-2 font-bold">
+                  <div className="p-4 rounded-2xl bg-[#17375E]/10 border border-[#17375E]/30 text-[#17375E] text-xs flex items-center gap-2 font-bold">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{result.error}</span>
                   </div>
@@ -220,14 +220,14 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
                 {/* Group Selector */}
                 <div>
-                  <label className="block text-xs font-bold text-[#0F1206] mb-2">
-                    {t('groupName')} <span className="text-[#293828]">*</span>
+                  <label className="block text-xs font-bold text-[#0F2A4A] mb-2">
+                    {t('groupName')} <span className="text-[#17375E]">*</span>
                   </label>
                   <select
                     value={selectedGroupId}
                     onChange={(e) => setSelectedGroupId(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-xl border border-[#DDD3C7]/70 bg-[#DDD3C7]/15 text-[#0F1206] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#293828]/30 focus:border-[#293828]"
+                    className="w-full px-4 py-3 rounded-xl border border-[#E1EBEC]/70 bg-[#E1EBEC]/15 text-[#0F2A4A] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#17375E]/30 focus:border-[#17375E]"
                   >
                     {groups.map((group) => (
                       <option key={group.id} value={group.id}>
@@ -240,25 +240,25 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                 {/* Start Date & Weeks Count */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-[#0F1206] mb-2">
-                      {isRtl ? 'تاريخ البداية' : 'Start Date'} <span className="text-[#293828]">*</span>
+                    <label className="block text-xs font-bold text-[#0F2A4A] mb-2">
+                      {isRtl ? 'تاريخ البداية' : 'Start Date'} <span className="text-[#17375E]">*</span>
                     </label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                       required
-                      className="w-full px-4 py-2.5 rounded-xl border border-[#DDD3C7]/70 bg-[#DDD3C7]/15 text-[#0F1206] text-sm focus:outline-none focus:ring-2 focus:ring-[#293828]/30 focus:border-[#293828] font-bold"
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#E1EBEC]/70 bg-[#E1EBEC]/15 text-[#0F2A4A] text-sm focus:outline-none focus:ring-2 focus:ring-[#17375E]/30 focus:border-[#17375E] font-bold"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#0F1206] mb-2">
-                      {isRtl ? 'عدد الأسابيع' : 'Duration (Weeks)'} <span className="text-[#293828]">*</span>
+                    <label className="block text-xs font-bold text-[#0F2A4A] mb-2">
+                      {isRtl ? 'عدد الأسابيع' : 'Duration (Weeks)'} <span className="text-[#17375E]">*</span>
                     </label>
                     <select
                       value={weeksCount}
                       onChange={(e) => setWeeksCount(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 rounded-xl border border-[#DDD3C7]/70 bg-[#DDD3C7]/15 text-[#0F1206] text-sm focus:outline-none focus:ring-2 focus:ring-[#293828]/30 focus:border-[#293828] font-bold"
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#E1EBEC]/70 bg-[#E1EBEC]/15 text-[#0F2A4A] text-sm focus:outline-none focus:ring-2 focus:ring-[#17375E]/30 focus:border-[#17375E] font-bold"
                     >
                       <option value={2}>{isRtl ? 'أسبوعان (2)' : '2 Weeks'}</option>
                       <option value={4}>{isRtl ? '4 أسابيع (شهر)' : '4 Weeks (1 Month)'}</option>
@@ -270,9 +270,9 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
                 {/* Days of week */}
                 <div>
-                  <label className="block text-xs font-bold text-[#0F1206] mb-2">
+                  <label className="block text-xs font-bold text-[#0F2A4A] mb-2">
                     {isRtl ? 'أيام الحصص الأسبوعية' : 'Session Days'}{' '}
-                    <span className="text-[#293828]">*</span>
+                    <span className="text-[#17375E]">*</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {daysOfWeek.map((day) => {
@@ -284,8 +284,8 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                           onClick={() => toggleDay(day.key)}
                           className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
                             isSelected
-                              ? 'bg-[#293828] text-[#F8F2EC] border-[#293828] shadow-sm shadow-[#293828]/25'
-                              : 'bg-[#DDD3C7]/15 text-[#0F1206] border-[#DDD3C7]/50 hover:bg-[#DDD3C7]/35'
+                              ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-sm shadow-[#17375E]/25'
+                              : 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC]/50 hover:bg-[#E1EBEC]/35'
                           }`}
                         >
                           {isSelected && <Check className="w-3.5 h-3.5" />}
@@ -299,18 +299,18 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                 {/* Time & Topic Prefix */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-[#0F1206] mb-2">
+                    <label className="block text-xs font-bold text-[#0F2A4A] mb-2">
                       {isRtl ? 'موعد الحصة' : 'Session Time'}
                     </label>
                     <input
                       type="time"
                       value={sessionTime}
                       onChange={(e) => setSessionTime(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-[#DDD3C7]/70 bg-[#DDD3C7]/15 text-[#0F1206] text-sm focus:outline-none focus:ring-2 focus:ring-[#293828]/30 focus:border-[#293828] font-bold"
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#E1EBEC]/70 bg-[#E1EBEC]/15 text-[#0F2A4A] text-sm focus:outline-none focus:ring-2 focus:ring-[#17375E]/30 focus:border-[#17375E] font-bold"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#0F1206] mb-2">
+                    <label className="block text-xs font-bold text-[#0F2A4A] mb-2">
                       {isRtl ? 'عنوان / موضوع الحصص (اختياري)' : 'Topic / Title Prefix (Optional)'}
                     </label>
                     <input
@@ -318,18 +318,18 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
                       placeholder={isRtl ? 'مثال: المراجعة النهائية' : 'e.g. Final Review'}
                       value={topicPrefix}
                       onChange={(e) => setTopicPrefix(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-[#DDD3C7]/70 bg-[#DDD3C7]/15 text-[#0F1206] text-sm focus:outline-none focus:ring-2 focus:ring-[#293828]/30 focus:border-[#293828]"
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#E1EBEC]/70 bg-[#E1EBEC]/15 text-[#0F2A4A] text-sm focus:outline-none focus:ring-2 focus:ring-[#17375E]/30 focus:border-[#17375E]"
                     />
                   </div>
                 </div>
 
                 {/* Preview count */}
-                <div className="p-4 rounded-2xl bg-[#DDD3C7]/50 border border-[#293828]/40 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[#0F1206] text-xs font-bold">
-                    <Sparkles className="w-4 h-4 text-[#F8F2EC]" />
+                <div className="p-4 rounded-2xl bg-[#E1EBEC]/50 border border-[#17375E]/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[#0F2A4A] text-xs font-bold">
+                    <Sparkles className="w-4 h-4 text-[#FFFFFF]" />
                     <span>{isRtl ? 'إجمالي الحصص المزمع إنشاؤها:' : 'Total sessions to schedule:'}</span>
                   </div>
-                  <span className="text-base font-black text-[#293828]">
+                  <span className="text-base font-black text-[#17375E]">
                     {previewDates.length} {isRtl ? 'حصة' : 'Sessions'}
                   </span>
                 </div>

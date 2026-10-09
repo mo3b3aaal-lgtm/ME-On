@@ -28,7 +28,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChan
   return (
     <nav
       aria-label="Bottom Navigation"
-      className="absolute bottom-[calc(12px+env(safe-area-inset-bottom,0px))] left-3 right-3 h-[68px] bg-[#F6EFE8] border border-[#DDD3C7] rounded-[28px] shadow-[0_6px_18px_rgba(41,56,40,0.07)] z-30 px-2 flex items-center justify-around select-none"
+      className="absolute bottom-[calc(12px+env(safe-area-inset-bottom,0px))] left-3 right-3 h-[68px] bg-[#FFFFFF] border border-[#E1EBEC] rounded-[28px] shadow-[0_6px_18px_rgba(23,55,94,0.07)] z-30 px-2 flex items-center justify-around select-none"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;
@@ -40,7 +40,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChan
             type="button"
             onClick={() => onTabChange(tab.id)}
             className={`flex flex-col items-center justify-center flex-1 min-h-[48px] min-w-[48px] py-1 cursor-pointer transition-colors ${
-              isActive ? 'text-[#293828]' : 'text-[#756046] hover:text-[#0F1206]'
+              isActive ? 'text-[#17375E]' : 'text-[#5F7083] hover:text-[#0F2A4A]'
             }`}
           >
             <Icon
@@ -50,7 +50,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChan
             />
             <span
               className={`text-[10.5px] mt-1 leading-none tracking-tight ${
-                isActive ? 'font-bold text-[#0F1206]' : 'font-medium text-[#756046]'
+                isActive ? 'font-bold text-[#0F2A4A]' : 'font-medium text-[#5F7083]'
               }`}
             >
               {tab.label}

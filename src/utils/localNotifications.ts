@@ -136,7 +136,7 @@ export async function createOrUpdateNotificationChannel(soundUri?: string): Prom
       sound: effectiveSound === 'default' ? undefined : effectiveSound,
       vibration: true,
       lights: true,
-      lightColor: '#293828',
+      lightColor: '#17375E',
     });
 
     if (typeof localStorage !== 'undefined') {
@@ -472,7 +472,7 @@ export async function scheduleDailyAttendanceReminder(
             allowWhileIdle: true,
           },
           smallIcon: 'ic_launcher',
-          iconColor: '#293828',
+          iconColor: '#17375E',
           extra: {
             type: 'daily_attendance_reminder',
             date: dateStrToday,
@@ -549,7 +549,7 @@ export async function sendTestAttendanceReminderNotification(
             allowWhileIdle: true,
           },
           smallIcon: 'ic_launcher',
-          iconColor: '#293828',
+          iconColor: '#17375E',
           extra: {
             type: 'daily_attendance_reminder',
             isTest: true,

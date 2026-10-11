@@ -1,34 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import {
-  X,
-  Layers,
-  Clock,
-  MapPin,
-  DollarSign,
-  Calendar,
-  GraduationCap,
-  Plus,
-  Trash2,
-  BookOpen,
-  Sparkles,
-  Check,
-  Zap,
-} from 'lucide-react';
 import { Group, GroupType, BillingType } from '../types';
-import { db, divideMoney } from '../utils/storage';
+import { db } from '../utils/storage';
 import { ALL_GRADE_LEVELS, STAGES_HIERARCHY, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
 import {
   CanonicalWeekday,
-  CANONICAL_WEEKDAYS,
-  normalizeWeekdayKey,
   normalizeScheduleDays,
   normalizeScheduleTimes,
   normalizeScheduleTimesList,
   getLocalizedWeekdayName,
-  getLocalizedSubjectName,
-  getLocalizedLocationName,
 } from '../utils/schedule';
 
 interface AddEditGroupModalProps {
@@ -37,12 +19,6 @@ interface AddEditGroupModalProps {
   editingGroup?: Group | null;
   onSaveComplete: (savedGroup: Group) => void;
 }
-
-const GROUP_COLORS = [
-  '#17375E', // Sapphire (Primary Blue)
-  '#0F2A4A', // Navy (Dark Blue)
-  '#5F7083', // Steel Grey (Secondary Neutral)
-];
 
 const WEEK_DAYS_CONFIG: { key: CanonicalWeekday; labelKey: string }[] = [
   { key: 'saturday', labelKey: 'daySat' },
@@ -83,7 +59,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
     friday: [],
   });
   const [roomOrLocation, setRoomOrLocation] = useState('');
-  const [accentColor, setAccentColor] = useState(GROUP_COLORS[0]);
+  const [accentColor, setAccentColor] = useState('navy');
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -109,7 +85,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       setScheduleTimes(normTimes);
 
       setRoomOrLocation(editingGroup.roomOrLocation || '');
-      setAccentColor(editingGroup.accentColor || GROUP_COLORS[0]);
+      setAccentColor(editingGroup.accentColor || 'navy');
       setNotes(editingGroup.notes || '');
     } else {
       setName('');
@@ -132,7 +108,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
         friday: [],
       });
       setRoomOrLocation('');
-      setAccentColor(GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)]);
+      setAccentColor('navy');
       setNotes('');
     }
   }, [editingGroup, isOpen]);
@@ -193,7 +169,6 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
     if (!name.trim() || !subject.trim()) return;
 
     if (billingType === 'package' && (!packageSessionsCount || packageSessionsCount <= 0)) {
-      alert(isEn ? 'Please enter a valid number of sessions for the package (>0)' : 'يرجى إدخال عدد حصص صحيح للباقة (أكبر من 0)');
       return;
     }
 
@@ -201,7 +176,6 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       ? editingGroup.id
       : `grp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
-    // Build clean canonical schedule times
     const cleanScheduleTimes: Record<string, string[]> = {};
     scheduleDays.forEach((d) => {
       const list = normalizeScheduleTimesList(scheduleTimes[d] || [scheduleTime || '16:00']);
@@ -222,7 +196,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       hourlyRate: billingType === 'hourly' ? Number(hourlyRate) || 0 : undefined,
       baseSessionsPerMonth: billingType === 'monthly' ? 8 : undefined,
       packageSessionsCount: billingType === 'package' ? Number(packageSessionsCount) || 10 : undefined,
-      scheduleDays: scheduleDays, // Saved as CanonicalWeekday[]
+      scheduleDays: scheduleDays,
       scheduleTime: primaryTime,
       scheduleTimes: cleanScheduleTimes,
       roomOrLocation: roomOrLocation.trim() || undefined,
@@ -237,384 +211,358 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
     onClose();
   };
 
-  const modalLayer = useModalLayer('add-edit-group', isOpen, onClose);
-
   if (!isOpen) return null;
 
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#FFFFFF] border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-          {/* Header */}
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden">
-            <div className="flex items-center gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 flex items-center justify-center text-[#FFFFFF] shadow-sm shrink-0">
-                {type === 'private' ? <Zap className="w-5 h-5 text-[#FFFFFF]" /> : <Layers className="w-5 h-5 text-[#FFFFFF]" />}
-              </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-black tracking-tight">
-                  {editingGroup
-                    ? (isEn ? 'Edit Group Information' : 'تعديل بيانات المجموعة')
-                    : (isEn ? 'Create New Study Group' : 'إنشاء مجموعة دراسية جديدة')}
-                </h2>
-                <p className="text-[11px] text-[#E1EBEC]/85 font-medium">
-                  {isEn
-                    ? 'Define group details, stage, weekly schedule, and tuition fees'
-                    : 'تحديد بيانات المجموعة، المرحلة، مواعيد الحصص، ونظام المحاسبة'}
-                </p>
-              </div>
+    <BottomSheet
+      id="add-edit-group"
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        editingGroup
+          ? (isEn ? 'Edit Group' : 'تعديل بيانات المجموعة')
+          : (isEn ? 'New Study Group' : 'إنشاء مجموعة دراسية جديدة')
+      }
+      subtitle={
+        isEn
+          ? 'Define group details, stage, weekly schedule, and tuition fees'
+          : 'تحديد بيانات المجموعة، المرحلة، مواعيد الحصص، ونظام المحاسبة'
+      }
+      headerLeading={
+        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name="groups" size={20} weight="duotone" />
+        </div>
+      }
+      headerTrailing={
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">
+          {type === 'private' ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
+        </span>
+      }
+      bodyClassName="p-4"
+      footer={
+        <div className="flex items-center justify-end gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-soft flex-1"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            type="submit"
+            form="add-group-form"
+            className="btn-orange flex-1"
+          >
+            <AppIcon name="check" size={16} weight="bold" />
+            <span>
+              {editingGroup
+                ? (isEn ? 'Save Group Changes' : 'حفظ تعديلات المجموعة')
+                : (isEn ? 'Create Group Now' : 'إنشاء المجموعة الآن')}
+            </span>
+          </button>
+        </div>
+      }
+    >
+      <form id="add-group-form" onSubmit={handleSubmit} className="space-y-4 text-xs text-navy text-start">
+        {/* Section 1: Basic Info */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+          <div className="space-y-1">
+            <label className="field-label">
+              {isEn ? 'Group Name *' : 'اسم المجموعة *'}
+            </label>
+            <div className="relative">
+              <AppIcon
+                name="book"
+                size={14}
+                className={`text-slate absolute top-4 ${isRTL ? 'right-3.5' : 'left-3.5'} pointer-events-none`}
+              />
+              <input
+                type="text"
+                required
+                placeholder={isEn ? 'e.g. Group A - Secondary 1' : 'مثال: مجموعة أوائل الثانوية (أ)'}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={`classy-input ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'}`}
+              />
             </div>
-
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] transition-colors cursor-pointer relative z-10"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
 
-          {/* Form Content */}
-          <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs bg-[#FFFFFF]">
-            {/* Section 1: Basic Info */}
-            <div className="classy-card p-4 space-y-3 bg-[#FFFFFF]">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-[#5F7083]">
-                  {isEn ? 'Group Name *' : 'اسم المجموعة *'}
-                </label>
-                <div className="relative">
-                  <BookOpen className={`w-4 h-4 text-[#5F7083] absolute top-2.5 ${isRTL ? 'right-3' : 'left-3'}`} />
-                  <input
-                    type="text"
-                    required
-                    placeholder={isEn ? 'e.g. Group A - Secondary 1' : 'مثال: مجموعة أوائل الثانوية (أ)'}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2 text-xs text-[#0F2A4A] font-black focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] transition-colors`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-[#5F7083]">
-                    {isEn ? 'Subject *' : 'المادة الدراسية *'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={isEn ? 'e.g. Mathematics, English, Physics' : 'مثال: رياضيات، لغة إنجليزية، فيزياء'}
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs text-[#0F2A4A] font-bold focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-[#5F7083]">
-                    {isEn ? 'Grade Level *' : 'المرحلة / الصف الدراسي *'}
-                  </label>
-                  <select
-                    value={gradeLevel}
-                    onChange={(e) => setGradeLevel(e.target.value)}
-                    className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs text-[#0F2A4A] font-bold focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] cursor-pointer"
-                  >
-                    {STAGES_HIERARCHY.map((stage) => (
-                      <optgroup key={stage.id} label={isEn ? stage.nameEn : stage.nameAr}>
-                        {stage.grades.map((grade) => (
-                          <option key={grade.id} value={grade.nameAr}>
-                            {isEn ? grade.nameEn : grade.nameAr}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Accent Color Picker */}
-              <div className="space-y-1.5 pt-1">
-                <label className="text-[11px] font-bold text-[#5F7083]">
-                  {isEn ? 'Group Theme Color' : 'اللون المميز للمجموعة'}
-                </label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {GROUP_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setAccentColor(c)}
-                      className={`w-7 h-7 rounded-xl transition-all cursor-pointer flex items-center justify-center ${
-                        accentColor === c ? 'scale-115 ring-2 ring-offset-2 ring-[#17375E]' : 'hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: c }}
-                    >
-                      {accentColor === c && <Check className="w-3.5 h-3.5 text-[#FFFFFF]" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Schedule & Multiple Times per Day */}
-            <div className="classy-card p-4 space-y-3.5 bg-[#FFFFFF]">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-[#17375E]" />
-                  <span>{isEn ? 'Weekly Schedule Days & Times' : 'أيام ومواعيد الحصص الأسبوعية'}</span>
-                </h3>
-                <span className="text-[10px] text-[#5F7083]">
-                  {isEn ? 'Multi-time slot support' : 'مواعيد متعددة في نفس اليوم'}
-                </span>
-              </div>
-
-              {/* Weekday Selection Chips */}
-              <div className="flex flex-wrap gap-1.5">
-                {WEEK_DAYS_CONFIG.map((dayItem) => {
-                  const isSelected = scheduleDays.includes(dayItem.key);
-                  const dayLabel = getLocalizedWeekdayName(dayItem.key, isRTL);
-                  return (
-                    <button
-                      key={dayItem.key}
-                      type="button"
-                      onClick={() => toggleDay(dayItem.key)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
-                        isSelected
-                          ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                          : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                      }`}
-                    >
-                      {dayLabel}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Multiple Time Slots per Selected Day */}
-              {scheduleDays.length > 0 && (
-                <div className="space-y-2.5 pt-2 border-t border-[#E1EBEC]">
-                  <div className="flex items-center justify-between text-[11px] text-[#5F7083] font-bold">
-                    <span>{isEn ? 'Time slots per day:' : 'توقيت الحصص لكل يوم:'}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const firstTime = scheduleTimes[scheduleDays[0]]?.[0] || scheduleTime || '16:00';
-                        applyTimeToAllDays(firstTime);
-                      }}
-                      className="text-[#17375E] hover:underline cursor-pointer text-[10px]"
-                    >
-                      {isEn ? 'Apply first time to all days' : 'تطبيق التوقيت الأول على كل الأيام'}
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {scheduleDays.map((dayKey) => {
-                      const dayTimesList = scheduleTimes[dayKey] && scheduleTimes[dayKey].length > 0
-                        ? scheduleTimes[dayKey]
-                        : [scheduleTime || '16:00'];
-                      const dayLabel = getLocalizedWeekdayName(dayKey, isRTL);
-
-                      return (
-                        <div key={dayKey} className="p-2.5 bg-[#E1EBEC]/15 rounded-xl border border-[#E1EBEC] space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-black text-xs text-[#0F2A4A]">{dayLabel}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleAddDayTime(dayKey)}
-                              className="px-2 py-0.5 rounded-lg bg-[#E1EBEC]/25 hover:bg-[#E1EBEC]/40 text-[#17375E] font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>{isEn ? '+ Extra Time' : '+ موعد إضافي'}</span>
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {dayTimesList.map((timeVal, tIdx) => (
-                              <div key={tIdx} className="flex items-center gap-1 bg-[#FFFFFF] p-1 rounded-lg border border-[#E1EBEC] shadow-2xs">
-                                <Clock className="w-3.5 h-3.5 text-[#17375E] mr-1" />
-                                <input
-                                  type="time"
-                                  value={timeVal}
-                                  onChange={(e) => handleDayTimeChange(dayKey, tIdx, e.target.value)}
-                                  className="bg-transparent text-xs font-mono font-bold text-[#0F2A4A] focus:outline-none cursor-pointer"
-                                />
-                                {dayTimesList.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveDayTime(dayKey, tIdx)}
-                                    className="p-1 text-[#5F7083] hover:text-[#0F2A4A] rounded transition-colors cursor-pointer"
-                                    title={isEn ? 'Remove this time slot' : 'حذف هذا الموعد'}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Room / Location Input */}
-              <div className="space-y-1 pt-1">
-                <label className="text-[11px] font-bold text-[#5F7083]">
-                  {isEn ? 'Class Location / Room (Optional)' : 'مكان الحصة / القاعة (اختياري)'}
-                </label>
-                <div className="relative">
-                  <MapPin className={`w-4 h-4 text-[#5F7083] absolute top-2.5 ${isRTL ? 'right-3' : 'left-3'}`} />
-                  <input
-                    type="text"
-                    placeholder={isEn ? 'e.g. Center Room 2 / Online' : 'مثال: سنتر الأوائل - قاعة 2'}
-                    value={roomOrLocation}
-                    onChange={(e) => setRoomOrLocation(e.target.value)}
-                    className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2 text-xs text-[#0F2A4A] font-medium focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] transition-colors`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3: Pricing & Billing */}
-            <div className="classy-card p-4 space-y-3.5 bg-[#FFFFFF]">
-              <h3 className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
-                <DollarSign className="w-4 h-4 text-[#17375E]" />
-                <span>{isEn ? 'Billing & Pricing System' : 'نظام المحاسبة والتسعير'}</span>
-              </h3>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-[#5F7083]">
-                  {isEn ? 'Default Billing Mode *' : 'طريقة المحاسبة الافتراضية *'}
-                </label>
-                <select
-                  value={billingType}
-                  onChange={(e) => setBillingType(e.target.value as BillingType)}
-                  className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2.5 text-xs text-[#0F2A4A] font-bold focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] cursor-pointer transition-colors"
-                >
-                  <option value="per_session">{isEn ? 'Per Session' : 'دفع بالحصة (Per Session)'}</option>
-                  <option value="monthly">{isEn ? 'Monthly Subscription' : 'اشتراك شهري (Monthly)'}</option>
-                  <option value="package">{isEn ? 'Session Package' : 'باقة عدد حصص (Session Package)'}</option>
-                  <option value="hourly">{isEn ? 'Hourly Rate' : 'محاسبة بالساعة (Hourly)'}</option>
-                </select>
-              </div>
-
-              {/* Pricing inputs depending on billingType */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                {billingType === 'package' ? (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-[#5F7083]">
-                        {isEn ? 'Package Sessions Count *' : 'عدد حصص الباقة *'}
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        required
-                        value={packageSessionsCount}
-                        onChange={(e) => setPackageSessionsCount(Number(e.target.value))}
-                        className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-[#5F7083]">
-                        {isEn ? `Package Total Price (${t('currency')}) *` : `سعر الباقة الإجمالي (${t('currency')}) *`}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        required
-                        value={defaultPrice}
-                        onChange={(e) => setDefaultPrice(Number(e.target.value))}
-                        className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                      />
-                    </div>
-                  </>
-                ) : billingType === 'hourly' ? (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-[#5F7083]">
-                        {isEn ? `Hourly Rate (${t('currency')}) *` : `سعر الساعة (${t('currency')}) *`}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        required
-                        value={hourlyRate}
-                        onChange={(e) => setHourlyRate(Number(e.target.value))}
-                        className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-[#5F7083]">
-                        {isEn ? `Base Session Price (${t('currency')})` : `سعر الحصة التقديري (${t('currency')})`}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={defaultPrice}
-                        onChange={(e) => setDefaultPrice(Number(e.target.value))}
-                        className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-[11px] font-bold text-[#5F7083]">
-                      {billingType === 'monthly'
-                        ? (isEn ? `Monthly Subscription Price (${t('currency')}) *` : `قيمة الاشتراك الشهري (${t('currency')}) *`)
-                        : (isEn ? `Class Price per Student (${t('currency')}) *` : `سعر الحصة للطالب (${t('currency')}) *`)}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      required
-                      value={defaultPrice}
-                      onChange={(e) => setDefaultPrice(Number(e.target.value))}
-                      className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Section 4: Notes */}
-            <div className="classy-card p-4 space-y-2 bg-[#FFFFFF]">
-              <label className="text-[11px] font-bold text-[#5F7083]">
-                {isEn ? 'Teacher Notes (Optional)' : 'ملاحظات المعلم (اختياري)'}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <label className="field-label">
+                {isEn ? 'Subject *' : 'المادة الدراسية *'}
               </label>
-              <textarea
-                rows={2}
-                placeholder={isEn ? 'Any special instructions or group notes...' : 'أي تعليمات خاصة بالمجموعة...'}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl p-2 text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
+              <input
+                type="text"
+                required
+                placeholder={isEn ? 'e.g. Mathematics, Physics' : 'مثال: الرياضيات، الفيزياء'}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="classy-input"
               />
             </div>
 
-            {/* Submit Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn-secondary"
+            <div className="space-y-1">
+              <label className="field-label">
+                {isEn ? 'Grade / Educational Stage *' : 'الصف / المرحلة الدراسية *'}
+              </label>
+              <select
+                value={gradeLevel}
+                onChange={(e) => setGradeLevel(e.target.value)}
+                className="classy-select"
               >
-                {t('cancel')}
-              </button>
-              <button
-                type="submit"
-                className="btn-primary"
-              >
-                {editingGroup
-                  ? (isEn ? 'Save Group Changes' : 'حفظ تعديلات المجموعة')
-                  : (isEn ? 'Create Group Now' : 'إنشاء المجموعة الآن')}
-              </button>
+                {STAGES_HIERARCHY.map((stage) => (
+                  <optgroup key={stage.id} label={isEn ? stage.nameEn : stage.nameAr}>
+                    {stage.grades.map((grd) => (
+                      <option key={grd.id} value={grd.nameAr}>
+                        {isEn ? grd.nameEn : grd.nameAr}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
             </div>
-          </form>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <label className="field-label">
+                {isEn ? 'Group Type' : 'نوع المجموعة'}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setType('group')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    type === 'group'
+                      ? 'bg-mint-soft border-navy text-navy shadow-2xs'
+                      : 'bg-page border-line text-slate hover:bg-mist'
+                  }`}
+                >
+                  {isEn ? 'Regular Group' : 'مجموعة عامة'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('private')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    type === 'private'
+                      ? 'bg-mint-soft border-navy text-navy shadow-2xs'
+                      : 'bg-page border-line text-slate hover:bg-mist'
+                  }`}
+                >
+                  {isEn ? 'Private Lesson' : 'درس خاص'}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="field-label">
+                {isEn ? 'Room / Location' : 'القاعة / المكان'}
+              </label>
+              <input
+                type="text"
+                placeholder={isEn ? 'e.g. Room 2, Center A' : 'مثال: قاعة 2، سنتر الأوائل'}
+                value={roomOrLocation}
+                onChange={(e) => setRoomOrLocation(e.target.value)}
+                className="classy-input"
+              />
+            </div>
+          </div>
         </div>
-      </div>
-    </ModalPortal>
+
+        {/* Section 2: Weekly Schedule */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-xs text-navy flex items-center gap-1.5">
+              <AppIcon name="calendar" size={14} className="text-navy" />
+              <span>{isEn ? 'Weekly Schedule Days' : 'أيام الحصص الأسبوعية'}</span>
+            </span>
+            <span className="text-[10px] text-slate font-medium">
+              {scheduleDays.length} {isEn ? 'days selected' : 'أيام محددة'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {WEEK_DAYS_CONFIG.map(({ key }) => {
+              const isChecked = scheduleDays.includes(key);
+              const dayName = getLocalizedWeekdayName(key, isRTL);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleDay(key)}
+                  className={`chip ${isChecked ? 'chip-active' : ''}`}
+                >
+                  {dayName}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Time input for each selected day */}
+          {scheduleDays.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-line">
+              <span className="text-[11px] font-bold text-slate block">
+                {isEn ? 'Set class start time per day:' : 'تحديد توقيت كل حصة:'}
+              </span>
+
+              <div className="space-y-2">
+                {scheduleDays.map((d) => {
+                  const dayName = getLocalizedWeekdayName(d, isRTL);
+                  const timesList = scheduleTimes[d] && scheduleTimes[d].length > 0 ? scheduleTimes[d] : ['16:00'];
+                  return (
+                    <div
+                      key={d}
+                      className="p-2.5 rounded-xl bg-mist border border-line flex items-center justify-between gap-2 flex-wrap"
+                    >
+                      <span className="font-bold text-xs text-navy min-w-[70px]">
+                        {dayName}:
+                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {timesList.map((tm, idx) => (
+                          <div key={idx} className="flex items-center gap-1">
+                            <input
+                              type="time"
+                              value={tm}
+                              onChange={(e) => handleDayTimeChange(d, idx, e.target.value)}
+                              className="classy-input w-28 text-center"
+                            />
+                            {timesList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDayTime(d, idx)}
+                                className="p-1 rounded-lg hover:bg-coral-soft text-coral transition-colors"
+                              >
+                                <AppIcon name="close" size={12} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => handleAddDayTime(d)}
+                          className="px-2 py-1 rounded-lg bg-page border border-line text-[10px] font-bold text-navy hover:bg-mint-soft transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <AppIcon name="plus" size={10} />
+                          <span>{isEn ? 'Add' : 'إضافة'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section 3: Billing & Pricing */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+          <span className="font-bold text-xs text-navy flex items-center gap-1.5">
+            <AppIcon name="coins" size={14} className="text-navy" />
+            <span>{isEn ? 'Billing Mode & Default Pricing' : 'نظام المحاسبة والتسعير'}</span>
+          </span>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { id: 'per_session', label: isEn ? 'Per Session' : 'بالحصة' },
+              { id: 'monthly', label: isEn ? 'Monthly' : 'شهري' },
+              { id: 'package', label: isEn ? 'Package' : 'باقة' },
+              { id: 'hourly', label: isEn ? 'Hourly' : 'بالساعة' },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setBillingType(mode.id as BillingType)}
+                className={`py-2 px-2 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                  billingType === mode.id
+                    ? 'bg-mint-soft border-navy text-navy shadow-2xs'
+                    : 'bg-page border-line text-slate hover:bg-mist'
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {billingType === 'hourly' ? (
+              <div className="space-y-1">
+                <label className="field-label">
+                  {isEn ? 'Hourly Rate *' : 'سعر الساعة للطالب (ج.م) *'}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(Number(e.target.value))}
+                  className="classy-input"
+                />
+              </div>
+            ) : billingType === 'package' ? (
+              <>
+                <div className="space-y-1">
+                  <label className="field-label">
+                    {isEn ? 'Sessions in Package *' : 'عدد حصص الباقة *'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={packageSessionsCount}
+                    onChange={(e) => setPackageSessionsCount(Number(e.target.value))}
+                    className="classy-input"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="field-label">
+                    {isEn ? 'Total Package Price *' : 'إجمالي سعر الباقة (ج.م) *'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={defaultPrice}
+                    onChange={(e) => setDefaultPrice(Number(e.target.value))}
+                    className="classy-input"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-1">
+                <label className="field-label">
+                  {billingType === 'monthly'
+                    ? (isEn ? 'Monthly Fee *' : 'قيمة الاشتراك الشهري (ج.م) *')
+                    : (isEn ? 'Session Price *' : 'سعر الحصة للطالب (ج.م) *')}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={defaultPrice}
+                  onChange={(e) => setDefaultPrice(Number(e.target.value))}
+                  className="classy-input"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section 4: Notes */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+          <label className="field-label flex items-center gap-1.5">
+            <AppIcon name="edit" size={14} className="text-navy" />
+            <span>{isEn ? 'Teacher Notes (Optional)' : 'ملاحظات المعلم (اختياري)'}</span>
+          </label>
+          <textarea
+            rows={2}
+            placeholder={isEn ? 'Any special instructions or group notes...' : 'أي تعليمات خاصة بالمجموعة...'}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="classy-textarea"
+          />
+        </div>
+      </form>
+    </BottomSheet>
   );
 };

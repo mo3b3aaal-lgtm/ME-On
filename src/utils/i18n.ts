@@ -118,6 +118,15 @@ export const translations = {
     relGuardian: 'ولي الأمر',
 
     // Dashboard
+    dashboardGreetingPrefix: 'يومك التعليمي يبدأ',
+    dashboardGreetingAccent: 'الآن',
+    todaysProgress: 'إنجاز اليوم',
+    todaysFocus: 'تركيزك اليوم',
+    todaysSchedule: 'جدول اليوم',
+    recentStudents: 'الطلاب مؤخراً',
+    paymentsDue: 'دفعات مستحقة',
+    attendanceToRecord: 'حضور بانتظار الرصد',
+    startSession: 'بدء الحصة',
     dashWelcome: 'مرحباً بك،',
     dashOverview: 'نظرة عامة على نشاطك التعليمي والمحاسبي',
     dashTotalStudents: 'إجمالي الطلاب',
@@ -669,6 +678,15 @@ export const translations = {
     relGuardian: 'Guardian',
 
     // Dashboard
+    dashboardGreetingPrefix: 'Your teaching day starts',
+    dashboardGreetingAccent: 'Now',
+    todaysProgress: "Today's progress",
+    todaysFocus: "Today's Focus",
+    todaysSchedule: "Today's schedule",
+    recentStudents: 'Recent students',
+    paymentsDue: 'Payments due',
+    attendanceToRecord: 'Attendance to record',
+    startSession: 'Start session',
     dashWelcome: 'Welcome back,',
     dashOverview: 'Overview of your teaching schedule and financial accounts',
     dashTotalStudents: 'Total Students',
@@ -1220,6 +1238,15 @@ export const translations = {
     relGuardian: 'Guardian',
 
     // Dashboard
+    dashboardGreetingPrefix: 'Your teaching day starts',
+    dashboardGreetingAccent: 'Now',
+    todaysProgress: "Today's progress",
+    todaysFocus: "Today's Focus",
+    todaysSchedule: "Today's schedule",
+    recentStudents: 'Recent students',
+    paymentsDue: 'Payments due',
+    attendanceToRecord: 'Attendance to record',
+    startSession: 'Start session',
     dashWelcome: 'Welcome back,',
     dashOverview: 'Overview of your teaching schedule and financial accounts',
     dashTotalStudents: 'Total Students',

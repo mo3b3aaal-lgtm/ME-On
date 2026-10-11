@@ -1,28 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-  Users,
-  Layers,
-  CalendarCheck2,
-  DollarSign,
-  UserPlus,
-  Plus,
-  ArrowUpRight,
-  Clock,
-  CheckCircle2,
-  Calendar,
-  TrendingUp,
-  Bell,
-  ChevronDown,
-  ChevronUp,
-  Receipt,
-  UserCheck,
-  X,
-  WifiOff,
-  RefreshCw,
-  Sparkles,
-  Edit3,
-  Settings,
-} from 'lucide-react';
+import { ScreenHeader } from './ui/ScreenHeader';
+import { NavyCard } from './ui/NavyCard';
+import { ProgressRing } from './ui/ProgressRing';
+import { MintCard } from './ui/MintCard';
+import { SectionHeader } from './ui/SectionHeader';
+import { Avatar } from './ui/Avatar';
+import { SessionTimeline } from './SessionTimeline';
+import { TeacherBoard } from './illustrations/TeacherBoard';
+import { StudentReading } from './illustrations/StudentReading';
+import { WalletCoins } from './illustrations/WalletCoins';
+import { CalendarCheck } from './illustrations/CalendarCheck';
+import { EmptyBox } from './illustrations/EmptyBox';
+import { Toast } from './ui/Toast';
 import { Student, Group, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, ActiveTab, AutoSyncConfig } from '../types';
 import {
   db,
@@ -35,7 +24,6 @@ import {
   performFullSync,
   subscribeToSyncUpdates,
   calculateWorkloadSummary,
-  getSessionLessonQuantity,
 } from '../utils/storage';
 import {
   subscribeToNetworkStatus,
@@ -53,8 +41,8 @@ import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { parseLocalTimeToStandard } from '../utils/localDate';
 import { getSmartReminders } from '../utils/reminders';
 import { useTranslation } from '../utils/i18n';
-import { ClassyOwlMascot } from './ClassyOwlMascot';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
+import { AppIcon } from './ui/AppIcon';
 
 interface DashboardViewProps {
   students: Student[];
@@ -84,6 +72,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddGroup,
   onOpenAddSession,
   onOpenAddPayment,
+  onOpenStudentProfile,
+  onOpenGroupProfile,
   onOpenAttendanceModal,
   onOpenNotificationsModal,
   onNavigateToTab,
@@ -556,720 +546,351 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const activeStudentsList = useMemo(() => students.filter((s) => s.status !== 'archived'), [students]);
 
+  // Next pending session for the "Start session" quick action
+  const nextPendingSession = useMemo(() => {
+    const scheduledExisting = todaySessions.find((s) => s.status === 'scheduled');
+    if (scheduledExisting) return scheduledExisting;
+
+    const pendingItem = allTodayDisplayItems.find((item) => {
+      const matching = findSessionForScheduleItem(item);
+      return !matching || matching.status === 'scheduled';
+    });
+    if (pendingItem) {
+      return getOrCreateSessionForSchedule(pendingItem);
+    }
+
+    return null;
+  }, [todaySessions, allTodayDisplayItems, groups, students, parts, todayStr]);
+
+  const handleStartNextSession = () => {
+    if (!nextPendingSession) return;
+    onOpenAttendanceModal(nextPendingSession);
+  };
+
+  const todayProgressPercent = totalTodayClassesCount > 0
+    ? Math.min(100, Math.max(0, Math.round((completedTodaySessionsCount / totalTodayClassesCount) * 100)))
+    : 0;
+
+  const hasUnreadNotifications = smartReminders.some((r) => !r.isRead);
+
+  // Pending sessions today for Today's Focus Row 1
+  const pendingFocusSessions = useMemo(() => {
+    return allTodayDisplayItems.filter((item) => {
+      const matching = findSessionForScheduleItem(item);
+      return !matching || matching.status !== 'completed';
+    });
+  }, [allTodayDisplayItems, sessions]);
+
+  const focusSession1 = pendingFocusSessions[0];
+  const focusSession2 = pendingFocusSessions[1];
+
+  // Unrecorded sessions today for Today's Focus Row 2
+  const unrecordedTodaySessions = useMemo(() => {
+    return allTodayDisplayItems.filter((item) => {
+      const matching = findSessionForScheduleItem(item);
+      if (!matching) return true;
+      const att = db.getSessionAttendance(matching.id);
+      return att.length === 0 || matching.status === 'scheduled';
+    });
+  }, [allTodayDisplayItems, sessions]);
+
+  const handleAttendanceToRecordClick = () => {
+    if (unrecordedTodaySessions.length > 0) {
+      const s = getOrCreateSessionForSchedule(unrecordedTodaySessions[0]);
+      onOpenAttendanceModal(s);
+    } else {
+      onNavigateToTab('sessions');
+    }
+  };
+
+  const handlePaymentsDueClick = () => {
+    onNavigateToTab('reports');
+  };
+
+  const recentStudentsList = useMemo(() => {
+    return students.filter((s) => s.status !== 'archived').slice(0, 12);
+  }, [students]);
+
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F2A4A] pb-32 bg-[#FFFFFF] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar px-5 py-4 space-y-4 text-ink pb-32 bg-page relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Soft Ambient Warm Luxury Light Glow in Background */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#17375E]/10 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#0F2A4A]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#17375E]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+      {/* 1. Screen Header with Greeting */}
+      <ScreenHeader
+        title={t('dashboardGreetingPrefix') || (isEn ? 'Your teaching day starts' : 'يومك التعليمي يبدأ')}
+        accentWord={t('dashboardGreetingAccent') || (isEn ? 'Now' : 'الآن')}
+        hasUnreadNotifications={hasUnreadNotifications}
+        onOpenNotifications={onOpenNotificationsModal}
+        onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
+      />
 
-      {/* Top Header */}
-      <header className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-2xl font-bold font-display text-[#0F2A4A] tracking-tight">
-          {isEn ? 'Dashboard' : 'لوحة التحكم'}
-        </h1>
-        <div className="flex items-center gap-2">
-          {onOpenNotificationsModal && (
-            <button
-              type="button"
-              onClick={onOpenNotificationsModal}
-              className="relative w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
-              title={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
-              aria-label={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
-            >
-              <Bell className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
-              {smartReminders.length > 0 && (
-                <span className="absolute top-2.5 end-2.5 w-2 h-2 rounded-full bg-[#D64545] ring-2 ring-[#FFFFFF]" />
-              )}
-            </button>
-          )}
-          {onNavigateToTab && (
-            <button
-              type="button"
-              onClick={() => onNavigateToTab('settings')}
-              className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
-              title={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
-              aria-label={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
-            >
-              <Settings className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* =========================================================================
-          1. Profile & Signature Executive Hero Header
-          ========================================================================= */}
-      <div className="rounded-[26px] bg-gradient-to-br from-[#17375E] via-[#0F2A4A] to-[#5F7083] p-5 sm:p-6 text-[#FFFFFF] relative overflow-hidden shadow-xl border border-[#E1EBEC]/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.32)]">
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#FFFFFF]/8 to-[#E1EBEC]/15 pointer-events-none" />
-        <div className="absolute -top-16 -right-16 w-60 h-60 bg-[#17375E]/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-[#0F2A4A]/25 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          {/* Teacher Profile & Greeting */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#E1EBEC] via-[#FFFFFF] to-[#5F7083] p-0.5 shadow-lg shadow-[#0F2A4A]/35 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-[#17375E] to-[#0F2A4A] flex items-center justify-center text-[#FFFFFF] font-black text-2xl overflow-hidden">
-                {teacherProfile.name ? teacherProfile.name.charAt(0) : 'C'}
-              </div>
-            </div>
-
-            <div className="space-y-0.5 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#E1EBEC] flex items-center gap-1">
-                  {greetingText}
-                </span>
-              </div>
-              <h1 className="text-lg sm:text-2xl font-black text-[#FFFFFF] tracking-tight truncate">
-                {teacherProfile.name ? `${isEn ? 'Teacher ' : 'أ. '}${teacherProfile.name}` : (isEn ? 'Teacher' : 'أستاذنا الفاضل')}
-              </h1>
-              <p className="text-xs sm:text-sm text-[#E1EBEC]/90 font-medium truncate">
-                {teacherProfile.subject || (isEn ? 'Subject' : 'المادة التعليمية')} • {teacherProfile.centerOrSchool || (isEn ? 'Classy Education' : 'منظومة كلاسي الذكية')}
+      {/* 2. Today's Progress NavyCard (Daily Goal Card) */}
+      <NavyCard className="relative">
+        <div className="flex items-center justify-between gap-4 relative z-10">
+          <div className="flex-1 min-w-0 space-y-2.5">
+            <div>
+              <h2 className="text-[16px] font-semibold text-white leading-tight">
+                {t('todaysProgress') || (isEn ? "Today's progress" : 'إنجاز اليوم')}
+              </h2>
+              <p className="text-[13px] text-white/80 mt-1 leading-snug">
+                {isEn
+                  ? `${completedTodaySessionsCount} of ${totalTodayClassesCount} sessions completed`
+                  : `اكتملت ${completedTodaySessionsCount} من ${totalTodayClassesCount} حصة`}
               </p>
             </div>
+
+            {nextPendingSession && (
+              <button
+                type="button"
+                onClick={handleStartNextSession}
+                className="btn-orange px-3.5 py-1.5 text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-transform"
+              >
+                <AppIcon name="sessions" weight="fill" size={14} />
+                <span>{t('startSession') || (isEn ? 'Start session' : 'بدء الحصة')}</span>
+              </button>
+            )}
           </div>
 
-          {/* Action Hub & Mascot */}
-          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E1EBEC]/20">
-            <div className="hidden md:flex items-center gap-2 bg-[#FFFFFF]/10 backdrop-blur-md border border-[#E1EBEC]/25 px-3 py-1.5 rounded-2xl shadow-xs">
-              <div className="w-9 h-9 flex items-center justify-center">
-                <ClassyOwlMascot size="sm" pose="welcome" glow={false} />
+          <div className="shrink-0">
+            <ProgressRing
+              value={todayProgressPercent}
+              size={88}
+              stroke={10}
+              variant="navy"
+              trackColor="navy-soft"
+              arcColor="orange"
+            />
+          </div>
+        </div>
+      </NavyCard>
+
+      {/* Quick Success Toast */}
+      <Toast
+        isOpen={Boolean(quickSuccessMsg)}
+        message={quickSuccessMsg || ''}
+        type="success"
+        onClose={() => setQuickSuccessMsg(null)}
+      />
+
+      {/* 1. Today's Focus Section Header */}
+      <div className="space-y-3 pt-1">
+        <SectionHeader
+          title={t('todaysFocus') || (isEn ? "Today's Focus" : 'تركيزك اليوم')}
+        />
+
+        {/* 2. 2x2 Grid of MintCards */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Row 1, Card 1: First pending/next session */}
+          {focusSession1 ? (
+            <MintCard
+              clickable
+              onClick={() => {
+                const s = getOrCreateSessionForSchedule(focusSession1);
+                onOpenAttendanceModal(s);
+              }}
+              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
+            >
+              <div className="relative z-10 space-y-1">
+                <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                  {focusSession1.isPrivate
+                    ? (focusSession1.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                    : focusSession1.groupName}
+                </h3>
+                <p className="text-[13px] text-slate font-medium">
+                  {focusSession1.time}
+                </p>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] font-extrabold text-[#E1EBEC] block leading-none">{isEn ? 'Smart Assistant' : 'مساعدك الذكي'}</span>
-                <span className="text-xs font-bold text-[#FFFFFF] block mt-0.5">{isEn ? 'Ready to help' : 'جاهز لخدمتك'}</span>
+
+              <div className="absolute -bottom-1 end-[-8px] w-28 h-24 pointer-events-none select-none opacity-90">
+                <TeacherBoard className="w-full h-full object-contain" />
               </div>
+            </MintCard>
+          ) : (
+            <MintCard className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4">
+              <div className="relative z-10 space-y-1">
+                <h3 className="t-card text-navy font-bold leading-snug">
+                  {isEn ? 'Clear schedule' : 'جدول هادئ'}
+                </h3>
+                <p className="text-[13px] text-slate font-medium">
+                  {isEn ? 'No sessions scheduled today' : 'لا توجد حصص مجدولة لليوم'}
+                </p>
+              </div>
+
+              <div className="absolute -bottom-1 end-[-6px] w-24 h-20 pointer-events-none select-none opacity-80">
+                <EmptyBox className="w-full h-full object-contain" />
+              </div>
+            </MintCard>
+          )}
+
+          {/* Row 1, Card 2: Second pending/next session */}
+          {focusSession2 ? (
+            <MintCard
+              clickable
+              onClick={() => {
+                const s = getOrCreateSessionForSchedule(focusSession2);
+                onOpenAttendanceModal(s);
+              }}
+              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
+            >
+              <div className="relative z-10 space-y-1">
+                <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                  {focusSession2.isPrivate
+                    ? (focusSession2.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                    : focusSession2.groupName}
+                </h3>
+                <p className="text-[13px] text-slate font-medium">
+                  {focusSession2.time}
+                </p>
+              </div>
+
+              <div className="absolute -bottom-1 end-[-8px] w-28 h-24 pointer-events-none select-none opacity-90">
+                <StudentReading className="w-full h-full object-contain" />
+              </div>
+            </MintCard>
+          ) : (
+            <MintCard className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4">
+              <div className="relative z-10 space-y-1">
+                <h3 className="t-card text-navy font-bold leading-snug">
+                  {isEn ? 'All caught up' : 'يومك مكتمل'}
+                </h3>
+                <p className="text-[13px] text-slate font-medium">
+                  {isEn ? 'No more sessions today' : 'لا توجد حصص أخرى لليوم'}
+                </p>
+              </div>
+
+              <div className="absolute -bottom-1 end-[-6px] w-24 h-20 pointer-events-none select-none opacity-80">
+                <EmptyBox className="w-full h-full object-contain" />
+              </div>
+            </MintCard>
+          )}
+
+          {/* Row 2, Card 1: Payments due */}
+          <MintCard
+            clickable
+            onClick={handlePaymentsDueClick}
+            className="min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
+          >
+            <div className="relative z-10 space-y-1">
+              <span className="text-[13px] font-semibold text-slate block leading-tight">
+                {t('paymentsDue') || (isEn ? 'Payments due' : 'دفعات مستحقة')}
+              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-navy leading-none">
+                  {totalOutstandingDues}
+                </span>
+                <span className="text-xs font-semibold text-slate">
+                  {t('currency')}
+                </span>
+              </div>
+              {overdueStudentsCount > 0 && (
+                <span className="text-[11px] text-slate block leading-none">
+                  {overdueStudentsCount} {isEn ? 'students' : 'طلاب'}
+                </span>
+              )}
             </div>
 
-            {/* Date Badge */}
-            <div className="flex items-center gap-1.5 bg-[#FFFFFF]/10 backdrop-blur-md border border-[#E1EBEC]/25 px-3 py-2 rounded-2xl text-xs font-bold text-[#FFFFFF] shadow-xs">
-              <Calendar className="w-3.5 h-3.5 text-[#E1EBEC]" />
-              <span>
-                {new Date().toLocaleDateString(isEn ? 'en-US' : 'ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
+            <div className="absolute -bottom-1 end-[-4px] w-14 h-12 pointer-events-none select-none opacity-90">
+              <WalletCoins className="w-full h-full object-contain" />
+            </div>
+          </MintCard>
+
+          {/* Row 2, Card 2: Attendance to record */}
+          <MintCard
+            clickable
+            onClick={handleAttendanceToRecordClick}
+            className="min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
+          >
+            <div className="relative z-10 space-y-1">
+              <span className="text-[13px] font-semibold text-slate block leading-tight">
+                {t('attendanceToRecord') || (isEn ? 'Attendance to record' : 'حضور بانتظار الرصد')}
+              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-navy leading-none">
+                  {unrecordedTodaySessions.length}
+                </span>
+                <span className="text-xs font-semibold text-slate">
+                  {isEn ? (unrecordedTodaySessions.length === 1 ? 'session' : 'sessions') : 'حصص'}
+                </span>
+              </div>
+              <span className="text-[11px] text-slate block leading-none">
+                {unrecordedTodaySessions.length > 0
+                  ? (isEn ? 'Pending marking' : 'تحتاج للتسجيل')
+                  : (isEn ? 'All recorded' : 'تم رصد الكل')}
               </span>
             </div>
 
-            {/* Cloud Sync Status */}
-            {isOffline && (
-              <button
-                onClick={handleTriggerSync}
-                disabled={isSyncing}
-                className="relative p-2.5 rounded-2xl bg-[#0F2A4A]/30 hover:bg-[#0F2A4A]/45 border border-[#17375E]/50 text-[#E1EBEC] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
-                title={isEn ? 'Working Offline - Click to sync when online' : 'العمل بدون إنترنت - انقر للمزامنة عند الاتصال'}
-              >
-                <WifiOff className="w-4.5 h-4.5 text-[#E1EBEC]" />
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#17375E] ring-2 ring-[#0F2A4A] animate-ping" />
-              </button>
-            )}
-
-            <button
-              onClick={handleTriggerSync}
-              disabled={isSyncing}
-              className="p-2.5 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 border border-[#E1EBEC]/25 text-[#FFFFFF] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
-              title={isEn ? 'Sync Cloud Data' : 'مزامنة البيانات السحابية'}
-            >
-              <RefreshCw className={`w-4.5 h-4.5 text-[#FFFFFF] ${isSyncing ? 'animate-spin' : ''}`} />
-            </button>
-
-            {/* Notifications Bell */}
-            {onOpenNotificationsModal && (
-              <button
-                onClick={onOpenNotificationsModal}
-                className="relative p-2.5 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 border border-[#E1EBEC]/25 text-[#FFFFFF] transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-md"
-                title={t('smartNotifications')}
-              >
-                <Bell className="w-4.5 h-4.5 text-[#FFFFFF]" />
-                {smartReminders.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-[#0F2A4A] text-[#FFFFFF] text-[9px] font-black flex items-center justify-center shadow-md ring-2 ring-[#17375E] animate-pulse">
-                    {smartReminders.length}
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
+            <div className="absolute -bottom-1 end-[-4px] w-14 h-12 pointer-events-none select-none opacity-90">
+              <CalendarCheck className="w-full h-full object-contain" />
+            </div>
+          </MintCard>
         </div>
       </div>
 
-      {/* Quick Success Toast */}
-      {quickSuccessMsg && (
-        <div className="p-3.5 rounded-2xl bg-[#0F2A4A] text-[#FFFFFF] border border-[#17375E] text-xs font-bold flex items-center justify-between shadow-lg shadow-[#0F2A4A]/20 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#E1EBEC]" />
-            <span>{quickSuccessMsg}</span>
+      {/* 3. Today's Schedule */}
+      <div className="space-y-3 pt-1">
+        <SectionHeader
+          title={t('todaysSchedule') || (isEn ? "Today's schedule" : 'جدول اليوم')}
+          seeAllLabel={t('sessionsTitle') || (isEn ? 'All sessions' : 'جميع الحصص')}
+          onSeeAll={() => onNavigateToTab('sessions')}
+        />
+        <SessionTimeline
+          items={allTodayDisplayItems}
+          sessions={sessions}
+          students={students}
+          groups={groups}
+          allAttendance={allAttendance}
+          findSessionForScheduleItem={findSessionForScheduleItem}
+          onRecordAttendance={handleMarkAllPresent}
+          onOpenAttendanceModal={onOpenAttendanceModal}
+          onOpenStudentProfile={onOpenStudentProfile}
+          onOpenGroupProfile={onOpenGroupProfile}
+          onOpenAddSession={onOpenAddSession}
+        />
+      </div>
+
+      {/* 4. Recent Students */}
+      {recentStudentsList.length > 0 && (
+        <div className="space-y-3 pt-1">
+          <SectionHeader
+            title={t('recentStudents') || (isEn ? 'Recent students' : 'الطلاب مؤخراً')}
+            seeAllLabel={t('navStudents') || (isEn ? 'All students' : 'جميع الطلاب')}
+            onSeeAll={() => onNavigateToTab('students')}
+          />
+          <div className="flex items-center gap-4 overflow-x-auto snap-x snap-mandatory py-2 px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {recentStudentsList.map((student) => (
+              <button
+                key={student.id}
+                type="button"
+                onClick={() => onOpenStudentProfile(student)}
+                className="flex flex-col items-center gap-1.5 shrink-0 snap-start cursor-pointer group active:scale-95 transition-transform select-none w-16"
+              >
+                <Avatar
+                  size={56}
+                  name={student.name}
+                  profilePhoto={student.profilePhoto}
+                  className="group-hover:ring-2 group-hover:ring-orange transition-all shadow-xs"
+                />
+                <span className="text-[12px] font-medium text-navy text-center truncate w-full group-hover:text-orange transition-colors">
+                  {student.name}
+                </span>
+              </button>
+            ))}
           </div>
-          <button onClick={() => setQuickSuccessMsg(null)}>
-            <X className="w-4 h-4 text-[#E1EBEC] hover:text-[#FFFFFF]" />
-          </button>
         </div>
       )}
 
-      {/* =========================================================================
-          2. Executive Summary Bento Grid
-          ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-        {/* Main Today Activity Hero Card */}
-        <div className="lg:col-span-7 rounded-[24px] bg-gradient-to-br from-[#0F2A4A] via-[#5F7083] to-[#17375E] p-5 text-[#FFFFFF] flex flex-col justify-between relative overflow-hidden shadow-xl border border-[#17375E]/35">
-          <div className="absolute -top-10 -left-10 w-44 h-44 bg-[#17375E]/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-10 -right-10 w-44 h-44 bg-[#0F2A4A]/20 rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative z-10 space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#17375E] animate-pulse" />
-                <span className="text-xs font-black uppercase tracking-wider text-[#E1EBEC]">
-                  {isEn ? "Today's Academic Activity" : 'نشاط اليوم الدراسي'}
-                </span>
-              </div>
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-[#FFFFFF]/15 text-[#FFFFFF] border border-[#17375E]/40 shadow-xs">
-                {totalTodayClassesCount} {isEn ? 'scheduled' : 'حصص مجدولة'}
-              </span>
-            </div>
-
-            <div className="space-y-1">
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-[#FFFFFF]">
-                {completedTodaySessionsCount === totalTodayClassesCount && totalTodayClassesCount > 0
-                  ? (isEn ? "🎉 All today's sessions completed successfully!" : '🎉 اكتملت جميع حصص اليوم بنجاح!')
-                  : (isEn ? `${remainingTodaySessionsCount} sessions pending attendance` : `متبقي ${remainingTodaySessionsCount} حصص للرصد والمتابعة`)}
-              </h2>
-              <div className="flex items-center gap-3 text-xs text-[#E1EBEC] font-medium flex-wrap">
-                <span>{isEn ? "Today's Revenue:" : 'تحصيل اليوم:'} <strong className="text-[#FFFFFF] font-bold">{totalTodayRevenue} {t('currency')}</strong></span>
-                <span>•</span>
-                <span>{isEn ? 'Appointments: ' : 'المواعيد: '}<strong className="text-[#FFFFFF] font-bold">{completedTodaySessionsCount}</strong> {isEn ? 'of ' : 'من '}<strong className="text-[#FFFFFF] font-bold">{totalTodayClassesCount}</strong></span>
-                {todayWorkload.completedLessonUnits > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>{isEn ? 'Lessons: ' : 'الحصص: '}<strong className="text-[#FFFFFF] font-black">{todayWorkload.completedLessonUnits} {isEn ? 'Lessons' : 'حصة'}</strong></span>
-                  </>
-                )}
-                {todayWorkload.completedHours > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>{isEn ? 'Hours: ' : 'الساعات: '}<strong className="text-[#FFFFFF] font-black">{todayWorkload.completedHours} {isEn ? 'Hours' : 'ساعة'}</strong></span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-1.5 pt-1">
-              <div className="w-full bg-[#0F2A4A]/40 h-3 rounded-full overflow-hidden p-0.5 border border-[#E1EBEC]/20">
-                <div
-                  className="bg-gradient-to-r from-[#E1EBEC] via-[#FFFFFF] to-[#E1EBEC] h-full rounded-full transition-all duration-500 shadow-sm"
-                  style={{
-                    width: `${totalTodayClassesCount > 0 ? (completedTodaySessionsCount / totalTodayClassesCount) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-              <div className="flex justify-between text-[11px] font-bold text-[#E1EBEC]/90">
-                <span>{isEn ? 'Progress:' : 'نسبة الإنجاز:'} {totalTodayClassesCount > 0 ? Math.round((completedTodaySessionsCount / totalTodayClassesCount) * 100) : 0}%</span>
-                <span>{completedTodaySessionsCount}/{totalTodayClassesCount} {isEn ? 'completed' : 'تم رصدها'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 4 Metric Cards (Sapphire Estate Full Palette Sheen) */}
-        <div className="lg:col-span-5 grid grid-cols-2 gap-2.5">
-          {/* Metric 1: Active Students (Sapphire Lustre) */}
-          <div
-            onClick={() => onNavigateToTab('students')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-sapphire flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#17375E]"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/20">
-                <Users className="w-4.5 h-4.5 text-[#FFFFFF]" />
-              </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/85 text-[#17375E] border border-[#17375E]/25 shadow-2xs">
-                {isEn ? 'Active' : 'نشط'}
-              </span>
-            </div>
-            <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#0F2A4A] tracking-tight block">
-                {activeStudentsList.length}
-              </span>
-              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
-                {t('activeStudents')}
-              </span>
-            </div>
-          </div>
-
-          {/* Metric 2: Attendance Rate (Navy Velvet Sheen) */}
-          <div
-            onClick={() => onNavigateToTab('reports')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-navy flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#0F2A4A]"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F2A4A] to-[#17375E] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#0F2A4A]/25">
-                <TrendingUp className="w-4.5 h-4.5 text-[#FFFFFF]" />
-              </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/85 text-[#0F2A4A] border border-[#0F2A4A]/25 shadow-2xs">
-                {isEn ? 'Rate' : 'التزام'}
-              </span>
-            </div>
-            <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#0F2A4A] tracking-tight block">
-                {overallAttendanceRate}%
-              </span>
-              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
-                {t('attendanceRate')}
-              </span>
-            </div>
-          </div>
-
-          {/* Metric 3: Month Revenue (Steel Grey Cashmere Sheen) */}
-          <div
-            onClick={() => onNavigateToTab('reports')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-steel flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#5F7083]"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#5F7083] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#5F7083]/25">
-                <DollarSign className="w-4.5 h-4.5 text-[#FFFFFF]" />
-              </div>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/85 text-[#0F2A4A] border border-[#5F7083]/35 shadow-2xs">
-                {isEn ? `Month ${currentMonth}` : `شهر ${currentMonth}`}
-              </span>
-            </div>
-            <div>
-              <span className="text-2xl sm:text-3xl font-black text-[#0F2A4A] tracking-tight block truncate">
-                {totalMonthRevenue} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
-              </span>
-              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
-                {t('monthlyRevenue')}
-              </span>
-            </div>
-          </div>
-
-          {/* Metric 4: Outstanding Dues (Silver Pearl Sheen) */}
-          <div
-            onClick={() => onNavigateToTab('reports')}
-            className="p-3.5 sm:p-4 rounded-[22px] classy-bento-silver flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all hover:shadow-lg hover:border-[#17375E]"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/20">
-                <Receipt className="w-4.5 h-4.5 text-[#FFFFFF]" />
-              </div>
-              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs ${
-                totalOutstandingDues > 0
-                  ? 'bg-[#FFFFFF]/90 text-[#17375E] border-[#17375E]/30'
-                  : 'bg-[#FFFFFF]/90 text-[#0F2A4A] border-[#E1EBEC]'
-              }`}>
-                {totalOutstandingDues > 0 ? (isEn ? `${overdueStudentsCount} dues` : `${overdueStudentsCount} طلاب`) : t('settled')}
-              </span>
-            </div>
-            <div>
-              <span className={`text-2xl sm:text-3xl font-black tracking-tight block truncate ${
-                totalOutstandingDues > 0 ? 'text-[#17375E]' : 'text-[#0F2A4A]'
-              }`}>
-                {totalOutstandingDues} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
-              </span>
-              <span className="text-xs font-bold text-[#5F7083] block mt-0.5">
-                {t('totalPendingDues')}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          3. Quick Actions Bar
-          ========================================================================= */}
-      <div className="classy-card p-2 sm:p-3 bg-[#E1EBEC]/15 border border-[#E1EBEC]">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <button
-            onClick={onOpenAddStudent}
-            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
-          >
-            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] flex items-center justify-center shrink-0 group-hover:bg-[#17375E] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
-              <UserPlus className="w-4 h-4" />
-            </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#17375E] transition-colors truncate">
-              {t('addStudent')}
-            </span>
-          </button>
-
-          <button
-            onClick={onOpenAddGroup}
-            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
-          >
-            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#0F2A4A] flex items-center justify-center shrink-0 group-hover:bg-[#0F2A4A] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
-              <Layers className="w-4 h-4" />
-            </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#0F2A4A] transition-colors truncate">
-              {t('createGroupBtn')}
-            </span>
-          </button>
-
-          <button
-            onClick={onOpenAddSession}
-            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
-          >
-            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] border border-[#17375E]/40 flex items-center justify-center shrink-0 group-hover:bg-[#17375E] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
-              <CalendarCheck2 className="w-4 h-4" />
-            </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#0F2A4A] transition-colors truncate">
-              {t('scheduleSessionBtn')}
-            </span>
-          </button>
-
-          <button
-            onClick={onOpenAddPayment}
-            className="py-3 px-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 flex items-center justify-center gap-2.5 transition-all cursor-pointer group active:scale-95 shadow-2xs hover:shadow-sm"
-          >
-            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#0F2A4A]/40 flex items-center justify-center shrink-0 group-hover:bg-[#0F2A4A] group-hover:text-[#FFFFFF] transition-colors shadow-2xs">
-              <DollarSign className="w-4 h-4" />
-            </div>
-            <span className="font-black text-xs sm:text-sm text-[#0F2A4A] group-hover:text-[#0F2A4A] transition-colors truncate">
-              {t('recordPayment')}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          4. Today's Sessions Timeline & Quick Attendance Section
-          ========================================================================= */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] flex items-center justify-center font-bold shadow-2xs border border-[#E1EBEC]/50">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-black text-[#0F2A4A]">
-                {isEn ? `Today's Sessions (${scheduledToday.length})` : `حصص اليوم الدراسي (${scheduledToday.length})`}
-              </h2>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigateToTab('sessions')}
-            className="text-xs font-bold text-[#17375E] hover:text-[#0F2A4A] flex items-center gap-1 cursor-pointer"
-          >
-            <span>{t('sessionsTitle')}</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-[#17375E]" />
-          </button>
-        </div>
-
-        {/* Today's Private Lessons Summary Banner (Feature 1) */}
-        {todayPrivateStudentsSummary.length > 0 && (
-          <div className="p-3.5 bg-gradient-to-r from-[#FFFFFF] to-[#E1EBEC]/60 rounded-2xl border border-[#17375E]/50 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <span className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#0F2A4A]" />
-                <span>{isEn ? "Today's Private Lessons Summary" : 'ملخص الدروس الخاصة لليوم'}</span>
-              </span>
-              <span className="text-[10px] font-black text-[#17375E] bg-[#FFFFFF] px-2 py-0.5 rounded-full border border-[#E1EBEC]">
-                {todayPrivateStudentsSummary.length} {isEn ? 'Students' : 'طلاب'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {todayPrivateStudentsSummary.map((summary) => (
-                <div key={summary.studentId} className="p-2.5 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs space-y-1 shadow-2xs">
-                  <div className="flex items-center justify-between font-black text-[#0F2A4A]">
-                    <span className="truncate">{summary.studentName}</span>
-                    <span className="text-[#17375E] shrink-0 font-black">{summary.totalUnitsOrHoursText}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-[#5F7083]">
-                    <span>{isEn ? `${summary.recordedSessionsCount} appointment(s)` : `${summary.recordedSessionsCount} موعد مسجل`}</span>
-                    <strong className="text-[#0F2A4A] font-black">{summary.totalValue} {t('currency')}</strong>
-                  </div>
-                  {summary.hasIncomplete && (
-                    <div className="pt-1 text-[10px] font-black text-[#0F2A4A] flex items-center gap-1">
-                      <span>⚠️</span>
-                      <span>{isEn ? 'Incomplete session details' : 'حصة غير مكتملة التفاصيل'}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {allTodayDisplayItems.length === 0 ? (
-          <div className="classy-card p-6 sm:p-8 flex flex-col items-center text-center space-y-3 relative overflow-hidden bg-[#E1EBEC]/15">
-            <div className="w-28 h-28 flex items-center justify-center">
-              <ClassyOwlMascot size="lg" pose="waving" glow={true} />
-            </div>
-            <div className="max-w-md space-y-1">
-              <h3 className="font-black text-[#0F2A4A] text-sm sm:text-base">
-                {isEn ? 'No sessions scheduled for today!' : 'لا توجد حصص مجدولة لليوم!'}
-              </h3>
-              <p className="text-xs text-[#5F7083] font-medium leading-relaxed">
-                {isEn ? 'Enjoy your calm day or schedule a new teaching session now.' : 'استمتع بيومك الهادئ أو قم بجدولة حصة تدريسية جديدة الآن بضغطة زر.'}
-              </p>
-            </div>
-            <button
-              onClick={onOpenAddSession}
-              className="mt-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-[#FFFFFF]" />
-              <span>{isEn ? "Add Today's Session" : 'إضافة حصة اليوم'}</span>
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {allTodayDisplayItems.map((item) => {
-              const matchingSession = findSessionForScheduleItem(item);
-              const sessionAttendance = matchingSession ? db.getSessionAttendance(matchingSession.id) : [];
-              const groupStudents = item.studentId
-                ? students.filter((s) => s.id === item.studentId)
-                : db.getGroupStudents(item.groupId);
-
-              const presentCount = sessionAttendance.filter(
-                (a) => a.status === 'present' || a.status === 'late'
-              ).length;
-              const isRecorded = sessionAttendance.length > 0;
-              const isExpanded = expandedAttendanceCardId === item.id;
-
-              return (
-                <div
-                  key={item.id}
-                  className={`classy-card overflow-hidden transition-all bg-[#FFFFFF] ${
-                    isRecorded ? 'border-[#17375E]/60 bg-gradient-to-r from-[#E1EBEC]/45 to-[#FFFFFF]' : 'hover:border-[#17375E]/50'
-                  }`}
-                >
-                  <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Time slot pill */}
-                      <div className="px-3 py-1.5 rounded-2xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-center shrink-0 min-w-[66px]">
-                        <span className="text-xs font-black text-[#0F2A4A] block leading-tight">{item.time}</span>
-                        <span className={`text-[9px] font-extrabold block mt-0.5 px-2 py-0.2 rounded-full ${
-                          item.isPrivate ? 'bg-[#0F2A4A]/15 text-[#0F2A4A]' : 'bg-[#E1EBEC]/25 text-[#0F2A4A]'
-                        }`}>
-                          {item.isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
-                        </span>
-                      </div>
-
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
-                            style={{ backgroundColor: item.accentColor || '#17375E' }}
-                          />
-                          <h3 className="font-black text-xs sm:text-sm text-[#0F2A4A] truncate">
-                            {item.isPrivate ? (item.studentName || (isEn ? 'Private Lesson' : 'درس خاص')) : item.groupName}
-                          </h3>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-[11px] text-[#5F7083] flex-wrap font-medium">
-                          <span>{item.isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (item.subject || (isEn ? 'General' : 'عام'))}</span>
-                          {!item.isPrivate && (
-                            <>
-                              <span>•</span>
-                              <span>{groupStudents.length} {isEn ? 'students' : 'طلاب'}</span>
-                            </>
-                          )}
-                          {item.location && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate max-w-[120px]">{item.location}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Status & Primary Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {isRecorded ? (
-                        item.isPrivate ? (
-                          (() => {
-                            const firstAtt = sessionAttendance[0];
-                            const isHourly = item.group?.billingMode === 'hourly' || item.group?.billingType === 'hourly';
-                            const isPres = firstAtt?.status === 'present' || firstAtt?.status === 'late';
-                            const isIncomplete =
-                              isPres &&
-                              (isHourly
-                                ? (firstAtt?.hours === undefined || firstAtt?.hours === null || firstAtt.hours <= 0)
-                                : (firstAtt?.sessionUnits === undefined || firstAtt?.sessionUnits === null || firstAtt.sessionUnits <= 0));
-
-                            if (isIncomplete) {
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
-                                  className="px-2.5 py-1 rounded-xl bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#0F2A4A] text-[10px] font-black flex items-center gap-1 cursor-pointer hover:bg-[#17375E]/30 transition-all shadow-2xs animate-pulse"
-                                  title={isEn ? 'Click to complete session details' : 'اضغط لاستكمال تفاصيل الدرس'}
-                                >
-                                  <span>⚠️</span>
-                                  <span>{isEn ? 'Details Required' : 'تفاصيل مطلوبة'}</span>
-                                </button>
-                              );
-                            }
-
-                            return (
-                              <div className="flex items-center gap-1">
-                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs ${
-                                  presentCount > 0
-                                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border border-[#17375E]'
-                                    : 'bg-[#17375E]/10 text-[#17375E] border border-[#17375E]/30'
-                                }`}>
-                                  {presentCount > 0 ? (
-                                    <>
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
-                                      <span>
-                                        {firstAtt?.hours
-                                          ? `${firstAtt.hours} ${isEn ? 'hrs' : 'ساعة'}`
-                                          : `${firstAtt?.sessionUnits || 1} ${isEn ? 'session(s)' : 'حصة'}`}
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <span>{isEn ? 'Absent' : 'لم يحضر'}</span>
-                                  )}
-                                </span>
-                                {presentCount > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setPrivateIntakeTarget({ item, studentId: item.studentId || '' })}
-                                    className="p-1.5 rounded-lg bg-[#E1EBEC]/15 border border-[#E1EBEC] text-[#17375E] hover:bg-[#E1EBEC]/35 transition-colors cursor-pointer"
-                                    title={isEn ? 'Edit Intake' : 'تعديل التفاصيل'}
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })()
-                        ) : (
-                          <span className="text-[10px] font-bold bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border border-[#17375E] px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
-                            <span>{isEn ? 'Present' : 'حاضر'} {presentCount}/{groupStudents.length}</span>
-                          </span>
-                        )
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleMarkAllPresent(item)}
-                          className="min-h-[34px] px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
-                          title={item.isPrivate ? (isEn ? 'Record attendance' : 'تسجيل حضور الطالب') : (isEn ? 'Mark all present' : 'تسجيل حضور جميع الطلاب دفعة واحدة')}
-                        >
-                          <UserCheck className="w-3.5 h-3.5 text-[#FFFFFF]" />
-                          <span>{item.isPrivate ? (isEn ? 'Attended' : 'حضر') : (isEn ? 'All Present' : 'حضور الكل')}</span>
-                        </button>
-                      )}
-
-                      {/* Expand for detail individual marking */}
-                      <button
-                        type="button"
-                        onClick={() => setExpandedAttendanceCardId(isExpanded ? null : item.id)}
-                        className="p-1.5 rounded-xl bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]/50 text-[#0F2A4A] transition-colors cursor-pointer"
-                        title={isEn ? 'Details & individual marking' : 'تفاصيل ورصد فردي'}
-                      >
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expanded Student List */}
-                  {isExpanded && (
-                    <div className="p-3 bg-[#E1EBEC]/15 border-t border-[#E1EBEC] space-y-2 animate-in slide-in-from-top-1 duration-150">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-[#5F7083] mb-1">
-                        <span>{isEn ? `Students List (${groupStudents.length})` : `قائمة الطلاب (${groupStudents.length})`}</span>
-                        <span>{isEn ? 'Direct Individual Marking' : 'رصد فردي مباشر'}</span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        {groupStudents.map((st) => {
-                          const currentRecord = sessionAttendance.find((a) => a.studentId === st.id);
-                          const stStatus = currentRecord?.status;
-
-                          return (
-                            <div
-                              key={st.id}
-                              className="p-2.5 bg-[#FFFFFF] rounded-2xl border border-[#E1EBEC] flex items-center justify-between gap-2 shadow-2xs"
-                            >
-                              <span className="font-bold text-xs text-[#0F2A4A] truncate min-w-0">
-                                {st.name}
-                              </span>
-
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickStudentAttendance(item, st.id, 'present', true)}
-                                  className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                                    stStatus === 'present'
-                                      ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
-                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                                  }`}
-                                >
-                                  {stStatus === 'present' && <CheckCircle2 className="w-3 h-3 text-[#FFFFFF]" />}
-                                  <span>{isEn ? 'Present' : 'حاضر'}</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_charged', true)}
-                                  className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
-                                    stStatus === 'absent_charged' || (stStatus === 'absent' && currentRecord?.isCharged !== false)
-                                      ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
-                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#17375E]/15 hover:text-[#17375E]'
-                                  }`}
-                                >
-                                  {isEn ? 'Absent (Paid)' : 'غياب محسوب'}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickStudentAttendance(item, st.id, 'absent_free', false)}
-                                  className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
-                                    stStatus === 'absent_free' || stStatus === 'excused' || (stStatus === 'absent' && currentRecord?.isCharged === false)
-                                      ? 'bg-[#5F7083] text-[#FFFFFF] shadow-2xs'
-                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                                  }`}
-                                >
-                                  {isEn ? 'Excused' : 'معتذر'}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickStudentAttendance(item, st.id, 'late', true)}
-                                  className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
-                                    stStatus === 'late'
-                                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-2xs'
-                                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#0F2A4A]/15 hover:text-[#0F2A4A]'
-                                  }`}
-                                >
-                                  {isEn ? 'Late' : 'متأخر'}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {matchingSession && (
-                        <div className="pt-1.5 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => onOpenAttendanceModal(matchingSession)}
-                            className="text-[11px] font-bold text-[#17375E] hover:text-[#0F2A4A] hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            <span>{isEn ? 'Open Full Attendance Modal' : 'فتح نافذة الحضور الشاملة'}</span>
-                            <ArrowUpRight className="w-3.5 h-3.5 text-[#17375E]" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {/* Private Class Intake Modal */}
-        {privateIntakeTarget && (
-          <PrivateClassIntakeModal
-            isOpen={!!privateIntakeTarget}
-            onClose={() => setPrivateIntakeTarget(null)}
-            student={students.find((s) => s.id === privateIntakeTarget.studentId) || null}
-            enrollment={enrollments.find((e) => e.studentId === privateIntakeTarget.studentId && (e.groupId === privateIntakeTarget.item.groupId || e.id === privateIntakeTarget.item.enrollmentId)) || null}
-            session={findSessionForScheduleItem(privateIntakeTarget.item)}
-            onConfirm={handleConfirmPrivateIntake}
-          />
-        )}
-      </div>
+      {/* Private Class Intake Modal */}
+      {privateIntakeTarget && (
+        <PrivateClassIntakeModal
+          isOpen={!!privateIntakeTarget}
+          onClose={() => setPrivateIntakeTarget(null)}
+          student={students.find((s) => s.id === privateIntakeTarget.studentId) || null}
+          enrollment={enrollments.find((e) => e.studentId === privateIntakeTarget.studentId && (e.groupId === privateIntakeTarget.item.groupId || e.id === privateIntakeTarget.item.enrollmentId)) || null}
+          session={findSessionForScheduleItem(privateIntakeTarget.item)}
+          onConfirm={handleConfirmPrivateIntake}
+        />
+      )}
     </div>
   );
 };

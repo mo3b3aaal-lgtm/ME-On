@@ -1,26 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import {
-  X,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  Calendar,
-  Layers,
-  Award,
-  AlertTriangle,
-  FileText,
-  Plus,
-  Bookmark,
-  Check,
-  Zap,
-} from 'lucide-react';
 import { Student, Group, BehaviorCategory, StudentBehaviorLog, PredefinedBehaviorTag } from '../types';
 import { PREDEFINED_BEHAVIOR_TAGS } from '../utils/behavior';
 import { db } from '../utils/storage';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { StudentAvatar } from './StudentAvatar';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate } from '../utils/localDate';
+import { SegmentedControl } from './ui/SegmentedControl';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
 
 interface QuickBehaviorLogModalProps {
   isOpen: boolean;
@@ -39,7 +26,6 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
 }) => {
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
-  const modalLayer = useModalLayer('quick-behavior-log-modal', isOpen, onClose);
 
   // Filter state for predefined tags
   const [activeCategory, setActiveCategory] = useState<'all' | BehaviorCategory>('all');
@@ -103,8 +89,8 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
     setSelectedTag(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (isSubmitting || isSavedSuccess) return;
 
     const tagName = isCustomMode ? customTagName.trim() : (isEn ? (selectedTag?.nameEn || selectedTag?.name || 'Behavior Note') : (selectedTag?.name || 'ملاحظة سلوكية'));
@@ -160,417 +146,339 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
   });
 
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-xl w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative">
-          
-          {/* Signature Classy Header */}
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden">
-            <div className="flex items-center gap-3 relative z-10 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 text-[#FFFFFF] flex items-center justify-center shrink-0 shadow-sm">
-                <Zap className="w-5 h-5 text-[#FFFFFF]" />
+    <BottomSheet
+      id="quick-behavior-log-modal"
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEn ? 'Record Behavior & Assessment' : 'تسجيل سلوك وتفاعل سريع'}
+      subtitle={`${student.name}${student.gradeLevel ? ` • ${student.gradeLevel}` : ''}`}
+      headerLeading={
+        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name="award" size={20} weight="duotone" />
+        </div>
+      }
+      headerTrailing={
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">
+          {points > 0 ? `+${points}` : points} {t('points')}
+        </span>
+      }
+      bodyClassName="p-4"
+      footer={
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting || isSavedSuccess}
+            className="btn-soft flex-1"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={isSubmitting || isSavedSuccess || (isCustomMode && !customTagName.trim())}
+            className="btn-orange flex-1"
+          >
+            {isSavedSuccess ? (
+              <>
+                <AppIcon name="checkCircle" size={16} weight="bold" />
+                <span>{isEn ? 'Rating Saved!' : 'تم حفظ التقييم بنجاح!'}</span>
+              </>
+            ) : (
+              <>
+                <AppIcon name="zap" size={16} weight="bold" />
+                <span>{isEn ? 'Save Behavior Rating' : 'حفظ تقييم السلوك'}</span>
+              </>
+            )}
+          </button>
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4 text-xs text-navy">
+        {/* Student Bar */}
+        <div className="p-3 rounded-2xl bg-page border border-line flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <StudentAvatar
+              student={student}
+              size="sm"
+              showFrame={true}
+              className="shrink-0"
+            />
+            <div className="min-w-0 text-start">
+              <h4 className="text-xs font-black text-navy leading-tight truncate">{student.name}</h4>
+              <p className="text-[10px] text-slate mt-0.5">{isEn ? 'Quick feedback and class evaluation' : 'رصد فوري لتقييم الحصة والأداء'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-mint-soft text-navy border border-line shrink-0">
+            <AppIcon name="award" size={14} weight="bold" />
+            <span className="text-xs font-black">
+              {points > 0 ? `+${points}` : points} {t('points')}
+            </span>
+          </div>
+        </div>
+
+        {/* Category Filter Chips */}
+        <div className="space-y-2 text-start">
+          <div className="flex items-center justify-between">
+            <label className="field-label mb-0">{isEn ? 'Select Assessment / Tag:' : 'اختر نوع التقييم / الوسم:'}</label>
+            <button
+              type="button"
+              onClick={handleEnableCustomTag}
+              className={`chip ${isCustomMode ? 'chip-active' : ''}`}
+            >
+              <AppIcon name="plus" size={12} weight="bold" />
+              <span>{isEn ? 'Custom Tag' : 'وسم مخصص'}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setActiveCategory('all')}
+              className={`chip ${activeCategory === 'all' ? 'chip-active' : ''}`}
+            >
+              {isEn ? 'All' : 'الكل'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory('positive')}
+              className={`chip ${activeCategory === 'positive' ? 'chip-active' : ''}`}
+            >
+              <span>🌟</span>
+              <span>{isEn ? 'Positive' : 'تميز وتفاعل'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory('needs_improvement')}
+              className={`chip ${activeCategory === 'needs_improvement' ? 'chip-active' : ''}`}
+            >
+              <span>⚠️</span>
+              <span>{isEn ? 'Needs Work' : 'يحتاج تحسين'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory('neutral')}
+              className={`chip ${activeCategory === 'neutral' ? 'chip-active' : ''}`}
+            >
+              <span>📝</span>
+              <span>{isEn ? 'General' : 'عام'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Mode Tag Input */}
+        {isCustomMode && (
+          <div className="p-3.5 rounded-2xl bg-mint-soft/40 border border-line space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-navy flex items-center gap-1.5">
+                <AppIcon name="sparkles" size={14} weight="fill" className="text-navy" />
+                {isEn ? 'Write Custom Tag' : 'كتابة وسم مخصص'}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCategory('positive')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
+                    category === 'positive'
+                      ? 'bg-navy text-white'
+                      : 'bg-page text-navy border border-line'
+                  }`}
+                >
+                  {isEn ? 'Positive' : 'إيجابي'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategory('needs_improvement')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
+                    category === 'needs_improvement'
+                      ? 'bg-navy text-white'
+                      : 'bg-page text-navy border border-line'
+                  }`}
+                >
+                  {isEn ? 'Needs Attention' : 'يحتاج تحسين'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategory('neutral')}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
+                    category === 'neutral'
+                      ? 'bg-navy text-white'
+                      : 'bg-page text-navy border border-line'
+                  }`}
+                >
+                  {isEn ? 'General' : 'عام'}
+                </button>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight flex items-center gap-2 truncate">
-                  <span>{isEn ? 'Record Behavior & Participation' : 'تسجيل سلوك وتفاعل سريع'}</span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/25">
-                    Quick Log
-                  </span>
-                </h2>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs font-bold text-[#E1EBEC]">{student.name}</span>
-                  {student.gradeLevel && (
-                    <>
-                      <span className="text-[#E1EBEC]/50">•</span>
-                      <span className="text-[11px] text-[#E1EBEC]/80 font-medium">{student.gradeLevel}</span>
-                    </>
+            </div>
+
+            <input
+              type="text"
+              value={customTagName}
+              onChange={(e) => setCustomTagName(e.target.value)}
+              placeholder={isEn ? 'e.g. Mastered topic, solved complex problem...' : 'مثال: تميز في حفظ جدول الضرب، حل مسألة صعبة...'}
+              className="classy-input font-bold"
+              autoFocus
+            />
+          </div>
+        )}
+
+        {/* Predefined Tags Grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {filteredTags.map((tag) => {
+            const isSelected = !isCustomMode && selectedTag?.id === tag.id;
+            const displayTitle = isEn ? (tag.nameEn || tag.name) : tag.name;
+            const displaySubtitle = isEn ? tag.name : tag.nameEn;
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => handleSelectPredefinedTag(tag)}
+                className={`p-3 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex flex-col justify-between gap-2 cursor-pointer text-xs ${
+                  isSelected
+                    ? 'border-navy bg-mint text-navy font-bold shadow-2xs'
+                    : 'border-line bg-page hover:bg-mint-soft text-navy'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1 w-full">
+                  <span className="text-lg leading-none">{tag.emoji}</span>
+                  {isSelected ? (
+                    <span className="w-5 h-5 rounded-full bg-navy text-white flex items-center justify-center">
+                      <AppIcon name="check" size={12} weight="bold" />
+                    </span>
+                  ) : (
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
+                        (tag.points ?? 0) > 0
+                          ? 'bg-mint-soft text-navy border border-line'
+                          : (tag.points ?? 0) < 0
+                          ? 'bg-coral-soft text-coral border border-coral/30'
+                          : 'bg-page text-slate border border-line'
+                      }`}
+                    >
+                      {(tag.points ?? 0) > 0 ? `+${tag.points}` : tag.points}
+                    </span>
                   )}
                 </div>
-              </div>
-            </div>
-            
-            <button
-              onClick={onClose}
-              type="button"
-              className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
-              title={t('close')}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Form Content */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto android-scrollbar p-4 sm:p-5 space-y-4 text-xs text-[#0F2A4A]">
-            
-            {/* Student Pill Bar */}
-            <div className="classy-card p-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <StudentAvatar
-                  student={student}
-                  size="sm"
-                  showFrame={true}
-                  className="shrink-0"
-                />
-                <div className="min-w-0">
-                  <h4 className="text-xs font-black text-[#0F2A4A] leading-tight truncate">{student.name}</h4>
-                  <p className="text-[10px] text-[#5F7083] mt-0.5">{isEn ? 'Quick feedback and class evaluation' : 'رصد فوري لتقييم الحصة والأداء'}</p>
+                <div>
+                  <h4 className="font-black text-navy text-xs leading-tight line-clamp-1">{displayTitle}</h4>
+                  {displaySubtitle && (
+                    <p className="text-[10px] text-slate mt-0.5 line-clamp-1 font-medium">{displaySubtitle}</p>
+                  )}
                 </div>
-              </div>
-
-              {/* Quick Points Display Badge */}
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#E1EBEC]/50 border border-[#E1EBEC] shrink-0">
-                <Award className="w-3.5 h-3.5 text-[#17375E]" />
-                <span className="text-xs font-black text-[#0F2A4A]">
-                  {points > 0 ? `+${points}` : points} {t('points')}
-                </span>
-              </div>
-            </div>
-
-            {/* Category Filter Tabs */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-[#0F2A4A]">{isEn ? 'Select Assessment / Tag:' : 'اختر نوع التقييم / الوسم:'}</label>
-                <button
-                  type="button"
-                  onClick={handleEnableCustomTag}
-                  className={`text-[11px] font-black px-2.5 py-1 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
-                    isCustomMode
-                      ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                      : 'bg-[#FFFFFF] text-[#17375E] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                  }`}
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{isEn ? 'Custom Tag' : 'وسم مخصص'}</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('all')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
-                    activeCategory === 'all'
-                      ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                      : 'bg-[#FFFFFF] text-[#5F7083] border border-[#E1EBEC] hover:bg-[#E1EBEC]/25'
-                  }`}
-                >
-                  {isEn ? 'All' : 'الكل'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('positive')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                    activeCategory === 'positive'
-                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                      : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#17375E]/50 hover:bg-[#E1EBEC]/35'
-                  }`}
-                >
-                  <span>🌟</span>
-                  <span>{isEn ? 'Positive' : 'تميز وتفاعل'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('needs_improvement')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                    activeCategory === 'needs_improvement'
-                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                      : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC] hover:bg-[#E1EBEC]/25'
-                  }`}
-                >
-                  <span>⚠️</span>
-                  <span>{isEn ? 'Needs Work' : 'يحتاج تحسين'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('neutral')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                    activeCategory === 'neutral'
-                      ? 'bg-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                      : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                  }`}
-                >
-                  <span>📝</span>
-                  <span>{isEn ? 'General Notes' : 'ملاحظات عامة'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Custom Mode Tag Input */}
-            {isCustomMode && (
-              <div className="classy-card p-3.5 space-y-2.5 bg-[#E1EBEC]/30 border-[#E1EBEC] animate-in fade-in duration-150">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#17375E]" />
-                    {isEn ? 'Write Custom Tag' : 'كتابة وسم مخصص'}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setCategory('positive')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
-                        category === 'positive'
-                          ? 'bg-[#0F2A4A] text-[#FFFFFF]'
-                          : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#17375E]/50'
-                      }`}
-                    >
-                      {isEn ? 'Positive' : 'إيجابي'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCategory('needs_improvement')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
-                        category === 'needs_improvement'
-                          ? 'bg-[#0F2A4A] text-[#FFFFFF]'
-                          : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC]'
-                      }`}
-                    >
-                      {isEn ? 'Needs Attention' : 'يحتاج تحسين'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCategory('neutral')}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer ${
-                        category === 'neutral'
-                          ? 'bg-[#17375E] text-[#FFFFFF]'
-                          : 'bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC]'
-                      }`}
-                    >
-                      {isEn ? 'General' : 'عام'}
-                    </button>
-                  </div>
-                </div>
-
-                <input
-                  type="text"
-                  value={customTagName}
-                  onChange={(e) => setCustomTagName(e.target.value)}
-                  placeholder={isEn ? 'e.g. Mastered times table, solved complex problem...' : 'مثال: تميز في حفظ جدول الضرب، حل مسألة صعبة...'}
-                  className="classy-input font-bold"
-                  autoFocus
-                />
-              </div>
-            )}
-
-            {/* Predefined Tags Grid */}
-            <div className="grid grid-cols-2 gap-2">
-              {filteredTags.map((tag) => {
-                const isSelected = !isCustomMode && selectedTag?.id === tag.id;
-                const displayTitle = isEn ? (tag.nameEn || tag.name) : tag.name;
-                const displaySubtitle = isEn ? tag.name : tag.nameEn;
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => handleSelectPredefinedTag(tag)}
-                    className={`p-3 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex flex-col justify-between gap-2 cursor-pointer text-xs ${
-                      isSelected
-                        ? 'border-[#17375E] bg-[#E1EBEC]/40 ring-2 ring-[#17375E]/25 shadow-xs'
-                        : 'border-[#E1EBEC] bg-[#FFFFFF] hover:border-[#5F7083] hover:bg-[#E1EBEC]/25'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 w-full">
-                      <span className="text-lg leading-none">{tag.emoji}</span>
-                      {isSelected ? (
-                        <span className="p-1 rounded-full bg-[#17375E] text-[#FFFFFF]">
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </span>
-                      ) : (
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
-                            (tag.points ?? 0) > 0
-                              ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#17375E]'
-                              : (tag.points ?? 0) < 0
-                              ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
-                              : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC]'
-                          }`}
-                        >
-                          {(tag.points ?? 0) > 0 ? `+${tag.points}` : tag.points}
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="font-black text-[#0F2A4A] text-xs leading-tight line-clamp-1">{displayTitle}</h4>
-                      {displaySubtitle && (
-                        <p className="text-[10px] text-[#5F7083] mt-0.5 line-clamp-1 font-medium">{displaySubtitle}</p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Timestamp & Timing Controls */}
-            <div className="classy-card p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-[#0F2A4A]">
-                  <Clock className="w-3.5 h-3.5 text-[#17375E]" />
-                  <span>{isEn ? 'Timestamp:' : 'توقيت التسجيل (Timestamp):'}</span>
-                </div>
-
-                <div className="flex items-center gap-1 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomTimestamp(false)}
-                    className={`px-2.5 py-1 rounded-xl font-black transition-all cursor-pointer text-[11px] ${
-                      !isCustomTimestamp
-                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                        : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {isEn ? 'Now (Auto)' : 'الآن (تلقائي)'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomTimestamp(true)}
-                    className={`px-2.5 py-1 rounded-xl font-black transition-all cursor-pointer text-[11px] ${
-                      isCustomTimestamp
-                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                        : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {isEn ? 'Custom Date/Time' : 'تحديد وقت سابق'}
-                  </button>
-                </div>
-              </div>
-
-              {isCustomTimestamp ? (
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div>
-                    <label className="text-[10px] font-bold text-[#5F7083] mb-1 block">{isEn ? 'Date:' : 'التاريخ:'}</label>
-                    <input
-                      type="date"
-                      value={customDate}
-                      onChange={(e) => setCustomDate(e.target.value)}
-                      className="classy-input font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-[#5F7083] mb-1 block">{isEn ? 'Time:' : 'الوقت:'}</label>
-                    <input
-                      type="time"
-                      value={customTime}
-                      onChange={(e) => setCustomTime(e.target.value)}
-                      className="classy-input font-bold"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="p-2.5 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl flex items-center justify-between text-[11px] text-[#5F7083]">
-                  <span>{isEn ? 'Evaluation will be recorded at current time.' : 'سيتم حفظ التقييم بتوقيت اللحظة الحالية بدقة.'}</span>
-                  <span className="font-black text-[#0F2A4A]">
-                    {new Date().toLocaleTimeString(isEn ? 'en-US' : 'ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Optional Group Association & Points Setting */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Group selection */}
-              {studentGroups.length > 0 && (
-                <div className="classy-card p-3 space-y-1.5">
-                  <label className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-[#17375E]" />
-                    <span>{isEn ? 'Linked Class / Group:' : 'المجموعة / الحصة المرتبطة:'}</span>
-                  </label>
-                  <select
-                    value={selectedGroupId}
-                    onChange={(e) => setSelectedGroupId(e.target.value)}
-                    className="classy-select"
-                  >
-                    <option value="">{isEn ? 'General (No specific group)' : 'عام (بدون مجموعة محددة)'}</option>
-                    {studentGroups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name} ({g.type === 'private' ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Group' : 'مجموعة')})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Points Adjustment */}
-              <div className="classy-card p-3 space-y-1.5">
-                <label className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-[#17375E]" />
-                  <span>{isEn ? 'Points Impact:' : 'النقاط / التأثير:'}</span>
-                </label>
-                <div className="flex items-center gap-1">
-                  {[-10, -5, 0, 5, 10, 15].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setPoints(val)}
-                      className={`flex-1 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                        points === val
-                          ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs ring-1 ring-[#17375E]'
-                          : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                      }`}
-                    >
-                      {val > 0 ? `+${val}` : val}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Note & Comments */}
-            <div className="classy-card p-3 space-y-1.5">
-              <label className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[#17375E]" />
-                <span>{isEn ? 'Additional Note (Optional):' : 'ملاحظة أو تفاصيل إضافية (اختياري):'}</span>
-              </label>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={isEn ? 'Add quick feedback notes or follow-up reason...' : 'أضف أي تفاصيل سريعة تخص هذا التقييم، تفاعل الطالب، أو سبب التنبيه...'}
-                rows={2}
-                className="classy-textarea"
-              />
-            </div>
-
-          </form>
-
-          {/* Footer Actions */}
-          <div className="p-4 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting || isSavedSuccess}
-              className="flex-1 py-3 rounded-2xl border border-[#E1EBEC] bg-[#FFFFFF] text-[#5F7083] font-black text-xs hover:bg-[#E1EBEC]/25 transition-all disabled:opacity-50 cursor-pointer"
-            >
-              {t('cancel')}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || isSavedSuccess || (isCustomMode && !customTagName.trim())}
-              className={`flex-1 py-3 rounded-2xl text-[#FFFFFF] font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                isSavedSuccess
-                  ? 'bg-[#0F2A4A] ring-2 ring-[#17375E]/50'
-                  : 'bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] shadow-[#17375E]/30 hover:brightness-105 active:scale-95'
-              }`}
-            >
-              {isSavedSuccess ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{isEn ? 'Rating Saved Successfully!' : 'تم حفظ التقييم بنجاح!'}</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 text-[#FFFFFF]" />
-                  <span>{isEn ? 'Save Behavior Rating' : 'حفظ تقييم السلوك'}</span>
-                </>
-              )}
-            </button>
-          </div>
-
+              </button>
+            );
+          })}
         </div>
-      </div>
-    </ModalPortal>
+
+        {/* Timestamp & Timing Controls */}
+        <div className="p-3.5 rounded-2xl bg-page border border-line space-y-2.5">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs font-black text-navy">
+              <AppIcon name="clock" size={14} className="text-navy" />
+              <span>{isEn ? 'Timestamp:' : 'توقيت التسجيل:'}</span>
+            </div>
+
+            <SegmentedControl<'now' | 'custom'>
+              value={isCustomTimestamp ? 'custom' : 'now'}
+              onChange={(val) => setIsCustomTimestamp(val === 'custom')}
+              options={[
+                { value: 'now', label: isEn ? 'Now (Auto)' : 'الآن (تلقائي)' },
+                { value: 'custom', label: isEn ? 'Custom Date/Time' : 'تحديد وقت سابق' },
+              ]}
+              className="w-56"
+            />
+          </div>
+
+          {isCustomTimestamp ? (
+            <div className="grid grid-cols-2 gap-2 pt-1 text-start">
+              <div>
+                <label className="field-label">{isEn ? 'Date:' : 'التاريخ:'}</label>
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="classy-input"
+                />
+              </div>
+              <div>
+                <label className="field-label">{isEn ? 'Time:' : 'الوقت:'}</label>
+                <input
+                  type="time"
+                  value={customTime}
+                  onChange={(e) => setCustomTime(e.target.value)}
+                  className="classy-input"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="p-2.5 bg-mint-soft rounded-xl flex items-center justify-between text-[11px] text-slate">
+              <span>{isEn ? 'Recorded at current time.' : 'سيتم حفظ التقييم بتوقيت اللحظة الحالية بدقة.'}</span>
+              <span className="font-black text-navy">
+                {new Date().toLocaleTimeString(isEn ? 'en-US' : 'ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Optional Group Association & Points Setting */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-start">
+          {studentGroups.length > 0 && (
+            <div className="p-3 rounded-2xl bg-page border border-line space-y-1.5">
+              <label className="field-label flex items-center gap-1.5">
+                <AppIcon name="book" size={14} className="text-navy" />
+                <span>{isEn ? 'Linked Class / Group:' : 'المجموعة / الحصة المرتبطة:'}</span>
+              </label>
+              <select
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                className="classy-select"
+              >
+                <option value="">{isEn ? 'General (No specific group)' : 'عام (بدون مجموعة محددة)'}</option>
+                {studentGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} ({g.type === 'private' ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Group' : 'مجموعة')})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="p-3 rounded-2xl bg-page border border-line space-y-1.5">
+            <label className="field-label flex items-center gap-1.5">
+              <AppIcon name="award" size={14} className="text-navy" />
+              <span>{isEn ? 'Points Impact:' : 'النقاط / التأثير:'}</span>
+            </label>
+            <div className="flex items-center gap-1 flex-wrap">
+              {[-10, -5, 0, 5, 10, 15].map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setPoints(val)}
+                  className={`chip flex-1 px-2 ${points === val ? 'chip-active' : ''}`}
+                >
+                  {val > 0 ? `+${val}` : val}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Note */}
+        <div className="p-3 rounded-2xl bg-page border border-line space-y-1.5 text-start">
+          <label className="field-label flex items-center gap-1.5">
+            <AppIcon name="edit" size={14} className="text-navy" />
+            <span>{isEn ? 'Additional Note (Optional):' : 'ملاحظة أو تفاصيل إضافية (اختياري):'}</span>
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={isEn ? 'Add quick feedback notes or follow-up reason...' : 'أضف أي تفاصيل سريعة تخص هذا التقييم، تفاعل الطالب، أو سبب التنبيه...'}
+            rows={2}
+            className="classy-textarea"
+          />
+        </div>
+      </form>
+    </BottomSheet>
   );
 };

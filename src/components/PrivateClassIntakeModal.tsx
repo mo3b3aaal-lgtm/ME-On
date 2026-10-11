@@ -1,39 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-  X,
-  Sparkles,
-  Clock,
-  Layers,
-  DollarSign,
-  CheckCircle2,
-  Calendar,
-  User,
-  Calculator,
-  Tag,
-  Check,
-  Plus,
-  Minus,
-  RotateCcw,
-  TrendingUp,
-  AlertCircle,
-  HelpCircle,
-  Bookmark,
-  Zap,
-} from 'lucide-react';
-import { Student, Enrollment, Group, Session, AttendanceStatus } from '../types';
+import { Student, Enrollment, Group, Session } from '../types';
 import {
   db,
   roundMoney,
   multiplyMoney,
   divideMoney,
-  addMoney,
-  subtractMoney,
-  formatMoney,
   formatSessionQuantityDisplay,
 } from '../utils/storage';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
-import { useSwipeGesture } from '../utils/useSwipeGesture';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
 
 export interface PrivateClassIntakeResult {
   sessionUnits?: number;
@@ -340,385 +316,321 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
     onClose();
   };
 
-  const modalLayer = useModalLayer('private-class-intake', isOpen, onClose);
-  const swipeDownGestures = useSwipeGesture({ onSwipeDown: onClose, threshold: 45 });
-
   if (!isOpen || !student) return null;
 
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/70 backdrop-blur-md flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-t-[32px] sm:rounded-[32px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
-          {/* 1. Header with Smart Session Studio Badge */}
-          <div
-            {...swipeDownGestures}
-            className="p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#17375E] text-[#FFFFFF] flex flex-col shrink-0 relative overflow-hidden cursor-grab active:cursor-grabbing shadow-sm"
+    <BottomSheet
+      id="private-class-intake"
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
+      subtitle={`${student.name} • ${activeGroup?.subject || (isEn ? 'Private Tutoring' : 'درس خاص')}`}
+      headerLeading={
+        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name="zap" size={20} weight="fill" className="text-orange" />
+        </div>
+      }
+      headerTrailing={
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">
+          {isHourly ? (isEn ? 'Hourly' : 'ساعات') : (isEn ? 'Lessons' : 'حصص')}
+        </span>
+      }
+      bodyClassName="p-4"
+      footer={
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-soft px-6"
           >
-            {/* Mobile Drag Indicator */}
-            <div className="sm:hidden w-full pb-2 flex items-center justify-center -mt-2">
-              <div className="modal-drag-handle" />
-            </div>
-
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shrink-0 shadow-md shadow-[#0F2A4A]/20 border border-[#E1EBEC]/25">
-                  <Zap className="w-5 h-5 text-[#E1EBEC] animate-pulse" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight truncate">
-                      {isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
-                    </h2>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/30">
-                      {isHourly ? (isEn ? 'Hourly' : 'ساعات') : (isEn ? 'Lessons' : 'حصص')}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#E1EBEC]/90 font-medium truncate">
-                    {student.name} • {activeGroup?.subject || (isEn ? 'Private Tutoring' : 'درس خاص')}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
-                title={t('close')}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* 2. Modal Body */}
-          <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#0F2A4A]">
-            {/* Smart Memory Suggestion Banner */}
-            {rememberedQuantity !== null && rememberedQuantity > 0 && rememberedQuantity !== (isHourly ? selectedHours : selectedUnits) && (
-              <div className="p-2.5 rounded-2xl bg-gradient-to-r from-[#FFFFFF] to-[#FFFFFF] border border-[#E1EBEC]/80 flex items-center justify-between gap-2 shadow-2xs animate-in fade-in slide-in-from-top-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Bookmark className="w-4 h-4 text-[#0F2A4A] shrink-0" />
-                  <span className="text-[11px] text-[#0F2A4A] font-bold truncate">
-                    {isEn
-                      ? `Last used quantity for ${student.name}:`
-                      : `الكمية السابقة لـ ${student.name}:`}
-                    <strong className="ms-1 text-[#0F2A4A] font-black">
-                      {formatSessionQuantityDisplay(
-                        isHourly ? { hours: rememberedQuantity, isHourly: true } : { sessionUnits: rememberedQuantity, isHourly: false },
-                        isRTL
-                      )}
-                    </strong>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleApplySmartMemory}
-                  className="px-2.5 py-1 rounded-xl bg-[#E1EBEC]/700 hover:bg-[#0F2A4A] text-[#FFFFFF] text-[10px] font-black shrink-0 transition-all cursor-pointer shadow-xs active:scale-95"
-                >
-                  {isEn ? 'Repeat Last' : 'تكرار السابقة'}
-                </button>
-              </div>
-            )}
-
-            {/* A. INTERACTIVE QUANTITY CONTROLLER (Focal Segmented Hub) */}
-            <div className="p-4 sm:p-5 rounded-3xl bg-[#FFFFFF] border border-[#E1EBEC] shadow-xs space-y-4 text-center relative overflow-hidden">
-              <span className="text-[11px] font-black text-[#5F7083] block uppercase tracking-wider">
-                {isHourly
-                  ? (isEn ? 'Session Duration (Hours)' : 'مدة الحصة الفعلية (بالساعات)')
-                  : (isEn ? 'Lesson Intake Quantity' : 'كمية الحصص المنفذة')}
+            {t('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            className="btn-orange flex-1"
+          >
+            <AppIcon name="check" size={16} weight="bold" />
+            <span>
+              {isEn
+                ? `Confirm (${formatSessionQuantityDisplay(
+                    isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
+                    isRTL
+                  )})`
+                : `تأكيد واعتماد (${formatSessionQuantityDisplay(
+                    isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
+                    isRTL
+                  )})`}
+            </span>
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4 text-xs text-navy">
+        {/* Smart Memory Suggestion Banner */}
+        {rememberedQuantity !== null && rememberedQuantity > 0 && rememberedQuantity !== (isHourly ? selectedHours : selectedUnits) && (
+          <div className="p-2.5 rounded-2xl bg-page border border-line flex items-center justify-between gap-2 shadow-2xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <AppIcon name="calendar" size={15} className="text-navy shrink-0" />
+              <span className="text-[11px] text-navy font-bold truncate">
+                {isEn ? `Last used for ${student.name}:` : `الكمية السابقة لـ ${student.name}:`}
+                <strong className="ms-1 text-navy font-black">
+                  {formatSessionQuantityDisplay(
+                    isHourly ? { hours: rememberedQuantity, isHourly: true } : { sessionUnits: rememberedQuantity, isHourly: false },
+                    isRTL
+                  )}
+                </strong>
               </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplySmartMemory}
+              className="px-2.5 py-1 rounded-xl bg-navy text-white text-[10px] font-black shrink-0 transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              {isEn ? 'Repeat Last' : 'تكرار السابقة'}
+            </button>
+          </div>
+        )}
 
-              {/* Central Focal Value with Steppers */}
-              <div className="flex items-center justify-center gap-4 sm:gap-6 py-2">
-                {/* Decrement (- 0.5) */}
-                <button
-                  type="button"
-                  onClick={() => handleStepChange(-0.5)}
-                  disabled={(isHourly ? selectedHours : selectedUnits) <= 0.5}
-                  className="w-12 h-12 rounded-2xl bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] font-black transition-all shadow-2xs cursor-pointer"
-                  title="- 0.5"
-                >
-                  <Minus className="w-5 h-5 text-[#17375E]" />
-                </button>
+        {/* INTERACTIVE QUANTITY CONTROLLER */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-page border border-line shadow-xs space-y-4 text-center relative overflow-hidden">
+          <span className="text-[11px] font-black text-slate block uppercase tracking-wider">
+            {isHourly
+              ? (isEn ? 'Session Duration (Hours)' : 'مدة الحصة الفعلية (بالساعات)')
+              : (isEn ? 'Lesson Intake Quantity' : 'كمية الحصص المنفذة')}
+          </span>
 
-                {/* Big Hero Number & Unit */}
-                <div className="min-w-[150px] p-3.5 rounded-3xl bg-gradient-to-b from-[#FFFFFF] to-[#E1EBEC]/40 border border-[#17375E]/30 shadow-inner">
-                  <div className="text-3xl sm:text-4xl font-black text-[#0F2A4A] tracking-tight">
-                    {isHourly ? selectedHours : selectedUnits}
-                  </div>
-                  <div className="text-xs font-black text-[#17375E] mt-0.5">
-                    {formatSessionQuantityDisplay(
-                      isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
-                      isRTL
-                    )}
-                  </div>
-                </div>
+          {/* Steppers + Number */}
+          <div className="flex items-center justify-center gap-4 sm:gap-6 py-2">
+            <button
+              type="button"
+              onClick={() => handleStepChange(-0.5)}
+              disabled={(isHourly ? selectedHours : selectedUnits) <= 0.5}
+              className="w-12 h-12 rounded-2xl bg-mint-soft hover:bg-mint active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border border-line flex items-center justify-center text-navy font-black transition-all cursor-pointer"
+              title="- 0.5"
+            >
+              <AppIcon name="minus" size={18} weight="bold" />
+            </button>
 
-                {/* Increment (+ 0.5) */}
-                <button
-                  type="button"
-                  onClick={() => handleStepChange(0.5)}
-                  className="w-12 h-12 rounded-2xl bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 active:scale-95 border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] font-black transition-all shadow-2xs cursor-pointer"
-                  title="+ 0.5"
-                >
-                  <Plus className="w-5 h-5 text-[#17375E]" />
-                </button>
+            <div className="min-w-[150px] p-3.5 rounded-3xl bg-page border border-line shadow-inner">
+              <div className="text-3xl sm:text-4xl font-black text-navy tracking-tight">
+                {isHourly ? selectedHours : selectedUnits}
               </div>
-
-              {/* Segmented Preset Pills */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {isHourly
-                  ? HOURLY_PRESETS.map((preset) => {
-                      const isSel = !isCustomMode && selectedHours === preset.value;
-                      return (
-                        <button
-                          key={preset.value}
-                          type="button"
-                          onClick={() => handleSelectPresetHour(preset.value)}
-                          className={`py-2 px-1 rounded-2xl font-black text-xs transition-all border cursor-pointer ${
-                            isSel
-                              ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-md shadow-[#0F2A4A]/20 scale-[1.02]'
-                              : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:border-[#17375E]/40 hover:text-[#0F2A4A]'
-                          }`}
-                        >
-                          {isEn ? preset.labelEn : preset.labelAr}
-                        </button>
-                      );
-                    })
-                  : SESSION_PRESETS.map((unit) => {
-                      const isSel = !isCustomMode && selectedUnits === unit;
-                      return (
-                        <button
-                          key={unit}
-                          type="button"
-                          onClick={() => handleSelectPresetUnit(unit)}
-                          className={`py-2 px-1.5 rounded-2xl font-black text-xs transition-all border cursor-pointer ${
-                            isSel
-                              ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-md shadow-[#0F2A4A]/20 scale-[1.02]'
-                              : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:border-[#17375E]/40 hover:text-[#0F2A4A]'
-                          }`}
-                        >
-                          {unit} {isEn ? (unit === 1 ? 'Lesson' : 'Lessons') : (unit === 1 ? 'حصة' : 'حصص')}
-                        </button>
-                      );
-                    })}
-              </div>
-
-              {/* Custom Value Toggle & Input */}
-              <div className="pt-2 border-t border-[#E1EBEC]/60 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsCustomMode(!isCustomMode)}
-                  className={`text-[11px] font-black flex items-center gap-1.5 transition-colors cursor-pointer ${
-                    isCustomMode ? 'text-[#17375E]' : 'text-[#5F7083] hover:text-[#0F2A4A]'
-                  }`}
-                >
-                  <Tag className="w-3.5 h-3.5" />
-                  <span>{isEn ? 'Custom Value Input' : 'إدخال كمية مخصصة'}</span>
-                </button>
-
-                {isCustomMode && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.25"
-                      min="0.25"
-                      max="24"
-                      value={isHourly ? customHoursInput : customUnitsInput}
-                      onChange={(e) =>
-                        isHourly
-                          ? handleCustomHoursChange(e.target.value)
-                          : handleCustomUnitsChange(e.target.value)
-                      }
-                      placeholder="e.g. 1.25"
-                      className="w-24 p-1.5 text-center rounded-xl bg-[#E1EBEC]/15 border border-[#17375E] font-black text-xs text-[#0F2A4A] focus:outline-none"
-                    />
-                    <span className="text-[11px] font-bold text-[#5F7083]">
-                      {isHourly ? (isEn ? 'hours' : 'ساعة') : (isEn ? 'lessons' : 'حصة')}
-                    </span>
-                  </div>
+              <div className="text-xs font-black text-navy mt-0.5">
+                {formatSessionQuantityDisplay(
+                  isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
+                  isRTL
                 )}
               </div>
             </div>
 
-            {/* B. LIVE FINANCIAL IMPACT PANEL */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-[#FFFFFF] via-[#FFFFFF] to-[#FFFFFF] border border-[#E1EBEC] shadow-xs space-y-3">
-              <div className="flex items-center justify-between border-b border-[#E1EBEC] pb-2">
-                <div className="flex items-center gap-2">
-                  <Calculator className="w-4 h-4 text-[#17375E]" />
-                  <span className="font-black text-xs text-[#0F2A4A]">
-                    {isEn ? 'Live Financial Impact' : 'الأثر المالي المباشر للحصة'}
-                  </span>
-                </div>
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A]">
-                  {isPrepaid
-                    ? (isEn ? 'Prepaid (Auto-settled)' : 'مسبق (تسوية فورية)')
-                    : isPackage
-                    ? (isEn ? 'Package Consumption' : 'خصم من الباقة')
-                    : isHourly
-                    ? (isEn ? 'Hourly Rate' : 'حساب بالساعة')
-                    : (isEn ? 'Postpaid Session' : 'حساب بالحصة')}
+            <button
+              type="button"
+              onClick={() => handleStepChange(0.5)}
+              className="w-12 h-12 rounded-2xl bg-mint-soft hover:bg-mint active:scale-95 border border-line flex items-center justify-center text-navy font-black transition-all cursor-pointer"
+              title="+ 0.5"
+            >
+              <AppIcon name="plus" size={18} weight="bold" />
+            </button>
+          </div>
+
+          {/* Segmented Preset Pills */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {isHourly
+              ? HOURLY_PRESETS.map((preset) => {
+                  const isSel = !isCustomMode && selectedHours === preset.value;
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => handleSelectPresetHour(preset.value)}
+                      className={`chip px-2 ${isSel ? 'chip-active' : ''}`}
+                    >
+                      {isEn ? preset.labelEn : preset.labelAr}
+                    </button>
+                  );
+                })
+              : SESSION_PRESETS.map((unit) => {
+                  const isSel = !isCustomMode && selectedUnits === unit;
+                  return (
+                    <button
+                      key={unit}
+                      type="button"
+                      onClick={() => handleSelectPresetUnit(unit)}
+                      className={`chip px-2 ${isSel ? 'chip-active' : ''}`}
+                    >
+                      {unit} {isEn ? (unit === 1 ? 'Lesson' : 'Lessons') : (unit === 1 ? 'حصة' : 'حصص')}
+                    </button>
+                  );
+                })}
+          </div>
+
+          {/* Custom Input Toggle */}
+          <div className="pt-2 border-t border-line flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCustomMode(!isCustomMode)}
+              className="text-[11px] font-black text-navy hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <AppIcon name="edit" size={12} />
+              <span>{isCustomMode ? (isEn ? 'Close Custom' : 'إغلاق المخصص') : (isEn ? 'Enter Custom Value' : 'إدخال قيمة مخصصة')}</span>
+            </button>
+
+            {isCustomMode && (
+              <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0.25"
+                  max="24"
+                  value={isHourly ? customHoursInput : customUnitsInput}
+                  onChange={(e) => (isHourly ? handleCustomHoursChange(e.target.value) : handleCustomUnitsChange(e.target.value))}
+                  placeholder="e.g. 1.25"
+                  className="classy-input w-28 text-center"
+                />
+                <span className="text-[11px] font-bold text-slate">
+                  {isHourly ? (isEn ? 'hours' : 'ساعة') : (isEn ? 'lessons' : 'حصة')}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* FINANCIAL SUMMARY */}
+        <div className="p-4 rounded-3xl bg-page border border-line shadow-xs space-y-3 text-start">
+          <div className="flex items-center justify-between border-b border-line pb-2">
+            <div className="flex items-center gap-2">
+              <AppIcon name="coins" size={16} className="text-navy" />
+              <span className="font-black text-xs text-navy">
+                {isEn ? 'Financial Impact' : 'الأثر المالي للحصة'}
+              </span>
+            </div>
+            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-mint-soft text-navy">
+              {isPrepaid
+                ? (isEn ? 'Prepaid (Auto-settled)' : 'مسبق (تسوية فورية)')
+                : isPackage
+                ? (isEn ? 'Package Consumption' : 'خصم من الباقة')
+                : isHourly
+                ? (isEn ? 'Hourly Rate' : 'حساب بالساعة')
+                : (isEn ? 'Postpaid Session' : 'حساب بالحصة')}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="p-3 rounded-2xl bg-page border border-line space-y-0.5">
+              <span className="text-[10px] text-slate block font-bold">
+                {isHourly ? (isEn ? 'Hourly Rate' : 'سعر الساعة') : (isEn ? 'Price / Lesson' : 'سعر الحصة')}
+              </span>
+              <strong className="text-sm font-black text-navy block">
+                {isHourly ? hourlyRate : isPackage ? unitRate : baseSessionPrice} {t('currency')}
+              </strong>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-page border border-line space-y-0.5">
+              <span className="text-[10px] text-slate block font-bold">
+                {isEn ? 'Session Total' : 'إجمالي قيمة الحصة'}
+              </span>
+              <strong className="text-sm font-black text-navy block">
+                {calculatedSessionValue} {t('currency')}
+              </strong>
+            </div>
+
+            <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-page border border-line space-y-0.5">
+              <span className="text-[10px] text-slate block font-bold">
+                {isEn ? 'Current Outstanding' : 'المستحق المتبقي'}
+              </span>
+              <strong className="text-sm font-black text-navy block">
+                {currentFin?.remaining || 0} {t('currency')}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        {/* PACKAGE PROJECTION */}
+        {packageProjection && (
+          <div className="p-4 rounded-3xl bg-page border border-line shadow-xs space-y-3 text-start">
+            <div className="flex items-center justify-between border-b border-line pb-2">
+              <div className="flex items-center gap-2">
+                <AppIcon name="invoice" size={16} className="text-navy" />
+                <span className="font-black text-xs text-navy">
+                  {isEn ? 'Package Balance Progression' : 'حالة استهلاك رصيد الباقة'}
+                </span>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-mint-soft text-navy">
+                {packageProjection.total} {isEn ? 'Lessons Package' : 'حصص في الباقة'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+              <div className="p-2.5 rounded-2xl bg-page border border-line space-y-1">
+                <span className="text-[10px] font-bold text-slate block">
+                  {isEn ? 'Before' : 'قبل الرصد'}
+                </span>
+                <strong className="text-xs font-black text-navy block">
+                  {packageProjection.beforeRemaining} {isEn ? 'rem.' : 'متبقية'}
+                </strong>
+                <span className="text-[9px] text-slate block">
+                  {packageProjection.baseUsed} {isEn ? 'used' : 'مستهلكة'}
                 </span>
               </div>
 
-              {/* Financial Calculation Breakdown */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-start">
-                <div className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#E1EBEC] space-y-0.5">
-                  <span className="text-[10px] text-[#5F7083] block font-bold">
-                    {isHourly ? (isEn ? 'Hourly Rate' : 'سعر الساعة') : (isEn ? 'Price / Lesson' : 'سعر الحصة')}
-                  </span>
-                  <strong className="text-sm font-black text-[#0F2A4A] block">
-                    {isHourly ? hourlyRate : isPackage ? unitRate : baseSessionPrice} {t('currency')}
-                  </strong>
-                </div>
+              <div className="p-2.5 rounded-2xl bg-mint-soft border border-navy/30 space-y-1">
+                <span className="text-[10px] font-bold text-navy block">
+                  {isEn ? 'This Session' : 'هذه الحصة'}
+                </span>
+                <strong className="text-xs font-black text-navy block">
+                  -{packageProjection.thisSessionUnits} {isEn ? 'lessons' : 'حصة'}
+                </strong>
+                <span className="text-[9px] text-slate block">
+                  {calculatedSessionValue} {t('currency')}
+                </span>
+              </div>
 
-                <div className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#E1EBEC] space-y-0.5">
-                  <span className="text-[10px] text-[#5F7083] block font-bold">
-                    {isEn ? 'This Session Total' : 'إجمالي قيمة الحصة'}
-                  </span>
-                  <strong className="text-sm font-black text-[#0F2A4A] block">
-                    {calculatedSessionValue} {t('currency')}
-                  </strong>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-[#FFFFFF] border border-[#E1EBEC] space-y-0.5">
-                  <span className="text-[10px] text-[#5F7083] block font-bold">
-                    {isEn ? 'Outstanding Dues' : 'الرصيد المتبقي على الطالب'}
-                  </span>
-                  <strong
-                    className={`text-sm font-black block ${
-                      (currentFin?.remaining || 0) > 0 ? 'text-[#0F2A4A]' : 'text-[#0F2A4A]'
-                    }`}
-                  >
-                    {currentFin?.remaining || 0} {t('currency')}
-                  </strong>
-                </div>
+              <div className="p-2.5 rounded-2xl bg-mint-soft/50 border border-line space-y-1">
+                <span className="text-[10px] font-bold text-navy block">
+                  {isEn ? 'After' : 'بعد الرصد'}
+                </span>
+                <strong className="text-xs font-black text-navy block">
+                  {packageProjection.afterRemaining} {isEn ? 'rem.' : 'متبقية'}
+                </strong>
+                <span className="text-[9px] text-navy font-bold block">
+                  {packageProjection.projectedUsed} / {packageProjection.total}
+                </span>
               </div>
             </div>
 
-            {/* C. BEFORE & AFTER PACKAGE VISUALIZATION (For Package Students) */}
-            {packageProjection && (
-              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#17375E]/5 via-[#FFFFFF] to-[#17375E]/5 border border-[#17375E]/30 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-[#17375E]" />
-                    <span className="font-black text-xs text-[#0F2A4A]">
-                      {isEn ? 'Package Progress (Before & After)' : 'تطور رصيد الباقة (قبل وبعد الرصد)'}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#17375E]">
-                    {packageProjection.total} {isEn ? 'Lessons Package' : 'حصص في الباقة'}
-                  </span>
-                </div>
-
-                {/* Comparison Bento */}
-                <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
-                  {/* Before */}
-                  <div className="p-2.5 rounded-2xl bg-[#FFFFFF] border border-[#E1EBEC] space-y-1">
-                    <span className="text-[10px] font-bold text-[#5F7083] block">
-                      {isEn ? 'Before' : 'قبل الرصد'}
-                    </span>
-                    <strong className="text-xs font-black text-[#0F2A4A] block">
-                      {packageProjection.beforeRemaining} {isEn ? 'rem.' : 'متبقية'}
-                    </strong>
-                    <span className="text-[9px] text-[#5F7083] block">
-                      {packageProjection.baseUsed} {isEn ? 'used' : 'مستهلكة'}
-                    </span>
-                  </div>
-
-                  {/* This Session */}
-                  <div className="p-2.5 rounded-2xl bg-[#17375E]/10 border border-[#17375E]/40 space-y-1">
-                    <span className="text-[10px] font-bold text-[#17375E] block">
-                      {isEn ? 'This Session' : 'هذه الحصة'}
-                    </span>
-                    <strong className="text-xs font-black text-[#17375E] block">
-                      -{packageProjection.thisSessionUnits} {isEn ? 'lessons' : 'حصة'}
-                    </strong>
-                    <span className="text-[9px] text-[#5F7083] block">
-                      {calculatedSessionValue} {t('currency')}
-                    </span>
-                  </div>
-
-                  {/* After */}
-                  <div className="p-2.5 rounded-2xl bg-[#E1EBEC]/65 border border-[#17375E]/50 space-y-1">
-                    <span className="text-[10px] font-bold text-[#0F2A4A] block">
-                      {isEn ? 'After' : 'بعد الرصد'}
-                    </span>
-                    <strong className="text-xs font-black text-[#0F2A4A] block">
-                      {packageProjection.afterRemaining} {isEn ? 'rem.' : 'متبقية'}
-                    </strong>
-                    <span className="text-[9px] text-[#17375E] font-bold block">
-                      {packageProjection.projectedUsed} / {packageProjection.total}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Visual Progress Bar */}
-                <div className="space-y-1 pt-1">
-                  <div className="h-2.5 w-full bg-[#E1EBEC]/25 rounded-full overflow-hidden flex">
-                    <div
-                      style={{
-                        width: `${Math.min(100, (packageProjection.projectedUsed / packageProjection.total) * 100)}%`,
-                      }}
-                      className="bg-gradient-to-r from-[#17375E] to-[#0F2A4A] h-full transition-all duration-300"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-[#5F7083] font-bold">
-                    <span>{packageProjection.projectedUsed} {isEn ? 'consumed' : 'مستهلك'}</span>
-                    <span>{packageProjection.afterRemaining} {isEn ? 'remaining' : 'متبقي'}</span>
-                  </div>
-                </div>
+            {/* Visual Progress Bar */}
+            <div className="space-y-1 pt-1">
+              <div className="h-2.5 w-full bg-mint-soft rounded-full overflow-hidden flex">
+                <div
+                  style={{
+                    width: `${Math.min(100, (packageProjection.projectedUsed / packageProjection.total) * 100)}%`,
+                  }}
+                  className="bg-navy h-full transition-all duration-300"
+                />
               </div>
-            )}
-
-            {/* Optional Notes */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-[#5F7083]">
-                {isEn ? 'Session Notes (Optional):' : 'ملاحظات الحصة (اختياري):'}
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={isEn ? 'Topics covered, homework, remarks...' : 'الموضوعات المغطاة، الواجب، ملاحظات المعلم...'}
-                className="w-full p-2.5 rounded-2xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs font-medium text-[#0F2A4A] focus:outline-none focus:border-[#17375E] resize-none h-16"
-              />
+              <div className="flex items-center justify-between text-[10px] text-slate font-bold">
+                <span>{packageProjection.projectedUsed} {isEn ? 'consumed' : 'مستهلك'}</span>
+                <span>{packageProjection.afterRemaining} {isEn ? 'remaining' : 'متبقي'}</span>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* 3. Footer Actions */}
-          <div className="p-4 sm:p-5 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center justify-between gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-            >
-              {t('cancel')}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className="btn-primary flex-1"
-            >
-              <Check className="w-4 h-4" />
-              <span>
-                {isEn
-                  ? `Confirm & Save (${formatSessionQuantityDisplay(
-                      isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
-                      isRTL
-                    )})`
-                  : `تأكيد واعتماد الحصة (${formatSessionQuantityDisplay(
-                      isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
-                      isRTL
-                    )})`}
-              </span>
-            </button>
-          </div>
+        {/* Notes */}
+        <div className="space-y-1 text-start">
+          <label className="field-label">
+            {isEn ? 'Session Notes (Optional):' : 'ملاحظات الحصة (اختياري):'}
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={isEn ? 'Topics covered, homework, remarks...' : 'الموضوعات المغطاة، الواجب، ملاحظات المعلم...'}
+            rows={2}
+            className="classy-textarea"
+          />
         </div>
       </div>
-    </ModalPortal>
+    </BottomSheet>
   );
 };

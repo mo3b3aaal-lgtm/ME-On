@@ -1,38 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import {
-  X,
-  Layers,
-  Users,
-  Calendar,
-  Clock,
-  MapPin,
-  DollarSign,
-  Plus,
-  Edit2,
-  Trash2,
-  CalendarCheck2,
-  UserPlus,
-  CheckCircle2,
-  BookOpen,
-  TrendingUp,
-  CreditCard,
-  Phone,
-  MessageCircle,
-  Zap,
-  Sparkles,
-  School,
-  Wallet,
-  Activity,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
 import { Group, Student, Session, Enrollment } from '../types';
 import { db, getBillingModeLabel } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { StudentAvatar } from './StudentAvatar';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
+import { StatusBadge } from './ui/StatusBadge';
+import { WhiteCard } from './ui/WhiteCard';
+import { MintCard } from './ui/MintCard';
 import {
   getTimesForDayInGroup,
   formatTimeDisplay,
@@ -70,407 +46,406 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
 }) => {
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
+
   const [activeSubTab, setActiveSubTab] = useState<'students' | 'sessions' | 'stats'>('students');
 
-  // Load data (Memoized for instantaneous modal responsiveness)
-  const groupId = group?.id;
-  const enrollments = useMemo(() => (groupId ? db.getGroupEnrollments(groupId) : []), [groupId]);
-  const enrolledStudents = useMemo(() => (groupId ? db.getGroupStudents(groupId) : []), [groupId]);
-  const groupSessions = useMemo(
-    () => (groupId ? db.getSessions().filter((s) => s.groupId === groupId && s.status !== 'cancelled') : []),
-    [groupId]
-  );
+  // Load group enrollments and active students
+  const enrollments: Enrollment[] = useMemo(() => {
+    if (!group) return [];
+    return db.getGroupEnrollments(group.id);
+  }, [group, isOpen]);
 
-  const stats = useMemo(
-    () =>
-      groupId
-        ? db.calculateGroupStats(groupId)
-        : {
-            studentCount: 0,
-            totalSessions: 0,
-            completedSessions: 0,
-            attendanceRate: 100,
-            totalRevenue: 0,
-            totalDue: 0,
-            remaining: 0,
-          },
-    [groupId]
-  );
+  const enrolledStudents: Student[] = useMemo(() => {
+    if (!group) return [];
+    const allStudents = db.getStudents();
+    const enrolledIds = enrollments.map((e) => e.studentId);
+    return allStudents.filter((s) => enrolledIds.includes(s.id) && s.status !== 'archived');
+  }, [enrollments, group, isOpen]);
 
-  const isPrivate = group?.type === 'private';
-  const themeColor = group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E');
+  // Load group sessions
+  const groupSessions: Session[] = useMemo(() => {
+    if (!group) return [];
+    return db.getSessions().filter((s) => s.groupId === group.id).sort((a, b) => b.date.localeCompare(a.date));
+  }, [group, isOpen]);
 
-  const todayArabicDay = getArabicDayForDate(new Date());
+  // Financial summary & Attendance stats
+  const stats = useMemo(() => {
+    if (!group) {
+      return { totalRevenue: 0, completedSessions: 0, attendanceRate: 100, totalDue: 0 };
+    }
 
-  const handleRemoveStudentFromGroup = (studentId: string, studentName: string) => {
-    if (!group) return;
-    const enr = enrollments.find((e) => e.studentId === studentId);
-    if (!enr) return;
-    if (confirm(t('confirmRemoveStudentFromGroup') + ` (${studentName})`)) {
-      db.removeEnrollment(enr.id);
-      onDataChanged();
+    let revenue = 0;
+    let due = 0;
+    enrollments.forEach((enr) => {
+      const fin = db.calculateEnrollmentFinancials(enr.id);
+      if (fin) {
+        revenue += fin.totalPaid || 0;
+        due += fin.totalDue || 0;
+      }
+    });
+
+    const completed = groupSessions.filter((s) => s.status === 'completed').length;
+
+    // Calculate attendance percentage across all sessions
+    const allAtt = db.getAttendance();
+    const groupSessionIds = new Set(groupSessions.map((s) => s.id));
+    const groupAtt = allAtt.filter((a) => groupSessionIds.has(a.sessionId));
+    const presentCount = groupAtt.filter((a) => a.status === 'present' || a.status === 'late').length;
+    const totalRecords = groupAtt.length;
+    const rate = totalRecords > 0 ? Math.round((presentCount / totalRecords) * 100) : 100;
+
+    return {
+      totalRevenue: revenue,
+      totalDue: due,
+      completedSessions: completed,
+      attendanceRate: rate,
+    };
+  }, [group, enrollments, groupSessions, isOpen]);
+
+  if (!isOpen || !group) return null;
+
+  const isPrivate = group.type === 'private';
+  const billingLabel = getBillingModeLabel(group.billingType, group.billingMode);
+
+  const handleUnenrollStudent = (studentId: string, studentName: string) => {
+    const confirmed = window.confirm(
+      isEn
+        ? `Are you sure you want to remove ${studentName} from this group?`
+        : `هل أنت متأكد من إلغاء اشتراك الطالب (${studentName}) من هذه المجموعة؟`
+    );
+    if (confirmed) {
+      const enr = enrollments.find((e) => e.studentId === studentId);
+      if (enr) {
+        db.removeEnrollment(enr.id);
+        onDataChanged();
+      }
     }
   };
 
   const handleDeleteGroup = () => {
-    if (!group) return;
-    if (confirm(t('confirmDeleteGroup') + ` (${group.name})`)) {
+    const confirmed = window.confirm(
+      isEn
+        ? `Are you sure you want to delete group "${group.name}"? Past recorded sessions and financials will remain preserved.`
+        : `هل أنت متأكد من حذف المجموعة "${group.name}"؟ الحصص المسجلة مسبقاً والماليات ستبقى محفوظة.`
+    );
+    if (confirmed) {
       db.deleteGroup(group.id);
       onDataChanged();
       onClose();
     }
   };
 
-  const modalLayer = useModalLayer('group-profile', isOpen && !!group, onClose);
-
-  if (!isOpen || !group) return null;
-
-  // Format billing mode label
-  const billingLabel =
-    group.billingType === 'monthly'
-      ? (isEn ? 'Monthly Subscription' : 'اشتراك شهري')
-      : group.billingType === 'package'
-      ? (isEn ? `Package (${group.packageSessionsCount || 8} sessions)` : `باقة (${group.packageSessionsCount || 8} حصص)`)
-      : group.billingType === 'hourly'
-      ? (isEn ? 'Hourly Billing' : 'محاسبة بالساعة')
-      : (isEn ? 'Per Session' : 'دفع بالحصة');
-
-  const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
-
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/70 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#FFFFFF] border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-          {/* =========================================================================
-              1. Hero Header Section
-              ========================================================================= */}
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] relative overflow-hidden">
-            {/* Ambient Background Glows */}
-            <div className="absolute -top-10 -right-10 w-44 h-44 bg-[#17375E]/30 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-[#0F2A4A]/25 rounded-full blur-2xl pointer-events-none" />
+    <BottomSheet
+      id="group-profile"
+      isOpen={isOpen}
+      onClose={onClose}
+      showHandle={true}
+      title={group.name}
+      subtitle={`${group.subject} • ${getLocalizedStageName(group.gradeLevel)}${group.roomOrLocation ? ` • ${group.roomOrLocation}` : ''}`}
+      headerLeading={
+        <div className="w-12 h-12 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name={isPrivate ? 'zap' : 'groups'} size={24} weight="duotone" />
+        </div>
+      }
+      headerTrailing={
+        <StatusBadge
+          status={isPrivate ? 'active' : 'pending'}
+          label={isPrivate ? (isEn ? 'Private' : 'درس خاص') : (isEn ? 'Study Group' : 'مجموعة دراسية')}
+        />
+      }
+      bodyClassName="p-4"
+      maxWidthClass="sm:max-w-xl"
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleDeleteGroup}
+            className="btn-danger px-4 text-xs"
+          >
+            <AppIcon name="trash" size={14} />
+            <span>{t('delete')}</span>
+          </button>
 
-            <button
-              onClick={onClose}
-              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] transition-colors cursor-pointer z-10`}
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className={`flex items-start gap-3.5 relative z-10 ${isRTL ? 'pl-10' : 'pr-10'}`}>
-              <div
-                className="w-13 h-13 rounded-2xl flex items-center justify-center font-bold text-[#FFFFFF] text-xl shadow-lg shrink-0 border border-[#E1EBEC]/25 mt-0.5"
-                style={{ backgroundColor: themeColor }}
-              >
-                {isPrivate ? <Zap className="w-6 h-6 text-[#FFFFFF]" /> : <Layers className="w-6 h-6 text-[#FFFFFF]" />}
-              </div>
-
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg font-black text-[#FFFFFF] tracking-tight truncate">{group.name}</h2>
-                  <span className="text-[10px] font-black bg-[#FFFFFF]/20 text-[#FFFFFF] px-2.5 py-0.5 rounded-full border border-[#E1EBEC]/25 shadow-xs">
-                    {isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Study Group' : 'مجموعة دراسية')}
-                  </span>
-                </div>
-                <p className="text-xs text-[#E1EBEC]/90 font-medium truncate">
-                  {group.subject} • {getLocalizedStageName(group.gradeLevel)}
-                  {group.roomOrLocation ? ` • ${group.roomOrLocation}` : ''}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Metrics Bento Strip */}
-            <div className="grid grid-cols-4 gap-2 mt-4 text-center relative z-10">
-              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#E1EBEC]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#FFFFFF]">{enrolledStudents.length}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#E1EBEC]/80">{isEn ? 'Students' : 'الطلاب'}</p>
-              </div>
-
-              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#E1EBEC]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#FFFFFF]">{stats.completedSessions}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#E1EBEC]/80">{isEn ? 'Sessions' : 'الحصص'}</p>
-              </div>
-
-              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#E1EBEC]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#E1EBEC]">{stats.attendanceRate}%</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#E1EBEC]/80">{isEn ? 'Attendance' : 'الالتزام'}</p>
-              </div>
-
-              <div className="p-2 rounded-xl bg-[#FFFFFF]/10 border border-[#E1EBEC]/20 backdrop-blur-xs">
-                <p className="text-sm sm:text-base font-black text-[#FFFFFF]">{group.defaultPrice} {t('currency')}</p>
-                <p className="text-[9px] sm:text-[10px] font-bold text-[#E1EBEC]/80 truncate">{billingLabel}</p>
-              </div>
-            </div>
+          <button
+            type="button"
+            onClick={() => onEditGroup(group)}
+            className="btn-orange px-5 text-xs"
+          >
+            <AppIcon name="edit" size={14} />
+            <span>{isEn ? 'Edit Group' : 'تعديل بيانات المجموعة'}</span>
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4 text-xs text-navy text-start">
+        {/* Quick Metrics KPI Strip */}
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="p-2.5 rounded-2xl bg-mint-soft border border-line">
+            <p className="text-sm sm:text-base font-black text-navy">{enrolledStudents.length}</p>
+            <p className="text-[10px] font-bold text-slate mt-0.5">{isEn ? 'Students' : 'الطلاب'}</p>
           </div>
 
-          {/* =========================================================================
-              2. Sub-tab Navigation (Segmented Pill Bar)
-              ========================================================================= */}
-          <div className="p-2 bg-[#E1EBEC]/15 border-b border-[#E1EBEC]">
-            <div className="classy-card p-1 flex items-center gap-1 bg-[#FFFFFF] border-[#E1EBEC]">
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('students')}
-                className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeSubTab === 'students'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-sm'
-                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>{isEn ? `Students (${enrolledStudents.length})` : `الطلاب (${enrolledStudents.length})`}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('sessions')}
-                className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeSubTab === 'sessions'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-sm'
-                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
-                }`}
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                <span>{isEn ? `Sessions (${groupSessions.length})` : `الحصص (${groupSessions.length})`}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('stats')}
-                className={`flex-1 py-2 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeSubTab === 'stats'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-sm'
-                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
-                }`}
-              >
-                <Activity className="w-3.5 h-3.5" />
-                <span>{isEn ? 'Stats & Finance' : 'الأداء والماليات'}</span>
-              </button>
-            </div>
+          <div className="p-2.5 rounded-2xl bg-mint-soft border border-line">
+            <p className="text-sm sm:text-base font-black text-navy">{stats.completedSessions}</p>
+            <p className="text-[10px] font-bold text-slate mt-0.5">{isEn ? 'Sessions' : 'الحصص'}</p>
           </div>
 
-          {/* =========================================================================
-              3. Content Area
-              ========================================================================= */}
-          <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-3.5 text-xs text-[#0F2A4A] bg-[#FFFFFF]">
-            {/* TAB 1: Enrolled Students */}
-            {activeSubTab === 'students' && (
-              <div className="space-y-3">
-                {/* Actions Bar */}
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-bold text-[#5F7083]">{isEn ? 'Group Students' : 'قائمة طلاب المجموعة'}</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {enrolledStudents.length > 0 && onOpenBulkAddSession && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenBulkAddSession(enrolledStudents, group.id)}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#E1EBEC]/25 hover:bg-[#E1EBEC]/50 text-[#17375E] font-bold text-[11px] flex items-center gap-1 border border-[#E1EBEC] transition-all active:scale-95 cursor-pointer shadow-2xs"
-                      >
-                        <CalendarCheck2 className="w-3.5 h-3.5" />
-                        <span>{isEn ? `Bulk Schedule (${enrolledStudents.length})` : `جدولة جماعية (${enrolledStudents.length})`}</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onAddExistingStudent(group)}
-                      className="px-2.5 py-1.5 rounded-xl bg-[#17375E] hover:bg-[#0F2A4A] text-[#FFFFFF] font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>{isEn ? 'Add Enrolled' : 'إضافة طالب مسجل'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onAddNewStudentToGroup(group)}
-                      className="px-2.5 py-1.5 rounded-xl bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 text-[#0F2A4A] font-bold text-[11px] flex items-center gap-1 border border-[#E1EBEC] transition-all active:scale-95 cursor-pointer shadow-2xs"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-[#17375E]" />
-                      <span>{isEn ? 'New Student' : 'طالب جديد'}</span>
-                    </button>
-                  </div>
-                </div>
+          <div className="p-2.5 rounded-2xl bg-mint-soft border border-line">
+            <p className="text-sm sm:text-base font-black text-navy">{stats.attendanceRate}%</p>
+            <p className="text-[10px] font-bold text-slate mt-0.5">{isEn ? 'Attendance' : 'الالتزام'}</p>
+          </div>
 
-                {enrolledStudents.length === 0 ? (
-                  <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#E1EBEC] text-center space-y-2.5 shadow-xs">
-                    <Users className="w-8 h-8 mx-auto text-[#5F7083] opacity-40" />
-                    <p className="font-black text-[#0F2A4A] text-sm">{isEn ? 'No students enrolled in this group yet' : 'لا يوجد طلاب مسجلون في هذه المجموعة بعد'}</p>
-                    <p className="text-[11px] text-[#5F7083] max-w-xs mx-auto">
-                      {isEn ? 'Add existing students from your directory or register a new student directly.' : 'يمكنك إضافة طلاب مسجلين مسبقاً من قاعدة بياناتك أو إنشاء ملف طالب جديد مباشرة.'}
-                    </p>
-                    <div className="pt-2 flex items-center justify-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => onAddExistingStudent(group)}
-                        className="px-3.5 py-2 rounded-xl bg-[#17375E] text-[#FFFFFF] font-bold text-xs inline-flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        <span>{isEn ? 'Add Existing Student' : 'إضافة طالب من النظام'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onAddNewStudentToGroup(group)}
-                        className="px-3.5 py-2 rounded-xl bg-[#FFFFFF] text-[#0F2A4A] font-bold text-xs inline-flex items-center gap-1.5 border border-[#E1EBEC] transition-all cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4 text-[#17375E]" />
-                        <span>{isEn ? 'Register New Student' : 'تسجيل طالب جديد'}</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {enrolledStudents.map((st) => {
-                      const enr = enrollments.find((e) => e.studentId === st.id);
-                      const stFin = db.calculateStudentFinancials(st.id);
+          <div className="p-2.5 rounded-2xl bg-mint-soft border border-line">
+            <p className="text-sm sm:text-base font-black text-navy">{group.defaultPrice} {t('currency')}</p>
+            <p className="text-[10px] font-bold text-slate mt-0.5 truncate">{billingLabel}</p>
+          </div>
+        </div>
 
-                      return (
-                        <div
-                          key={st.id}
-                          className="p-3 rounded-2xl bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-between shadow-xs hover:border-[#17375E]/40 transition-all gap-2"
-                        >
-                          <div
-                            onClick={() => onOpenStudentProfile(st)}
-                            className="flex items-center gap-2.5 cursor-pointer min-w-0 flex-1"
-                          >
-                            <StudentAvatar
-                              student={st}
-                              size="sm"
-                              showFrame={true}
-                              className="shrink-0"
-                            />
-                            <div className="min-w-0 space-y-0.5">
-                              <p className="font-black text-[#0F2A4A] text-xs hover:text-[#17375E] transition-colors truncate">
-                                {st.name}
-                              </p>
-                              <p className="text-[10px] text-[#5F7083] truncate">
-                                {getBillingModeLabel(enr?.billingType, enr?.billingMode)} • {enr?.customPrice || group.defaultPrice} {t('currency')}
-                                {st.phone ? ` • ${st.phone}` : ''}
-                              </p>
-                            </div>
-                          </div>
+        {/* Tabs as Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar border-b border-line">
+          {[
+            {
+              id: 'students' as const,
+              label: isEn ? `Students (${enrolledStudents.length})` : `الطلاب (${enrolledStudents.length})`,
+              icon: 'students' as const,
+            },
+            {
+              id: 'sessions' as const,
+              label: isEn ? `Sessions (${groupSessions.length})` : `الحصص (${groupSessions.length})`,
+              icon: 'calendar' as const,
+            },
+            {
+              id: 'stats' as const,
+              label: isEn ? 'Stats & Finance' : 'الأداء والماليات',
+              icon: 'invoice' as const,
+            },
+          ].map((tab) => {
+            const isSelected = activeSubTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveSubTab(tab.id)}
+                className={`chip ${isSelected ? 'chip-active' : ''}`}
+              >
+                <AppIcon name={tab.icon} size={13} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
-                            {st.phone && (
-                              <a
-                                href={`https://wa.me/${st.phone.replace(/[^0-9]/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="p-1.5 rounded-xl bg-[#E1EBEC]/65 text-[#17375E] hover:bg-[#E1EBEC]/35 border border-[#17375E]/50 transition-colors"
-                                title="WhatsApp"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" />
-                              </a>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveStudentFromGroup(st.id, st.name)}
-                              className="p-1.5 rounded-xl text-[#0F2A4A] hover:bg-[#E1EBEC]/25 border border-transparent hover:border-[#5F7083] transition-colors"
-                              title={isEn ? 'Remove from group' : 'إلغاء قيد الطالب'}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB 2: Sessions */}
-            {activeSubTab === 'sessions' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#5F7083]">{isEn ? 'Group Sessions' : 'حصص المجموعة'}</span>
+        {/* TAB 1: Enrolled Students */}
+        {activeSubTab === 'students' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="font-bold text-slate">{isEn ? 'Group Students' : 'قائمة طلاب المجموعة'}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {enrolledStudents.length > 0 && onOpenBulkAddSession && (
                   <button
                     type="button"
-                    onClick={() => onAddSessionForGroup(group)}
-                    className="px-3 py-1.5 rounded-xl bg-[#17375E] hover:bg-[#0F2A4A] text-[#FFFFFF] font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    onClick={() => onOpenBulkAddSession(enrolledStudents, group.id)}
+                    className="btn-soft px-2.5 py-1 text-[11px] flex items-center gap-1"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('scheduleSessionBtn')}</span>
+                    <AppIcon name="calendarCheck" size={13} />
+                    <span>{isEn ? `Bulk (${enrolledStudents.length})` : `جدولة جماعية (${enrolledStudents.length})`}</span>
                   </button>
-                </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onAddExistingStudent(group)}
+                  className="btn-navy px-2.5 py-1 text-[11px] flex items-center gap-1"
+                >
+                  <AppIcon name="userCheck" size={13} />
+                  <span>{isEn ? 'Add Enrolled' : 'إضافة مسجل'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAddNewStudentToGroup(group)}
+                  className="btn-soft px-2.5 py-1 text-[11px] flex items-center gap-1"
+                >
+                  <AppIcon name="plus" size={13} />
+                  <span>{isEn ? 'New Student' : 'طالب جديد'}</span>
+                </button>
+              </div>
+            </div>
 
-                {groupSessions.length === 0 ? (
-                  <div className="p-6 bg-[#FFFFFF] rounded-2xl border border-[#E1EBEC] text-center space-y-2 shadow-xs">
-                    <Calendar className="w-8 h-8 mx-auto text-[#5F7083] opacity-40" />
-                    <p className="font-bold text-[#0F2A4A] text-xs">{isEn ? 'No sessions recorded for this group yet' : 'لا توجد حصص مسجلة لهذه المجموعة بعد'}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {groupSessions.map((session) => (
+            {enrolledStudents.length === 0 ? (
+              <WhiteCard className="p-6 text-center space-y-2">
+                <AppIcon name="students" size={32} className="mx-auto text-slate opacity-40" />
+                <p className="font-black text-navy text-sm">{isEn ? 'No students enrolled in this group yet' : 'لا يوجد طلاب مسجلون في هذه المجموعة بعد'}</p>
+                <p className="text-[11px] text-slate max-w-xs mx-auto">
+                  {isEn ? 'Add existing students from your directory or register a new student directly.' : 'يمكنك إضافة طلاب مسجلين مسبقاً من قاعدة بياناتك أو إنشاء ملف طالب جديد مباشرة.'}
+                </p>
+              </WhiteCard>
+            ) : (
+              <div className="space-y-2">
+                {enrolledStudents.map((st) => {
+                  const enr = enrollments.find((e) => e.studentId === st.id);
+                  return (
+                    <MintCard
+                      key={st.id}
+                      className="p-3 flex items-center justify-between gap-2"
+                    >
                       <div
-                        key={session.id}
-                        className="p-3 bg-[#FFFFFF] rounded-2xl border border-[#E1EBEC] flex items-center justify-between gap-2 shadow-xs hover:border-[#17375E]/40 transition-all"
+                        onClick={() => onOpenStudentProfile(st)}
+                        className="flex items-center gap-2.5 cursor-pointer min-w-0 flex-1"
                       >
-                        <div className="space-y-0.5 min-w-0">
-                          <strong className="font-black text-xs text-[#0F2A4A] block truncate">
-                            {session.title}
-                          </strong>
-                          <span className="text-[11px] text-[#5F7083] block">
-                            {getLocalizedWeekdayName(session.dayName)} {session.date} • {formatTimeDisplay(session.startTime, isRTL)}
-                          </span>
+                        <StudentAvatar
+                          student={st}
+                          size="sm"
+                          showFrame={true}
+                          className="shrink-0"
+                        />
+                        <div className="min-w-0 space-y-0.5 text-start">
+                          <p className="font-black text-navy text-xs truncate">
+                            {st.name}
+                          </p>
+                          <p className="text-[10px] text-slate truncate">
+                            {getBillingModeLabel(enr?.billingType, enr?.billingMode)} • {enr?.customPrice || group.defaultPrice} {t('currency')}
+                            {st.phone ? ` • ${st.phone}` : ''}
+                          </p>
                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {st.phone && (
+                          <a
+                            href={`https://wa.me/${st.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-xl bg-page text-navy hover:bg-mint border border-line transition-colors"
+                            title="WhatsApp"
+                          >
+                            <AppIcon name="message" size={13} />
+                          </a>
+                        )}
 
                         <button
                           type="button"
-                          onClick={() => onOpenAttendanceModal(session)}
-                          className="px-3 py-1.5 rounded-xl bg-[#17375E] text-[#FFFFFF] font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                          onClick={() => handleUnenrollStudent(st.id, st.name)}
+                          className="p-1.5 rounded-xl hover:bg-coral-soft text-slate hover:text-coral transition-colors"
+                          title={isEn ? 'Remove from group' : 'إلغاء اشتراك'}
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
-                          <span>{session.status === 'completed' ? (isEn ? 'Attendance' : 'الحضور') : (isEn ? 'Take Attendance' : 'رصد')}</span>
+                          <AppIcon name="close" size={13} />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </MintCard>
+                  );
+                })}
               </div>
             )}
+          </div>
+        )}
 
-            {/* TAB 3: Stats */}
-            {activeSubTab === 'stats' && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="bg-[#FFFFFF] p-3.5 rounded-2xl border border-[#E1EBEC] text-center space-y-1">
-                    <span className="text-[10px] text-[#5F7083] font-bold block">{isEn ? 'Total Expected Revenue' : 'إجمالي القيمة المستحقة'}</span>
-                    <strong className="text-base font-black text-[#0F2A4A] block">{stats.totalDue} {t('currency')}</strong>
-                  </div>
-                  <div className="bg-[#FFFFFF] p-3.5 rounded-2xl border border-[#17375E]/50 text-center space-y-1">
-                    <span className="text-[10px] text-[#0F2A4A] font-bold block">{isEn ? 'Total Collected' : 'إجمالي المحصل'}</span>
-                    <strong className="text-base font-black text-[#0F2A4A] block">{stats.totalRevenue} {t('currency')}</strong>
-                  </div>
+        {/* TAB 2: Sessions */}
+        {activeSubTab === 'sessions' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-slate">{isEn ? 'Group Sessions Schedule' : 'سجل وجدول حصص المجموعة'}</span>
+              <button
+                type="button"
+                onClick={() => onAddSessionForGroup(group)}
+                className="btn-orange px-3 py-1.5 text-xs flex items-center gap-1"
+              >
+                <AppIcon name="plus" size={13} weight="bold" />
+                <span>{isEn ? 'Schedule Session' : 'جدولة حصة جديدة'}</span>
+              </button>
+            </div>
+
+            {groupSessions.length === 0 ? (
+              <WhiteCard className="p-6 text-center space-y-2">
+                <AppIcon name="calendar" size={32} className="mx-auto text-slate opacity-40" />
+                <p className="font-black text-navy text-sm">{isEn ? 'No sessions scheduled yet' : 'لا توجد حصص مجدولة بعد'}</p>
+                <p className="text-[11px] text-slate">
+                  {isEn ? 'Schedule upcoming classes to track attendance and automatically update financial balances.' : 'جدول حصصك القادمة لرصد الحضور وتحديث الأرصدة المحاسبية آلياً.'}
+                </p>
+              </WhiteCard>
+            ) : (
+              <div className="space-y-2">
+                {groupSessions.map((sess) => {
+                  const isCompleted = sess.status === 'completed';
+                  return (
+                    <MintCard
+                      key={sess.id}
+                      className="p-3 flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0 space-y-0.5 text-start">
+                        <div className="flex items-center gap-2">
+                          <p className="font-black text-navy text-xs truncate">
+                            {sess.title || (isEn ? 'Class Session' : 'حصة دراسية')}
+                          </p>
+                          <StatusBadge
+                            status={isCompleted ? 'active' : 'pending'}
+                            label={isCompleted ? (isEn ? 'Completed' : 'مكتملة') : (isEn ? 'Upcoming' : 'قادمة')}
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate">
+                          {sess.dayName} {sess.date} • {sess.startTime}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onOpenAttendanceModal(sess)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
+                          isCompleted
+                            ? 'bg-page border border-line text-navy hover:bg-mint'
+                            : 'btn-orange'
+                        }`}
+                      >
+                        <AppIcon name="calendarCheck" size={13} weight="bold" />
+                        <span>{isCompleted ? (isEn ? 'Attendance' : 'سجل الحضور') : (isEn ? 'Take Attendance' : 'رصد الحضور')}</span>
+                      </button>
+                    </MintCard>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: Stats & Finance */}
+        {activeSubTab === 'stats' && (
+          <div className="space-y-3">
+            <WhiteCard className="p-4 space-y-3">
+              <span className="font-black text-navy text-xs block">
+                {isEn ? 'Financial Overview for this Group' : 'الملخص المالي للمجموعة'}
+              </span>
+
+              <div className="grid grid-cols-2 gap-2.5 text-center">
+                <div className="p-3.5 rounded-2xl bg-mint-soft border border-line space-y-1">
+                  <span className="text-[10px] text-slate font-bold block">{isEn ? 'Total Expected' : 'إجمالي المستحق'}</span>
+                  <strong className="text-base font-black text-navy block">{stats.totalDue} {t('currency')}</strong>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-mint-soft border border-line space-y-1">
+                  <span className="text-[10px] text-navy font-bold block">{isEn ? 'Total Collected' : 'إجمالي المحصل'}</span>
+                  <strong className="text-base font-black text-navy block">{stats.totalRevenue} {t('currency')}</strong>
                 </div>
               </div>
-            )}
-          </div>
+            </WhiteCard>
 
-          {/* Footer Actions */}
-          <div className="p-3 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={handleDeleteGroup}
-              className="p-2 rounded-xl text-[#0F2A4A] hover:bg-[#E1EBEC]/25 border border-transparent hover:border-[#5F7083] transition-colors"
-              title={isEn ? 'Delete group' : 'حذف المجموعة'}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onEditGroup(group)}
-              className="px-4 py-2 rounded-xl bg-[#17375E] hover:bg-[#0F2A4A] text-[#FFFFFF] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-xs"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-              <span>{isEn ? 'Edit Group Info' : 'تعديل بيانات المجموعة'}</span>
-            </button>
+            <WhiteCard className="p-4 space-y-2">
+              <span className="font-black text-navy text-xs block">
+                {isEn ? 'Weekly Schedule' : 'مواعيد المجموعة في الجدول الأسبوعي'}
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {group.scheduleDays && group.scheduleDays.length > 0 ? (
+                  group.scheduleDays.map((d) => (
+                    <span key={d} className="px-2.5 py-1 rounded-full bg-mint-soft border border-line text-xs font-bold text-navy">
+                      {getLocalizedWeekdayName(d, isRTL)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-slate text-xs">{isEn ? 'No days specified' : 'لم يتم تحديد أيام'}</span>
+                )}
+              </div>
+            </WhiteCard>
           </div>
-        </div>
+        )}
       </div>
-    </ModalPortal>
+    </BottomSheet>
   );
 };

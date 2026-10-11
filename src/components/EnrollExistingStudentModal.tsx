@@ -1,33 +1,15 @@
 import React, { useState } from 'react';
-import {
-  X,
-  UserCheck,
-  Search,
-  Check,
-  AlertCircle,
-  Plus,
-  Percent,
-  DollarSign,
-  Layers,
-  Sparkles,
-  Calculator,
-  BookOpen,
-  Clock,
-  Trash2,
-} from 'lucide-react';
-import { Student, Group, Enrollment, BillingType, BillingMode, PricingModifierType } from '../types';
-import { db, calculateCustomEnrollmentPrice, getBillingModeLabel } from '../utils/storage';
+import { Student, Group, BillingType, BillingMode, PricingModifierType } from '../types';
+import { db, calculateCustomEnrollmentPrice } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { getLocalizedStageName } from '../utils/stages';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { SegmentedControl } from './ui/SegmentedControl';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
 import {
   CanonicalWeekday,
-  normalizeScheduleDays,
-  normalizeScheduleTimes,
   normalizeScheduleTimesList,
   getLocalizedWeekdayName,
-  getLocalizedSubjectName,
-  getLocalizedLocationName,
 } from '../utils/schedule';
 
 interface EnrollExistingStudentModalProps {
@@ -97,32 +79,13 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     selectedGroup?.billingMode === 'postpaid' || selectedGroup?.billingType === 'postpaid' ? 'postpaid' : 'prepaid'
   );
   const [groupHourlyRate, setGroupHourlyRate] = useState<number>(selectedGroup?.hourlyRate || 150);
-  const [pricingType, setPricingType] = useState<PricingModifierType>('same_as_group');
+  const [baseSessionsPerMonth, setBaseSessionsPerMonth] = useState<number>(selectedGroup?.baseSessionsPerMonth || 8);
+  const [packageSessionsCount, setPackageSessionsCount] = useState<number>(selectedGroup?.packageSessionsCount || 8);
+  const [pricingType, setPricingType] = useState<PricingModifierType>('standard');
   const [pricingValue, setPricingValue] = useState<number>(0);
-  const [baseSessionsPerMonth, setBaseSessionsPerMonth] = useState<number>(
-    selectedGroup?.baseSessionsPerMonth || 8
-  );
-  const [packageSessionsCount, setPackageSessionsCount] = useState<number>(8);
 
-  const basePrice = selectedGroup?.defaultPrice || 0;
+  const basePrice = selectedGroup ? selectedGroup.defaultPrice : 0;
   const calculatedFinalPrice = calculateCustomEnrollmentPrice(basePrice, pricingType, pricingValue);
-
-  // Existing enrollments
-  const existingEnrollments = db.getEnrollments();
-
-  const filteredStudents = allStudents.filter((student) => {
-    const matchesQuery =
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (student.phone && student.phone.includes(searchQuery)) ||
-      (student.gradeLevel && student.gradeLevel.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesQuery;
-  });
-
-  const isAlreadyEnrolled = (studentId: string, groupId: string) => {
-    return existingEnrollments.some(
-      (e) => e.studentId === studentId && e.groupId === groupId && e.status !== 'stopped'
-    );
-  };
 
   const handleToggleStudent = (studentId: string) => {
     if (selectedStudentIds.includes(studentId)) {
@@ -132,42 +95,55 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     }
   };
 
+  const isAlreadyEnrolled = (studentId: string, groupId: string) => {
+    return db.getStudentEnrollments(studentId).some((e) => e.groupId === groupId && e.status !== 'stopped');
+  };
+
+  const filteredStudents = allStudents.filter((st) =>
+    st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (st.phone && st.phone.includes(searchQuery))
+  );
+
   const togglePrivDay = (day: CanonicalWeekday) => {
     if (privDays.includes(day)) {
-      if (privDays.length > 1) setPrivDays(privDays.filter((d) => d !== day));
+      setPrivDays(privDays.filter((d) => d !== day));
     } else {
       setPrivDays([...privDays, day]);
       if (!privTimes[day] || privTimes[day].length === 0) {
-        setPrivTimes((prev) => ({ ...prev, [day]: [privTime || '16:00'] }));
+        setPrivTimes((prev) => ({
+          ...prev,
+          [day]: [privTime || '16:00'],
+        }));
       }
     }
   };
 
-  const handlePrivDayTimeChange = (day: CanonicalWeekday, timeIdx: number, timeVal: string) => {
+  const handleAddTimeToDay = (day: CanonicalWeekday) => {
+    setPrivTimes((prev) => ({
+      ...prev,
+      [day]: [...(prev[day] || []), '16:00'],
+    }));
+  };
+
+  const handleRemoveTimeFromDay = (day: CanonicalWeekday, index: number) => {
     setPrivTimes((prev) => {
-      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      currentList[timeIdx] = timeVal;
-      return { ...prev, [day]: currentList };
+      const list = [...(prev[day] || [])];
+      list.splice(index, 1);
+      return {
+        ...prev,
+        [day]: list.length > 0 ? list : ['16:00'],
+      };
     });
   };
 
-  const handleAddPrivDayTime = (day: CanonicalWeekday) => {
+  const handleUpdateTimeForDay = (day: CanonicalWeekday, index: number, newTime: string) => {
     setPrivTimes((prev) => {
-      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      const lastTime = currentList[currentList.length - 1] || '16:00';
-      const [h, m] = lastTime.split(':').map(Number);
-      const nextH = !isNaN(h) ? Math.min(23, (h + 3) % 24) : 19;
-      const nextTimeStr = `${String(nextH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
-      return { ...prev, [day]: [...currentList, nextTimeStr] };
-    });
-  };
-
-  const handleRemovePrivDayTime = (day: CanonicalWeekday, timeIdx: number) => {
-    setPrivTimes((prev) => {
-      const currentList = prev[day] ? [...prev[day]] : ['16:00'];
-      if (currentList.length <= 1) return prev;
-      const updated = currentList.filter((_, idx) => idx !== timeIdx);
-      return { ...prev, [day]: updated };
+      const list = [...(prev[day] || [])];
+      list[index] = newTime;
+      return {
+        ...prev,
+        [day]: list,
+      };
     });
   };
 
@@ -233,667 +209,396 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     onClose();
   };
 
-  const modalLayer = useModalLayer('enroll-existing-student', isOpen, onClose);
-
   if (!isOpen) return null;
 
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl">
-        
-        {/* Signature Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden">
-          <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 flex items-center justify-center text-[#FFFFFF] shadow-sm shrink-0">
-              <UserCheck className="w-5 h-5 text-[#FFFFFF]" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight truncate">
-                {isGroupMode ? `${t('enrollExistingStudentTitle')}: ${targetGroup?.name}` : t('enrollExistingStudentTitle')}
-              </h2>
-              <p className="text-xs text-[#E1EBEC]/85 font-medium truncate">
-                {t('enrollExistingStudentSubtitle')}
-              </p>
-            </div>
-          </div>
-
+    <BottomSheet
+      id="enroll-existing-student"
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isGroupMode ? `${t('enrollExistingStudentTitle')}: ${targetGroup?.name}` : t('enrollExistingStudentTitle')}
+      subtitle={t('enrollExistingStudentSubtitle')}
+      headerLeading={
+        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name="userCheck" size={20} weight="duotone" />
+        </div>
+      }
+      headerTrailing={
+        selectedStudentIds.length > 0 ? (
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">
+            {selectedStudentIds.length} {isEn ? 'Selected' : 'محدد'}
+          </span>
+        ) : undefined
+      }
+      bodyClassName="p-4"
+      footer={
+        <div className="flex items-center gap-2.5">
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
+            className="btn-soft flex-1"
           >
-            <X className="w-4 h-4" />
+            {t('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={selectedStudentIds.length === 0 || (enrollmentKind === 'group' && !selectedGroupId)}
+            className="btn-orange flex-1"
+          >
+            <AppIcon name="check" size={16} weight="bold" />
+            <span>{t('enrollSelectedStudentsBtn')}</span>
           </button>
         </div>
+      }
+    >
+      <div className="space-y-4 text-xs text-navy text-start">
+        {/* Service Kind Switcher */}
+        {!targetGroup && (
+          <SegmentedControl<'group' | 'private_service'>
+            value={enrollmentKind}
+            onChange={(val) => setEnrollmentKind(val)}
+            options={[
+              { value: 'group', label: t('groupTypeGroup') },
+              { value: 'private_service', label: t('groupTypePrivate') },
+            ]}
+          />
+        )}
 
-        {/* Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#0F2A4A]">
-          
-          {/* Service Kind Switcher (if not fixed by targetGroup) */}
-          {!targetGroup && (
-            <div className="classy-card p-1 flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setEnrollmentKind('group')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 font-black text-xs cursor-pointer ${
-                  enrollmentKind === 'group'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/25'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>{t('groupTypeGroup')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEnrollmentKind('private_service')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 font-black text-xs cursor-pointer ${
-                  enrollmentKind === 'private_service'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/25'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[#E1EBEC]" />
-                <span>{t('groupTypePrivate')}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Student Picker if in Group Mode or multiple select */}
-          {(!targetStudent || isGroupMode) && (
-            <div className="classy-card p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="font-black text-xs text-[#0F2A4A]">
-                  {t('selectExistingStudentPrompt')} ({selectedStudentIds.length}):
-                </label>
-                <div className="relative w-44">
-                  <Search className={`w-3.5 h-3.5 absolute ${isRTL ? 'right-2.5' : 'left-2.5'} top-2.5 text-[#5F7083]`} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={t('search')}
-                    className={`w-full ${isRTL ? 'pr-8 pl-2' : 'pl-8 pr-2'} py-1.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-[11px] text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] font-bold`}
-                  />
-                </div>
-              </div>
-
-              <div className="max-h-44 overflow-y-auto rounded-2xl border border-[#E1EBEC] bg-[#E1EBEC]/15 p-1.5 space-y-1">
-                {filteredStudents.length === 0 ? (
-                  <p className="p-3 text-center text-[#5F7083] text-[11px] font-bold">{t('noStudentsFound')}</p>
-                ) : (
-                  filteredStudents.map((st) => {
-                    const alreadyEnrolled = enrollmentKind === 'group' && isAlreadyEnrolled(st.id, selectedGroupId);
-                    const isSelected = selectedStudentIds.includes(st.id);
-
-                    return (
-                      <button
-                        key={st.id}
-                        type="button"
-                        disabled={alreadyEnrolled}
-                        onClick={() => handleToggleStudent(st.id)}
-                        className={`w-full p-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
-                          alreadyEnrolled
-                            ? 'bg-[#E1EBEC]/30 opacity-50 cursor-not-allowed'
-                            : isSelected
-                            ? 'bg-[#E1EBEC]/60 border border-[#17375E]'
-                            : 'bg-[#FFFFFF] hover:bg-[#E1EBEC]/35 border border-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
-                              isSelected
-                                ? 'bg-[#17375E] border-[#17375E] text-[#FFFFFF]'
-                                : 'border-[#E1EBEC] bg-[#FFFFFF]'
-                            }`}
-                          >
-                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <div className={isRTL ? 'text-right' : 'text-left'}>
-                            <p className="font-black text-[#0F2A4A] text-xs">{st.name}</p>
-                            <p className="text-[10px] text-[#5F7083]">{getLocalizedStageName(st.gradeLevel, language)}</p>
-                          </div>
-                        </div>
-
-                        {alreadyEnrolled && (
-                          <span className="text-[10px] bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] px-2 py-0.5 rounded-full font-black">
-                            {t('alreadyEnrolledInGroup')}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })
-                )}
+        {/* Student Picker */}
+        {(!targetStudent || isGroupMode) && (
+          <div className="p-3.5 rounded-2xl bg-page border border-line space-y-2.5 shadow-2xs">
+            <div className="flex items-center justify-between gap-2">
+              <label className="field-label mb-0">
+                {t('selectExistingStudentPrompt')} ({selectedStudentIds.length}):
+              </label>
+              <div className="relative w-48">
+                <AppIcon
+                  name="search"
+                  size={14}
+                  className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-slate pointer-events-none`}
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t('search')}
+                  className={`classy-input ${isRTL ? 'pr-8 pl-2.5' : 'pl-8 pr-2.5'}`}
+                />
               </div>
             </div>
-          )}
 
-          {/* Section 1: When creating Independent Private Service */}
-          {enrollmentKind === 'private_service' ? (
-            <div className="classy-card p-4 space-y-3.5">
-              <div className="flex items-center justify-between text-[#17375E] font-black text-xs">
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4" />
-                  <span>{t('privateLessonSetupTitle')}</span>
-                </span>
-                <span className="text-[10px] bg-[#E1EBEC]/25 px-2.5 py-0.5 rounded-full">{t('groupTypePrivate')}</span>
-              </div>
+            <div className="max-h-44 overflow-y-auto rounded-2xl border border-line bg-mist p-1.5 space-y-1">
+              {filteredStudents.length === 0 ? (
+                <p className="p-3 text-center text-slate text-[11px] font-bold">{t('noStudentsFound')}</p>
+              ) : (
+                filteredStudents.map((st) => {
+                  const alreadyEnrolled = enrollmentKind === 'group' && isAlreadyEnrolled(st.id, selectedGroupId);
+                  const isSelected = selectedStudentIds.includes(st.id);
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] text-[#5F7083] mb-1 font-bold">{t('subjectNameLabel')} *</label>
-                  <input
-                    type="text"
-                    value={privSubject}
-                    onChange={(e) => setPrivSubject(e.target.value)}
-                    placeholder="Math, Science..."
-                    className="classy-input font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] text-[#5F7083] mb-1 font-bold">{t('billingType')}</label>
-                  <select
-                    value={privBillingMode}
-                    onChange={(e) => setPrivBillingMode(e.target.value as BillingMode)}
-                    className="classy-select font-bold"
-                  >
-                    <option value="prepaid">{t('billingPrepaid')}</option>
-                    <option value="postpaid">{t('billingPostpaid')}</option>
-                    <option value="package">{t('billingPackage')}</option>
-                    <option value="monthly">{t('billingMonthly')}</option>
-                    <option value="hourly">{t('billingHourly')}</option>
-                  </select>
-                </div>
-
-                {privBillingMode === 'hourly' ? (
-                  <div>
-                    <label className="block text-[11px] text-[#5F7083] mb-1 font-bold">{t('hourlyRateInputLabel')} *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={privHourlyRate}
-                      onChange={(e) => setPrivHourlyRate(Number(e.target.value))}
-                      className="classy-input font-bold"
-                    />
-                  </div>
-                ) : privBillingMode !== 'package' ? (
-                  <div>
-                    <label className="block text-[11px] text-[#5F7083] mb-1 font-bold">
-                      {privBillingMode === 'monthly' ? t('monthlyFeeLabel') : t('perSessionRateLabel')} *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={privPrice}
-                      onChange={(e) => setPrivPrice(Number(e.target.value))}
-                      className="classy-input font-bold"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-[11px] text-[#5F7083] mb-1 font-bold">{t('packageTotalFeeLabel')} *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={privPackagePrice}
-                      onChange={(e) => setPrivPackagePrice(Number(e.target.value))}
-                      placeholder="e.g., 900"
-                      className="classy-input font-bold"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Package Sessions Presets & Count for Private */}
-              {privBillingMode === 'package' && (
-                <div className="p-3 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-black text-[#0F2A4A]">{t('packageSessionsNumberLabel')}</label>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="1"
-                        value={privPackageSessions}
-                        onChange={(e) => setPrivPackageSessions(Math.max(1, Number(e.target.value)))}
-                        className="w-16 bg-[#FFFFFF] border border-[#E1EBEC] rounded-xl p-1 text-xs font-black text-[#0F2A4A] text-center focus:outline-none focus:border-[#17375E]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {[5, 8, 10, 15, 20].map((count) => {
-                      const isSel = privPackageSessions === count;
-                      return (
-                        <button
-                          key={count}
-                          type="button"
-                          onClick={() => setPrivPackageSessions(count)}
-                          className={`px-3 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                            isSel
-                              ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                              : 'bg-[#FFFFFF] text-[#5F7083] border border-[#E1EBEC] hover:border-[#17375E]'
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      disabled={alreadyEnrolled}
+                      onClick={() => handleToggleStudent(st.id)}
+                      className={`w-full p-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
+                        alreadyEnrolled
+                          ? 'bg-page opacity-50 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-mint-soft border border-navy text-navy font-bold shadow-2xs'
+                          : 'bg-page hover:bg-mint-soft/50 border border-line'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
+                            isSelected
+                              ? 'bg-navy border-navy text-white'
+                              : 'border-line bg-page'
                           }`}
                         >
-                          {count} {t('navSessions')}
-                        </button>
-                      );
-                    })}
-                  </div>
+                          {isSelected && <AppIcon name="check" size={12} weight="bold" />}
+                        </div>
+                        <div className={isRTL ? 'text-right' : 'text-left'}>
+                          <p className="font-black text-navy text-xs">{st.name}</p>
+                          <p className="text-[10px] text-slate">{getLocalizedStageName(st.gradeLevel, language)}</p>
+                        </div>
+                      </div>
 
-                  <div className="p-2.5 bg-[#E1EBEC]/40 rounded-xl flex items-center justify-between text-xs text-[#0F2A4A] font-black border border-[#E1EBEC]">
-                    <span>{t('calculatedEffectivePrice')}</span>
-                    <span className="text-sm text-[#0F2A4A]">
-                      {privPackageSessions > 0 ? Math.round(privPackagePrice / privPackageSessions) : 0} {t('currency')} / {t('sessionPrice')}
-                    </span>
-                  </div>
+                      {alreadyEnrolled && (
+                        <span className="text-[10px] bg-mint-soft text-navy border border-line px-2 py-0.5 rounded-full font-black">
+                          {t('alreadyEnrolledInGroup')}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Private Service Config */}
+        {enrollmentKind === 'private_service' ? (
+          <div className="p-4 rounded-2xl bg-page border border-line space-y-3.5 shadow-2xs">
+            <div className="flex items-center justify-between text-navy font-black text-xs">
+              <span className="flex items-center gap-1.5">
+                <AppIcon name="sparkles" size={16} weight="fill" className="text-orange" />
+                <span>{t('privateLessonSetupTitle')}</span>
+              </span>
+              <span className="text-[10px] bg-mint-soft px-2.5 py-0.5 rounded-full border border-line">{t('groupTypePrivate')}</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="field-label">{t('subjectNameLabel')} *</label>
+                <input
+                  type="text"
+                  value={privSubject}
+                  onChange={(e) => setPrivSubject(e.target.value)}
+                  placeholder="Math, Science..."
+                  className="classy-input"
+                />
+              </div>
+
+              <div>
+                <label className="field-label">{t('billingType')}</label>
+                <select
+                  value={privBillingMode}
+                  onChange={(e) => setPrivBillingMode(e.target.value as BillingMode)}
+                  className="classy-select"
+                >
+                  <option value="prepaid">{t('billingPrepaid')}</option>
+                  <option value="postpaid">{t('billingPostpaid')}</option>
+                  <option value="package">{t('billingPackage')}</option>
+                  <option value="monthly">{t('billingMonthly')}</option>
+                  <option value="hourly">{t('billingHourly')}</option>
+                </select>
+              </div>
+
+              {privBillingMode === 'hourly' ? (
+                <div>
+                  <label className="field-label">{t('hourlyRateInputLabel')} *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={privHourlyRate}
+                    onChange={(e) => setPrivHourlyRate(Number(e.target.value))}
+                    className="classy-input"
+                  />
+                </div>
+              ) : privBillingMode !== 'package' ? (
+                <div>
+                  <label className="field-label">
+                    {privBillingMode === 'monthly' ? t('monthlyFeeLabel') : t('perSessionRateLabel')} *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={privPrice}
+                    onChange={(e) => setPrivPrice(Number(e.target.value))}
+                    className="classy-input"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="field-label">{t('packageTotalFeeLabel')} *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={privPackagePrice}
+                    onChange={(e) => setPrivPackagePrice(Number(e.target.value))}
+                    placeholder="e.g., 900"
+                    className="classy-input"
+                  />
                 </div>
               )}
+            </div>
 
-              {/* Schedule days & Per-Day Times */}
-              <div className="space-y-2 pt-1 border-t border-[#E1EBEC]">
-                <label className="block text-[11px] font-black text-[#0F2A4A]">{t('scheduleDays')}:</label>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {([
-                    { key: 'saturday', labelKey: 'daySat' },
-                    { key: 'sunday', labelKey: 'daySun' },
-                    { key: 'monday', labelKey: 'dayMon' },
-                    { key: 'tuesday', labelKey: 'dayTue' },
-                    { key: 'wednesday', labelKey: 'dayWed' },
-                    { key: 'thursday', labelKey: 'dayThu' },
-                    { key: 'friday', labelKey: 'dayFri' },
-                  ] as { key: CanonicalWeekday; labelKey: string }[]).map(({ key, labelKey }) => {
-                    const isDayChecked = privDays.includes(key);
-                    const localizedName = getLocalizedWeekdayName(key, isRTL);
+            {privBillingMode === 'package' && (
+              <div className="p-3 bg-mint-soft rounded-2xl border border-line space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="field-label mb-0">{t('packageSessionsNumberLabel')}</label>
+                  <div className="flex items-center gap-1 w-24">
+                    <input
+                      type="number"
+                      min="1"
+                      value={privPackageSessions}
+                      onChange={(e) => setPrivPackageSessions(Math.max(1, Number(e.target.value)))}
+                      className="classy-input text-center"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs font-bold text-navy pt-1 border-t border-line">
+                  <span>{t('perSessionRateLabel')}:</span>
+                  <span>
+                    {privPackageSessions > 0 ? Math.round(privPackagePrice / privPackageSessions) : 0} {t('currency')}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Schedule Days */}
+            <div className="space-y-2 pt-1 border-t border-line">
+              <label className="field-label">{t('scheduleDays')}:</label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as CanonicalWeekday[]).map((key) => {
+                  const isDayChecked = privDays.includes(key);
+                  const localizedName = getLocalizedWeekdayName(key, isRTL);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => togglePrivDay(key)}
+                      className={`chip ${isDayChecked ? 'chip-active' : ''}`}
+                    >
+                      {localizedName}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {privDays.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  {privDays.map((dayKey) => {
+                    const dayTimes = privTimes[dayKey] && privTimes[dayKey].length > 0 ? privTimes[dayKey] : ['16:00'];
+                    const localizedDay = getLocalizedWeekdayName(dayKey, isRTL);
                     return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => togglePrivDay(key)}
-                        className={`px-3 py-1 rounded-xl text-xs font-black border transition-all cursor-pointer ${
-                          isDayChecked
-                            ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E]'
-                            : 'bg-[#FFFFFF] text-[#5F7083] border-[#E1EBEC]'
-                        }`}
+                      <div
+                        key={dayKey}
+                        className="p-2.5 rounded-xl bg-page border border-line space-y-2"
                       >
-                        {localizedName}
-                      </button>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-navy flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-navy" />
+                            {localizedDay}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleAddTimeToDay(dayKey)}
+                            className="text-[10px] font-bold text-navy hover:underline flex items-center gap-1"
+                          >
+                            <AppIcon name="plus" size={10} />
+                            <span>{isEn ? 'Add Time Slot' : 'إضافة موعد'}</span>
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {dayTimes.map((tm, idx) => (
+                            <div key={idx} className="flex items-center gap-1">
+                              <input
+                                type="time"
+                                value={tm}
+                                onChange={(e) => handleUpdateTimeForDay(dayKey, idx, e.target.value)}
+                                className="classy-input w-28 text-center"
+                              />
+                              {dayTimes.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTimeFromDay(dayKey, idx)}
+                                  className="p-1 rounded-lg hover:bg-coral-soft text-coral transition-colors"
+                                >
+                                  <AppIcon name="close" size={12} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-
-                {privDays.length > 0 && (
-                  <div className="space-y-2 pt-1">
-                    {privDays.map((dayKey) => {
-                      const dayTimes = privTimes[dayKey] && privTimes[dayKey].length > 0 ? privTimes[dayKey] : ['16:00'];
-                      const localizedDay = getLocalizedWeekdayName(dayKey, isRTL);
-                      return (
-                        <div
-                          key={dayKey}
-                          className="p-2.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-black text-[#0F2A4A] flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#17375E]"></span>
-                              {localizedDay}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleAddPrivDayTime(dayKey)}
-                              className="text-[10px] font-bold text-[#17375E] hover:text-[#0F2A4A] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#E1EBEC]/25 hover:bg-[#E1EBEC]/40 transition-colors cursor-pointer"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>{isRTL ? 'إضافة موعد آخر' : 'Add another time'}</span>
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {dayTimes.map((tVal, tIdx) => (
-                              <div
-                                key={`${dayKey}_${tIdx}`}
-                                className="flex items-center gap-1 bg-[#FFFFFF] border border-[#E1EBEC] rounded-lg px-2.5 py-1 shadow-2xs"
-                              >
-                                <Clock className="w-3.5 h-3.5 text-[#17375E]" />
-                                <input
-                                  type="time"
-                                  value={tVal}
-                                  onChange={(e) => handlePrivDayTimeChange(dayKey, tIdx, e.target.value)}
-                                  className="bg-transparent text-xs font-black text-[#0F2A4A] focus:outline-none cursor-pointer"
-                                />
-                                {dayTimes.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePrivDayTime(dayKey, tIdx)}
-                                    className="p-0.5 rounded text-[#5F7083] hover:text-[#0F2A4A] transition-colors ml-0.5 cursor-pointer"
-                                    title={isRTL ? 'حذف هذا الموعد' : 'Remove time'}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-          ) : (
-            <>
-              {/* Group Picker if not fixed */}
-              {!targetGroup && (
-                <div className="classy-card p-3.5 space-y-1.5">
-                  <label className="font-black text-xs text-[#0F2A4A]">{t('selectGroupsPrompt')}</label>
-                  <select
-                    value={selectedGroupId}
-                    onChange={(e) => {
-                      setSelectedGroupId(e.target.value);
-                      const grp = allGroups.find((g) => g.id === e.target.value);
-                      if (grp) {
-                        const mode = (grp.billingMode || (grp.billingType === 'per_session' ? 'prepaid' : grp.billingType)) as BillingMode;
-                        setBillingMode(mode || 'monthly');
-                        if (mode === 'prepaid' || mode === 'postpaid') {
-                          setPerSessionSubMode(mode);
-                        }
-                        setBaseSessionsPerMonth(grp.baseSessionsPerMonth || 8);
+          </div>
+        ) : (
+          /* Group Enrollment Mode */
+          <>
+            {!targetGroup && (
+              <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+                <label className="field-label">{isEn ? 'Select Group:' : 'اختر المجموعة:'}</label>
+                <select
+                  value={selectedGroupId}
+                  onChange={(e) => {
+                    setSelectedGroupId(e.target.value);
+                    const grp = allGroups.find((g) => g.id === e.target.value);
+                    if (grp) {
+                      const mode = (grp.billingMode || (grp.billingType === 'per_session' ? 'prepaid' : grp.billingType)) as BillingMode;
+                      setBillingMode(mode || 'monthly');
+                      if (mode === 'prepaid' || mode === 'postpaid') {
+                        setPerSessionSubMode(mode);
                       }
-                    }}
-                    className="w-full classy-select"
+                      setBaseSessionsPerMonth(grp.baseSessionsPerMonth || 8);
+                    }
+                  }}
+                  className="w-full classy-select"
+                >
+                  {allGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.type === 'private' ? (isEn ? 'Private' : 'درس خاص') : (isEn ? 'Group' : 'مجموعة')}) - {isEn ? 'Default' : 'الافتراضي'}: {g.defaultPrice} {t('currency')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Billing Mode & Custom Price */}
+            <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <label className="font-black text-navy text-xs block">{isEn ? 'Billing Mode:' : 'نظام الفوترة:'}</label>
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-mint-soft text-navy">
+                  {billingMode === 'monthly'
+                    ? (isEn ? 'Monthly' : 'شهري')
+                    : billingMode === 'package'
+                    ? (isEn ? 'Package' : 'باقة')
+                    : perSessionSubMode === 'prepaid'
+                    ? (isEn ? 'Prepaid' : 'مسبق الدفع')
+                    : (isEn ? 'Postpaid' : 'آجل / بالحصة')}
+                </span>
+              </div>
+
+              {/* Pricing Customization */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-line">
+                <div>
+                  <label className="field-label">{isEn ? 'Pricing Plan:' : 'نظام التسعير:'}</label>
+                  <select
+                    value={pricingType}
+                    onChange={(e) => setPricingType(e.target.value as PricingModifierType)}
+                    className="classy-select"
                   >
-                    {allGroups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name} ({g.type === 'private' ? t('groupTypePrivate') : t('groupTypeGroup')}) - {t('defaultPrice')}: {g.defaultPrice} {t('currency')}
-                      </option>
-                    ))}
+                    <option value="standard">{t('pricingInheritGroup')} ({basePrice} {t('currency')})</option>
+                    <option value="custom_fixed">{t('pricingCustomFixed')}</option>
+                    <option value="discount_percent">{t('pricingDiscountPercent')}</option>
+                    <option value="discount_fixed">{t('pricingDiscountAmount')}</option>
+                    <option value="scholarship">{isEn ? 'Scholarship / Free' : 'منحة / إعفاء كامل'}</option>
                   </select>
                 </div>
-              )}
 
-              {/* Billing System Selection */}
-              <div className="classy-card p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-black text-[#0F2A4A] text-xs block">{t('billingMode')}:</label>
-                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A]">
-                    {billingMode === 'monthly'
-                      ? t('billingMonthly')
-                      : billingMode === 'package'
-                      ? t('billingPackage')
-                      : perSessionSubMode === 'prepaid'
-                      ? t('billingPrepaid')
-                      : t('billingPostpaid')}
-                  </span>
-                </div>
-                
-                {/* Primary Billing Categories */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => setBillingMode('monthly')}
-                    className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
-                      billingMode === 'monthly'
-                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {t('billingMonthly')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBillingMode('prepaid');
-                    }}
-                    className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
-                      billingMode === 'prepaid' || billingMode === 'postpaid'
-                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {t('billingPerSession')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setBillingMode('package')}
-                    className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
-                      billingMode === 'package'
-                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {t('billingPackage')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setBillingMode('hourly')}
-                    className={`py-2 px-1 rounded-xl text-center font-black text-xs transition-all cursor-pointer ${
-                      billingMode === 'hourly'
-                        ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {t('billingHourly')}
-                  </button>
-                </div>
-
-                {billingMode === 'hourly' && (
-                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#5F7083] font-bold">
-                    <span>{t('hourlyRateInputLabel')} ({t('currency')} / hr):</span>
+                {pricingType !== 'standard' && pricingType !== 'scholarship' && (
+                  <div>
+                    <label className="field-label">{isEn ? 'Value:' : 'القيمة:'}</label>
                     <input
                       type="number"
                       min="0"
-                      value={groupHourlyRate}
-                      onChange={(e) => setGroupHourlyRate(Number(e.target.value) || 0)}
-                      className="w-24 p-1.5 text-center font-black bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl text-xs text-[#0F2A4A]"
-                    />
-                  </div>
-                )}
-
-                {/* Sub-modes for Per Session Billing: Prepaid vs Postpaid */}
-                {(billingMode === 'prepaid' || billingMode === 'postpaid') && (
-                  <div className="p-3 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl space-y-2 animate-in fade-in duration-150">
-                    <span className="text-[11px] font-black text-[#5F7083] block">
-                      {t('billingMode')}:
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPerSessionSubMode('prepaid');
-                          setBillingMode('prepaid');
-                        }}
-                        className={`p-2.5 rounded-xl border text-right font-black text-xs transition-all cursor-pointer ${
-                          perSessionSubMode === 'prepaid'
-                            ? 'bg-[#FFFFFF] border-[#17375E] text-[#0F2A4A] ring-1 ring-[#17375E] shadow-xs'
-                            : 'bg-[#FFFFFF]/60 border-[#E1EBEC] text-[#5F7083] hover:bg-[#FFFFFF]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="font-black text-[#0F2A4A] text-xs">1. {t('billingPrepaid')}</span>
-                          <span className="w-2 h-2 rounded-full bg-[#17375E]"></span>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPerSessionSubMode('postpaid');
-                          setBillingMode('postpaid');
-                        }}
-                        className={`p-2.5 rounded-xl border text-right font-black text-xs transition-all cursor-pointer ${
-                          perSessionSubMode === 'postpaid'
-                            ? 'bg-[#FFFFFF] border-[#17375E] text-[#0F2A4A] ring-1 ring-[#17375E] shadow-xs'
-                            : 'bg-[#FFFFFF]/60 border-[#E1EBEC] text-[#5F7083] hover:bg-[#FFFFFF]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="font-black text-[#0F2A4A] text-xs">2. {t('billingPostpaid')}</span>
-                          <span className="w-2 h-2 rounded-full bg-[#0F2A4A]"></span>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {billingMode === 'monthly' && (
-                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#5F7083] font-bold">
-                    <span>{t('baseSessionsPerMonth')}:</span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={baseSessionsPerMonth}
-                      onChange={(e) => setBaseSessionsPerMonth(Math.max(1, Number(e.target.value)))}
-                      className="w-16 p-1.5 text-center font-black bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl text-xs text-[#0F2A4A]"
-                    />
-                  </div>
-                )}
-
-                {billingMode === 'package' && (
-                  <div className="flex items-center justify-between pt-1 text-[11px] text-[#5F7083] font-bold">
-                    <span>{t('packageSessionsCount')}:</span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={packageSessionsCount}
-                      onChange={(e) => setPackageSessionsCount(Math.max(1, Number(e.target.value)))}
-                      className="w-16 p-1.5 text-center font-black bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl text-xs text-[#0F2A4A]"
+                      value={pricingValue}
+                      onChange={(e) => setPricingValue(Number(e.target.value))}
+                      className="classy-input"
                     />
                   </div>
                 )}
               </div>
 
-              {/* Customizable Pricing Options */}
-              <div className="classy-card p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-black text-xs text-[#0F2A4A]">{t('pricingCustomizationTitle')}</label>
-                  <span className="text-[11px] text-[#5F7083] font-bold">{t('defaultPrice')}: {basePrice} {t('currency')}</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPricingType('same_as_group');
-                      setPricingValue(0);
-                    }}
-                    className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
-                      pricingType === 'same_as_group'
-                        ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35 border-transparent'
-                    }`}
-                  >
-                    {t('pricingInheritGroup')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPricingType('fixed_discount')}
-                    className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
-                      pricingType === 'fixed_discount'
-                        ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35 border-transparent'
-                    }`}
-                  >
-                    {t('pricingDiscountAmount')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPricingType('percentage_discount')}
-                    className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
-                      pricingType === 'percentage_discount'
-                        ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35 border-transparent'
-                    }`}
-                  >
-                    {t('pricingDiscountPercent')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPricingType('custom_price');
-                      if (!pricingValue) setPricingValue(basePrice);
-                    }}
-                    className={`p-2 rounded-xl border text-center font-black text-[11px] transition-all cursor-pointer ${
-                      pricingType === 'custom_price'
-                        ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                        : 'text-[#5F7083] hover:bg-[#E1EBEC]/35 border-transparent'
-                    }`}
-                  >
-                    {t('pricingCustomFixed')}
-                  </button>
-                </div>
-
-                {/* Value Input for Modifier */}
-                {pricingType !== 'same_as_group' && (
-                  <div className="space-y-1 pt-1">
-                    <label className="text-[11px] font-black text-[#5F7083]">
-                      {pricingType === 'fixed_discount' && `${t('pricingDiscountAmount')}:`}
-                      {pricingType === 'percentage_discount' && `${t('pricingDiscountPercent')}:`}
-                      {pricingType === 'custom_price' && `${t('pricingCustomFixed')}:`}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="0"
-                        value={pricingValue || ''}
-                        onChange={(e) => setPricingValue(Math.max(0, Number(e.target.value)))}
-                        className="classy-input font-black text-sm"
-                      />
-                      <span className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-2.5 font-bold text-xs text-[#5F7083]`}>
-                        {pricingType.includes('percentage') ? '%' : t('currency')}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Permanent Calculation Preview Box */}
-                <div className="p-3 bg-[#E1EBEC]/40 rounded-2xl border border-[#E1EBEC] flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] font-bold text-[#5F7083] block">{t('calculatedEffectivePrice')}</span>
-                  </div>
-                  <div className="font-black text-base text-[#17375E]">
-                    {calculatedFinalPrice} {t('currency')}
-                  </div>
-                </div>
+              {/* Final Calculated Preview */}
+              <div className="p-3 bg-mint-soft rounded-2xl border border-line flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate block">{t('calculatedEffectivePrice')}</span>
+                <span className="font-black text-base text-navy">
+                  {calculatedFinalPrice} {t('currency')}
+                </span>
               </div>
-            </>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary flex-1"
-            >
-              {t('cancel')}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={selectedStudentIds.length === 0 || (enrollmentKind === 'group' && !selectedGroupId)}
-              className="btn-primary flex-1"
-            >
-              <Check className="w-4 h-4" />
-              <span>{t('enrollSelectedStudentsBtn')}</span>
-            </button>
-          </div>
-
-        </div>
-
+            </div>
+          </>
+        )}
       </div>
-    </div>
-    </ModalPortal>
+    </BottomSheet>
   );
 };

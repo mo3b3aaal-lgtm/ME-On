@@ -1,22 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X,
-  UserPlus,
-  GraduationCap,
-  Phone,
-  User,
-  BookOpen,
-  Check,
-  Sparkles,
-  Layers,
-  DollarSign,
-  Clock,
-  Camera,
-  Upload,
-  Trash2,
-  Award,
-  Plus,
-} from 'lucide-react';
 import { Student, Group, BillingMode, BillingType, AchievementFrame, Enrollment } from '../types';
 import { db } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
@@ -24,7 +6,9 @@ import { StudentAvatar } from './StudentAvatar';
 import { AchievementFrameSelector } from './AchievementFrameSelector';
 import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { SegmentedControl } from './ui/SegmentedControl';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
 import {
   CANONICAL_WEEKDAY_KEYS,
   normalizeWeekdayKey,
@@ -51,9 +35,9 @@ interface ScheduleSlotItem {
 }
 
 const AVATAR_COLORS = [
-  '#17375E', // Sapphire (Primary Blue)
-  '#0F2A4A', // Navy (Dark Blue)
-  '#5F7083', // Steel Grey (Secondary Neutral)
+  'navy',
+  'teal',
+  'slate',
 ];
 
 export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
@@ -63,182 +47,138 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   defaultGroupId,
   allGroups,
   onSaveComplete,
-  zIndex = 50,
+  zIndex,
 }) => {
   const { t, isRTL, language } = useTranslation();
+  const isEn = language.startsWith('en');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [school, setSchool] = useState('');
+  const [gradeLevel, setGradeLevel] = useState('الصف الأول الثانوي');
+  const [selectedStageId, setSelectedStageId] = useState<string>('secondary');
   const [parentName, setParentName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
-  const [parentRelation, setParentRelation] = useState<'الأب' | 'الأم' | 'ولي الأمر'>('ولي الأمر');
-  
-  // Stage & Grade
-  const [selectedStageId, setSelectedStageId] = useState<string>('secondary');
-  const [gradeLevel, setGradeLevel] = useState<string>('الصف الأول الثانوي');
-  
-  const [school, setSchool] = useState('');
-  const [notes, setNotes] = useState('');
-  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
-  
-  // Profile Photo & Achievement Frame
+  const [avatarColor, setAvatarColor] = useState('navy');
   const [profilePhoto, setProfilePhoto] = useState<string | undefined>(undefined);
-  const [achievementFrame, setAchievementFrame] = useState<AchievementFrame>('default');
+  const [achievementFrame, setAchievementFrame] = useState<AchievementFrame | undefined>('none');
   const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
+  const [notes, setNotes] = useState('');
 
-  // Subscription Type Mode for creation
-  const [subscriptionMode, setSubscriptionMode] = useState<'none' | 'group' | 'private' | 'both'>('group');
+  // Subscriptions & Groups selection
+  const [subscriptionMode, setSubscriptionMode] = useState<'group' | 'private' | 'both' | 'none'>('group');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
-  // Student Recurring Schedule Slots
-  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlotItem[]>([
-    { id: 'slot_init_1', day: 'saturday', time: '16:00' },
-  ]);
-
   // Private lesson configuration
-  const [privateSubject, setPrivateSubject] = useState('رياضيات');
-  const [privatePrice, setPrivatePrice] = useState<number>(150);
+  const [privateSubject, setPrivateSubject] = useState('الرياضيات');
+  const [privatePrice, setPrivatePrice] = useState<number>(100);
   const [privateHourlyRate, setPrivateHourlyRate] = useState<number>(150);
   const [privateBillingMode, setPrivateBillingMode] = useState<BillingMode>('prepaid');
-  const [privatePackageSessions, setPrivatePackageSessions] = useState<number>(10);
-  const [privatePackagePrice, setPrivatePackagePrice] = useState<number>(900);
-  const [privateLocation, setPrivateLocation] = useState('منزل الطالب / أونلاين');
+  const [privatePackageSessions, setPrivatePackageSessions] = useState<number>(8);
+  const [privatePackagePrice, setPrivatePackagePrice] = useState<number>(800);
+  const [privateLocation, setPrivateLocation] = useState('منزل الطالب');
+
+  // Student specific schedule slots
+  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlotItem[]>([
+    { id: '1', day: 'saturday', time: '16:00' },
+  ]);
 
   useEffect(() => {
     if (editingStudent) {
       setName(editingStudent.name);
       setPhone(editingStudent.phone || '');
+      setSchool(editingStudent.school || '');
+      setGradeLevel(editingStudent.gradeLevel || 'الصف الأول الثانوي');
+      const stage = getStageByGrade(editingStudent.gradeLevel || 'الصف الأول الثانوي');
+      setSelectedStageId(stage || 'secondary');
       setParentName(editingStudent.parentName || '');
       setParentPhone(editingStudent.parentPhone || '');
-      setParentRelation(editingStudent.parentRelation || 'ولي الأمر');
-      setSchool(editingStudent.school || '');
-      setNotes(editingStudent.notes || '');
-      setAvatarColor(editingStudent.avatarColor || AVATAR_COLORS[0]);
+      setAvatarColor(editingStudent.avatarColor || 'navy');
       setProfilePhoto(editingStudent.profilePhoto);
-      setAchievementFrame(editingStudent.achievementFrame || 'default');
-      
-      const stg = getStageByGrade(editingStudent.gradeLevel);
-      if (stg) {
-        setSelectedStageId(stg);
-      }
-      setGradeLevel(editingStudent.gradeLevel || 'الصف الأول الثانوي');
+      setAchievementFrame(editingStudent.achievementFrame || 'none');
+      setNotes(editingStudent.notes || '');
 
-      // Fetch existing enrollments
+      // Load enrolled groups & check private enrollments
       const enrollments = db.getStudentEnrollments(editingStudent.id);
-      const groupEnrs = enrollments.filter((e) => {
-        const g = allGroups.find((grp) => grp.id === e.groupId);
-        return g && g.type !== 'private' && e.serviceType !== 'private';
+      const regularGroupIds: string[] = [];
+      let hasPrivate = false;
+
+      enrollments.forEach((enr) => {
+        const group = allGroups.find((g) => g.id === enr.groupId);
+        if (enr.serviceType === 'private' || group?.type === 'private') {
+          hasPrivate = true;
+          if (enr.customPrice) setPrivatePrice(enr.customPrice);
+          if (enr.hourlyRate) setPrivateHourlyRate(enr.hourlyRate);
+          if (enr.billingMode) setPrivateBillingMode(enr.billingMode);
+          if (enr.packageSessionsCount) setPrivatePackageSessions(enr.packageSessionsCount);
+          if (group?.subject) setPrivateSubject(group.subject);
+          if (group?.roomOrLocation) setPrivateLocation(group.roomOrLocation);
+        } else {
+          regularGroupIds.push(enr.groupId);
+        }
       });
-      const privEnrs = enrollments.filter((e) => e.serviceType === 'private');
 
-      setSelectedGroupIds(groupEnrs.map((e) => e.groupId));
+      setSelectedGroupIds(regularGroupIds);
 
-      // Determine subscription mode
-      if (groupEnrs.length > 0 && privEnrs.length > 0) {
+      if (hasPrivate && regularGroupIds.length > 0) {
         setSubscriptionMode('both');
-      } else if (privEnrs.length > 0) {
+      } else if (hasPrivate) {
         setSubscriptionMode('private');
-      } else if (groupEnrs.length > 0) {
+      } else if (regularGroupIds.length > 0) {
         setSubscriptionMode('group');
       } else {
         setSubscriptionMode('none');
       }
 
-      // Load private lesson options if any
-      if (privEnrs.length > 0) {
-        const pEnr = privEnrs[0];
-        const pGrp = allGroups.find((g) => g.id === pEnr.groupId);
-        if (pGrp) {
-          setPrivateSubject(pGrp.subject || 'رياضيات');
-          setPrivatePrice(pEnr.customPrice || pGrp.defaultPrice || 150);
-          setPrivateHourlyRate(pEnr.hourlyRate || pGrp.hourlyRate || 150);
-          setPrivateBillingMode((pEnr.billingMode || pGrp.billingMode || 'prepaid') as BillingMode);
-          setPrivatePackageSessions(pEnr.packageSessionsCount || pGrp.packageSessionsCount || 10);
-          setPrivatePackagePrice(pEnr.packagePrice || pGrp.defaultPrice || 900);
-          setPrivateLocation(pGrp.roomOrLocation || 'منزل الطالب / أونلاين');
-        }
-      }
-
-      // Load existing schedule slots using effective schedule resolver
-      const effective = getStudentEffectiveSchedule(editingStudent, allGroups, enrollments, isRTL);
-      const loadedSlots: ScheduleSlotItem[] = [];
-
-      effective.allDaysGrouped.forEach((dayGrp) => {
-        dayGrp.items.forEach((itm) => {
-          loadedSlots.push({
-            id: `slot_${Math.random().toString(36).substr(2, 6)}_${itm.dayKey}_${itm.rawTime}`,
-            day: itm.dayKey,
-            time: itm.rawTime || '16:00',
-          });
-        });
-      });
-
-      if (loadedSlots.length > 0) {
-        setScheduleSlots(loadedSlots);
-      } else if (editingStudent.scheduleDays && editingStudent.scheduleDays.length > 0) {
+      // Schedule slots initialization
+      if (editingStudent.scheduleDays && editingStudent.scheduleDays.length > 0) {
         const normDays = normalizeScheduleDays(editingStudent.scheduleDays);
-        const normTimes = normalizeScheduleTimes(editingStudent.scheduleTimes);
-        const fallbackSlots: ScheduleSlotItem[] = [];
-        normDays.forEach((d) => {
-          const times = normTimes[d]?.length ? normTimes[d] : [editingStudent.scheduleTime || '16:00'];
-          times.forEach((tStr) => {
-            fallbackSlots.push({
-              id: `slot_${Math.random().toString(36).substr(2, 6)}_${d}_${tStr}`,
-              day: d,
-              time: tStr,
+        const normTimes = normalizeScheduleTimes(
+          editingStudent.scheduleTimes,
+          editingStudent.scheduleTime || '16:00',
+          normDays
+        );
+        const items: ScheduleSlotItem[] = [];
+        normDays.forEach((dayKey, idx) => {
+          const times = normTimes[dayKey] || ['16:00'];
+          times.forEach((tm, tmIdx) => {
+            items.push({
+              id: `${idx}_${tmIdx}`,
+              day: dayKey,
+              time: tm,
             });
           });
         });
-        setScheduleSlots(fallbackSlots.length > 0 ? fallbackSlots : [{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
+        setScheduleSlots(items.length > 0 ? items : [{ id: '1', day: 'saturday', time: '16:00' }]);
       } else {
-        setScheduleSlots([{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
+        setScheduleSlots([{ id: '1', day: 'saturday', time: '16:00' }]);
       }
     } else {
       setName('');
       setPhone('');
+      setSchool('');
+      setGradeLevel('الصف الأول الثانوي');
+      setSelectedStageId('secondary');
       setParentName('');
       setParentPhone('');
-      setParentRelation('ولي الأمر');
-      setSchool('');
-      setNotes('');
-      setAvatarColor(AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]);
+      setAvatarColor('navy');
       setProfilePhoto(undefined);
-      setAchievementFrame('default');
-      setSelectedStageId('secondary');
-      setGradeLevel('الصف الأول الثانوي');
-      
-      if (defaultGroupId) {
-        setSubscriptionMode('group');
-        setSelectedGroupIds([defaultGroupId]);
-        const defGrp = allGroups.find((g) => g.id === defaultGroupId);
-        if (defGrp && defGrp.scheduleDays && defGrp.scheduleDays.length > 0) {
-          const normDays = normalizeScheduleDays(defGrp.scheduleDays);
-          const normTimes = normalizeScheduleTimes(defGrp.scheduleTimes);
-          const initSlots: ScheduleSlotItem[] = [];
-          normDays.forEach((d) => {
-            const times = normTimes[d]?.length ? normTimes[d] : [defGrp.scheduleTime || '16:00'];
-            times.forEach((tVal) => {
-              initSlots.push({
-                id: `slot_init_${d}_${tVal}`,
-                day: d,
-                time: tVal,
-              });
-            });
-          });
-          setScheduleSlots(initSlots.length > 0 ? initSlots : [{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
-        } else {
-          setScheduleSlots([{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
-        }
-      } else {
-        setSubscriptionMode('group');
-        setSelectedGroupIds([]);
-        setScheduleSlots([{ id: 'slot_init_1', day: 'saturday', time: '16:00' }]);
-      }
+      setAchievementFrame('none');
+      setNotes('');
+      setSubscriptionMode(defaultGroupId ? 'group' : 'group');
+      setSelectedGroupIds(defaultGroupId ? [defaultGroupId] : []);
+      setPrivateSubject('الرياضيات');
+      setPrivatePrice(100);
+      setPrivateHourlyRate(150);
+      setPrivateBillingMode('prepaid');
+      setPrivatePackageSessions(8);
+      setPrivatePackagePrice(800);
+      setPrivateLocation('منزل الطالب');
+      setScheduleSlots([{ id: '1', day: 'saturday', time: '16:00' }]);
     }
-  }, [editingStudent, defaultGroupId, allGroups, isOpen, isRTL]);
+  }, [editingStudent, defaultGroupId, allGroups, isOpen]);
 
-  // Handle stage change
   const handleStageChange = (stageId: string) => {
     setSelectedStageId(stageId);
     const stage = GRADE_STAGES.find((s) => s.id === stageId);
@@ -247,123 +187,110 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
     }
   };
 
-  // Handle image upload with auto compression
+  const toggleGroup = (groupId: string) => {
+    if (selectedGroupIds.includes(groupId)) {
+      setSelectedGroupIds(selectedGroupIds.filter((id) => id !== groupId));
+    } else {
+      setSelectedGroupIds([...selectedGroupIds, groupId]);
+    }
+  };
+
+  const handleAddScheduleSlot = () => {
+    const newId = String(Date.now());
+    const lastSlot = scheduleSlots[scheduleSlots.length - 1];
+    setScheduleSlots([...scheduleSlots, { id: newId, day: lastSlot ? lastSlot.day : 'monday', time: '16:00' }]);
+  };
+
+  const handleRemoveScheduleSlot = (id: string) => {
+    if (scheduleSlots.length <= 1) return;
+    setScheduleSlots(scheduleSlots.filter((s) => s.id !== id));
+  };
+
+  const handleSlotDayChange = (id: string, newDay: string) => {
+    setScheduleSlots(
+      scheduleSlots.map((s) => (s.id === id ? { ...s, day: normalizeWeekdayKey(newDay) } : s))
+    );
+  };
+
+  const handleSlotTimeChange = (id: string, newTime: string) => {
+    setScheduleSlots(scheduleSlots.map((s) => (s.id === id ? { ...s, time: newTime } : s)));
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsCompressingPhoto(true);
     try {
-      const compressedDataUrl = await compressImage(file, 320, 320, 0.8);
+      const compressedDataUrl = await compressImage(file, 256, 256, 0.8);
       setProfilePhoto(compressedDataUrl);
     } catch (err) {
       console.error('Failed to compress profile photo:', err);
     } finally {
       setIsCompressingPhoto(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleRemovePhoto = () => {
     setProfilePhoto(undefined);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
-  const toggleGroup = (groupId: string) => {
-    setSelectedGroupIds((prev) =>
-      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
-    );
-  };
-
-  const handleAddScheduleSlot = () => {
-    setScheduleSlots((prev) => [
-      ...prev,
-      {
-        id: `slot_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-        day: 'saturday',
-        time: '16:00',
-      },
-    ]);
-  };
-
-  const handleRemoveScheduleSlot = (slotId: string) => {
-    setScheduleSlots((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((s) => s.id !== slotId);
-    });
-  };
-
-  const handleSlotDayChange = (slotId: string, day: string) => {
-    const canon = normalizeWeekdayKey(day);
-    setScheduleSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, day: canon } : s))
-    );
-  };
-
-  const handleSlotTimeChange = (slotId: string, time: string) => {
-    setScheduleSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, time } : s))
-    );
-  };
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!name.trim()) return;
 
-    // Process schedule slots into canonical days and times map
-    const validDaysSet = new Set<string>();
-    const validTimesMap: Record<string, string[]> = {
-      saturday: [],
-      sunday: [],
-      monday: [],
-      tuesday: [],
-      wednesday: [],
-      thursday: [],
-      friday: [],
-    };
+    const studentId = editingStudent
+      ? editingStudent.id
+      : `st_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+    // Build canonical schedule days & times map
+    const canonicalDays: string[] = [];
+    const validTimesMap: Record<string, string[]> = {};
 
     scheduleSlots.forEach((slot) => {
-      const canon = normalizeWeekdayKey(slot.day);
-      if (canon && slot.time) {
-        validDaysSet.add(canon);
-        if (!validTimesMap[canon].includes(slot.time)) {
-          validTimesMap[canon].push(slot.time);
-        }
+      const dayKey = normalizeWeekdayKey(slot.day);
+      if (!canonicalDays.includes(dayKey)) {
+        canonicalDays.push(dayKey);
+      }
+      if (!validTimesMap[dayKey]) {
+        validTimesMap[dayKey] = [];
+      }
+      if (!validTimesMap[dayKey].includes(slot.time)) {
+        validTimesMap[dayKey].push(slot.time);
       }
     });
 
-    const canonicalDays = CANONICAL_WEEKDAY_KEYS.filter((d) => validDaysSet.has(d));
+    const primaryScheduleTime = scheduleSlots[0]?.time || '16:00';
 
     const studentData: Student = {
-      id: editingStudent ? editingStudent.id : `std_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      id: studentId,
       name: name.trim(),
       phone: phone.trim() || undefined,
+      school: school.trim() || undefined,
+      gradeLevel: gradeLevel || 'الصف الأول الثانوي',
       parentName: parentName.trim() || undefined,
       parentPhone: parentPhone.trim() || undefined,
-      parentRelation: parentRelation || undefined,
-      gradeLevel: gradeLevel || 'الصف الأول الثانوي',
-      school: school.trim() || undefined,
-      notes: notes.trim() || undefined,
       avatarColor,
       profilePhoto,
-      achievementFrame,
+      achievementFrame: achievementFrame || 'none',
+      notes: notes.trim() || undefined,
       scheduleDays: canonicalDays,
+      scheduleTime: primaryScheduleTime,
       scheduleTimes: validTimesMap,
-      scheduleTime: canonicalDays.length > 0 && validTimesMap[canonicalDays[0]]?.[0] ? validTimesMap[canonicalDays[0]][0] : '16:00',
-      privateDays: (subscriptionMode === 'private' || subscriptionMode === 'both') ? canonicalDays : undefined,
-      privateTimes: (subscriptionMode === 'private' || subscriptionMode === 'both') ? validTimesMap : undefined,
-      privateTime: canonicalDays.length > 0 && validTimesMap[canonicalDays[0]]?.[0] ? validTimesMap[canonicalDays[0]][0] : '16:00',
-      privateLocation: privateLocation,
-      subject: privateSubject || undefined,
-      status: editingStudent?.status || 'active',
+      status: editingStudent ? editingStudent.status : 'active',
       createdAt: editingStudent ? editingStudent.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    // Save Student Record
     db.saveStudent(studentData);
 
-    // Save Enrollments when creating a new student
+    // Sync Enrollments
     if (!editingStudent) {
-      // 1. Group Enrollments
+      // 1. Group enrollments
       if (subscriptionMode === 'group' || subscriptionMode === 'both') {
         selectedGroupIds.forEach((groupId) => {
           const group = allGroups.find((g) => g.id === groupId);
@@ -381,20 +308,19 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         });
       }
 
-      // 2. Private Lesson Creation
+      // 2. Private Lesson Service
       if (subscriptionMode === 'private' || subscriptionMode === 'both') {
         db.createPrivateLessonService(studentData.id, {
-          subject: privateSubject || 'درس خاص',
-          gradeLevel: gradeLevel || 'الصف الأول الثانوي',
-          sessionPrice: privateBillingMode === 'hourly' ? privateHourlyRate : privatePrice,
-          hourlyRate: privateBillingMode === 'hourly' ? privateHourlyRate : undefined,
-          billingType: privateBillingMode as any,
+          subject: privateSubject.trim() || 'درس خاص',
+          sessionPrice: privateBillingMode === 'package' ? (privatePackagePrice || 800) : (privatePrice || 100),
+          hourlyRate: privateBillingMode === 'hourly' ? (privateHourlyRate || 150) : undefined,
+          billingType: privateBillingMode as BillingType,
           billingMode: privateBillingMode,
-          packageSessionsCount: privateBillingMode === 'package' ? privatePackageSessions : undefined,
-          packagePrice: privateBillingMode === 'package' ? privatePackagePrice : undefined,
+          packageSessionsCount: privateBillingMode === 'package' ? (privatePackageSessions || 8) : undefined,
+          packagePrice: privateBillingMode === 'package' ? (privatePackagePrice || 800) : undefined,
           scheduleDays: canonicalDays.length > 0 ? canonicalDays : ['saturday'],
-          scheduleTime: canonicalDays.length > 0 && validTimesMap[canonicalDays[0]]?.[0] ? validTimesMap[canonicalDays[0]][0] : '16:00',
-          scheduleTimes: validTimesMap,
+          scheduleTime: primaryScheduleTime,
+          scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
           roomOrLocation: privateLocation,
         });
       }
@@ -469,571 +395,461 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
   const currentStage = GRADE_STAGES.find((s) => s.id === selectedStageId) || GRADE_STAGES[2];
 
-  const modalLayer = useModalLayer('add-edit-student', isOpen, onClose);
-
   if (!isOpen) return null;
 
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#FFFFFF] border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-        
-        {/* Modal Signature Header */}
-        <div className="p-4 sm:p-5 flex items-center justify-between border-b border-[#E1EBEC] bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] relative overflow-hidden">
-          <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 text-[#FFFFFF] flex items-center justify-center shrink-0 shadow-sm">
-              <UserPlus className="w-5 h-5 text-[#FFFFFF]" />
+    <BottomSheet
+      id="add-edit-student"
+      isOpen={isOpen}
+      onClose={onClose}
+      zIndex={zIndex}
+      title={editingStudent ? t('editStudent') : t('newStudent')}
+      subtitle={editingStudent ? (isEn ? 'Update student profile & courses' : 'تحديث وتعديل ملف الطالب واشتراكاته') : t('studentsSubtitle')}
+      headerLeading={
+        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name="student" size={20} weight="duotone" />
+        </div>
+      }
+      bodyClassName="p-4"
+      footer={
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-soft flex-1"
+          >
+            {t('cancel')}
+          </button>
+          <button
+            type="submit"
+            form="add-student-form"
+            className="btn-orange flex-1"
+          >
+            <AppIcon name="check" size={16} weight="bold" />
+            <span>{editingStudent ? t('saveChanges') : t('save')}</span>
+          </button>
+        </div>
+      }
+    >
+      <form id="add-student-form" onSubmit={handleSave} className="space-y-4 text-xs text-navy text-start">
+        {/* Profile Photo & Frame */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3.5 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <label className="font-black text-navy text-xs sm:text-sm flex items-center gap-2">
+              <AppIcon name="edit" size={14} className="text-navy" />
+              <span>{t('profilePhoto')}</span>
+            </label>
+            <span className="text-[11px] text-slate font-medium">{t('photoOptionalTip')}</span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0 flex items-center justify-center p-2">
+              <StudentAvatar
+                student={{
+                  id: 'temp',
+                  name: name || t('newStudent'),
+                  avatarColor,
+                  profilePhoto,
+                  achievementFrame,
+                } as Student}
+                size="xl"
+                showFrame={true}
+              />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight truncate">
-                {editingStudent ? t('editStudent') : t('newStudent')}
-              </h2>
-              <p className="text-xs text-[#E1EBEC]/85 font-medium truncate">
-                {editingStudent ? 'تحديث وتعديل ملف الطالب واشتراكاته' : t('studentsSubtitle')}
-              </p>
+
+            <div className="flex-1 space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isCompressingPhoto}
+                  className="btn-navy px-3.5 py-2 text-xs flex items-center gap-1.5"
+                >
+                  <AppIcon name="plus" size={14} weight="bold" />
+                  <span>{isCompressingPhoto ? '...' : profilePhoto ? t('changePhotoBtn') : t('uploadPhotoBtn')}</span>
+                </button>
+
+                {profilePhoto && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="btn-soft px-3 py-2 text-xs flex items-center gap-1"
+                  >
+                    <AppIcon name="trash" size={14} />
+                    <span>{t('removePhotoBtn')}</span>
+                  </button>
+                )}
+              </div>
             </div>
+          </div>
+
+          <div className="pt-2.5 border-t border-line">
+            <AchievementFrameSelector
+              selectedFrame={achievementFrame}
+              onSelectFrame={(frame) => setAchievementFrame(frame)}
+            />
+          </div>
+        </div>
+
+        {/* Basic Student Info */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+          <div>
+            <label className="field-label flex items-center gap-1.5">
+              <AppIcon name="student" size={13} className="text-navy" />
+              <span>{t('studentName')} *</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder={isEn ? 'e.g. Ahmed Mohamed Ali' : 'مثال: أحمد محمد علي'}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="classy-input"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="field-label flex items-center gap-1.5">
+                <AppIcon name="phone" size={13} className="text-navy" />
+                <span>{t('studentPhone')}</span>
+              </label>
+              <input
+                type="tel"
+                placeholder="010XXXXXXXX"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="classy-input"
+              />
+            </div>
+
+            <div>
+              <label className="field-label">{t('schoolNameLabel')}</label>
+              <input
+                type="text"
+                placeholder={isEn ? 'e.g. High School for Excellence' : 'مثال: مدرسة المتفوقين الثانوية'}
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                className="classy-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Educational Stage & Grade */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+          <label className="field-label flex items-center gap-2">
+            <AppIcon name="graduation" size={14} className="text-navy" />
+            <span>{t('gradeLevel')}</span>
+          </label>
+
+          <SegmentedControl<string>
+            value={selectedStageId}
+            onChange={(val) => handleStageChange(val)}
+            options={GRADE_STAGES.map((stg) => ({
+              value: stg.id,
+              label: language === 'ar' ? stg.nameAr : stg.nameEn,
+            }))}
+          />
+
+          <div className="grid grid-cols-3 gap-2">
+            {currentStage.grades.map((grd) => {
+              const gradeName = grd.nameAr;
+              const isSelected = gradeLevel === gradeName;
+              return (
+                <button
+                  key={grd.id}
+                  type="button"
+                  onClick={() => setGradeLevel(gradeName)}
+                  className={`chip w-full ${isSelected ? 'chip-active' : ''}`}
+                >
+                  {getLocalizedStageName(gradeName, language)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Guardian / Parent */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+          <label className="field-label flex items-center gap-2">
+            <AppIcon name="phone" size={14} className="text-navy" />
+            <span>{isEn ? 'Parent / Contact Details' : 'بيانات ولي الأمر والتواصل'}</span>
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="field-label">{t('parentName')}</label>
+              <input
+                type="text"
+                placeholder={isEn ? 'e.g. Mahmoud Ali' : 'مثال: محمود علي'}
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                className="classy-input"
+              />
+            </div>
+
+            <div>
+              <label className="field-label">{t('parentPhone')}</label>
+              <input
+                type="tel"
+                placeholder="010XXXXXXXX"
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value)}
+                className="classy-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Subscriptions Card */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <label className="text-xs sm:text-sm font-black text-navy flex items-center gap-2">
+              <AppIcon name="groups" size={14} className="text-navy" />
+              <span>{t('subscriptionTypeLabel')}</span>
+            </label>
+            <span className="text-[11px] text-slate font-bold">{t('flexibleEnrollmentSupport')}</span>
+          </div>
+
+          <SegmentedControl<'group' | 'private' | 'both' | 'none'>
+            value={subscriptionMode}
+            onChange={(val) => setSubscriptionMode(val)}
+            options={[
+              { value: 'group', label: t('groupTypeGroup') },
+              { value: 'private', label: t('groupTypePrivate') },
+              { value: 'both', label: t('bothTypes') },
+              { value: 'none', label: t('unassigned') },
+            ]}
+          />
+
+          {(subscriptionMode === 'group' || subscriptionMode === 'both') && (
+            <div className="space-y-2 pt-2 border-t border-line">
+              <span className="text-xs font-bold text-navy block">
+                {t('selectGroupsPrompt')}:
+              </span>
+
+              {regularGroups.length === 0 ? (
+                <p className="text-xs text-slate p-3 bg-mist rounded-2xl text-center font-medium">
+                  {t('noGroupsRegisteredYet')}
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {regularGroups.map((grp) => {
+                    const isChecked = selectedGroupIds.includes(grp.id);
+                    return (
+                      <div
+                        key={grp.id}
+                        onClick={() => toggleGroup(grp.id)}
+                        className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                          isChecked
+                            ? 'bg-mint-soft border-navy text-navy font-bold shadow-2xs'
+                            : 'bg-page border-line text-slate hover:bg-mist'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
+                              isChecked
+                                ? 'bg-navy border-navy text-white shadow-2xs'
+                                : 'border-line bg-page'
+                            }`}
+                          >
+                            {isChecked && <AppIcon name="check" size={12} weight="bold" />}
+                          </div>
+                          <span className="font-bold text-xs sm:text-sm text-navy">{grp.name}</span>
+                          <span className="text-[11px] text-slate">
+                            ({grp.subject} • {getLocalizedStageName(grp.gradeLevel, language)})
+                          </span>
+                        </div>
+
+                        <span className="text-xs font-black text-navy">
+                          {grp.defaultPrice} {t('currency')}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {(subscriptionMode === 'private' || subscriptionMode === 'both') && (
+            <div className="space-y-2.5 pt-2 border-t border-line">
+              <span className="text-xs font-black text-navy flex items-center gap-1.5">
+                <AppIcon name="sparkles" size={14} weight="fill" className="text-orange" />
+                <span>{t('privateLessonSetupTitle')}</span>
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="field-label">{t('subjectNameLabel')} *</label>
+                  <input
+                    type="text"
+                    value={privateSubject}
+                    onChange={(e) => setPrivateSubject(e.target.value)}
+                    placeholder={isEn ? 'Physics, Math...' : 'مثال: الفيزياء'}
+                    className="classy-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="field-label">{t('billingType')}</label>
+                  <select
+                    value={privateBillingMode}
+                    onChange={(e) => setPrivateBillingMode(e.target.value as BillingMode)}
+                    className="classy-select cursor-pointer"
+                  >
+                    <option value="prepaid">{t('billingPrepaid')}</option>
+                    <option value="postpaid">{t('billingPostpaid')}</option>
+                    <option value="package">{t('billingPackage')}</option>
+                    <option value="monthly">{t('billingMonthly')}</option>
+                    <option value="hourly">{t('billingHourly')}</option>
+                  </select>
+                </div>
+
+                {privateBillingMode === 'hourly' ? (
+                  <div>
+                    <label className="field-label">{isEn ? 'Hourly Rate *' : 'سعر الساعة *'}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={privateHourlyRate}
+                      onChange={(e) => setPrivateHourlyRate(Number(e.target.value))}
+                      className="classy-input"
+                    />
+                  </div>
+                ) : privateBillingMode !== 'package' ? (
+                  <div>
+                    <label className="field-label">
+                      {privateBillingMode === 'monthly' ? (isEn ? 'Monthly Fee *' : 'سعر الاشتراك الشهري *') : (isEn ? 'Session Price *' : 'سعر الحصة *')}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={privatePrice}
+                      onChange={(e) => setPrivatePrice(Number(e.target.value))}
+                      className="classy-input"
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              {privateBillingMode === 'package' && (
+                <div className="grid grid-cols-2 gap-2.5 p-3 bg-mint-soft border border-line rounded-2xl">
+                  <div>
+                    <label className="field-label">{isEn ? 'Package Sessions *' : 'عدد حصص الباقة *'}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={privatePackageSessions}
+                      onChange={(e) => setPrivatePackageSessions(Number(e.target.value))}
+                      className="classy-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label">{isEn ? 'Package Total Price *' : 'سعر الباقة الإجمالي *'}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={privatePackagePrice}
+                      onChange={(e) => setPrivatePackagePrice(Number(e.target.value))}
+                      className="classy-input"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Schedule Slots */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-3.5 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <label className="text-xs sm:text-sm font-black text-navy flex items-center gap-2">
+              <AppIcon name="clock" size={14} className="text-navy" />
+              <span>{t('studentSchedule')}</span>
+            </label>
+            <span className="text-[11px] text-slate font-bold">
+              {scheduleSlots.length} {t('weeklyClassesCount')}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {scheduleSlots.map((slot) => (
+              <div
+                key={slot.id}
+                className="p-2.5 rounded-2xl bg-mist border border-line flex items-center gap-2"
+              >
+                <div className="flex-1">
+                  <select
+                    value={slot.day}
+                    onChange={(e) => handleSlotDayChange(slot.id, e.target.value)}
+                    className="w-full bg-page border border-line rounded-xl px-2.5 py-2 text-xs font-black text-navy focus:outline-none focus:border-navy cursor-pointer"
+                  >
+                    {CANONICAL_WEEKDAY_KEYS.map((dayKey) => (
+                      <option key={dayKey} value={dayKey}>
+                        {getLocalizedWeekdayName(dayKey, isRTL)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex-1">
+                  <input
+                    type="time"
+                    value={slot.time}
+                    onChange={(e) => handleSlotTimeChange(slot.id, e.target.value)}
+                    className="w-full bg-page border border-line rounded-xl px-2.5 py-2 text-xs font-black text-navy focus:outline-none focus:border-navy text-center"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveScheduleSlot(slot.id)}
+                  disabled={scheduleSlots.length <= 1}
+                  className="p-2 rounded-xl bg-page hover:bg-coral-soft text-navy hover:text-coral border border-line transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                  title={t('removeSlot')}
+                >
+                  <AppIcon name="trash" size={14} />
+                </button>
+              </div>
+            ))}
           </div>
 
           <button
             type="button"
-            onClick={onClose}
-            className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
+            onClick={handleAddScheduleSlot}
+            className="w-full py-2.5 px-3 rounded-xl border border-dashed border-navy/40 bg-mint-soft hover:bg-mint text-navy font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <AppIcon name="plus" size={14} weight="bold" />
+            <span>{t('addScheduleSlot')}</span>
           </button>
         </div>
 
-        {/* Modal Form Content */}
-        <form onSubmit={handleSave} className="p-4 sm:p-5 overflow-y-auto android-scrollbar flex-1 space-y-4 text-xs text-[#0F2A4A]">
-          
-          {/* SECTION: Profile Photo, Achievement Frame & Avatar Color */}
-          <div className="classy-card p-4 space-y-3.5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <label className="font-black text-[#0F2A4A] text-xs sm:text-sm flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[#17375E]" />
-                <span>{t('profilePhoto')}</span>
-              </label>
-              <span className="text-[11px] text-[#5F7083] font-medium">{t('photoOptionalTip')}</span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Photo Preview with Selected Achievement Frame */}
-              <div className="relative shrink-0 flex items-center justify-center p-2">
-                <StudentAvatar
-                  student={{
-                    id: 'temp',
-                    name: name || t('newStudent'),
-                    avatarColor,
-                    profilePhoto,
-                    achievementFrame,
-                  } as Student}
-                  size="xl"
-                  showFrame={true}
-                />
-              </div>
-
-              {/* Upload / Change / Remove Controls */}
-              <div className="flex-1 space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isCompressingPhoto}
-                    className="px-3.5 py-2 rounded-xl bg-[#17375E] hover:bg-[#0F2A4A] text-[#FFFFFF] font-black text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-[#FFFFFF]" />
-                    <span>{isCompressingPhoto ? '...' : profilePhoto ? t('changePhotoBtn') : t('uploadPhotoBtn')}</span>
-                  </button>
-
-                  {profilePhoto && (
-                    <button
-                      type="button"
-                      onClick={handleRemovePhoto}
-                      className="px-3 py-2 rounded-xl bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] hover:bg-[#0F2A4A] hover:text-[#FFFFFF] font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>{t('removePhotoBtn')}</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Avatar Color Picker for Fallback */}
-                <div className="space-y-1.5 pt-2 border-t border-[#E1EBEC]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{t('fallbackColorLabel')}:</span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {AVATAR_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setAvatarColor(c)}
-                        className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer ${
-                          avatarColor === c ? 'scale-115 border-[#17375E] shadow-sm' : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Achievement Frame Selector */}
-            <div className="pt-2.5 border-t border-[#E1EBEC]">
-              <AchievementFrameSelector
-                selectedFrame={achievementFrame}
-                onSelectFrame={(frame) => setAchievementFrame(frame)}
-              />
-            </div>
-          </div>
-
-          {/* Basic Student Info Card */}
-          <div className="classy-card p-4 space-y-3 shadow-sm">
-            <div>
-              <label className="block text-xs font-black text-[#0F2A4A] mb-1">
-                {t('studentName')} *
-              </label>
-              <div className="relative">
-                <User className={`w-4 h-4 text-[#5F7083] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: أحمد محمد علي"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#0F2A4A] placeholder-[#5F7083]/60 focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] font-bold transition-all`}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-black text-[#0F2A4A] mb-1">
-                  {t('studentPhone')}
-                </label>
-                <div className="relative">
-                  <Phone className={`w-4 h-4 text-[#5F7083] absolute ${isRTL ? 'right-3' : 'left-3'} top-3.5`} />
-                  <input
-                    type="tel"
-                    placeholder="010XXXXXXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-3 text-xs sm:text-sm text-[#0F2A4A] placeholder-[#5F7083]/60 focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] font-medium transition-all`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#0F2A4A] mb-1">
-                  {t('schoolNameLabel')}
-                </label>
-                <input
-                  type="text"
-                  placeholder="مثال: مدرسة المتفوقين الثانوية"
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
-                  className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl px-3.5 py-3 text-xs sm:text-sm text-[#0F2A4A] placeholder-[#5F7083]/60 focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] font-medium transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Educational Stage & Grade Level Card */}
-          <div className="classy-card p-4 space-y-3 shadow-sm">
-            <label className="block text-xs font-black text-[#0F2A4A] flex items-center gap-2">
-              <GraduationCap className="w-4 h-4 text-[#17375E]" />
-              <span>{t('gradeLevel')}</span>
-            </label>
-
-            {/* Stage Selector Tabs */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl">
-              {GRADE_STAGES.map((stg) => (
-                <button
-                  key={stg.id}
-                  type="button"
-                  onClick={() => handleStageChange(stg.id)}
-                  className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
-                    selectedStageId === stg.id
-                      ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                      : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                  }`}
-                >
-                  {language === 'ar' ? stg.nameAr : stg.nameEn}
-                </button>
-              ))}
-            </div>
-
-            {/* Specific Grades in Selected Stage */}
-            <div className="grid grid-cols-3 gap-2">
-              {currentStage.grades.map((grd) => {
-                const gradeName = grd.nameAr;
-                const isSelected = gradeLevel === gradeName;
-                return (
-                  <button
-                    key={grd.id}
-                    type="button"
-                    onClick={() => setGradeLevel(gradeName)}
-                    className={`p-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-sm'
-                        : 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {getLocalizedStageName(gradeName, language)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Guardian / Parent Card */}
-          <div className="classy-card p-4 space-y-3 shadow-sm">
-            <label className="block text-xs font-black text-[#0F2A4A] flex items-center gap-2">
-              <User className="w-4 h-4 text-[#17375E]" />
-              <span>بيانات ولي الأمر والتواصل</span>
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-[#5F7083] mb-1">{t('parentName')}</label>
-                <input
-                  type="text"
-                  placeholder="مثال: محمود علي"
-                  value={parentName}
-                  onChange={(e) => setParentName(e.target.value)}
-                  className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#0F2A4A] placeholder-[#5F7083]/60 focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] font-medium transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-[#5F7083] mb-1">{t('parentPhone')}</label>
-                <input
-                  type="tel"
-                  placeholder="010XXXXXXXX"
-                  value={parentPhone}
-                  onChange={(e) => setParentPhone(e.target.value)}
-                  className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#0F2A4A] placeholder-[#5F7083]/60 focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] font-medium transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Subscriptions Card */}
-          <div className="classy-card p-4 space-y-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <label className="text-xs sm:text-sm font-black text-[#0F2A4A] flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[#17375E]" />
-                <span>{t('subscriptionTypeLabel')}</span>
-              </label>
-              <span className="text-[11px] text-[#5F7083] font-bold">{t('flexibleEnrollmentSupport')}</span>
-            </div>
-
-            {/* Subscription Type Selector */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setSubscriptionMode('group')}
-                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
-                  subscriptionMode === 'group'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                }`}
-              >
-                {t('groupTypeGroup')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSubscriptionMode('private')}
-                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
-                  subscriptionMode === 'private'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                }`}
-              >
-                {t('groupTypePrivate')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSubscriptionMode('both')}
-                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
-                  subscriptionMode === 'both'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                }`}
-              >
-                {t('bothTypes')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSubscriptionMode('none')}
-                className={`py-2 px-1 rounded-xl text-xs font-black transition-all text-center cursor-pointer ${
-                  subscriptionMode === 'none'
-                    ? 'bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] shadow-xs'
-                    : 'text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                }`}
-              >
-                {t('unassigned')}
-              </button>
-            </div>
-
-            {/* 1. Group Selection when 'group' or 'both' */}
-            {(subscriptionMode === 'group' || subscriptionMode === 'both') && (
-              <div className="space-y-2 pt-2 border-t border-[#E1EBEC]">
-                <span className="text-xs font-bold text-[#0F2A4A] block">
-                  {t('selectGroupsPrompt')}:
-                </span>
-
-                {regularGroups.length === 0 ? (
-                  <p className="text-xs text-[#5F7083] p-3 bg-[#E1EBEC]/15 rounded-2xl text-center font-medium">
-                    {t('noGroupsRegisteredYet')}
-                  </p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {regularGroups.map((grp) => {
-                      const isChecked = selectedGroupIds.includes(grp.id);
-                      return (
-                        <div
-                          key={grp.id}
-                          onClick={() => toggleGroup(grp.id)}
-                          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                            isChecked
-                              ? 'bg-[#E1EBEC]/40 border-[#17375E] text-[#0F2A4A]'
-                              : 'bg-[#E1EBEC]/15 border-[#E1EBEC] text-[#5F7083] hover:bg-[#E1EBEC]/35'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
-                                isChecked
-                                  ? 'bg-[#17375E] border-[#17375E] text-[#FFFFFF] shadow-xs'
-                                  : 'border-[#E1EBEC] bg-[#FFFFFF]'
-                              }`}
-                            >
-                              {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                            </div>
-                            <span className="font-bold text-xs sm:text-sm text-[#0F2A4A]">{grp.name}</span>
-                            <span className="text-[11px] text-[#5F7083]">
-                              ({grp.subject} • {getLocalizedStageName(grp.gradeLevel, language)})
-                            </span>
-                          </div>
-
-                          <span className="text-xs font-black text-[#17375E]">
-                            {grp.defaultPrice} {t('currency')}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 2. Private Lesson Configuration when 'private' or 'both' */}
-            {(subscriptionMode === 'private' || subscriptionMode === 'both') && (
-              <div className="space-y-2.5 pt-2 border-t border-[#E1EBEC]">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#0F2A4A] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4" />
-                    <span>{t('privateLessonSetupTitle')}</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#5F7083] mb-1">{t('subjectNameLabel')} *</label>
-                    <input
-                      type="text"
-                      value={privateSubject}
-                      onChange={(e) => setPrivateSubject(e.target.value)}
-                      placeholder="مثال: الفيزياء"
-                      className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl p-2.5 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#5F7083] mb-1">{t('billingType')}</label>
-                    <select
-                      value={privateBillingMode}
-                      onChange={(e) => setPrivateBillingMode(e.target.value as BillingMode)}
-                      className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl p-2.5 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] cursor-pointer"
-                    >
-                      <option value="prepaid">{t('billingPrepaid')}</option>
-                      <option value="postpaid">{t('billingPostpaid')}</option>
-                      <option value="package">{t('billingPackage')}</option>
-                      <option value="monthly">{t('billingMonthly')}</option>
-                      <option value="hourly">{t('billingHourly')}</option>
-                    </select>
-                  </div>
-
-                  {privateBillingMode === 'hourly' ? (
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#5F7083] mb-1">سعر الساعة *</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={privateHourlyRate}
-                        onChange={(e) => setPrivateHourlyRate(Number(e.target.value))}
-                        className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl p-2.5 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                      />
-                    </div>
-                  ) : privateBillingMode !== 'package' ? (
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#5F7083] mb-1">
-                        {privateBillingMode === 'monthly' ? 'سعر الاشتراك الشهري' : 'سعر الحصة'} *
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={privatePrice}
-                        onChange={(e) => setPrivatePrice(Number(e.target.value))}
-                        className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl p-2.5 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF]"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-
-                {privateBillingMode === 'package' && (
-                  <div className="grid grid-cols-2 gap-2.5 p-3 bg-[#E1EBEC]/15 border border-[#17375E] rounded-2xl">
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#5F7083] mb-1">عدد حصص الباقة *</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={privatePackageSessions}
-                        onChange={(e) => setPrivatePackageSessions(Number(e.target.value))}
-                        className="w-full bg-[#FFFFFF] border border-[#17375E] rounded-xl p-2 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#5F7083] mb-1">سعر الباقة الإجمالي *</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={privatePackagePrice}
-                        onChange={(e) => setPrivatePackagePrice(Number(e.target.value))}
-                        className="w-full bg-[#FFFFFF] border border-[#17375E] rounded-xl p-2 text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Student Schedule Management Card */}
-          <div className="classy-card p-4 space-y-3.5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <label className="text-xs sm:text-sm font-black text-[#0F2A4A] flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#17375E]" />
-                <span>{t('studentSchedule')}</span>
-              </label>
-              <span className="text-[11px] text-[#5F7083] font-bold">
-                {scheduleSlots.length} {t('weeklyClassesCount')}
-              </span>
-            </div>
-
-            {/* Schedule Slot Rows */}
-            <div className="space-y-2">
-              {scheduleSlots.map((slot) => (
-                <div
-                  key={slot.id}
-                  className="p-2.5 rounded-2xl bg-[#E1EBEC]/15 border border-[#E1EBEC] flex items-center gap-2"
-                >
-                  {/* Day Selector */}
-                  <div className="flex-1">
-                    <select
-                      value={slot.day}
-                      onChange={(e) => handleSlotDayChange(slot.id, e.target.value)}
-                      className="w-full bg-[#FFFFFF] border border-[#E1EBEC] rounded-xl px-2.5 py-2 text-xs font-black text-[#0F2A4A] focus:outline-none focus:border-[#17375E] cursor-pointer"
-                    >
-                      {CANONICAL_WEEKDAY_KEYS.map((dayKey) => (
-                        <option key={dayKey} value={dayKey}>
-                          {getLocalizedWeekdayName(dayKey, isRTL)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Time Input */}
-                  <div className="flex-1">
-                    <input
-                      type="time"
-                      value={slot.time}
-                      onChange={(e) => handleSlotTimeChange(slot.id, e.target.value)}
-                      className="w-full bg-[#FFFFFF] border border-[#E1EBEC] rounded-xl px-2.5 py-2 text-xs font-black text-[#0F2A4A] focus:outline-none focus:border-[#17375E] text-center"
-                    />
-                  </div>
-
-                  {/* Remove Slot Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveScheduleSlot(slot.id)}
-                    disabled={scheduleSlots.length <= 1}
-                    className="p-2 rounded-xl bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 text-[#0F2A4A] border border-[#E1EBEC] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
-                    title={t('removeSlot')}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Add Schedule Button */}
-            <button
-              type="button"
-              onClick={handleAddScheduleSlot}
-              className="w-full py-2.5 px-3 rounded-xl border border-dashed border-[#17375E]/40 bg-[#E1EBEC]/20 hover:bg-[#E1EBEC]/35 text-[#17375E] font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('addScheduleSlot')}</span>
-            </button>
-          </div>
-
-          {/* Notes Card */}
-          <div className="classy-card p-4 space-y-2 shadow-sm">
-            <label className="block text-xs font-black text-[#0F2A4A]">{t('notes')}</label>
-            <textarea
-              rows={2}
-              placeholder={t('notesPlaceholder')}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl p-3 text-xs sm:text-sm text-[#0F2A4A] placeholder-[#5F7083]/60 focus:outline-none focus:border-[#17375E] focus:bg-[#FFFFFF] font-medium transition-all"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary flex-1"
-            >
-              {t('cancel')}
-            </button>
-            <button
-              type="submit"
-              className="btn-primary flex-1"
-            >
-              <Check className="w-4 h-4" />
-              <span>{editingStudent ? t('saveChanges') : t('save')}</span>
-            </button>
-          </div>
-
-        </form>
-
-      </div>
-    </div>
-    </ModalPortal>
+        {/* Notes */}
+        <div className="p-4 rounded-2xl bg-page border border-line space-y-2 shadow-2xs">
+          <label className="field-label flex items-center gap-1.5">
+            <AppIcon name="edit" size={13} className="text-navy" />
+            <span>{t('notes')}</span>
+          </label>
+          <textarea
+            rows={2}
+            placeholder={t('notesPlaceholder')}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="classy-textarea"
+          />
+        </div>
+      </form>
+    </BottomSheet>
   );
 };

@@ -19,6 +19,7 @@ import {
   ChevronDown,
   CalendarRange,
 } from 'lucide-react';
+import { StatusBadge } from './ui/StatusBadge';
 import { Session, Group, Student } from '../types';
 import { db } from '../utils/storage';
 import {
@@ -570,22 +571,16 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                         </div>
 
                         {/* Dynamic Semantic Status Badge */}
-                        {item.status === 'completed' ? (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/65 text-[#0F2A4A] border border-[#17375E]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                            <CheckCircle2 className="w-3 h-3 text-[#17375E]" />
-                            <span>{t('completed')}</span>
-                          </span>
-                        ) : item.status === 'cancelled' ? (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] inline-flex items-center gap-1 shadow-2xs shrink-0">
-                            <AlertCircle className="w-3 h-3 text-[#0F2A4A]" />
-                            <span>{t('cancelled')}</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/70 text-[#0F2A4A] border border-[#0F2A4A]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                            <Clock className="w-3 h-3 text-[#0F2A4A]" />
-                            <span>{t('scheduled')}</span>
-                          </span>
-                        )}
+                        <StatusBadge
+                          status={item.status}
+                          label={
+                            item.status === 'completed'
+                              ? t('completed')
+                              : item.status === 'cancelled'
+                              ? t('cancelled')
+                              : t('scheduled')
+                          }
+                        />
                       </div>
 
                       {/* Attendance info for completed sessions */}
@@ -748,22 +743,16 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
                       <span className="font-bold text-[#0F2A4A] truncate">{it.isPrivate ? it.studentName : it.groupName}</span>
                       <span className="text-[#5F7083] text-[11px]">({it.formattedTime || it.startTime || (isEn ? 'Flexible' : 'وقت مرن')})</span>
                     </div>
-                    {it.status === 'completed' ? (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/65 text-[#0F2A4A] border border-[#17375E]/60 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                        <CheckCircle2 className="w-2.5 h-2.5 text-[#17375E]" />
-                        <span>{t('completed')}</span>
-                      </span>
-                    ) : it.status === 'cancelled' ? (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] inline-flex items-center gap-1 shadow-2xs shrink-0">
-                        <AlertCircle className="w-2.5 h-2.5 text-[#0F2A4A]" />
-                        <span>{t('cancelled')}</span>
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/70 text-[#0F2A4A] border border-[#0F2A4A]/50 inline-flex items-center gap-1 shadow-2xs shrink-0">
-                        <Clock className="w-2.5 h-2.5 text-[#0F2A4A]" />
-                        <span>{t('scheduled')}</span>
-                      </span>
-                    )}
+                    <StatusBadge
+                      status={it.status}
+                      label={
+                        it.status === 'completed'
+                          ? t('completed')
+                          : it.status === 'cancelled'
+                          ? t('cancelled')
+                          : t('scheduled')
+                      }
+                    />
                   </div>
                 ))}
               </div>

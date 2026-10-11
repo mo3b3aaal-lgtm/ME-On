@@ -7,6 +7,7 @@ import { useModalContext } from './contexts/ModalContext';
 
 // Mobile UI components
 import { BottomNavBar } from './components/BottomNavBar';
+import { QuickAddSheet } from './components/QuickAddSheet';
 import { AuthView } from './components/AuthView';
 import { SplashScreen } from './components/SplashScreen';
 
@@ -30,6 +31,7 @@ import { RecordAttendanceModal } from './components/RecordAttendanceModal';
 import { AddPaymentModal } from './components/AddPaymentModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { initLocalNotifications, scheduleDailyAttendanceReminder } from './utils/localNotifications';
+import { toLocalISODate } from './utils/localDate';
 
 export default function App() {
   const { t, language, isRTL } = useTranslation();
@@ -41,6 +43,8 @@ export default function App() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [studentsSegment, setStudentsSegment] = useState<'students' | 'groups'>('students');
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
 
   // Authentication State
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => db.getCurrentSession());
@@ -262,6 +266,38 @@ export default function App() {
     setIsEnrollModalOpen(true);
   };
 
+  const handleTabChange = useCallback((tab: ActiveTab) => {
+    if (tab === 'groups') {
+      setStudentsSegment('groups');
+      setActiveTab('students');
+    } else {
+      if (tab === 'students') {
+        setStudentsSegment('students');
+      }
+      setActiveTab(tab);
+    }
+  }, []);
+
+  const handleQuickRecordAttendance = useCallback(() => {
+    const today = toLocalISODate();
+    const todaySessions = sessions.filter((s) => s.date === today && s.status !== 'cancelled');
+    if (todaySessions.length > 0) {
+      const unrecorded = todaySessions.find((s) => s.status === 'scheduled') || todaySessions[0];
+      setSelectedSessionForAttendance(unrecorded);
+    } else {
+      handleTabChange('sessions');
+    }
+  }, [sessions, handleTabChange]);
+
+  const handleOpenAddPrivateSession = useCallback(() => {
+    const privGroup = groups.find((g) => g.type === 'private');
+    if (privGroup) {
+      handleOpenAddSession(privGroup.id);
+    } else {
+      handleOpenAddSession();
+    }
+  }, [groups, handleOpenAddSession]);
+
   return (
     <div className="min-h-screen bg-[#FFFFFF] md:bg-[#DCEDEB] flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-[#0F2A4A]" dir={isRTL ? 'rtl' : 'ltr'}>
       
@@ -298,17 +334,19 @@ export default function App() {
                   onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
                   onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
                   onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
-                  onNavigateToTab={(tab) => setActiveTab(tab)}
+                  onNavigateToTab={handleTabChange}
                   onDataChanged={refreshData}
                 />
               )}
 
-              {activeTab === 'students' && (
+              {(activeTab === 'students' || activeTab === 'groups') && (
                 <StudentsView
                   students={students}
                   groups={groups}
                   sessions={sessions}
                   payments={payments}
+                  activeSegment={activeTab === 'groups' ? 'groups' : studentsSegment}
+                  onSegmentChange={(seg) => setStudentsSegment(seg)}
                   onOpenAddStudent={handleOpenAddStudent}
                   onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
                   onOpenEditStudent={handleOpenEditStudent}
@@ -316,29 +354,11 @@ export default function App() {
                   onOpenAddSession={(defaultGroupId, defaultDate) => handleOpenAddSession(defaultGroupId, defaultDate)}
                   onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
                   onOpenBulkAddSession={(stList) => handleOpenBulkAddSession(stList)}
-                  onDataChanged={refreshData}
-                  onNavigateToTab={(tab) => setActiveTab(tab)}
-                  onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
-                />
-              )}
-
-              {activeTab === 'groups' && (
-                <GroupsView
-                  groups={groups}
-                  allStudents={students}
-                  sessions={sessions}
-                  payments={payments}
                   onOpenAddGroup={handleOpenAddGroup}
-                  onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
                   onEditGroup={handleOpenEditGroup}
-                  onOpenAddSession={(groupId, date) => handleOpenAddSession(groupId, date)}
-                  onOpenAddStudent={handleOpenAddStudent}
-                  onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
-                  onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
-                  onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
-                  onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
+                  onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
                   onDataChanged={refreshData}
-                  onNavigateToTab={(tab) => setActiveTab(tab)}
+                  onNavigateToTab={handleTabChange}
                   onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
                 />
               )}
@@ -356,7 +376,7 @@ export default function App() {
                   onOpenGroupProfile={(grp) => setSelectedGroupForProfile(grp)}
                   onSessionDeleted={refreshData}
                   onDataChanged={refreshData}
-                  onNavigateToTab={(tab) => setActiveTab(tab)}
+                  onNavigateToTab={handleTabChange}
                   onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
                 />
               )}
@@ -369,7 +389,7 @@ export default function App() {
                   payments={payments}
                   onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
                   onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
-                  onNavigateToTab={(tab) => setActiveTab(tab)}
+                  onNavigateToTab={handleTabChange}
                   onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
                 />
               )}
@@ -384,6 +404,7 @@ export default function App() {
                   }}
                   onDataReset={refreshData}
                   onLogout={handleLogout}
+                  onNavigateToTab={handleTabChange}
                 />
               )}
             </>
@@ -395,7 +416,9 @@ export default function App() {
         {currentUser && (
           <BottomNavBar
             activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab)}
+            onTabChange={handleTabChange}
+            onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+            isQuickAddOpen={isQuickAddOpen}
           />
         )}
 
@@ -548,6 +571,18 @@ export default function App() {
             onDataChanged={refreshData}
           />
         )}
+
+        {/* Quick Add Bottom Sheet (Center FAB Action) */}
+        <QuickAddSheet
+          isOpen={isQuickAddOpen}
+          onClose={() => setIsQuickAddOpen(false)}
+          onRecordAttendance={handleQuickRecordAttendance}
+          onAddStudent={handleOpenAddStudent}
+          onAddGroup={handleOpenAddGroup}
+          onAddPayment={() => handleOpenAddPayment()}
+          onAddSession={() => handleOpenAddSession()}
+          onAddPrivateSession={handleOpenAddPrivateSession}
+        />
 
       </div>
     </div>

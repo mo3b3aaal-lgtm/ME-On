@@ -1,28 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSwipeGesture } from '../utils/useSwipeGesture';
-import {
-  X,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  AlertCircle,
-  Users,
-  CheckCheck,
-  Save,
-  BookCheck,
-  HelpCircle,
-  Sparkles,
-  Edit3,
-  UserCheck,
-  UserX,
-  Check,
-} from 'lucide-react';
 import { Session, Group, Student, Attendance, AttendanceStatus } from '../types';
 import { db } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
+import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
+import { StatusBadge } from './ui/StatusBadge';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -397,61 +383,78 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   if (!isOpen || !session) return null;
 
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
-        
-        {/* Signature Classy Header */}
-        <div
-          {...headerSwipeGestures}
-          className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex flex-col shrink-0 relative overflow-hidden cursor-grab active:cursor-grabbing"
-        >
-          {/* Mobile Drag Indicator */}
-          <div className="sm:hidden w-full pb-2.5 flex items-center justify-center -mt-2">
-            <div className="modal-drag-handle" />
+    <>
+      <BottomSheet
+        id="record-attendance"
+        isOpen={isOpen && !!session}
+        onClose={onClose}
+        title={
+          isPrivateSession
+            ? isEn
+              ? 'Record Private Attendance'
+              : 'رصد حضور الدرس الخاص'
+            : isEn
+            ? 'Take Attendance'
+            : 'رصد الحضور واستهلاك الحصص'
+        }
+        subtitle={`${
+          isPrivateSession && privateStudent
+            ? isEn
+              ? `Student: ${privateStudent.name}`
+              : `الطالب: ${privateStudent.name}`
+            : group?.name || (isEn ? 'Group' : 'مجموعة')
+        } • ${session.title || (isEn ? 'Class Session' : 'حصة دراسية')} (${session.date})`}
+        headerLeading={
+          <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+            <AppIcon name="calendarCheck" size={20} weight="fill" />
           </div>
-
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3 relative z-10 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 text-[#FFFFFF] flex items-center justify-center shrink-0 shadow-sm">
-                <Users className="w-5 h-5 text-[#FFFFFF]" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight truncate">
-                  {isPrivateSession ? (isEn ? 'Record Private Attendance' : 'رصد حضور الدرس الخاص') : (isEn ? 'Take Attendance & Credit Consumption' : 'رصد الحضور واستهلاك الحصص')}
-                </h2>
-                <p className="text-xs text-[#E1EBEC]/85 font-medium truncate">
-                  {isPrivateSession && privateStudent
-                    ? (isEn ? `Student: ${privateStudent.name}` : `الطالب: ${privateStudent.name}`)
-                    : (group?.name || (isEn ? 'Group' : 'مجموعة'))} • {session.title || (isEn ? 'Class Session' : 'حصة دراسية')} ({session.date})
-                </p>
-              </div>
-            </div>
-
+        }
+        headerTrailing={
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">
+            {enrolledStudents.length} {isEn ? 'Students' : 'طلاب'}
+          </span>
+        }
+        bodyClassName="p-4"
+        footer={
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
-              title={t('close')}
+              disabled={isSavedSuccess}
+              className="btn-soft flex-1"
             >
-              <X className="w-4 h-4" />
+              {t('cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSavedSuccess}
+              className="btn-orange flex-1"
+            >
+              {isSavedSuccess ? (
+                <>
+                  <AppIcon name="checkCircle" size={16} weight="bold" className="animate-pop-in" />
+                  <span>{isEn ? 'Attendance Saved Successfully!' : 'تم حفظ الحضور وتحديث الأرصدة!'}</span>
+                </>
+              ) : (
+                <>
+                  <AppIcon name="save" size={16} weight="bold" />
+                  <span>{isEn ? 'Save Attendance & Update Balances' : 'حفظ الحضور وتحديث الأرصدة'}</span>
+                </>
+              )}
             </button>
           </div>
-        </div>
-
+        }
+      >
         {/* Quick Batch Actions & Stats Bar */}
-        <div className="p-3 bg-[#FFFFFF] border-b border-[#E1EBEC] flex items-center justify-between gap-2 flex-wrap text-xs">
+        <div className="p-3 bg-mist rounded-2xl border border-line flex items-center justify-between gap-2 flex-wrap text-xs mb-3">
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
               onClick={setAllPresent}
-              className="px-3 py-1.5 rounded-xl bg-[#E1EBEC]/15 border border-[#17375E] text-[#0F2A4A] font-black hover:bg-[#0F2A4A] hover:text-[#FFFFFF] transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-page border border-navy text-navy font-bold hover:bg-navy hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
-              <UserCheck className="w-3.5 h-3.5" />
+              <AppIcon name="userCheck" size={14} weight="bold" />
               <span>{isEn ? 'All Present' : 'الكل حاضر'}</span>
             </button>
 
@@ -463,26 +466,34 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 setBatchCustomReason('');
                 setIsBatchAbsentConfirmOpen(true);
               }}
-              className="px-3 py-1.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-[#0F2A4A] font-black hover:bg-[#0F2A4A] hover:text-[#FFFFFF] transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-page border border-line text-navy font-bold hover:bg-navy hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
-              <UserX className="w-3.5 h-3.5" />
+              <AppIcon name="student" size={14} />
               <span>{isEn ? 'All Absent' : 'الكل غائب'}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-black">
-            <span className="text-[#0F2A4A] bg-[#E1EBEC]/15 px-2 py-0.5 rounded-lg border border-[#17375E]">{t('present')}: {presentCount}</span>
-            <span className="text-[#0F2A4A] bg-[#E1EBEC]/15 px-2 py-0.5 rounded-lg border border-[#E1EBEC]">{isEn ? 'Charged' : 'محسوبة'}: {chargedAbsentCount}</span>
-            <span className="text-[#5F7083] bg-[#E1EBEC]/15 px-2 py-0.5 rounded-lg border border-[#E1EBEC]">{isEn ? 'Excused' : 'معفية'}: {freeAbsentCount}</span>
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className="text-teal bg-teal/10 px-2 py-0.5 rounded-lg border border-teal/20">
+              {t('present')}: {presentCount}
+            </span>
+            <span className="text-coral bg-coral/10 px-2 py-0.5 rounded-lg border border-coral/20">
+              {isEn ? 'Charged' : 'محسوبة'}: {chargedAbsentCount}
+            </span>
+            <span className="text-slate bg-mint-soft px-2 py-0.5 rounded-lg border border-line">
+              {isEn ? 'Excused' : 'معفية'}: {freeAbsentCount}
+            </span>
           </div>
         </div>
 
         {/* Students List */}
-        <div className="p-4 overflow-y-auto android-scrollbar flex-1 space-y-2.5">
+        <div className="space-y-2.5">
           {enrolledStudents.length === 0 ? (
-            <div className="p-8 text-center text-[#5F7083] space-y-2 bg-[#FFFFFF] rounded-2xl border border-[#E1EBEC]">
-              <Users className="w-8 h-8 mx-auto opacity-40 text-[#17375E]" />
-              <p className="text-xs font-bold">{isEn ? 'No students enrolled in this group yet.' : 'لا يوجد طلاب مسجلين في هذه المجموعة حالياً.'}</p>
+            <div className="p-8 text-center text-slate space-y-2 bg-page rounded-2xl border border-line">
+              <AppIcon name="students" size={32} weight="duotone" className="mx-auto text-slate" />
+              <p className="text-xs font-bold">
+                {isEn ? 'No students enrolled in this group yet.' : 'لا يوجد طلاب مسجلين في هذه المجموعة حالياً.'}
+              </p>
             </div>
           ) : (
             enrolledStudents.map((student, index) => {
@@ -495,18 +506,22 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
               };
               const enr = allEnrollments.find((e) => e.studentId === student.id);
               const credit = enr?.sessionCredit || 0;
-              const isAbsent = currentRecord.status === 'absent_charged' || currentRecord.status === 'absent_free' || currentRecord.status === 'absent' || currentRecord.status === 'excused';
+              const isAbsent =
+                currentRecord.status === 'absent_charged' ||
+                currentRecord.status === 'absent_free' ||
+                currentRecord.status === 'absent' ||
+                currentRecord.status === 'excused';
 
               return (
                 <div
                   key={student.id}
                   style={{ animationDelay: `${index * 40}ms` }}
-                  className={`p-3.5 rounded-2xl bg-[#FFFFFF] border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${
+                  className={`p-3.5 rounded-2xl bg-page border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${
                     isAbsent
                       ? currentRecord.isCharged
-                        ? 'border-[#E1EBEC] bg-[#E1EBEC]/15'
-                        : 'border-[#E1EBEC] bg-[#E1EBEC]/15'
-                      : 'border-[#E1EBEC]'
+                        ? 'border-line bg-mist'
+                        : 'border-line bg-mist'
+                      : 'border-line'
                   }`}
                 >
                   {/* Top Row: Name + Credit Badge + Homework Checkbox */}
@@ -519,13 +534,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                         className="shrink-0"
                       />
                       <div className="min-w-0">
-                        <h4 className="font-black text-[#0F2A4A] text-xs leading-tight truncate">{student.name}</h4>
+                        <h4 className="font-bold text-navy text-xs leading-tight truncate">{student.name}</h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                               credit <= 0
-                                ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
-                                : 'bg-[#E1EBEC]/25 text-[#0F2A4A]'
+                                ? 'bg-coral/10 text-coral border border-coral/20'
+                                : 'bg-mint-soft text-navy'
                             }`}
                           >
                             {isEn ? `Credit: ${credit} sessions` : `رصيد: ${credit} حصص`}
@@ -538,30 +553,30 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleHomework(student.id)}
-                      className={`px-3 py-1 rounded-xl text-[11px] font-black border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                         currentRecord.homeworkDone
-                          ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#17375E]'
-                          : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC]'
+                          ? 'bg-mint-soft text-navy border-navy'
+                          : 'bg-page text-slate border-line'
                       }`}
                     >
-                      <BookCheck className="w-3.5 h-3.5" />
+                      <AppIcon name={currentRecord.homeworkDone ? 'check' : 'minus'} size={12} weight="bold" />
                       <span>{currentRecord.homeworkDone ? (isEn ? 'HW Done' : 'حل الواجب') : (isEn ? 'HW Incomplete' : 'لم يحل')}</span>
                     </button>
                   </div>
 
-                  {/* Attendance Status Buttons Grid */}
+                  {/* Attendance Status Buttons: 3 selectable tiles with radius 18px */}
                   <div className="grid grid-cols-3 gap-1.5 pt-0.5">
                     {/* 1. Present */}
                     <button
                       type="button"
                       onClick={() => markPresent(student.id)}
-                      className={`py-2 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                      className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         currentRecord.status === 'present'
-                          ? 'bg-[#0F2A4A] text-[#FFFFFF] border-[#0F2A4A] shadow-sm'
-                          : 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
+                          ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                          : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
                       }`}
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <AppIcon name="check" size={14} weight="bold" />
                       <span>{t('present')}</span>
                     </button>
 
@@ -569,13 +584,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => markLate(student.id)}
-                      className={`py-2 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                      className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         currentRecord.status === 'late'
-                          ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-sm'
-                          : 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
+                          ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                          : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
                       }`}
                     >
-                      <Clock className="w-3.5 h-3.5" />
+                      <AppIcon name="clock" size={14} weight="fill" />
                       <span>{t('late')}</span>
                     </button>
 
@@ -583,23 +598,21 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => openAbsenceModal(student)}
-                      className={`py-2 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                      className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         isAbsent
-                          ? currentRecord.isCharged
-                            ? 'bg-[#0F2A4A] text-[#FFFFFF] border-[#0F2A4A] shadow-sm'
-                            : 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-sm'
-                          : 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC] hover:bg-[#E1EBEC]/25'
+                          ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                          : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
                       }`}
                     >
-                      <XCircle className="w-3.5 h-3.5" />
+                      <AppIcon name="warning" size={14} weight="fill" />
                       <span>{isEn ? 'Absent' : 'غائب'}</span>
                     </button>
                   </div>
 
                   {/* Zero credit warning for prepaid charged students */}
                   {enr && (enr.billingMode === 'prepaid' || enr.billingType === 'prepaid' || (enr.billingType === 'per_session' && enr.billingMode !== 'postpaid')) && credit <= 0 && currentRecord.isCharged && (
-                    <div className="p-2.5 bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] rounded-xl text-[11px] font-bold flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    <div className="p-2.5 bg-coral/10 text-coral border border-coral/20 rounded-xl text-[11px] font-bold flex items-center gap-1.5">
+                      <AppIcon name="warning" size={16} className="shrink-0" />
                       <span>
                         {isEn
                           ? `Alert: Insufficient session credit (Balance: 0). Attendance will be saved and charged as due (${enr.customPrice || 100} ${t('currency')}).`
@@ -610,25 +623,25 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
                   {/* Private Present Detail Sub-badge with edit button */}
                   {!isAbsent && isPrivateSession && currentRecord.status === 'present' && (
-                    <div className="p-2.5 rounded-xl border border-[#17375E]/50 bg-[#E1EBEC]/15 flex items-center justify-between gap-2 text-[11px] text-[#0F2A4A]">
+                    <div className="p-2.5 rounded-xl border border-navy/20 bg-mint-soft flex items-center justify-between gap-2 text-[11px] text-navy">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <CheckCircle2 className="w-4 h-4 text-[#17375E] shrink-0" />
-                        <span className="font-black">
+                        <AppIcon name="checkCircle" size={16} weight="fill" className="text-teal shrink-0" />
+                        <span className="font-bold">
                           {currentRecord.hours
                             ? `${currentRecord.hours} ${isEn ? 'hours' : 'ساعة'}`
                             : `${currentRecord.sessionUnits || 1} ${isEn ? 'session(s)' : 'حصة'}`}
                         </span>
                         {currentRecord.pricePerStudent ? (
-                          <span className="text-[#0F2A4A] font-bold">• {currentRecord.pricePerStudent} {t('currency')}</span>
+                          <span className="text-navy font-bold">• {currentRecord.pricePerStudent} {t('currency')}</span>
                         ) : null}
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setPrivateIntakeStudent(student)}
-                        className="px-2.5 py-1 rounded-lg bg-[#FFFFFF] border border-[#17375E]/60 text-[10px] font-black text-[#0F2A4A] hover:bg-[#E1EBEC]/35 transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg bg-page border border-line text-[10px] font-bold text-navy hover:bg-mint-soft transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
                       >
-                        <Edit3 className="w-3 h-3 text-[#17375E]" />
+                        <AppIcon name="edit" size={12} className="text-navy" />
                         <span>{t('edit')}</span>
                       </button>
                     </div>
@@ -636,25 +649,19 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
                   {/* Absent Detail Sub-badge with edit button */}
                   {isAbsent && (
-                    <div
-                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-[11px] ${
-                        currentRecord.isCharged
-                          ? 'bg-[#E1EBEC]/15 border-[#E1EBEC] text-[#0F2A4A]'
-                          : 'bg-[#E1EBEC]/15 border-[#E1EBEC] text-[#0F2A4A]'
-                      }`}
-                    >
+                    <div className="p-2.5 rounded-xl border border-line bg-mist flex items-center justify-between gap-2 text-[11px] text-navy">
                       <div className="flex items-center gap-1.5 min-w-0 truncate">
                         {currentRecord.isCharged ? (
                           <>
-                            <span className="w-2 h-2 rounded-full bg-[#0F2A4A] shrink-0" />
-                            <span className="font-black">{isEn ? 'Charged Absence:' : 'حصة محسوبة:'}</span>
+                            <span className="w-2 h-2 rounded-full bg-coral shrink-0" />
+                            <span className="font-bold">{isEn ? 'Charged Absence:' : 'حصة محسوبة:'}</span>
                             <span className="truncate">{isEn ? 'Consumes session credit or added to due balance' : 'تستهلك رصيد حصة أو تُضاف للمستحقات'}</span>
                           </>
                         ) : (
                           <>
-                            <span className="w-2 h-2 rounded-full bg-[#5F7083] shrink-0" />
-                            <span className="font-black">{isEn ? 'Exempt Absence:' : 'غير محسوبة:'}</span>
-                            <span className="font-bold text-[#5F7083] truncate">
+                            <span className="w-2 h-2 rounded-full bg-slate shrink-0" />
+                            <span className="font-bold">{isEn ? 'Exempt Absence:' : 'غير محسوبة:'}</span>
+                            <span className="font-medium text-slate truncate">
                               {isEn ? `Reason: ${currentRecord.absenceReason || 'Exempt'}` : `السبب: ${currentRecord.absenceReason || 'معفي'}`}
                             </span>
                           </>
@@ -664,9 +671,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       <button
                         type="button"
                         onClick={() => openAbsenceModal(student)}
-                        className="px-2.5 py-1 rounded-lg bg-[#FFFFFF] border border-[#E1EBEC] text-[10px] font-black text-[#0F2A4A] hover:bg-[#E1EBEC]/25 transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg bg-page border border-line text-[10px] font-bold text-navy hover:bg-mint-soft transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
                       >
-                        <Edit3 className="w-3 h-3 text-[#17375E]" />
+                        <AppIcon name="edit" size={12} className="text-navy" />
                         <span>{t('edit')}</span>
                       </button>
                     </div>
@@ -676,54 +683,29 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
             })
           )}
         </div>
+      </BottomSheet>
 
-        {/* Footer with Save Action */}
-        <div className="p-4 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSavedSuccess}
-            className="btn-secondary flex-1"
+      {/* ========================================================= */}
+      {/* INDIVIDUAL STUDENT ABSENCE CONFIRMATION DIALOG (centered card) */}
+      {/* ========================================================= */}
+      {confirmingStudent && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4 animate-backdrop-fade"
+            dir={isRTL ? 'rtl' : 'ltr'}
           >
-            {t('cancel')}
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSavedSuccess}
-            className="btn-primary flex-1"
-          >
-            {isSavedSuccess ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-[#FFFFFF] animate-in zoom-in-50" />
-                <span>{isEn ? 'Attendance Saved Successfully!' : 'تم حفظ الحضور وتحديث الأرصدة!'}</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 text-[#FFFFFF]" />
-                <span>{isEn ? 'Save Attendance & Update Balances' : 'حفظ الحضور وتحديث الأرصدة'}</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* ========================================================= */}
-        {/* INDIVIDUAL STUDENT ABSENCE CONFIRMATION MODAL */}
-        {/* ========================================================= */}
-        {confirmingStudent && (
-          <div className="absolute inset-0 z-50 bg-[#17375E]/70 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 animate-in fade-in duration-150">
-            <div className="bg-[#FFFFFF] border border-[#E1EBEC] rounded-[28px] p-4 sm:p-5 max-w-md w-full mx-auto space-y-4 shadow-2xl">
+            <div className="bg-page border border-line rounded-[28px] p-5 max-w-md w-full mx-auto space-y-4 shadow-white animate-pop-in">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#E1EBEC] pb-3">
+              <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-[#E1EBEC]/15 text-[#0F2A4A]">
-                    <UserX className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-full bg-mint-soft text-navy flex items-center justify-center shrink-0">
+                    <AppIcon name="student" size={20} weight="duotone" />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-[#0F2A4A]">
+                    <h3 className="font-bold text-sm text-navy">
                       {isEn ? 'Record Student Absence' : 'تسجيل غياب الطالب'}
                     </h3>
-                    <p className="text-xs text-[#17375E] font-black">
+                    <p className="text-xs text-navy font-bold">
                       {confirmingStudent.name}
                     </p>
                   </div>
@@ -731,49 +713,49 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setConfirmingStudent(null)}
-                  className="p-1.5 rounded-full text-[#5F7083] hover:text-[#0F2A4A] hover:bg-[#E1EBEC]/25 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-mint-soft text-navy hover:bg-mint flex items-center justify-center transition-colors cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <AppIcon name="close" size={16} weight="bold" />
                 </button>
               </div>
 
               {/* Main Question */}
               <div className="space-y-1">
-                <label className="block font-black text-xs text-[#0F2A4A]">
+                <label className="block font-bold text-xs text-navy">
                   {isEn ? 'Charge this class to the student?' : 'هل تريد احتساب الحصة على الطالب؟'}
                 </label>
-                <p className="text-[11px] text-[#5F7083] font-medium">
+                <p className="text-[11px] text-slate font-medium">
                   {isEn ? 'Specify if the class will consume credit / be charged as due or be excused.' : 'حدد ما إذا كانت الحصة ستُحسب ماليًا وتستهلك رصيد حصص أو تكون معفية.'}
                 </p>
               </div>
 
-              {/* 2 Primary Choices */}
-              <div className="grid grid-cols-1 gap-2.5">
+              {/* 2 Selectable Tiles: radius 18px, mint-soft when idle, navy border + mint bg when selected */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {/* Option 1: Yes, Charged */}
                 <button
                   type="button"
                   onClick={() => setSelectedChargeDecision('charged')}
-                  className={`p-3.5 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
                     selectedChargeDecision === 'charged'
-                      ? 'bg-[#E1EBEC]/15 border-[#0F2A4A] ring-2 ring-[#0F2A4A]/20 shadow-xs'
-                      : 'bg-[#E1EBEC]/15 border-[#E1EBEC] hover:bg-[#FFFFFF]'
+                      ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                      : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                       selectedChargeDecision === 'charged'
-                        ? 'border-[#0F2A4A] bg-[#0F2A4A] text-[#FFFFFF]'
-                        : 'border-[#E1EBEC] bg-[#FFFFFF]'
+                        ? 'bg-navy text-white animate-pop-in'
+                        : 'bg-page text-navy'
                     }`}
                   >
-                    {selectedChargeDecision === 'charged' && <Check className="w-3 h-3 stroke-[3]" />}
+                    <AppIcon name="warning" size={14} weight="fill" />
                   </div>
-                  <div>
-                    <span className="font-black text-xs text-[#0F2A4A] block">
-                      {isEn ? 'Yes, Charge (Charged Absence)' : 'نعم، تُحسب عليه'}
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs text-navy block leading-tight">
+                      {isEn ? 'Charged Absence' : 'نعم، تُحسب عليه'}
                     </span>
-                    <span className="text-[11px] text-[#5F7083] mt-0.5 block leading-relaxed font-medium">
-                      {isEn ? 'Consumes 1 session credit or is recorded as a due payment.' : 'تستهلك حصة من رصيد الحصص (Session Credit) إن كان لديه رصيد، أو تدخل في الحصص المستحقة.'}
+                    <span className="text-[10px] text-slate mt-1 block leading-tight font-medium">
+                      {isEn ? 'Consumes credit / due' : 'تستهلك رصيد / مستحقة'}
                     </span>
                   </div>
                 </button>
@@ -782,27 +764,27 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedChargeDecision('free')}
-                  className={`p-3.5 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
                     selectedChargeDecision === 'free'
-                      ? 'bg-[#E1EBEC]/15 border-[#17375E] ring-2 ring-[#17375E]/20 shadow-xs'
-                      : 'bg-[#E1EBEC]/15 border-[#E1EBEC] hover:bg-[#FFFFFF]'
+                      ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                      : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                       selectedChargeDecision === 'free'
-                        ? 'border-[#17375E] bg-[#0F2A4A] text-[#FFFFFF]'
-                        : 'border-[#E1EBEC] bg-[#FFFFFF]'
+                        ? 'bg-navy text-white animate-pop-in'
+                        : 'bg-page text-navy'
                     }`}
                   >
-                    {selectedChargeDecision === 'free' && <Check className="w-3 h-3 stroke-[3]" />}
+                    <AppIcon name="info" size={14} weight="fill" />
                   </div>
-                  <div>
-                    <span className="font-black text-xs text-[#0F2A4A] block">
-                      {isEn ? 'No, Excuse (Free / Exempt)' : 'لا، لا تُحسب عليه (غياب معفى)'}
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs text-navy block leading-tight">
+                      {isEn ? 'Free (Exempt)' : 'غياب معفى'}
                     </span>
-                    <span className="text-[11px] text-[#5F7083] mt-0.5 block leading-relaxed font-medium">
-                      {isEn ? 'Does not consume session credit and does not add any financial charge.' : 'لا تستهلك من رصيد الحصص ولا تضيف أي قيمة للمستحقات المالية.'}
+                    <span className="text-[10px] text-slate mt-1 block leading-tight font-medium">
+                      {isEn ? 'No credit consumed' : 'لا تستهلك أي رصيد'}
                     </span>
                   </div>
                 </button>
@@ -810,8 +792,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
               {/* Absence Reason Selector (Shown only if decision is 'free') */}
               {selectedChargeDecision === 'free' && (
-                <div className="p-3 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl space-y-2 animate-in fade-in duration-150">
-                  <label className="block font-black text-xs text-[#0F2A4A]">
+                <div className="p-3 bg-mist border border-line rounded-2xl space-y-2 animate-in fade-in duration-150">
+                  <label className="block font-bold text-xs text-navy">
                     {isEn ? 'Please record exemption reason: *' : 'يرجى تسجيل سبب عدم احتساب الحصة: *'}
                   </label>
 
@@ -821,11 +803,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                         key={reason}
                         type="button"
                         onClick={() => setSelectedReason(reason)}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
-                          selectedReason === reason
-                            ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                            : 'bg-[#FFFFFF] text-[#0F2A4A] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                        }`}
+                        className={`chip px-2 text-[11px] ${selectedReason === reason ? 'chip-active' : ''}`}
                       >
                         {reason}
                       </button>
@@ -833,11 +811,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedReason(isEn ? 'Custom reason' : 'سبب مخصص')}
-                      className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
-                        selectedReason === (isEn ? 'Custom reason' : 'سبب مخصص')
-                          ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                          : 'bg-[#FFFFFF] text-[#0F2A4A] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                      }`}
+                      className={`chip px-2 text-[11px] ${selectedReason === (isEn ? 'Custom reason' : 'سبب مخصص') ? 'chip-active' : ''}`}
                     >
                       {isEn ? 'Custom reason' : 'سبب مخصص'}
                     </button>
@@ -858,12 +832,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-2 border-t border-[#E1EBEC]">
+              {/* Action Buttons: btn-soft cancel + btn-orange confirm */}
+              <div className="flex items-center gap-2 pt-2 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setConfirmingStudent(null)}
-                  className="flex-1 py-2.5 rounded-2xl border border-[#E1EBEC] bg-[#FFFFFF] text-[#5F7083] font-black text-xs hover:bg-[#E1EBEC]/25 cursor-pointer"
+                  className="btn-soft flex-1"
                 >
                   {t('cancel')}
                 </button>
@@ -871,32 +845,37 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                   type="button"
                   disabled={!selectedChargeDecision || (selectedChargeDecision === 'free' && selectedReason === (isEn ? 'Custom reason' : 'سبب مخصص') && !customReasonText.trim())}
                   onClick={handleConfirmAbsence}
-                  className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] hover:brightness-105 disabled:opacity-50 text-[#FFFFFF] font-black text-xs shadow-md transition-all cursor-pointer"
+                  className="btn-orange flex-1"
                 >
                   {isEn ? 'Confirm Absence' : 'تأكيد الغياب'}
                 </button>
               </div>
             </div>
           </div>
-        )}
+        </ModalPortal>
+      )}
 
-        {/* ========================================================= */}
-        {/* BATCH ABSENCE CONFIRMATION MODAL */}
-        {/* ========================================================= */}
-        {isBatchAbsentConfirmOpen && (
-          <div className="absolute inset-0 z-50 bg-[#17375E]/70 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 animate-in fade-in duration-150">
-            <div className="bg-[#FFFFFF] border border-[#E1EBEC] rounded-[28px] p-4 sm:p-5 max-w-md w-full mx-auto space-y-4 shadow-2xl">
+      {/* ========================================================= */}
+      {/* BATCH ABSENCE CONFIRMATION DIALOG (centered card) */}
+      {/* ========================================================= */}
+      {isBatchAbsentConfirmOpen && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4 animate-backdrop-fade"
+            dir={isRTL ? 'rtl' : 'ltr'}
+          >
+            <div className="bg-page border border-line rounded-[28px] p-5 max-w-md w-full mx-auto space-y-4 shadow-white animate-pop-in">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#E1EBEC] pb-3">
+              <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-[#E1EBEC]/15 text-[#0F2A4A]">
-                    <Users className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-full bg-mint-soft text-navy flex items-center justify-center shrink-0">
+                    <AppIcon name="students" size={20} weight="duotone" />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-[#0F2A4A]">
+                    <h3 className="font-bold text-sm text-navy">
                       {isEn ? `Record All Students Absent (${enrolledStudents.length})` : `تسجيل غياب جميع الطلاب (${enrolledStudents.length})`}
                     </h3>
-                    <p className="text-xs text-[#5F7083] font-medium">
+                    <p className="text-xs text-slate font-medium">
                       {isEn ? 'Specify batch absence handling' : 'تحديد معاملة الغياب الجماعي'}
                     </p>
                   </div>
@@ -904,45 +883,45 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsBatchAbsentConfirmOpen(false)}
-                  className="p-1.5 rounded-full text-[#5F7083] hover:text-[#0F2A4A] hover:bg-[#E1EBEC]/25 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-mint-soft text-navy hover:bg-mint flex items-center justify-center transition-colors cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <AppIcon name="close" size={16} weight="bold" />
                 </button>
               </div>
 
               {/* Main Question */}
               <div className="space-y-1">
-                <label className="block font-black text-xs text-[#0F2A4A]">
+                <label className="block font-bold text-xs text-navy">
                   {isEn ? 'Charge this class to all students?' : 'هل تريد احتساب الحصة على جميع الطلاب؟'}
                 </label>
               </div>
 
-              {/* 2 Primary Choices */}
-              <div className="grid grid-cols-1 gap-2">
+              {/* 2 Selectable Tiles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setBatchChargeDecision('charged')}
-                  className={`p-3.5 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
                     batchChargeDecision === 'charged'
-                      ? 'bg-[#E1EBEC]/15 border-[#0F2A4A] ring-2 ring-[#0F2A4A]/20'
-                      : 'bg-[#E1EBEC]/15 border-[#E1EBEC]'
+                      ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                      : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                       batchChargeDecision === 'charged'
-                        ? 'border-[#0F2A4A] bg-[#0F2A4A] text-[#FFFFFF]'
-                        : 'border-[#E1EBEC] bg-[#FFFFFF]'
+                        ? 'bg-navy text-white animate-pop-in'
+                        : 'bg-page text-navy'
                     }`}
                   >
-                    {batchChargeDecision === 'charged' && <Check className="w-3 h-3 stroke-[3]" />}
+                    <AppIcon name="warning" size={14} weight="fill" />
                   </div>
-                  <div>
-                    <span className="font-black text-xs text-[#0F2A4A] block">
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs text-navy block leading-tight">
                       {isEn ? 'Yes, Charge for all' : 'نعم، تُحسب على الكل'}
                     </span>
-                    <span className="text-[11px] text-[#5F7083] mt-0.5 block font-medium">
-                      {isEn ? 'Consumes 1 session credit from each student or added to dues.' : 'تستهلك حصة من رصيد كل طالب أو تدخل في مستحقاته.'}
+                    <span className="text-[10px] text-slate mt-1 block leading-tight font-medium">
+                      {isEn ? 'Consumes 1 session credit' : 'تستهلك حصة من رصيد كل طالب'}
                     </span>
                   </div>
                 </button>
@@ -950,27 +929,27 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setBatchChargeDecision('free')}
-                  className={`p-3.5 rounded-2xl border ${isRTL ? 'text-right' : 'text-left'} transition-all flex items-start gap-2.5 cursor-pointer ${
+                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
                     batchChargeDecision === 'free'
-                      ? 'bg-[#E1EBEC]/15 border-[#17375E] ring-2 ring-[#17375E]/20'
-                      : 'bg-[#E1EBEC]/15 border-[#E1EBEC]'
+                      ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                      : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                       batchChargeDecision === 'free'
-                        ? 'border-[#17375E] bg-[#0F2A4A] text-[#FFFFFF]'
-                        : 'border-[#E1EBEC] bg-[#FFFFFF]'
+                        ? 'bg-navy text-white animate-pop-in'
+                        : 'bg-page text-navy'
                     }`}
                   >
-                    {batchChargeDecision === 'free' && <Check className="w-3 h-3 stroke-[3]" />}
+                    <AppIcon name="info" size={14} weight="fill" />
                   </div>
-                  <div>
-                    <span className="font-black text-xs text-[#0F2A4A] block">
-                      {isEn ? 'No, Excuse for all (Batch Exemption)' : 'لا، لا تُحسب على أي طالب (إعفاء جماعي)'}
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs text-navy block leading-tight">
+                      {isEn ? 'No, Excuse for all' : 'إعفاء جماعي'}
                     </span>
-                    <span className="text-[11px] text-[#5F7083] mt-0.5 block font-medium">
-                      {isEn ? 'Does not consume any credits and does not add charges.' : 'لا تستهلك أي رصيد ولا تضيف أي مبالغ للمستحقات.'}
+                    <span className="text-[10px] text-slate mt-1 block leading-tight font-medium">
+                      {isEn ? 'No credits consumed' : 'لا تستهلك أي رصيد'}
                     </span>
                   </div>
                 </button>
@@ -978,8 +957,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
               {/* Reasons if free */}
               {batchChargeDecision === 'free' && (
-                <div className="p-3 bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-2xl space-y-2 animate-in fade-in">
-                  <label className="block font-black text-xs text-[#0F2A4A]">
+                <div className="p-3 bg-mist border border-line rounded-2xl space-y-2 animate-in fade-in">
+                  <label className="block font-bold text-xs text-navy">
                     {isEn ? 'Reason for batch exemption:' : 'سبب عدم احتساب الحصة للكل:'}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -988,11 +967,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                         key={r}
                         type="button"
                         onClick={() => setBatchReason(r)}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
-                          batchReason === r
-                            ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E]'
-                            : 'bg-[#FFFFFF] text-[#0F2A4A] border-[#E1EBEC]'
-                        }`}
+                        className={`chip px-2 text-[11px] ${batchReason === r ? 'chip-active' : ''}`}
                       >
                         {r}
                       </button>
@@ -1000,11 +975,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setBatchReason(isEn ? 'Custom reason' : 'سبب مخصص')}
-                      className={`py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center cursor-pointer ${
-                        batchReason === (isEn ? 'Custom reason' : 'سبب مخصص')
-                          ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E]'
-                          : 'bg-[#FFFFFF] text-[#0F2A4A] border-[#E1EBEC]'
-                      }`}
+                      className={`chip px-2 text-[11px] ${batchReason === (isEn ? 'Custom reason' : 'سبب مخصص') ? 'chip-active' : ''}`}
                     >
                       {isEn ? 'Custom reason' : 'سبب مخصص'}
                     </button>
@@ -1022,41 +993,39 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-2 border-t border-[#E1EBEC]">
+              {/* Action Buttons: btn-soft cancel + btn-orange apply */}
+              <div className="flex items-center gap-2 pt-2 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setIsBatchAbsentConfirmOpen(false)}
-                  className="btn-secondary flex-1"
+                  className="btn-soft flex-1"
                 >
                   {t('cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmBatchAbsent}
-                  className="btn-primary flex-1"
+                  className="btn-orange flex-1"
                 >
                   {isEn ? 'Apply Batch Absence' : 'تطبيق الغياب للكل'}
                 </button>
               </div>
             </div>
           </div>
-        )}
+        </ModalPortal>
+      )}
 
-        {/* Private Class Intake Details Modal */}
-        {privateIntakeStudent && (
-          <PrivateClassIntakeModal
-            isOpen={!!privateIntakeStudent}
-            onClose={() => setPrivateIntakeStudent(null)}
-            student={privateIntakeStudent}
-            session={session}
-            group={group}
-            onConfirm={handleConfirmPrivateIntake}
-          />
-        )}
-
-      </div>
-    </div>
-    </ModalPortal>
+      {/* Private Class Intake Details Modal */}
+      {privateIntakeStudent && (
+        <PrivateClassIntakeModal
+          isOpen={!!privateIntakeStudent}
+          onClose={() => setPrivateIntakeStudent(null)}
+          student={privateIntakeStudent}
+          session={session}
+          group={group}
+          onConfirm={handleConfirmPrivateIntake}
+        />
+      )}
+    </>
   );
 };

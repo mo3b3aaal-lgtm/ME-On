@@ -1,53 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import {
-  BarChart3,
-  DollarSign,
-  TrendingUp,
-  Users,
-  Layers,
-  Calendar,
-  CalendarDays,
-  CalendarCheck2,
-  Printer,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  User,
-  Wallet,
-  Sparkles,
-  Receipt,
-  Search,
-  Filter,
-  ArrowDownLeft,
-  CreditCard,
-  Phone,
-  MessageCircle,
-  ChevronDown,
-  ChevronUp,
-  ArrowUpRight,
-  Clock,
-  PieChart,
-  X,
-  Zap,
-  CheckCheck,
-  Award,
-  AlertTriangle,
-  RefreshCw,
-  Share2,
-  Activity,
-  Bell,
-  Settings,
-} from 'lucide-react';
 import { Student, Group, Session, Payment, ReportPeriodFilter, Enrollment, Attendance, ActiveTab } from '../types';
-import { db, roundMoney, getArabicMonthName, calculateWorkloadSummary, getSessionLessonQuantity } from '../utils/storage';
+import { db, roundMoney, getArabicMonthName, getSessionLessonQuantity } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate } from '../utils/localDate';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
-import { ClassyOwlMascot } from './ClassyOwlMascot';
 import { StudentAvatar } from './StudentAvatar';
 import { AttendanceTrendsChart } from './AttendanceTrendsChart';
 import { BillingStreamsProgressChart } from './BillingStreamsProgressChart';
+import { AppIcon } from './ui/AppIcon';
+import { SegmentedControl } from './ui/SegmentedControl';
+import { ScreenHeader } from './ui/ScreenHeader';
+import { SectionHeader } from './ui/SectionHeader';
+import { NavyCard } from './ui/NavyCard';
+import { MintCard } from './ui/MintCard';
+import { WhiteCard } from './ui/WhiteCard';
+import { ProgressRing } from './ui/ProgressRing';
+import { EmptyBox } from './illustrations/EmptyBox';
 
 interface ReportsViewProps {
   students: Student[];
@@ -96,17 +65,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     'overview' | 'billing_streams' | 'attendance_trends' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
   >('overview');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'group' | 'private'>('all');
-  const [expandedMonthYear, setExpandedMonthYear] = useState<string | null>(null);
-  const [expandedYear, setExpandedYear] = useState<number | null>(currentYear);
 
   // Selected Student / Group for dedicated reports
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || '');
-  const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [overdueSearchQuery, setOverdueSearchQuery] = useState('');
-  const [methodFilter, setMethodFilter] = useState<string>('all');
-  const [studentFilterType, setStudentFilterType] = useState<'all' | 'active' | 'archived'>('all');
+  const [methodFilter] = useState<string>('all');
 
   const activeEnrollments = useMemo(() => enrollments || db.getEnrollments(), [enrollments]);
   const allAttendanceRecords = useMemo(() => db.getAttendance(), [sessions]);
@@ -179,7 +144,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         grp?.billingType === 'hourly' ||
         (s.hours !== undefined && Number(s.hours) > 0 && !s.sessionUnits && !att?.sessionUnits);
 
-      if (isHourly) return 1; // Hourly never uses sessionUnits
+      if (isHourly) return 1;
       return getSessionLessonQuantity(s, att);
     };
 
@@ -348,11 +313,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Payment Methods Breakdown
   const methodStats = useMemo(() => {
     const stats = {
-      cash: { label: isEn ? 'Cash' : 'كاش (نقداً)', amount: 0, count: 0, color: '#0F2A4A' },
-      vodafone_cash: { label: isEn ? 'Vodafone Cash' : 'فودافون كاش', amount: 0, count: 0, color: '#0F2A4A' },
-      instapay: { label: isEn ? 'InstaPay' : 'إنستاباي (InstaPay)', amount: 0, count: 0, color: '#17375E' },
-      bank_transfer: { label: isEn ? 'Bank Transfer' : 'تحويل بنكي', amount: 0, count: 0, color: '#17375E' },
-      other: { label: isEn ? 'Other' : 'أخرى', amount: 0, count: 0, color: '#5F7083' },
+      cash: { label: isEn ? 'Cash' : 'كاش (نقداً)', amount: 0, count: 0 },
+      vodafone_cash: { label: isEn ? 'Vodafone Cash' : 'فودافون كاش', amount: 0, count: 0 },
+      instapay: { label: isEn ? 'InstaPay' : 'إنستاباي (InstaPay)', amount: 0, count: 0 },
+      bank_transfer: { label: isEn ? 'Bank Transfer' : 'تحويل بنكي', amount: 0, count: 0 },
+      other: { label: isEn ? 'Other' : 'أخرى', amount: 0, count: 0 },
     };
 
     filteredPayments.forEach((p) => {
@@ -435,7 +400,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   // Period Display Label for Header
   const currentPeriodLabel = useMemo(() => {
-    if (periodFilter === 'all_time') return isEn ? 'All Time' : 'كافة الفترات (All Time)';
+    if (periodFilter === 'all_time') return isEn ? 'All Time' : 'كافة الفترات';
     if (periodFilter === 'today') return isEn ? `Today (${todayStr})` : `اليوم (${todayStr})`;
     if (periodFilter === 'last_7_days') return isEn ? 'Last 7 Days' : 'آخر 7 أيام';
     if (periodFilter === 'this_month') return isEn ? `${getArabicMonthName(currentMonth)} ${currentYear}` : `شهر ${getArabicMonthName(currentMonth)} ${currentYear}`;
@@ -464,361 +429,135 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     t,
   ]);
 
+  // ProgressRing collection rate value (guarded 0..100)
+  const collectionRate = useMemo(() => {
+    const due = Number(teacherSummary.totalDue ?? teacherSummary.totalDues) || 0;
+    const collected = Number(periodRevenue) || 0;
+    if (due > 0) {
+      return Math.min(100, Math.max(0, Math.round((collected / due) * 100)));
+    }
+    if (attendanceAnalytics.totalSessions > 0) {
+      return Math.min(
+        100,
+        Math.max(
+          0,
+          Math.round(
+            (attendanceAnalytics.completedAppointmentsCount / attendanceAnalytics.totalSessions) * 100
+          )
+        )
+      );
+    }
+    return 100;
+  }, [teacherSummary, periodRevenue, attendanceAnalytics]);
+
+  const periodOptions: { key: ReportPeriodFilter; label: string }[] = [
+    { key: 'this_month', label: isEn ? 'This Month' : 'هذا الشهر' },
+    { key: 'last_month', label: isEn ? 'Last Month' : 'الشهر الماضي' },
+    { key: 'last_7_days', label: isEn ? 'Last 7 Days' : 'آخر 7 أيام' },
+    { key: 'today', label: isEn ? 'Today' : 'اليوم' },
+    { key: 'specific_month', label: isEn ? 'Specific Month' : 'شهر محدد' },
+    { key: 'custom_range', label: isEn ? 'Custom Range' : 'فترة مخصصة' },
+    { key: 'all_time', label: isEn ? 'All Time' : 'كل الوقت' },
+  ];
+
   return (
     <div
-      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar p-3.5 sm:p-5 space-y-4 text-[#0F2A4A] pb-32 bg-[#FFFFFF] relative"
+      className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar px-5 py-4 space-y-4 text-navy pb-32 bg-page relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Ambient background glows matching Classy visual identity */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#17375E]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-0 w-80 h-80 bg-[#17375E]/8 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#0F2A4A]/6 rounded-full blur-3xl pointer-events-none -z-10" />
+      {/* 1. Screen Header */}
+      <ScreenHeader
+        title={t('reportsTitle') || (isEn ? 'Reports' : 'التقارير')}
+        onOpenNotifications={onOpenNotificationsModal}
+        onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
+      />
 
-      {/* Top Header */}
-      <header className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-2xl font-bold font-display text-[#0F2A4A] tracking-tight">
-          {t('reportsTitle') || (isEn ? 'Reports' : 'التقارير')}
-        </h1>
-        <div className="flex items-center gap-2">
-          {onOpenNotificationsModal && (
-            <button
-              type="button"
-              onClick={onOpenNotificationsModal}
-              className="relative w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
-              title={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
-              aria-label={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
-            >
-              <Bell className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
-            </button>
-          )}
-          {onNavigateToTab && (
-            <button
-              type="button"
-              onClick={() => onNavigateToTab('settings')}
-              className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-center text-[#0F2A4A] hover:bg-[#DCEDEB] transition-colors cursor-pointer shadow-xs"
-              title={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
-              aria-label={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
-            >
-              <Settings className="w-5 h-5 text-[#5F7083]" strokeWidth={1.7} />
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* =========================================================================
-          1. REPORTS HERO HEADER
-          ========================================================================= */}
-      <div className="rounded-[24px] bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] p-4 sm:p-5 text-[#FFFFFF] relative overflow-hidden shadow-xl border border-[#E1EBEC]/15">
-        {/* Soft internal gradient orbs */}
-        <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#17375E]/35 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-[#0F2A4A]/30 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex items-start justify-between gap-3 relative z-10 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#17375E] via-[#0F2A4A] to-[#17375E] p-0.5 shadow-lg shadow-[#17375E]/35 shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-[#17375E] flex items-center justify-center text-[#FFFFFF]">
-                <BarChart3 className="w-5 h-5 text-[#FFFFFF]" />
+      {/* 2. Top Summary = NavyCard with main number (.t-display white) and ProgressRing for collection rate */}
+      <NavyCard className="relative">
+        <div className="flex items-center justify-between gap-4 relative z-10">
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-semibold text-page/80">
+                {currentPeriodLabel}
+              </span>
+            </div>
+            <div>
+              <div className="t-meta text-page/80">
+                {isEn ? 'Total revenue' : 'إجمالي التحصيل'}
+              </div>
+              <div className="t-display text-page mt-1">
+                {periodRevenue}{' '}
+                <span className="text-sm font-semibold text-page/80">{t('currency')}</span>
               </div>
             </div>
-
-            <div className="space-y-0.5 min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-[#E1EBEC]/90 flex items-center gap-1 truncate">
-                  <Sparkles className="w-3 h-3 text-[#E1EBEC] shrink-0" />
-                  <span className="truncate">{isEn ? 'Financial Analytics & Audit Center' : 'مركز التحليلات والكشوف المالية'}</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-black text-[#FFFFFF] tracking-tight">
-                  {t('reportsTitle')}
-                </h1>
-                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/25 shadow-xs truncate max-w-full">
-                  {currentPeriodLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="px-3 py-2 rounded-2xl bg-[#FFFFFF] text-[#0F2A4A] font-bold text-xs flex items-center gap-1.5 shadow-md hover:bg-[#FFFFFF] transition-all active:scale-95 cursor-pointer shrink-0"
-            title={isEn ? 'Print Statement' : 'طباعة التقرير والكشف المالي'}
-          >
-            <Printer className="w-3.5 h-3.5 text-[#17375E]" />
-            <span>{isEn ? 'Print' : 'طباعة'}</span>
-          </button>
-        </div>
-
-        {/* Square 2x2 Hero KPIs Grid */}
-        <div className="grid grid-cols-2 gap-2.5 pt-4 mt-4 border-t border-[#E1EBEC]/20">
-          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
-            <span className="text-[11px] text-[#E1EBEC]/85 block font-bold">{isEn ? 'Collected in Period' : 'المحصل بالفترة'}</span>
-            <span className="text-lg font-black text-[#E1EBEC] block truncate mt-1">
-              {periodRevenue} <span className="text-[10px] text-[#E1EBEC]">{t('currency')}</span>
-            </span>
-          </div>
-          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
-            <span className="text-[11px] text-[#E1EBEC]/85 block font-bold">{isEn ? 'Remaining Dues' : 'المستحقات المتبقية'}</span>
-            <span
-              className={`text-lg font-black block truncate mt-1 ${
-                teacherSummary.totalRemaining > 0 ? 'text-[#FFFFFF]' : 'text-[#E1EBEC]'
-              }`}
-            >
-              {teacherSummary.totalRemaining} <span className="text-[10px]">{t('currency')}</span>
-            </span>
-          </div>
-          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] text-[#E1EBEC]/85 font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
-              {attendanceAnalytics.completedAppointmentsCount > 0 && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#FFFFFF]/15 text-[#E1EBEC] font-bold">
-                  {attendanceAnalytics.completedAppointmentsCount}{' '}
-                  {isEn
-                    ? attendanceAnalytics.completedAppointmentsCount === 1
-                      ? 'Appt'
-                      : 'Appts'
-                    : attendanceAnalytics.completedAppointmentsCount === 1
-                    ? 'موعد'
-                    : 'مواعيد'}
-                </span>
-              )}
-            </div>
-            <span className="text-lg font-black text-[#FFFFFF] block leading-tight mt-1">
-              {attendanceAnalytics.completedSessionsCount}
-            </span>
-          </div>
-          <div className="bg-[#FFFFFF]/10 backdrop-blur-md rounded-2xl p-3 border border-[#E1EBEC]/20 flex flex-col justify-between min-h-[78px]">
-            <span className="text-[11px] text-[#E1EBEC]/85 block font-bold">{isEn ? 'Attendance Rate' : 'نسبة الالتزام والحضور'}</span>
-            <span className="text-lg font-black text-[#FFFFFF] block mt-1">
-              {attendanceAnalytics.commitmentRate}%
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          2. MAIN REPORT NAVIGATION (2x2 Square Bento Grid like Dashboard)
-          ========================================================================= */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
-          type="button"
-          onClick={() => setReportType('teacher_overview')}
-          className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
-            reportType === 'teacher_overview'
-              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#17375E]/50 shadow-lg shadow-[#0F2A4A]/20'
-              : 'classy-lavender-card text-[#0F2A4A] hover:border-[#17375E]/50'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-1.5">
-            <div
-              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
-                reportType === 'teacher_overview'
-                  ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]'
-                  : 'bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF]'
-              }`}
-            >
-              <BarChart3 className="w-4.5 h-4.5" />
-            </div>
-            <span
-              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                reportType === 'teacher_overview'
-                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
-                  : 'bg-[#E1EBEC]/25 text-[#17375E] border border-[#E1EBEC]'
-              }`}
-            >
-              {isEn ? 'Executive' : 'شامل'}
-            </span>
-          </div>
-          <div className="w-full min-w-0">
-            <span className="text-xs sm:text-sm font-black block truncate">
-              {isEn ? 'Executive & Finance' : 'اللوحة المالية الشاملة'}
-            </span>
-            <span
-              className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'teacher_overview' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
-              }`}
-            >
-              {isEn ? 'Revenues & Analytics' : 'الأرباح والإحصائيات'}
-            </span>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setReportType('overdue_list')}
-          className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
-            reportType === 'overdue_list'
-              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#0F2A4A]/50 shadow-lg shadow-[#0F2A4A]/20'
-              : 'classy-rose-card text-[#0F2A4A] hover:border-[#0F2A4A]/50'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-1.5">
-            <div
-              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
-                reportType === 'overdue_list'
-                  ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]'
-                  : 'bg-gradient-to-tr from-[#0F2A4A] to-[#17375E] text-[#FFFFFF]'
-              }`}
-            >
-              <Receipt className="w-4.5 h-4.5" />
-            </div>
-            <span
-              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                reportType === 'overdue_list'
-                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
-                  : 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
-              }`}
-            >
-              {overdueStudentsList.length} {isEn ? 'dues' : 'طلاب'}
-            </span>
-          </div>
-          <div className="w-full min-w-0">
-            <span className="text-xs sm:text-sm font-black block truncate">
-              {isEn ? 'Dues & Overdue' : 'المستحقات والمديونيات'}
-            </span>
-            <span
-              className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'overdue_list' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
-              }`}
-            >
-              {isEn ? 'Pending collections' : 'كشف المتأخرات والتحصيل'}
-            </span>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setReportType('group_report')}
-          className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
-            reportType === 'group_report'
-              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#17375E]/50 shadow-lg shadow-[#0F2A4A]/20'
-              : 'rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border-[#17375E]/50 text-[#0F2A4A] hover:border-[#17375E]'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-1.5">
-            <div
-              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
-                reportType === 'group_report'
-                  ? 'bg-[#FFFFFF]/15 text-[#E1EBEC]'
-                  : 'bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF]'
-              }`}
-            >
-              <Layers className="w-4.5 h-4.5" />
-            </div>
-            <span
-              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                reportType === 'group_report'
-                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
-                  : 'bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#17375E]/50'
-              }`}
-            >
-              {groups.length} {isEn ? 'groups' : 'مجموعة'}
-            </span>
-          </div>
-          <div className="w-full min-w-0">
-            <span className="text-xs sm:text-sm font-black block truncate">
-              {isEn ? 'Group Reports' : 'تقارير المجموعات'}
-            </span>
-            <span
-              className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'group_report' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
-              }`}
-            >
-              {isEn ? 'Group performance' : 'تحليل المجموعات والخدمات'}
-            </span>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setReportType('student_report')}
-          className={`p-3.5 rounded-[22px] flex flex-col justify-between min-h-[96px] text-start transition-all cursor-pointer active:scale-[0.98] border ${
-            reportType === 'student_report'
-              ? 'bg-gradient-to-br from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] border-[#17375E]/50 shadow-lg shadow-[#0F2A4A]/20'
-              : 'classy-card bg-[#FFFFFF] text-[#0F2A4A] hover:border-[#0F2A4A]/40'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-1.5">
-            <div
-              className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-sm ${
-                reportType === 'student_report'
-                  ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]'
-                  : 'bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF]'
-              }`}
-            >
-              <User className="w-4.5 h-4.5" />
-            </div>
-            <span
-              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                reportType === 'student_report'
-                  ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]'
-                  : 'bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#E1EBEC]'
-              }`}
-            >
-              {students.length} {isEn ? 'students' : 'طالب'}
-            </span>
-          </div>
-          <div className="w-full min-w-0">
-            <span className="text-xs sm:text-sm font-black block truncate">
-              {isEn ? 'Student Dossier' : 'تقارير الطلاب'}
-            </span>
-            <span
-              className={`text-[10px] font-bold block truncate mt-0.5 ${
-                reportType === 'student_report' ? 'text-[#E1EBEC]/80' : 'text-[#5F7083]'
-              }`}
-            >
-              {isEn ? 'Individual statement' : 'كشف حساب الطالب'}
-            </span>
-          </div>
-        </button>
-      </div>
-
-      {/* =========================================================================
-          3. TIME PERIOD FILTER BAR (2-Column Square Grid)
-          ========================================================================= */}
-      {reportType !== 'overdue_list' && (
-        <div className="classy-card p-3.5 space-y-2.5 bg-[#FFFFFF]">
-          <div className="flex items-center gap-1.5 text-[#0F2A4A] font-black text-xs">
-            <Filter className="w-4 h-4 text-[#17375E]" />
-            <span>{isEn ? 'Report Period:' : 'تحديد الفترة الزمنية للتقرير:'}</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            {[
-              { key: 'this_month', label: isEn ? 'This Month' : 'هذا الشهر' },
-              { key: 'last_month', label: isEn ? 'Last Month' : 'الشهر الماضي' },
-              { key: 'last_7_days', label: isEn ? 'Last 7 Days' : 'آخر 7 أيام' },
-              { key: 'today', label: isEn ? 'Today' : 'اليوم' },
-              { key: 'specific_month', label: isEn ? 'Specific Month' : 'شهر محدد' },
-              { key: 'custom_range', label: isEn ? 'Custom Range' : 'فترة مخصصة' },
-              { key: 'all_time', label: isEn ? 'All Time (Comprehensive)' : 'كل الوقت (شامل)' },
-            ].map((tab, idx, arr) => (
+            <div className="flex items-center gap-3 pt-0.5">
+              <span className="text-[12px] text-page/80">
+                {isEn
+                  ? `Due: ${teacherSummary.totalDue ?? teacherSummary.totalDues} ${t('currency')}`
+                  : `المستحق: ${teacherSummary.totalDue ?? teacherSummary.totalDues} ${t('currency')}`}
+              </span>
               <button
-                key={tab.key}
                 type="button"
-                onClick={() => setPeriodFilter(tab.key as ReportPeriodFilter)}
-                className={`px-3 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer text-center truncate ${
-                  idx === arr.length - 1 ? 'col-span-2' : ''
-                } ${
-                  periodFilter === tab.key
-                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                }`}
+                onClick={handlePrint}
+                className="ms-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-page/15 hover:bg-page/25 text-page text-xs font-semibold transition-colors cursor-pointer"
+                title={isEn ? 'Print Statement' : 'طباعة التقرير'}
               >
-                {tab.label}
+                <AppIcon name="printer" size={14} />
+                <span>{isEn ? 'Print' : 'طباعة'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <ProgressRing
+              value={collectionRate}
+              size={80}
+              stroke={9}
+              variant="navy"
+              className="text-page"
+            />
+            <span className="text-[11px] font-medium text-page/80 text-center">
+              {isEn ? 'Collection rate' : 'نسبة التحصيل'}
+            </span>
+          </div>
+        </div>
+      </NavyCard>
+
+      {/* 3. Main Navigation: SegmentedControl */}
+      <SegmentedControl<'teacher_overview' | 'overdue_list' | 'group_report' | 'student_report'>
+        value={reportType}
+        onChange={(val) => setReportType(val)}
+        options={[
+          { value: 'teacher_overview', label: isEn ? 'Overview' : 'شامل' },
+          { value: 'overdue_list', label: isEn ? 'Dues' : 'المستحقات' },
+          { value: 'group_report', label: isEn ? 'Groups' : 'المجموعات' },
+          { value: 'student_report', label: isEn ? 'Students' : 'الطلاب' },
+        ]}
+      />
+
+      {/* 4. Period Selector = chips; horizontally scrollable */}
+      {reportType !== 'overdue_list' && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-5 px-5">
+            {periodOptions.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setPeriodFilter(opt.key)}
+                className={`chip shrink-0 ${periodFilter === opt.key ? 'chip-active' : ''}`}
+              >
+                {opt.label}
               </button>
             ))}
           </div>
 
-          {/* Extended controls for specific month or custom range */}
+          {/* Specific Month Selectors */}
           {periodFilter === 'specific_month' && (
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E1EBEC]">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <select
                 value={selectedSpecificMonth}
                 onChange={(e) => setSelectedSpecificMonth(Number(e.target.value))}
-                className="p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
+                className="bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>
@@ -829,7 +568,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <select
                 value={selectedSpecificYear}
                 onChange={(e) => setSelectedSpecificYear(Number(e.target.value))}
-                className="p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
+                className="bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
               >
                 {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map((y) => (
                   <option key={y} value={y}>
@@ -840,24 +579,29 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </div>
           )}
 
+          {/* Custom Date Inputs */}
           {periodFilter === 'custom_range' && (
-            <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E1EBEC]">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <div>
-                <span className="text-[#5F7083] text-[11px] block font-bold mb-1">{isEn ? 'From Date:' : 'من تاريخ:'}</span>
+                <span className="t-caption text-slate block mb-1 ms-1">
+                  {isEn ? 'From date' : 'من تاريخ'}
+                </span>
                 <input
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
+                  className="w-full bg-page border border-line text-navy rounded-full px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-navy"
                 />
               </div>
               <div>
-                <span className="text-[#5F7083] text-[11px] block font-bold mb-1">{isEn ? 'To Date:' : 'إلى تاريخ:'}</span>
+                <span className="t-caption text-slate block mb-1 ms-1">
+                  {isEn ? 'To date' : 'إلى تاريخ'}
+                </span>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="w-full p-2 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
+                  className="w-full bg-page border border-line text-navy rounded-full px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-navy"
                 />
               </div>
             </div>
@@ -866,328 +610,225 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       )}
 
       {/* =========================================================================
-          4. TAB 1: EXECUTIVE FINANCIAL DASHBOARD & ANALYTICS
+          TAB 1: EXECUTIVE FINANCIAL OVERVIEW
           ========================================================================= */}
       {reportType === 'teacher_overview' && (
         <div className="space-y-4">
-          {/* Sub-Navigation Square Grid & Group vs Private Filter */}
-          <div className="classy-card p-3 space-y-2.5 bg-[#FFFFFF]">
-            <div className="grid grid-cols-2 gap-2">
+          {/* Sub-Tabs: horizontally scrollable chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-5 px-5">
+            {[
+              { key: 'overview', label: isEn ? 'Overview' : 'نظرة عامة' },
+              { key: 'billing_streams', label: isEn ? 'Billing Streams' : 'مسارات المحاسبة' },
+              { key: 'attendance_trends', label: isEn ? 'Attendance Trends' : 'منحنيات الحضور' },
+              {
+                key: 'monthly_ledger',
+                label: isEn
+                  ? `Monthly (${financialHistory.months.length})`
+                  : `السجل الشهري (${financialHistory.months.length})`,
+              },
+              {
+                key: 'yearly_summary',
+                label: isEn
+                  ? `Annual (${financialHistory.years.length})`
+                  : `السجل السنوي (${financialHistory.years.length})`,
+              },
+              {
+                key: 'payments',
+                label: isEn
+                  ? `Receipts (${filteredPayments.length})`
+                  : `المقبوضات (${filteredPayments.length})`,
+              },
+              { key: 'lifetime', label: isEn ? 'Lifetime' : 'شامل الفترات' },
+            ].map((sub) => (
               <button
+                key={sub.key}
                 type="button"
-                onClick={() => setFinancialSubTab('overview')}
-                className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
-                  financialSubTab === 'overview'
-                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                }`}
+                onClick={() => setFinancialSubTab(sub.key as any)}
+                className={`chip shrink-0 ${financialSubTab === sub.key ? 'chip-active' : ''}`}
               >
-                <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'overview' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
-                }`}>
-                  <TrendingUp className="w-3.5 h-3.5" />
-                </div>
-                <span className="truncate">{isEn ? 'Overview' : 'نظرة عامة'}</span>
+                {sub.label}
               </button>
-
-              <button
-                type="button"
-                onClick={() => setFinancialSubTab('billing_streams')}
-                className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
-                  financialSubTab === 'billing_streams'
-                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                }`}
-              >
-                <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'billing_streams' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
-                }`}>
-                  <Layers className="w-3.5 h-3.5" />
-                </div>
-                <span className="truncate">{isEn ? 'Billing Streams' : 'مسارات المحاسبة'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFinancialSubTab('attendance_trends')}
-                className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
-                  financialSubTab === 'attendance_trends'
-                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                }`}
-              >
-                <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'attendance_trends' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
-                }`}>
-                  <Activity className="w-3.5 h-3.5" />
-                </div>
-                <span className="truncate">{isEn ? 'Attendance Trends' : 'منحنيات الحضور'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFinancialSubTab('monthly_ledger')}
-                className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
-                  financialSubTab === 'monthly_ledger'
-                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                }`}
-              >
-                <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'monthly_ledger' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
-                }`}>
-                  <CalendarDays className="w-3.5 h-3.5" />
-                </div>
-                <span className="truncate">{isEn ? `Monthly (${financialHistory.months.length})` : `السجل الشهري (${financialHistory.months.length})`}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFinancialSubTab('yearly_summary')}
-                className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
-                  financialSubTab === 'yearly_summary'
-                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                }`}
-              >
-                <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'yearly_summary' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#17375E]'
-                }`}>
-                  <Calendar className="w-3.5 h-3.5" />
-                </div>
-                <span className="truncate">{isEn ? `Annual (${financialHistory.years.length})` : `السجل السنوي (${financialHistory.years.length})`}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFinancialSubTab('payments')}
-                className={`p-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border ${
-                  financialSubTab === 'payments'
-                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                }`}
-              >
-                <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                  financialSubTab === 'payments' ? 'bg-[#FFFFFF]/15 text-[#FFFFFF]' : 'bg-[#FFFFFF] text-[#0F2A4A]'
-                }`}>
-                  <Receipt className="w-3.5 h-3.5" />
-                </div>
-                <span className="truncate">{isEn ? `Receipts (${filteredPayments.length})` : `المقبوضات (${filteredPayments.length})`}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFinancialSubTab('lifetime')}
-                className={`col-span-2 p-2.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer border ${
-                  financialSubTab === 'lifetime'
-                    ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                    : 'bg-[#E1EBEC]/15 text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35 hover:text-[#0F2A4A]'
-                }`}
-              >
-                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${financialSubTab === 'lifetime' ? 'text-[#FFFFFF]' : 'text-[#17375E]'}`} />
-                <span className="truncate">{isEn ? 'Lifetime Comprehensive Totals (All-Time)' : 'الإجمالي الشامل لكافة الفترات (All-Time)'}</span>
-              </button>
-            </div>
-
-            {/* Group vs Private Segmented Control */}
-            <div className="grid grid-cols-3 gap-1.5 bg-[#E1EBEC]/15 p-1.5 rounded-xl border border-[#E1EBEC]">
-              <button
-                type="button"
-                onClick={() => setServiceTypeFilter('all')}
-                className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
-                  serviceTypeFilter === 'all'
-                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
-                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
-                }`}
-              >
-                {t('all')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setServiceTypeFilter('group')}
-                className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
-                  serviceTypeFilter === 'group'
-                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
-                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
-                }`}
-              >
-                {isEn ? 'Groups' : 'مجموعات'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setServiceTypeFilter('private')}
-                className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
-                  serviceTypeFilter === 'private'
-                    ? 'bg-[#17375E] text-[#FFFFFF] shadow-2xs'
-                    : 'text-[#5F7083] hover:text-[#0F2A4A]'
-                }`}
-              >
-                {isEn ? 'Private' : 'خاص'}
-              </button>
-            </div>
+            ))}
           </div>
+
+          {/* Service Filter (All | Groups | Private) */}
+          <SegmentedControl<'all' | 'group' | 'private'>
+            value={serviceTypeFilter}
+            onChange={(val) => setServiceTypeFilter(val)}
+            options={[
+              { value: 'all', label: t('all') },
+              { value: 'group', label: isEn ? 'Groups' : 'مجموعات' },
+              { value: 'private', label: isEn ? 'Private' : 'خاص' },
+            ]}
+          />
 
           {/* Sub-Tab 1: Overview Dashboard */}
           {financialSubTab === 'overview' && (
             <div className="space-y-4">
-              {/* Financial KPI Square 2x2 Bento Grid (Matches DashboardView) */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* Square Card 1: Total Expected Value */}
-                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border border-[#17375E]/50 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
-                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/20 shrink-0">
-                      <TrendingUp className="w-4.5 h-4.5" />
+              {/* KPI Cards: 2-column grid of MintCards (label .t-meta, value 22px/700 navy, optional AppIcon in white circle) */}
+              <div className="grid grid-cols-2 gap-4">
+                <MintCard className="flex flex-col justify-between min-h-[104px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="t-meta text-slate truncate">
+                      {isEn ? 'Total Expected' : 'إجمالي المستحق'}
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-2xs">
+                      <AppIcon name="trendUp" weight="duotone" size={16} />
                     </div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#17375E]/50 truncate">
+                  </div>
+                  <div>
+                    <div className="text-[22px] font-bold text-navy truncate mt-1">
+                      {teacherSummary.totalDue ?? teacherSummary.totalDues}{' '}
+                      <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                    </div>
+                    <span className="t-caption text-slate block mt-0.5 truncate">
                       {attendanceAnalytics.completedAppointmentsCount} {isEn ? 'Appts' : 'موعد'}
                     </span>
                   </div>
-                  <div className="min-w-0">
-                    <strong className="text-xl sm:text-2xl font-black text-[#0F2A4A] tracking-tight block truncate">
-                      {teacherSummary.totalDue ?? teacherSummary.totalDues} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
-                    </strong>
-                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
-                      {isEn ? 'Total Expected Value' : 'إجمالي القيمة المستحقة'}
-                    </span>
-                  </div>
-                </div>
+                </MintCard>
 
-                {/* Square Card 2: Completed Lessons */}
-                <div className="classy-lavender-card p-3.5 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
-                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#17375E]/25 shrink-0">
-                      <CheckCircle2 className="w-4.5 h-4.5" />
-                    </div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#17375E] border border-[#E1EBEC] truncate">
-                      {attendanceAnalytics.commitmentRate}% {isEn ? 'Rate' : 'التزام'}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <strong className="text-xl sm:text-2xl font-black text-[#0F2A4A] tracking-tight block truncate">
-                      {attendanceAnalytics.completedSessionsCount}
-                    </strong>
-                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
+                <MintCard className="flex flex-col justify-between min-h-[104px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="t-meta text-slate truncate">
                       {isEn ? 'Completed Lessons' : 'الحصص المنفذة'}
                     </span>
-                  </div>
-                </div>
-
-                {/* Square Card 3: Total Collected */}
-                <div className="classy-card p-3.5 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
-                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#0F2A4A]/25 shrink-0">
-                      <Wallet className="w-4.5 h-4.5" />
+                    <div className="w-8 h-8 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-2xs">
+                      <AppIcon name="checkAll" weight="duotone" size={16} />
                     </div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#E1EBEC] truncate">
-                      {filteredPayments.length} {isEn ? 'paid' : 'دفعات'}
+                  </div>
+                  <div>
+                    <div className="text-[22px] font-bold text-navy truncate mt-1">
+                      {attendanceAnalytics.completedSessionsCount}
+                    </div>
+                    <span className="t-caption text-slate block mt-0.5 truncate">
+                      {attendanceAnalytics.commitmentRate}% {isEn ? 'Attendance' : 'نسبة الالتزام'}
                     </span>
                   </div>
-                  <div className="min-w-0">
-                    <strong className="text-xl sm:text-2xl font-black text-[#0F2A4A] tracking-tight block truncate">
-                      {periodRevenue} <span className="text-xs font-bold text-[#0F2A4A]">{t('currency')}</span>
-                    </strong>
-                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
-                      {isEn ? 'Total Collected' : 'إجمالي المحصل الفعلي'}
+                </MintCard>
+
+                <MintCard className="flex flex-col justify-between min-h-[104px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="t-meta text-slate truncate">
+                      {isEn ? 'Total Collected' : 'المحصل الفعلي'}
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-2xs">
+                      <AppIcon name="wallet" weight="duotone" size={16} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[22px] font-bold text-navy truncate mt-1">
+                      {periodRevenue}{' '}
+                      <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                    </div>
+                    <span className="t-caption text-slate block mt-0.5 truncate">
+                      {filteredPayments.length} {isEn ? 'payments' : 'دفعات'}
                     </span>
                   </div>
-                </div>
+                </MintCard>
 
-                {/* Square Card 4: Remaining Dues */}
-                <div className="classy-rose-card p-3.5 flex flex-col justify-between min-h-[112px] shadow-xs relative overflow-hidden">
-                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#0F2A4A] to-[#17375E] text-[#FFFFFF] flex items-center justify-center shadow-md shadow-[#0F2A4A]/25 shrink-0">
-                      <AlertCircle className="w-4.5 h-4.5" />
+                <MintCard className="flex flex-col justify-between min-h-[104px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="t-meta text-slate truncate">
+                      {isEn ? 'Remaining Dues' : 'المستحقات المتبقية'}
+                    </span>
+                    <div className="w-8 h-8 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-2xs">
+                      <AppIcon name="warning" weight="duotone" size={16} />
                     </div>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border truncate ${
-                      teacherSummary.totalRemaining > 0
-                        ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC]'
-                        : 'bg-[#E1EBEC]/65 text-[#0F2A4A] border-[#17375E]/50'
-                    }`}>
+                  </div>
+                  <div>
+                    <div className="text-[22px] font-bold text-navy truncate mt-1">
+                      {teacherSummary.totalRemaining}{' '}
+                      <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                    </div>
+                    <span className="t-caption text-slate block mt-0.5 truncate">
                       {overdueStudentsList.length} {isEn ? 'students' : 'طلاب'}
                     </span>
                   </div>
-                  <div className="min-w-0">
-                    <strong
-                      className={`text-xl sm:text-2xl font-black tracking-tight block truncate ${
-                        teacherSummary.totalRemaining > 0 ? 'text-[#0F2A4A]' : 'text-[#0F2A4A]'
-                      }`}
-                    >
-                      {teacherSummary.totalRemaining} <span className="text-xs font-bold">{t('currency')}</span>
-                    </strong>
-                    <span className="text-xs font-bold text-[#5F7083] block mt-0.5 truncate">
-                      {isEn ? 'Remaining Dues' : 'المستحقات المتبقية'}
-                    </span>
-                  </div>
-                </div>
+                </MintCard>
               </div>
 
-              {/* Payment Methods Breakdown (2x2 Square Cards) */}
-              <div className="classy-card p-4 bg-[#FFFFFF] space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <PieChart className="w-4 h-4 text-[#17375E] shrink-0" />
-                    <h3 className="text-xs sm:text-sm font-black text-[#0F2A4A] truncate">
-                      {isEn ? 'Collections by Payment Method' : 'توزيع التحصيل حسب طرق الدفع'}
-                    </h3>
-                  </div>
-                  <span className="text-xs font-bold text-[#5F7083] shrink-0">
-                    {periodRevenue} {t('currency')}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  {(Object.entries(methodStats) as [string, { label: string; amount: number; count: number; color: string }][])
+              {/* Payment Methods Breakdown */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Payment Methods' : 'طرق الدفع والتحصيل'}
+                  subtitle={`${periodRevenue} ${t('currency')}`}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    Object.entries(methodStats) as [
+                      string,
+                      { label: string; amount: number; count: number }
+                    ][]
+                  )
                     .filter(([key, item]) => key !== 'other' || item.count > 0)
                     .map(([key, item]) => (
-                    <div
-                      key={key}
-                      className="bg-[#E1EBEC]/15 p-3.5 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-bold text-[#5F7083] truncate">
-                          {item.label}
-                        </span>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFFFFF] text-[#0F2A4A] border border-[#E1EBEC] shrink-0">
-                          {item.count} {isEn ? 'pmts' : 'دفعات'}
-                        </span>
-                      </div>
-                      <strong className="text-base sm:text-lg font-black text-[#0F2A4A] block truncate mt-1">
-                        {item.amount} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span>
-                      </strong>
-                    </div>
-                  ))}
+                      <MintCard
+                        key={key}
+                        variant="soft"
+                        className="p-3.5 flex flex-col justify-between min-h-[82px]"
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="t-meta text-slate truncate">{item.label}</span>
+                          <span className="text-[11px] font-semibold text-navy bg-page px-2 py-0.5 rounded-full border border-line shrink-0">
+                            {item.count} {isEn ? 'pmts' : 'دفعات'}
+                          </span>
+                        </div>
+                        <div className="text-[18px] font-bold text-navy truncate mt-1">
+                          {item.amount}{' '}
+                          <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                        </div>
+                      </MintCard>
+                    ))}
                 </div>
-              </div>
+              </WhiteCard>
 
-              {/* Interactive Billing Streams Progress (Lesson-Based vs Hourly Progress) */}
-              <BillingStreamsProgressChart
-                sessions={sessions}
-                allAttendance={allAttendanceRecords}
-                students={students}
-                groups={groups}
-                enrollments={activeEnrollments}
-                payments={payments}
-                periodFilter={periodFilter}
-                customStartDate={customStartDate}
-                customEndDate={customEndDate}
-              />
+              {/* Chart 1 Container = WhiteCard with 16px padding and SectionHeader */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Billing Streams' : 'مسارات المحاسبة'}
+                  subtitle={isEn ? 'Lesson-based vs Hourly comparison' : 'مقارنة الحصص بالساعات'}
+                />
+                <BillingStreamsProgressChart
+                  sessions={sessions}
+                  allAttendance={allAttendanceRecords}
+                  students={students}
+                  groups={groups}
+                  enrollments={activeEnrollments}
+                  payments={payments}
+                  periodFilter={periodFilter}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                  compact
+                />
+              </WhiteCard>
 
-              {/* Interactive Attendance Trends Over Time Visualization */}
-              <AttendanceTrendsChart
-                sessions={sessions}
-                allAttendance={allAttendanceRecords}
-                students={students}
-                groups={groups}
-                periodFilter={periodFilter}
-                customStartDate={customStartDate}
-                customEndDate={customEndDate}
-              />
+              {/* Chart 2 Container = WhiteCard with 16px padding and SectionHeader */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Attendance Trends' : 'منحنيات الحضور'}
+                  subtitle={isEn ? 'Student commitment over time' : 'معدل التزام الطلاب عبر الوقت'}
+                />
+                <AttendanceTrendsChart
+                  sessions={sessions}
+                  allAttendance={allAttendanceRecords}
+                  students={students}
+                  groups={groups}
+                  periodFilter={periodFilter}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                  compact
+                />
+              </WhiteCard>
             </div>
           )}
 
-          {/* Sub-Tab 1.2: Dedicated Billing Streams Visualization (Lessons vs Hours) */}
+          {/* Sub-Tab 2: Dedicated Billing Streams Chart */}
           {financialSubTab === 'billing_streams' && (
-            <div className="space-y-4">
+            <WhiteCard className="p-4 space-y-3">
+              <SectionHeader
+                title={isEn ? 'Billing Streams' : 'مسارات المحاسبة'}
+                subtitle={isEn ? 'Lesson-based vs Hourly performance' : 'تفاصيل مسارات الحصص والساعات'}
+              />
               <BillingStreamsProgressChart
                 sessions={sessions}
                 allAttendance={allAttendanceRecords}
@@ -1199,343 +840,389 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 customStartDate={customStartDate}
                 customEndDate={customEndDate}
               />
-            </div>
+            </WhiteCard>
           )}
 
-          {/* Sub-Tab 1.5: Dedicated Attendance Trends & Analytics View */}
+          {/* Sub-Tab 3: Dedicated Attendance Trends Chart */}
           {financialSubTab === 'attendance_trends' && (
             <div className="space-y-4">
-              <AttendanceTrendsChart
-                sessions={sessions}
-                allAttendance={allAttendanceRecords}
-                students={students}
-                groups={groups}
-                periodFilter={periodFilter}
-                customStartDate={customStartDate}
-                customEndDate={customEndDate}
-              />
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Attendance Trends' : 'منحنيات الحضور'}
+                  subtitle={isEn ? 'Commitment trends across sessions' : 'منحنيات التزام الطلاب عبر الحصص'}
+                />
+                <AttendanceTrendsChart
+                  sessions={sessions}
+                  allAttendance={allAttendanceRecords}
+                  students={students}
+                  groups={groups}
+                  periodFilter={periodFilter}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                />
+              </WhiteCard>
 
-              {/* Attendance Commitment Summary Cards (2x2 Square Grid) */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="classy-lavender-card p-3.5 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#17375E] text-[11px] font-bold">
+              {/* Attendance metrics grid (2-column MintCards) */}
+              <div className="grid grid-cols-2 gap-4">
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <div className="flex items-center justify-between text-slate text-[11px] font-medium">
                     <span className="truncate">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
-                    <BarChart3 className="w-4 h-4 text-[#17375E] shrink-0" />
+                    <AppIcon name="sessions" size={14} />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F2A4A] block">
+                    <div className="text-[22px] font-bold text-navy">
                       {attendanceAnalytics.completedSessionsCount}
-                    </strong>
-                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
+                    </div>
+                    <p className="t-caption text-slate truncate mt-0.5">
                       {attendanceAnalytics.completedAppointmentsCount} {isEn ? 'Appointments' : 'مواعيد فعلية'}
                     </p>
                   </div>
-                </div>
+                </MintCard>
 
-                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border border-[#17375E]/50 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#5F7083] text-[11px] font-bold">
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <div className="flex items-center justify-between text-slate text-[11px] font-medium">
                     <span className="truncate">{isEn ? 'Recorded Presences' : 'حالات الحضور'}</span>
-                    <CheckCircle2 className="w-4 h-4 text-[#17375E] shrink-0" />
+                    <AppIcon name="check" size={14} />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F2A4A] block">
+                    <div className="text-[22px] font-bold text-navy">
                       {attendanceAnalytics.presentCount + attendanceAnalytics.lateCount}
-                    </strong>
-                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
-                      {isEn ? `${attendanceAnalytics.lateCount} late arrivals` : `${attendanceAnalytics.lateCount} حضور بتأخير`}
+                    </div>
+                    <p className="t-caption text-slate truncate mt-0.5">
+                      {isEn ? `${attendanceAnalytics.lateCount} late` : `${attendanceAnalytics.lateCount} تأخير`}
                     </p>
                   </div>
-                </div>
+                </MintCard>
 
-                <div className="classy-rose-card p-3.5 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#5F7083] text-[11px] font-bold">
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <div className="flex items-center justify-between text-slate text-[11px] font-medium">
                     <span className="truncate">{isEn ? 'Charged Absences' : 'الغياب المحسوب'}</span>
-                    <AlertCircle className="w-4 h-4 text-[#0F2A4A] shrink-0" />
+                    <AppIcon name="warning" size={14} />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F2A4A] block">
+                    <div className="text-[22px] font-bold text-navy">
                       {attendanceAnalytics.absentChargedCount}
-                    </strong>
-                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
+                    </div>
+                    <p className="t-caption text-slate truncate mt-0.5">
                       {isEn ? 'Charged from balance' : 'مخصوم من الرصيد'}
                     </p>
                   </div>
-                </div>
+                </MintCard>
 
-                <div className="p-3.5 rounded-[22px] bg-gradient-to-br from-[#FFFFFF] to-[#FFFFFF] border border-[#E1EBEC]/80 flex flex-col justify-between min-h-[104px] shadow-xs">
-                  <div className="flex items-center justify-between text-[#5F7083] text-[11px] font-bold">
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <div className="flex items-center justify-between text-slate text-[11px] font-medium">
                     <span className="truncate">{isEn ? 'Excused Absences' : 'الغياب المعفى'}</span>
-                    <Sparkles className="w-4 h-4 text-[#17375E] shrink-0" />
+                    <AppIcon name="sparkles" size={14} />
                   </div>
                   <div>
-                    <strong className="text-xl font-black text-[#0F2A4A] block">
+                    <div className="text-[22px] font-bold text-navy">
                       {attendanceAnalytics.absentExcusedCount}
-                    </strong>
-                    <p className="text-[10px] text-[#5F7083] font-bold truncate">
+                    </div>
+                    <p className="t-caption text-slate truncate mt-0.5">
                       {isEn ? 'Without deduction' : 'بدون خصم مالي'}
                     </p>
                   </div>
-                </div>
+                </MintCard>
               </div>
             </div>
           )}
 
-          {/* Sub-Tab 2: Monthly Ledger */}
+          {/* Sub-Tab 4: Monthly Ledger Table (Rows separated by 1px line, header .t-caption slate, numeric end-aligned, no zebra) */}
           {financialSubTab === 'monthly_ledger' && (
-            <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-[#17375E]" />
-                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
-                    {isEn ? 'Historical Monthly Ledger' : 'السجل المالي الشهري التاريخي'}
-                  </h3>
-                </div>
-              </div>
+            <WhiteCard className="p-4 space-y-3">
+              <SectionHeader
+                title={isEn ? 'Monthly Ledger' : 'السجل المالي الشهري'}
+                subtitle={isEn ? 'Historical monthly breakdown' : 'كشف التحصيل والمستحق حسب الأشهر'}
+              />
 
               {financialHistory.months.length === 0 ? (
-                <div className="p-8 text-center text-[#5F7083] text-xs">
+                <div className="p-8 text-center text-slate text-xs">
                   {isEn ? 'No monthly records found yet' : 'لا توجد سجلات شهرية سابقة بعد'}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-line">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-3 pb-2 text-[11px] font-medium text-slate">
+                    <span>{isEn ? 'Month' : 'الشهر'}</span>
+                    <span className="text-end">{isEn ? 'Collected' : 'المحصل'}</span>
+                    <span className="text-end">{isEn ? 'Due' : 'المستحق'}</span>
+                  </div>
+                  {/* Table Rows */}
                   {financialHistory.months.map((m) => (
                     <div
                       key={m.monthYear}
-                      className="p-3 rounded-2xl bg-[#E1EBEC]/15 border border-[#E1EBEC] flex items-center justify-between gap-2"
+                      className="grid grid-cols-3 py-3 text-xs items-center"
                     >
-                      <div className="font-bold text-xs sm:text-sm text-[#0F2A4A]">
-                        {isEn ? `${getArabicMonthName(m.month)} ${m.year}` : `شهر ${getArabicMonthName(m.month)} ${m.year}`}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="text-[#0F2A4A] font-black">
-                          {isEn ? 'Collected:' : 'المحصل:'} {m.totalCollected} {t('currency')}
-                        </span>
-                        <span className="text-[#5F7083]">
-                          {isEn ? 'Due:' : 'المستحق:'} {m.totalDue} {t('currency')}
-                        </span>
-                      </div>
+                      <span className="font-semibold text-navy truncate">
+                        {isEn
+                          ? `${getArabicMonthName(m.month)} ${m.year}`
+                          : `شهر ${getArabicMonthName(m.month)} ${m.year}`}
+                      </span>
+                      <span className="text-end font-bold text-navy">
+                        {m.totalCollected} <span className="text-[10px] text-slate font-normal">{t('currency')}</span>
+                      </span>
+                      <span className="text-end text-slate font-medium">
+                        {m.totalDue} <span className="text-[10px] font-normal">{t('currency')}</span>
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </WhiteCard>
           )}
 
-          {/* Sub-Tab 3: Yearly Summary */}
+          {/* Sub-Tab 5: Annual Summary Table */}
           {financialSubTab === 'yearly_summary' && (
-            <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#17375E]" />
-                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
-                    {isEn ? 'Annual Summary' : 'الملخص المالي السنوي'}
-                  </h3>
-                </div>
-              </div>
+            <WhiteCard className="p-4 space-y-3">
+              <SectionHeader
+                title={isEn ? 'Annual Summary' : 'الملخص المالي السنوي'}
+                subtitle={isEn ? 'Yearly revenue totals' : 'إجمالي التحصيل حسب السنوات'}
+              />
 
-              <div className="space-y-2">
+              <div className="divide-y divide-line">
+                {/* Table Header */}
+                <div className="grid grid-cols-3 pb-2 text-[11px] font-medium text-slate">
+                  <span>{isEn ? 'Year' : 'السنة'}</span>
+                  <span className="text-end">{isEn ? 'Collected' : 'المحصل'}</span>
+                  <span className="text-end">{isEn ? 'Due' : 'المستحق'}</span>
+                </div>
+                {/* Table Rows */}
                 {financialHistory.years.map((y) => (
                   <div
                     key={y.year}
-                    className="p-3.5 rounded-2xl bg-[#E1EBEC]/15 border border-[#E1EBEC] flex items-center justify-between gap-2"
+                    className="grid grid-cols-3 py-3 text-xs items-center"
                   >
-                    <div className="font-black text-sm text-[#0F2A4A]">{isEn ? `Year ${y.year}` : `سنة ${y.year}`}</div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="text-[#0F2A4A] font-black">
-                        {isEn ? 'Collected:' : 'المحصل:'} {y.totalCollected} {t('currency')}
-                      </span>
-                      <span className="text-[#5F7083]">
-                        {isEn ? 'Due:' : 'المستحق:'} {y.totalDue} {t('currency')}
-                      </span>
-                    </div>
+                    <span className="font-semibold text-navy">
+                      {isEn ? `Year ${y.year}` : `سنة ${y.year}`}
+                    </span>
+                    <span className="text-end font-bold text-navy">
+                      {y.totalCollected} <span className="text-[10px] text-slate font-normal">{t('currency')}</span>
+                    </span>
+                    <span className="text-end text-slate font-medium">
+                      {y.totalDue} <span className="text-[10px] font-normal">{t('currency')}</span>
+                    </span>
                   </div>
                 ))}
               </div>
-            </div>
+            </WhiteCard>
           )}
 
-          {/* Sub-Tab 4: Lifetime All-Time */}
+          {/* Sub-Tab 6: Lifetime Totals (NavyCard) */}
           {financialSubTab === 'lifetime' && (
-            <div className="classy-card p-5 bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] rounded-3xl space-y-3">
-              <h3 className="font-black text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#FFFFFF]" />
-                <span>{isEn ? 'Lifetime All-Time Totals' : 'إجمالي كافة الفترات الشاملة (Lifetime)'}</span>
-              </h3>
-              <div className="grid grid-cols-2 gap-3 pt-2 text-center">
-                <div className="bg-[#FFFFFF]/10 rounded-2xl p-3 border border-[#E1EBEC]/15">
-                  <span className="text-xs text-[#E1EBEC]/80 block font-bold">{isEn ? 'Total All-Time Collected' : 'إجمالي ما تم تحصيله'}</span>
-                  <span className="text-xl font-black text-[#E1EBEC]">
-                    {financialHistory.totalCollected} {t('currency')}
+            <NavyCard className="space-y-3">
+              <div className="flex items-center gap-2">
+                <AppIcon name="sparkles" size={18} className="text-page" />
+                <h3 className="t-card text-page font-semibold">
+                  {isEn ? 'Lifetime Comprehensive Totals' : 'إجمالي كافة الفترات الشاملة (Lifetime)'}
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="p-3.5 rounded-[var(--radius-tile)] bg-page/10 border border-page/15">
+                  <span className="t-meta text-page/80 block">
+                    {isEn ? 'Total All-Time Collected' : 'إجمالي ما تم تحصيله'}
                   </span>
+                  <div className="t-display text-page mt-1">
+                    {financialHistory.totalCollected}{' '}
+                    <span className="text-xs font-semibold text-page/80">{t('currency')}</span>
+                  </div>
                 </div>
-                <div className="bg-[#FFFFFF]/10 rounded-2xl p-3 border border-[#E1EBEC]/15">
-                  <span className="text-xs text-[#E1EBEC]/80 block font-bold">{isEn ? 'Total Expected' : 'إجمالي القيمة المستحقة'}</span>
-                  <span className="text-xl font-black text-[#FFFFFF]">
-                    {financialHistory.totalDue} {t('currency')}
+                <div className="p-3.5 rounded-[var(--radius-tile)] bg-page/10 border border-page/15">
+                  <span className="t-meta text-page/80 block">
+                    {isEn ? 'Total Expected Due' : 'إجمالي القيمة المستحقة'}
                   </span>
+                  <div className="t-display text-page mt-1">
+                    {financialHistory.totalDue}{' '}
+                    <span className="text-xs font-semibold text-page/80">{t('currency')}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </NavyCard>
           )}
 
-          {/* Sub-Tab 5: Payments Audit */}
+          {/* Sub-Tab 7: Payments Audit Table */}
           {financialSubTab === 'payments' && (
-            <div className="classy-card p-4 sm:p-5 bg-[#FFFFFF] space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-[#17375E]" />
-                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
-                    {isEn ? 'Recorded Payments Audit' : 'سجل المقبوضات والدفعات المفصل'}
-                  </h3>
-                </div>
-                <span className="text-xs font-bold text-[#5F7083]">
-                  {filteredPayments.length} {isEn ? 'receipts' : 'إيصال'}
-                </span>
-              </div>
+            <WhiteCard className="p-4 space-y-3">
+              <SectionHeader
+                title={isEn ? 'Receipts Audit' : 'سجل المقبوضات والدفعات'}
+                subtitle={`${filteredPayments.length} ${isEn ? 'receipts' : 'إيصال'}`}
+              />
 
-              {/* Payment Search Bar */}
+              {/* Search Pill */}
               <div className="relative">
-                <Search className={`w-4 h-4 text-[#5F7083] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
+                <div className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} text-slate pointer-events-none`}>
+                  <AppIcon name="search" size={16} />
+                </div>
                 <input
                   type="text"
-                  placeholder={isEn ? 'Search receipts by student name or notes...' : 'البحث باسم الطالب أو الملاحظات في الإيصالات...'}
+                  placeholder={
+                    isEn
+                      ? 'Search receipts by student name or notes...'
+                      : 'البحث باسم الطالب أو الملاحظات في الإيصالات...'
+                  }
                   value={paymentSearchQuery}
                   onChange={(e) => setPaymentSearchQuery(e.target.value)}
-                  className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl py-2 text-xs text-[#0F2A4A] placeholder-[#5F7083]/70 focus:outline-none focus:border-[#17375E] ${
-                    isRTL ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                  className={`w-full h-[46px] rounded-full bg-page border border-line text-navy placeholder:text-slate text-xs font-medium focus:outline-none focus:border-navy shadow-white transition-all ${
+                    isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'
                   }`}
                 />
               </div>
 
               {filteredPayments.length === 0 ? (
-                <div className="p-8 text-center text-[#5F7083] text-xs">
+                <div className="p-8 text-center text-slate text-xs">
                   {isEn ? 'No receipts recorded in this period' : 'لا توجد مقبوضات مسجلة في هذه الفترة'}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-line">
+                  {/* Table Header */}
+                  <div className="flex items-center justify-between pb-2 text-[11px] font-medium text-slate">
+                    <span>{isEn ? 'Student / Details' : 'الطالب / التفاصيل'}</span>
+                    <span className="text-end">{isEn ? 'Amount' : 'المبلغ'}</span>
+                  </div>
+                  {/* Table Rows */}
                   {filteredPayments.map((p) => {
                     const st = students.find((s) => s.id === p.studentId);
                     return (
                       <div
                         key={p.id}
-                        className="p-3 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] flex items-center justify-between gap-2 text-xs"
+                        className="py-3 flex items-center justify-between gap-3 text-xs"
                       >
-                        <div className="space-y-0.5 min-w-0">
-                          <strong className="font-bold text-[#0F2A4A] block truncate">
+                        <div className="min-w-0">
+                          <strong className="font-semibold text-navy block truncate">
                             {st?.name || (isEn ? 'Unknown Student' : 'طالب غير محدد')}
                           </strong>
-                          <span className="text-[11px] text-[#5F7083] block">
+                          <span className="t-caption text-slate block mt-0.5">
                             {p.date} • {p.paymentMethod || 'cash'}
                           </span>
                         </div>
-                        <span className="text-[#0F2A4A] font-black text-sm shrink-0">
-                          +{p.amount} {t('currency')}
+                        <span className="text-end font-bold text-navy text-sm shrink-0">
+                          +{p.amount} <span className="text-[10px] text-slate font-normal">{t('currency')}</span>
                         </span>
                       </div>
                     );
                   })}
                 </div>
               )}
-            </div>
+            </WhiteCard>
           )}
         </div>
       )}
 
       {/* =========================================================================
-          5. TAB 2: OVERDUE BALANCES & DUES DIRECTORY
+          TAB 2: OVERDUE BALANCES & DUES DIRECTORY
           ========================================================================= */}
       {reportType === 'overdue_list' && (
         <div className="space-y-3.5">
-          <div className="classy-card p-4 space-y-3 bg-[#FFFFFF]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-[#0F2A4A]" />
-                <h3 className="text-sm sm:text-base font-black text-[#0F2A4A]">
-                  {isEn ? 'Students with Overdue Balances' : 'كشف الطلاب المستحق عليهم مبالغ مالية'}
-                </h3>
-              </div>
-              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]">
-                {overdueStudentsList.length} {isEn ? 'debtors' : 'طلاب'}
-              </span>
-            </div>
+          <WhiteCard className="p-4 space-y-3">
+            <SectionHeader
+              title={isEn ? 'Overdue Balances' : 'كشف المديونيات والمتأخرات'}
+              subtitle={`${overdueStudentsList.length} ${isEn ? 'debtors' : 'طلاب'}`}
+            />
 
+            {/* Search Pill */}
             <div className="relative">
-              <Search className={`w-4 h-4 text-[#5F7083] absolute top-3 ${isRTL ? 'right-3' : 'left-3'}`} />
+              <div className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} text-slate pointer-events-none`}>
+                <AppIcon name="search" size={16} />
+              </div>
               <input
                 type="text"
-                placeholder={isEn ? 'Search debtor students by name or phone...' : 'البحث في كشف المديونيات بالاسم أو الهاتف...'}
+                placeholder={
+                  isEn
+                    ? 'Search debtor students by name or phone...'
+                    : 'البحث في كشف المديونيات بالاسم أو الهاتف...'
+                }
                 value={overdueSearchQuery}
                 onChange={(e) => setOverdueSearchQuery(e.target.value)}
-                className={`w-full bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-xl py-2 text-xs text-[#0F2A4A] placeholder-[#5F7083]/70 focus:outline-none focus:border-[#17375E] ${
-                  isRTL ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                className={`w-full h-[46px] rounded-full bg-page border border-line text-navy placeholder:text-slate text-xs font-medium focus:outline-none focus:border-navy shadow-white transition-all ${
+                  isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'
                 }`}
               />
             </div>
-          </div>
+          </WhiteCard>
 
           {overdueStudentsList.length === 0 ? (
-            <div className="classy-card p-8 text-center space-y-3 flex flex-col items-center bg-[#FFFFFF]">
-              <div className="w-16 h-16 rounded-2xl bg-[#E1EBEC]/65 flex items-center justify-center text-[#17375E]">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
+            <WhiteCard className="p-8 text-center flex flex-col items-center justify-center space-y-3">
+              <EmptyBox className="w-24 h-24" />
               <div className="space-y-1">
-                <h3 className="font-black text-sm text-[#0F2A4A]">{isEn ? 'All Accounts Settled' : 'لا توجد مديونيات متأخرة'}</h3>
-                <p className="text-xs text-[#5F7083]">{isEn ? 'All students have paid their dues in full! 🎉' : 'جميع الطلاب سددوا مستحقاتهم بالكامل! 🎉'}</p>
+                <h3 className="t-card font-semibold text-navy">
+                  {isEn ? 'All Accounts Settled' : 'لا توجد مديونيات متأخرة'}
+                </h3>
+                <p className="t-meta text-slate">
+                  {isEn
+                    ? 'All students have paid their dues in full! 🎉'
+                    : 'جميع الطلاب سددوا مستحقاتهم بالكامل! 🎉'}
+                </p>
               </div>
-            </div>
+            </WhiteCard>
           ) : (
-            <div className="space-y-2.5">
-              {overdueStudentsList.map(({ student, grandRemaining, grandTotalDue, grandTotalPaid }) => (
-                <div
-                  key={student.id}
-                  className="classy-card p-3.5 sm:p-4 bg-[#FFFFFF] border border-[#E1EBEC] flex items-center justify-between gap-3 flex-wrap"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <StudentAvatar student={student} size="sm" showBadge={false} />
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-xs sm:text-sm text-[#0F2A4A] truncate">{student.name}</h4>
-                      <span className="text-[11px] text-[#5F7083]">{student.phone || student.parentPhone || (isEn ? 'No phone' : 'بدون هاتف')}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="text-left">
-                      <strong className="text-sm font-black text-[#0F2A4A] block">
-                        {grandRemaining} {t('currency')}
-                      </strong>
-                      <span className="text-[10px] text-[#5F7083] block">
-                        {isEn ? `Paid ${grandTotalPaid} of ${grandTotalDue}` : `سدد ${grandTotalPaid} من ${grandTotalDue}`}
-                      </span>
-                    </div>
-
-                    {onOpenAddPayment && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenAddPayment(student)}
-                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] font-bold text-xs active:scale-95 transition-all cursor-pointer"
-                      >
-                        {isEn ? 'Collect' : 'تحصيل'}
-                      </button>
-                    )}
-                  </div>
+            <WhiteCard className="p-4 space-y-3">
+              <div className="divide-y divide-line">
+                {/* Table Header */}
+                <div className="flex items-center justify-between pb-2 text-[11px] font-medium text-slate">
+                  <span>{isEn ? 'Student' : 'الطالب'}</span>
+                  <span className="text-end">{isEn ? 'Remaining / Action' : 'المتبقي / إجراء'}</span>
                 </div>
-              ))}
-            </div>
+
+                {/* Table Rows */}
+                {overdueStudentsList.map(({ student, grandRemaining, grandTotalDue, grandTotalPaid }) => (
+                  <div
+                    key={student.id}
+                    className="py-3.5 flex items-center justify-between gap-3 flex-wrap"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <StudentAvatar student={student} size="sm" showBadge={false} />
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-xs sm:text-sm text-navy truncate">
+                          {student.name}
+                        </h4>
+                        <span className="t-caption text-slate block mt-0.5">
+                          {student.phone || student.parentPhone || (isEn ? 'No phone' : 'بدون هاتف')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 ms-auto">
+                      <div className="text-end">
+                        <strong className="text-sm font-bold text-navy block">
+                          {grandRemaining} <span className="text-[10px] text-slate font-normal">{t('currency')}</span>
+                        </strong>
+                        <span className="t-caption text-slate block mt-0.5">
+                          {isEn
+                            ? `Paid ${grandTotalPaid} of ${grandTotalDue}`
+                            : `سدد ${grandTotalPaid} من ${grandTotalDue}`}
+                        </span>
+                      </div>
+
+                      {onOpenAddPayment && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenAddPayment(student)}
+                          className="btn-orange btn-sm text-xs"
+                        >
+                          {isEn ? 'Collect' : 'تحصيل'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </WhiteCard>
           )}
         </div>
       )}
 
       {/* =========================================================================
-          6. TAB 3: GROUP PERFORMANCE DOSSIER
+          TAB 3: GROUP PERFORMANCE DOSSIER
           ========================================================================= */}
       {reportType === 'group_report' && (
-        <div className="space-y-3.5">
-          <div className="classy-card p-4 space-y-2 bg-[#FFFFFF]">
-            <label className="text-xs font-bold text-[#5F7083] block">{isEn ? 'Select Group / Service:' : 'اختر المجموعة أو الخدمة للتحليل:'}</label>
+        <div className="space-y-4">
+          <WhiteCard className="p-4 space-y-2">
+            <label className="t-caption text-slate block ms-1">
+              {isEn ? 'Select Group / Service:' : 'اختر المجموعة أو الخدمة للتحليل:'}
+            </label>
             <select
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
+              className="w-full bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -1543,64 +1230,88 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </option>
               ))}
             </select>
-          </div>
+          </WhiteCard>
 
           {selectedGroupFin && selectedGroupObj && (
-            <div className="classy-card p-4 bg-[#FFFFFF] space-y-4">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="min-w-0">
-                  <h3 className="text-sm sm:text-base font-black text-[#0F2A4A] truncate">{selectedGroupObj.name}</h3>
-                  <span className="text-xs text-[#5F7083] block truncate">{selectedGroupObj.subject} • {getLocalizedStageName(selectedGroupObj.gradeLevel)}</span>
-                </div>
+            <div className="space-y-4">
+              {/* Group KPIs (2-column MintCards) */}
+              <div className="grid grid-cols-2 gap-4">
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Completed Lessons' : 'الحصص المنفذة'}
+                  </span>
+                  <div className="text-[22px] font-bold text-navy mt-1">
+                    {selectedGroupFin.totalCompletedSessions ?? selectedGroupFin.completedSessionsCount}
+                  </div>
+                </MintCard>
+
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Total Expected' : 'إجمالي المستحق'}
+                  </span>
+                  <div className="text-[22px] font-bold text-navy mt-1 truncate">
+                    {selectedGroupFin.totalDue ?? selectedGroupFin.totalExpectedRevenue}{' '}
+                    <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                  </div>
+                </MintCard>
+
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Collected' : 'المحصل الفعلي'}
+                  </span>
+                  <div className="text-[22px] font-bold text-navy mt-1 truncate">
+                    {selectedGroupFin.totalPaid ?? selectedGroupFin.totalRevenue}{' '}
+                    <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                  </div>
+                </MintCard>
+
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Remaining' : 'المتبقي'}
+                  </span>
+                  <div className="text-[22px] font-bold text-navy mt-1 truncate">
+                    {selectedGroupFin.remaining ?? selectedGroupFin.totalRemainingDues}{' '}
+                    <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                  </div>
+                </MintCard>
               </div>
 
-              {/* 2x2 Square Cards for Group Report */}
-              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E1EBEC]">
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
-                  <strong className="text-lg font-black text-[#17375E] block mt-1">{selectedGroupFin.totalCompletedSessions ?? selectedGroupFin.completedSessionsCount}</strong>
-                </div>
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Total Expected' : 'إجمالي المستحق'}</span>
-                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedGroupFin.totalDue ?? selectedGroupFin.totalExpectedRevenue} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span></strong>
-                </div>
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#17375E]/50 flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Collected' : 'المحصل الفعلي'}</span>
-                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedGroupFin.totalPaid ?? selectedGroupFin.totalRevenue} <span className="text-xs font-bold">{t('currency')}</span></strong>
-                </div>
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Remaining' : 'المتبقي'}</span>
-                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedGroupFin.remaining ?? selectedGroupFin.totalRemainingDues} <span className="text-xs font-bold">{t('currency')}</span></strong>
-                </div>
-              </div>
-
-              {/* Group Attendance Trends Line Chart */}
-              <AttendanceTrendsChart
-                sessions={sessions}
-                allAttendance={allAttendanceRecords}
-                students={students}
-                groups={groups}
-                selectedGroupId={selectedGroupId}
-                periodFilter={periodFilter}
-                customStartDate={customStartDate}
-                customEndDate={customEndDate}
-              />
+              {/* Group Attendance Trends Chart in WhiteCard with SectionHeader */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Group Attendance Trends' : 'منحنيات حضور المجموعة'}
+                  subtitle={`${selectedGroupObj.name} • ${selectedGroupObj.subject}`}
+                />
+                <AttendanceTrendsChart
+                  sessions={sessions}
+                  allAttendance={allAttendanceRecords}
+                  students={students}
+                  groups={groups}
+                  selectedGroupId={selectedGroupId}
+                  periodFilter={periodFilter}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                  compact
+                />
+              </WhiteCard>
             </div>
           )}
         </div>
       )}
 
       {/* =========================================================================
-          7. TAB 4: INDIVIDUAL STUDENT DOSSIER
+          TAB 4: INDIVIDUAL STUDENT DOSSIER
           ========================================================================= */}
       {reportType === 'student_report' && (
-        <div className="space-y-3.5">
-          <div className="classy-card p-4 space-y-2 bg-[#FFFFFF]">
-            <label className="text-xs font-bold text-[#5F7083] block">{isEn ? 'Select Student:' : 'اختر الطالب لعرض كشف الحساب والتقرير:'}</label>
+        <div className="space-y-4">
+          <WhiteCard className="p-4 space-y-2">
+            <label className="t-caption text-slate block ms-1">
+              {isEn ? 'Select Student:' : 'اختر الطالب لعرض كشف الحساب والتقرير:'}
+            </label>
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-[#E1EBEC]/15 border border-[#E1EBEC] font-bold text-xs text-[#0F2A4A] focus:outline-none focus:border-[#17375E]"
+              className="w-full bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
             >
               {students.map((st) => (
                 <option key={st.id} value={st.id}>
@@ -1608,16 +1319,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </option>
               ))}
             </select>
-          </div>
+          </WhiteCard>
 
           {selectedStudentGrandFin && selectedStudentObj && (
-            <div className="classy-card p-4 bg-[#FFFFFF] space-y-4">
-              <div className="flex items-center justify-between gap-2">
+            <div className="space-y-4">
+              {/* Student Header Card */}
+              <WhiteCard className="p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <StudentAvatar student={selectedStudentObj} size="md" />
                   <div className="min-w-0">
-                    <h3 className="text-sm sm:text-base font-black text-[#0F2A4A] truncate">{selectedStudentObj.name}</h3>
-                    <span className="text-xs text-[#5F7083] block truncate">{getLocalizedStageName(selectedStudentObj.gradeLevel)}</span>
+                    <h3 className="t-card font-semibold text-navy truncate">
+                      {selectedStudentObj.name}
+                    </h3>
+                    <span className="t-meta text-slate block truncate mt-0.5">
+                      {getLocalizedStageName(selectedStudentObj.gradeLevel)}
+                    </span>
                   </div>
                 </div>
 
@@ -1625,55 +1341,78 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenStudentProfile(selectedStudentObj)}
-                    className="px-3 py-1.5 rounded-xl bg-[#17375E] text-[#FFFFFF] font-bold text-xs active:scale-95 transition-all cursor-pointer shrink-0"
+                    className="btn-orange btn-sm text-xs shrink-0"
                   >
                     {t('profile')}
                   </button>
                 )}
-              </div>
+              </WhiteCard>
 
-              {/* 2x2 Square Cards for Student Report */}
-              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E1EBEC]">
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-[11px] text-[#5F7083] font-bold">{isEn ? 'Completed Lessons' : 'الحصص المنفذة'}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#E1EBEC]/25 text-[#17375E] font-bold">
+              {/* Student KPIs (2-column MintCards) */}
+              <div className="grid grid-cols-2 gap-4">
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Completed Lessons' : 'الحصص المنفذة'}
+                  </span>
+                  <div>
+                    <div className="text-[22px] font-bold text-navy mt-1">
+                      {selectedStudentGrandFin.grandCompletedLessons}
+                    </div>
+                    <span className="t-caption text-slate block mt-0.5 truncate">
                       {selectedStudentGrandFin.grandAppointmentsCount} {isEn ? 'Appts' : 'مواعيد'}
                     </span>
                   </div>
-                  <strong className="text-lg font-black text-[#17375E] block mt-1">{selectedStudentGrandFin.grandCompletedLessons}</strong>
-                </div>
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Grand Total Due' : 'إجمالي المطلوب'}</span>
-                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedStudentGrandFin.grandTotalDue} <span className="text-xs font-bold text-[#5F7083]">{t('currency')}</span></strong>
-                </div>
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#17375E]/50 flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Paid' : 'المدفوع'}</span>
-                  <strong className="text-lg font-black text-[#0F2A4A] block truncate mt-1">{selectedStudentGrandFin.grandTotalPaid} <span className="text-xs font-bold">{t('currency')}</span></strong>
-                </div>
-                <div className="p-3.5 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] flex flex-col justify-between min-h-[84px]">
-                  <span className="text-[11px] text-[#5F7083] block font-bold">{isEn ? 'Remaining Due' : 'المتبقي'}</span>
-                  <strong
-                    className={`text-lg font-black block truncate mt-1 ${
-                      selectedStudentGrandFin.grandRemaining > 0 ? 'text-[#0F2A4A]' : 'text-[#0F2A4A]'
-                    }`}
-                  >
-                    {selectedStudentGrandFin.grandRemaining} <span className="text-xs font-bold">{t('currency')}</span>
-                  </strong>
-                </div>
+                </MintCard>
+
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Grand Total Due' : 'إجمالي المطلوب'}
+                  </span>
+                  <div className="text-[22px] font-bold text-navy mt-1 truncate">
+                    {selectedStudentGrandFin.grandTotalDue}{' '}
+                    <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                  </div>
+                </MintCard>
+
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Paid' : 'المدفوع'}
+                  </span>
+                  <div className="text-[22px] font-bold text-navy mt-1 truncate">
+                    {selectedStudentGrandFin.grandTotalPaid}{' '}
+                    <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                  </div>
+                </MintCard>
+
+                <MintCard className="flex flex-col justify-between min-h-[96px]">
+                  <span className="t-meta text-slate truncate">
+                    {isEn ? 'Remaining Due' : 'المتبقي'}
+                  </span>
+                  <div className="text-[22px] font-bold text-navy mt-1 truncate">
+                    {selectedStudentGrandFin.grandRemaining}{' '}
+                    <span className="text-xs font-semibold text-slate">{t('currency')}</span>
+                  </div>
+                </MintCard>
               </div>
 
-              {/* Student Attendance Trends Line Chart */}
-              <AttendanceTrendsChart
-                sessions={sessions}
-                allAttendance={allAttendanceRecords}
-                students={students}
-                groups={groups}
-                selectedStudentId={selectedStudentId}
-                periodFilter={periodFilter}
-                customStartDate={customStartDate}
-                customEndDate={customEndDate}
-              />
+              {/* Student Attendance Trends Chart in WhiteCard with SectionHeader */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Attendance Trends' : 'منحنيات حضور الطالب'}
+                  subtitle={selectedStudentObj.name}
+                />
+                <AttendanceTrendsChart
+                  sessions={sessions}
+                  allAttendance={allAttendanceRecords}
+                  students={students}
+                  groups={groups}
+                  selectedStudentId={selectedStudentId}
+                  periodFilter={periodFilter}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                  compact
+                />
+              </WhiteCard>
             </div>
           )}
         </div>

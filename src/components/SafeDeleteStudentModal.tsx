@@ -1,21 +1,8 @@
 import React, { useState } from 'react';
-import {
-  AlertTriangle,
-  Archive,
-  Trash2,
-  X,
-  CheckCircle2,
-  ShieldAlert,
-  ArrowRight,
-  ArrowLeft,
-  Sparkles,
-  History,
-  FileSpreadsheet,
-  Check,
-} from 'lucide-react';
 import { Student } from '../types';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
+import { AppIcon } from './ui/AppIcon';
 
 interface SafeDeleteStudentModalProps {
   isOpen: boolean;
@@ -73,37 +60,48 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
   return (
     <ModalPortal>
       <div
+        role="dialog"
+        aria-modal="true"
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-backdrop-fade select-none-touch"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#E1EBEC]/15 rounded-[28px] w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl border border-[#E1EBEC] overflow-hidden">
-          
-          {/* Signature Header */}
-          <div className={`p-4 sm:p-5 text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden ${
-            selectedMode === 'permanent' && step === 'confirm'
-              ? 'bg-gradient-to-r from-[#0F2A4A] via-[#17375E] to-[#17375E]'
-              : 'bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083]'
-          }`}>
-            <div className="flex items-center gap-3 relative z-10 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 flex items-center justify-center shadow-sm shrink-0">
+        {/* Small centered card (white, radius 28px, shadow-white) */}
+        <div className="bg-page rounded-[28px] w-full max-w-md flex flex-col shadow-white border border-line overflow-hidden animate-pop-in">
+          {/* Header */}
+          <div className="p-5 border-b border-line flex items-center justify-between shrink-0 bg-page">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border border-line ${
+                  selectedMode === 'permanent' && step === 'confirm'
+                    ? 'bg-coral-soft text-coral'
+                    : 'bg-mint-soft text-navy'
+                }`}
+              >
                 {selectedMode === 'permanent' && step === 'confirm' ? (
-                  <ShieldAlert className="w-5 h-5 text-[#FFFFFF]" />
+                  <AppIcon name="warning" size={20} weight="fill" />
                 ) : (
-                  <Trash2 className="w-5 h-5 text-[#FFFFFF]" />
+                  <AppIcon name="trash" size={20} weight="bold" />
                 )}
               </div>
 
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-black tracking-tight truncate">
+              <div className="min-w-0 text-start">
+                <h2 className="t-title text-navy font-bold text-base truncate">
                   {step === 'select'
-                    ? (isEn ? 'Manage & Delete Student' : 'إدارة وحذف الطالب')
-                    : (selectedMode === 'archive'
-                        ? (isEn ? 'Confirm Student Archiving' : 'تأكيد أرشفة الطالب')
-                        : (isEn ? 'Warning: Permanent Deletion' : 'تحذير: حذف نهائي وشامل'))}
+                    ? isEn
+                      ? 'Manage & Delete Student'
+                      : 'إدارة وحذف الطالب'
+                    : selectedMode === 'archive'
+                    ? isEn
+                      ? 'Confirm Student Archiving'
+                      : 'تأكيد أرشفة الطالب'
+                    : isEn
+                    ? 'Warning: Permanent Deletion'
+                    : 'تحذير: حذف نهائي وشامل'}
                 </h2>
-                <p className="text-xs text-[#E1EBEC]/85 font-medium truncate">
-                  {isEn ? 'Student:' : 'الطالب:'} <span className="font-black text-[#FFFFFF]">{student.name}</span>
+                <p className="t-meta text-slate text-xs truncate mt-0.5">
+                  {isEn ? 'Student:' : 'الطالب:'}{' '}
+                  <span className="font-bold text-navy">{student.name}</span>
                 </p>
               </div>
             </div>
@@ -112,145 +110,174 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
               type="button"
               onClick={handleClose}
               disabled={isProcessing}
-              className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
-              title={t('close')}
+              className="w-10 h-10 rounded-full bg-mint-soft text-navy hover:bg-mint flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              title={t('close') || 'Close'}
             >
-              <X className="w-4 h-4" />
+              <AppIcon name="close" size={18} weight="bold" />
             </button>
           </div>
 
           {/* Body Content */}
-          <div className="p-4 sm:p-5 overflow-y-auto android-scrollbar space-y-3.5 text-[#0F2A4A] text-xs">
-            
+          <div className="p-5 overflow-y-auto space-y-3.5 text-navy text-xs">
             {step === 'select' ? (
               <>
                 <div className="text-center space-y-1 pb-1">
-                  <h3 className="text-sm font-black text-[#0F2A4A]">
-                    {isEn ? 'What would you like to do with this student records?' : 'ماذا تريد أن تفعل بالسجلات الخاصة بهذا الطالب؟'}
+                  <h3 className="text-sm font-black text-navy">
+                    {isEn
+                      ? 'What would you like to do with this student records?'
+                      : 'ماذا تريد أن تفعل بالسجلات الخاصة بهذا الطالب؟'}
                   </h3>
-                  <p className="text-xs text-[#5F7083] font-medium leading-relaxed">
-                    {isEn ? 'Choose the appropriate option for managing student history and finances in Classy.' : 'اختر الطريقة المناسبة لإدارة ملف الطالب وحساباته المالية في Classy.'}
+                  <p className="text-xs text-slate font-medium leading-relaxed">
+                    {isEn
+                      ? 'Choose the appropriate option for managing student history and finances.'
+                      : 'اختر الطريقة المناسبة لإدارة ملف الطالب وحساباته المالية.'}
                   </p>
                 </div>
 
-                {/* Option 2: Archive & Keep Records (RECOMMENDED) */}
+                {/* Option 1: Archive & Keep Records (RECOMMENDED) */}
                 <div
                   onClick={() => handleProceedToConfirm('archive')}
-                  className="classy-card p-4 border-2 border-[#17375E]/40 bg-gradient-to-br from-[#FFFFFF] to-[#E1EBEC]/30 hover:border-[#17375E] hover:shadow-md transition-all cursor-pointer space-y-2.5"
+                  className="p-4 rounded-[18px] border-2 border-mint bg-mint-soft/50 hover:bg-mint-soft transition-all cursor-pointer space-y-2.5 text-start"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-[#E1EBEC]/25 text-[#17375E] flex items-center justify-center shrink-0">
-                        <Archive className="w-5 h-5" />
+                      <div className="w-9 h-9 rounded-xl bg-mint text-navy flex items-center justify-center shrink-0">
+                        <AppIcon name="archive" size={18} weight="bold" />
                       </div>
                       <div>
-                        <h4 className="text-xs sm:text-sm font-black text-[#0F2A4A]">
-                          {isEn ? 'Archive Student & Preserve Historical Records' : 'حذف الطالب مع الاحتفاظ بسجلاته التاريخية'}
+                        <h4 className="text-xs sm:text-sm font-black text-navy">
+                          {isEn
+                            ? 'Archive Student & Preserve Records'
+                            : 'أرشفة الطالب مع الاحتفاظ بالسجلات'}
                         </h4>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#17375E] bg-[#E1EBEC]/25 px-2 py-0.5 rounded-lg mt-0.5">
-                          <Sparkles className="w-3 h-3" />
-                          <span>{isEn ? 'Recommended Accounting Option' : 'الخيار الآمن والموصى به محاسبياً'}</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-navy bg-mint px-2 py-0.5 rounded-full mt-0.5">
+                          <AppIcon name="sparkles" size={12} weight="fill" />
+                          <span>
+                            {isEn ? 'Recommended Option' : 'الخيار الآمن والموصى به'}
+                          </span>
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-xs text-[#5F7083] font-medium leading-relaxed">
+                  <p className="text-xs text-slate font-medium leading-relaxed">
                     {isEn
-                      ? 'Student is hidden from active lists and class enrollments, preserving all past sessions, attendance logs, payments, and financial reports.'
-                      : 'يتم إخفاء الطالب من قائمة الطلاب النشطين واشتراكات المجموعات، مع الاحتفاظ الكامل بكافة الحصص السابقة، سجل الحضور، المدفوعات، والكشوفات المحاسبية.'}
+                      ? 'Student is hidden from active lists, preserving past sessions, attendance logs, payments, and financial reports.'
+                      : 'يتم إخفاء الطالب من قائمة الطلاب النشطين، مع الاحتفاظ بالحفظ الكامل لكافة الحصص السابقة، سجل الحضور، والتقارير المالية.'}
                   </p>
 
-                  <div className="flex items-center gap-3 text-[11px] font-black text-[#0F2A4A] pt-2 border-t border-[#E1EBEC]">
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-navy pt-2 border-t border-line">
                     <span className="flex items-center gap-1">
-                      <History className="w-3.5 h-3.5 text-[#17375E]" />
-                      <span>{isEn ? 'Sessions & Attendance Preserved' : 'الحصص والغياب محفوظة'}</span>
+                      <AppIcon name="calendarCheck" size={13} />
+                      <span>{isEn ? 'Sessions Preserved' : 'الحصص والغياب محفوظة'}</span>
                     </span>
                     <span className="flex items-center gap-1">
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-[#17375E]" />
-                      <span>{isEn ? 'Financial Reports Intact' : 'التقارير المالية سليمة'}</span>
+                      <AppIcon name="invoice" size={13} />
+                      <span>{isEn ? 'Finances Intact' : 'التقارير المالية سليمة'}</span>
                     </span>
                   </div>
                 </div>
 
-                {/* Option 1: Full Permanent Delete */}
+                {/* Option 2: Full Permanent Delete */}
                 <div
                   onClick={() => handleProceedToConfirm('permanent')}
-                  className="classy-card p-4 border border-[#E1EBEC] bg-[#FFFFFF] hover:bg-[#E1EBEC]/25 transition-all cursor-pointer space-y-2"
+                  className="p-4 rounded-[18px] border border-line bg-page hover:bg-mist transition-all cursor-pointer space-y-2 text-start"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#E1EBEC]/15 text-[#0F2A4A] flex items-center justify-center shrink-0">
-                      <Trash2 className="w-5 h-5" />
+                    <div className="w-9 h-9 rounded-xl bg-coral-soft text-coral flex items-center justify-center shrink-0">
+                      <AppIcon name="trash" size={18} weight="bold" />
                     </div>
                     <div>
-                      <h4 className="text-xs sm:text-sm font-black text-[#0F2A4A]">
-                        {isEn ? 'Permanently Delete Student and All Records' : 'حذف الطالب وجميع سجلاته نهائياً'}
+                      <h4 className="text-xs sm:text-sm font-black text-navy">
+                        {isEn
+                          ? 'Permanently Delete Student and All Records'
+                          : 'حذف الطالب وجميع سجلاته نهائياً'}
                       </h4>
-                      <span className="inline-block text-[10px] font-black text-[#0F2A4A] bg-[#E1EBEC]/15 px-2 py-0.5 rounded-lg mt-0.5">
-                        {isEn ? 'Permanent & Irreversible' : 'حذف دائم وشامل'}
+                      <span className="inline-block text-[10px] font-bold text-coral bg-coral-soft px-2 py-0.5 rounded-full mt-0.5">
+                        {isEn ? 'Permanent & Irreversible' : 'حذف دائم وغير قابل للتراجع'}
                       </span>
                     </div>
                   </div>
 
-                  <p className="text-xs text-[#5F7083] font-medium leading-relaxed">
+                  <p className="text-xs text-slate font-medium leading-relaxed">
                     {isEn
-                      ? 'Permanently deletes student profile, private sessions, attendance logs, and payments. These records cannot be recovered or shown in reports.'
-                      : 'حذف الطالب وجميع حصصه الخاصة، سجلات الحضور، والمدفوعات المرتبطة به بشكل نهائي. لن يمكن استعادة هذه السجلات أو إدراجها في التقارير.'}
+                      ? 'Permanently deletes student profile, private sessions, attendance logs, and payments. Cannot be recovered.'
+                      : 'حذف الطالب وجميع حصصه وسجلاته ومدفوعاته بشكل نهائي. لا يمكن التراجع عن هذا الإجراء.'}
                   </p>
                 </div>
               </>
             ) : selectedMode === 'archive' ? (
-              /* Confirmation for Option 2 (Archive) */
-              <div className="space-y-4 py-1">
-                <div className="classy-card p-4 bg-[#E1EBEC]/40 border border-[#E1EBEC] text-[#0F2A4A] space-y-2.5">
-                  <div className="flex items-center gap-2 text-[#17375E] font-black text-xs">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isEn ? 'What happens with this action?' : 'ماذا سيحدث عند إتمام هذا الإجراء؟'}</span>
+              /* Confirmation for Archive */
+              <div className="space-y-3.5 py-1 text-start">
+                <div className="p-4 rounded-2xl bg-mint-soft border border-mint text-navy space-y-2">
+                  <div className="flex items-center gap-2 text-navy font-black text-xs">
+                    <AppIcon name="checkCircle" size={16} weight="fill" />
+                    <span>
+                      {isEn ? 'What happens with this action?' : 'ماذا سيحدث عند إتمام هذا الإجراء؟'}
+                    </span>
                   </div>
-                  <ul className={`text-xs space-y-2 text-[#0F2A4A] font-medium list-disc list-inside leading-relaxed ${isRTL ? 'pr-1' : 'pl-1'}`}>
-                    <li>{isEn ? <>Student <strong className="text-[#17375E] font-black">{student.name}</strong> will be moved to the <strong>Archived Students</strong> list.</> : <>سيتم نقل الطالب <strong className="text-[#17375E] font-black">{student.name}</strong> إلى قسم <strong>الطلاب المؤرشفين</strong>.</>}</li>
-                    <li>{isEn ? 'Student will not appear in daily attendance sheets or new class lists.' : 'لن يظهر الطالب في قوائم أخذ الحضور أو تسجيل الحصص الجديدة.'}</li>
-                    <li>{isEn ? 'All classes, attendance, and absence history remain fully preserved.' : 'تظل جميع الحصص وسجلات الحضور والغياب محفوظة بالكامل.'}</li>
-                    <li>{isEn ? 'All recorded payments remain calculated in financial reports.' : 'تظل جميع المدفوعات والإيرادات المسددة مدرجة في التقارير المحاسبية.'}</li>
-                    <li>{isEn ? 'You can restore and reactivate the student anytime with 1 click.' : 'يمكنك استعادة وتنشيط الطالب في أي وقت لاحقاً بنقرة واحدة.'}</li>
+                  <ul className="text-xs space-y-1.5 text-navy font-medium list-disc list-inside leading-relaxed ps-1">
+                    <li>
+                      {isEn ? (
+                        <>Student will be moved to <strong>Archived Students</strong>.</>
+                      ) : (
+                        <>سيتم نقل الطالب إلى قائمة <strong>الطلاب المؤرشفين</strong>.</>
+                      )}
+                    </li>
+                    <li>
+                      {isEn
+                        ? 'All classes, attendance, and dues remain safely recorded.'
+                        : 'تظل جميع الحصص وسجلات الحضور والغياب والمستحقات محفوظة بالكامل.'}
+                    </li>
+                    <li>
+                      {isEn
+                        ? 'You can restore and reactivate the student anytime.'
+                        : 'يمكنك استعادة وتنشيط الطالب في أي وقت لاحقاً.'}
+                    </li>
                   </ul>
                 </div>
               </div>
             ) : (
-              /* Confirmation for Option 1 (Permanent Delete Warning) */
-              <div className="space-y-4 py-1">
-                <div className="classy-card p-4 bg-[#E1EBEC]/15 border border-[#E1EBEC] text-[#17375E] space-y-2.5">
-                  <div className="flex items-center gap-2 text-[#0F2A4A] font-black text-xs">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>{isEn ? 'Confirm Permanent Deletion' : 'تأكيد الحذف النهائي الشامل'}</span>
+              /* Confirmation for Permanent Delete */
+              <div className="space-y-3.5 py-1 text-start">
+                <div className="p-4 rounded-2xl bg-coral-soft border border-coral/30 text-coral space-y-2">
+                  <div className="flex items-center gap-2 font-black text-xs">
+                    <AppIcon name="warning" size={16} weight="fill" />
+                    <span>
+                      {isEn ? 'Confirm Permanent Deletion' : 'تأكيد الحذف النهائي الشامل'}
+                    </span>
                   </div>
-                  <p className="text-xs font-medium leading-relaxed text-[#17375E]">
-                    {isEn
-                      ? <>Student <strong className="text-[#17375E] font-black">{student.name}</strong> and all linked data will be wiped permanently from database, including:</>
-                      : <>سيتم مسح الطالب <strong className="text-[#17375E] font-black">{student.name}</strong> وجميع السجلات والبيانات المرتبطة به نهائياً من قاعدة البيانات، بما في ذلك:</>}
+                  <p className="text-xs font-medium leading-relaxed text-navy">
+                    {isEn ? (
+                      <>
+                        Student <strong className="text-coral">{student.name}</strong> and all linked data will be wiped permanently:
+                      </>
+                    ) : (
+                      <>
+                        سيتم مسح الطالب <strong className="text-coral">{student.name}</strong> وجميع السجلات والبيانات المرتبطة به نهائياً:
+                      </>
+                    )}
                   </p>
-                  <ul className={`text-xs space-y-1 text-[#17375E] font-black list-disc list-inside ${isRTL ? 'pr-1' : 'pl-1'}`}>
-                    <li>{isEn ? 'All past private and group classes' : 'كافة الحصص والدروس الخاصة السابقة'}</li>
-                    <li>{isEn ? 'Attendance, absence, and notes records' : 'سجلات الحضور والغياب والملاحظات'}</li>
-                    <li>{isEn ? 'Payment history and financial receipts' : 'سجل المدفوعات والإيصالات المالية'}</li>
-                    <li>{isEn ? 'Behavior ratings and progress logs' : 'سجلات السلوك والتقييمات'}</li>
+                  <ul className="text-xs space-y-1 text-navy font-bold list-disc list-inside ps-1">
+                    <li>{isEn ? 'Past private and group sessions' : 'كافة الحصص المسجلة'}</li>
+                    <li>{isEn ? 'Attendance, absence, and logs' : 'سجلات الحضور والغياب'}</li>
+                    <li>{isEn ? 'Payment history and receipts' : 'سجل المدفوعات والإيصالات'}</li>
                   </ul>
-                  <p className="text-xs font-black text-[#0F2A4A] pt-2 border-t border-[#E1EBEC]">
-                    {isEn ? '⚠️ This action is permanent and cannot be undone.' : '⚠️ هذا الإجراء قطعي ولا يمكن التراجع عنه.'}
+                  <p className="text-xs font-black text-coral pt-2 border-t border-coral/20">
+                    {isEn ? 'This action is permanent and cannot be undone.' : 'هذا الإجراء قطعي ولا يمكن التراجع عنه.'}
                   </p>
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* Footer Actions */}
-          <div className="p-4 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center justify-between gap-2.5">
+          {/* Footer Actions: btn-danger confirm and btn-soft cancel */}
+          <div className="p-4 border-t border-line bg-page flex items-center justify-between gap-3">
             {step === 'select' ? (
               <button
                 type="button"
                 onClick={handleClose}
-                className="btn-secondary w-full"
+                className="btn-soft w-full"
               >
                 {t('cancel')}
               </button>
@@ -260,10 +287,10 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                   type="button"
                   onClick={() => setStep('select')}
                   disabled={isProcessing}
-                  className="btn-secondary"
+                  className="btn-soft px-4"
                 >
-                  {isRTL ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
-                  <span>{isEn ? 'Change Choice' : 'تغيير الخيار'}</span>
+                  <AppIcon name={isRTL ? 'chevronRight' : 'chevronLeft'} size={14} />
+                  <span>{isEn ? 'Back' : 'رجوع'}</span>
                 </button>
 
                 {selectedMode === 'archive' ? (
@@ -271,26 +298,33 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
                     type="button"
                     onClick={handleFinalExecute}
                     disabled={isProcessing}
-                    className="btn-primary flex-1"
+                    className="btn-orange flex-1"
                   >
-                    <Archive className="w-4 h-4" />
-                    <span>{isProcessing ? (isEn ? 'Archiving...' : 'جاري الأرشفة...') : (isEn ? 'Archive & Keep Records' : 'حذف مع الاحتفاظ بالسجلات')}</span>
+                    <AppIcon name="archive" size={15} weight="bold" />
+                    <span>
+                      {isProcessing
+                        ? isEn ? 'Archiving...' : 'جاري الأرشفة...'
+                        : isEn ? 'Archive Student' : 'أرشفة الطالب'}
+                    </span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={handleFinalExecute}
                     disabled={isProcessing}
-                    className="btn-danger-solid flex-1"
+                    className="btn-danger flex-1"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    <span>{isProcessing ? (isEn ? 'Deleting...' : 'جاري الحذف...') : (isEn ? 'Confirm Permanent Delete' : 'تأكيد الحذف النهائي')}</span>
+                    <AppIcon name="trash" size={15} weight="bold" />
+                    <span>
+                      {isProcessing
+                        ? isEn ? 'Deleting...' : 'جاري الحذف...'
+                        : isEn ? 'Delete Permanently' : 'حذف نهائي'}
+                    </span>
                   </button>
                 )}
               </>
             )}
           </div>
-
         </div>
       </div>
     </ModalPortal>

@@ -90,6 +90,11 @@ import {
   getCategoryBadge,
 } from '../utils/behavior';
 import { useTranslation } from '../utils/i18n';
+import { StatusBadge } from './ui/StatusBadge';
+import { AppIcon } from './ui/AppIcon';
+import { WhiteCard } from './ui/WhiteCard';
+import { MintCard } from './ui/MintCard';
+import { ProgressRing } from './ui/ProgressRing';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
 
@@ -636,26 +641,22 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
-        className="fixed inset-0 bg-[#0F2A4A]/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-navy-deep/40 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-backdrop-fade select-none-touch"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="bg-[#FFFFFF] border border-[#E1EBEC] rounded-t-[32px] sm:rounded-[32px] max-w-2xl w-full mx-auto max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative select-none-touch">
+        <div className="bg-page border border-line rounded-t-[32px] sm:rounded-[32px] max-w-2xl w-full mx-auto max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative animate-sheet-slide-up pb-[env(safe-area-inset-bottom,0px)]">
+          {/* Mobile Drag Handle */}
+          <div className="pt-3 pb-1 flex justify-center shrink-0">
+            <div className="w-10 h-1 bg-mint rounded-full" />
+          </div>
+
           {/* =========================================================================
-              1. STUDENT PROFILE HERO (Classy Midnight & Royal Gradient)
+              1. STUDENT PROFILE HERO
               ========================================================================= */}
           <div
             {...headerSwipeDownGestures}
-            className="bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] p-5 sm:p-6 text-[#FFFFFF] relative overflow-hidden shrink-0 border-b border-[#E1EBEC]/15 select-none cursor-grab active:cursor-grabbing"
+            className="p-5 border-b border-line bg-page text-navy relative overflow-hidden shrink-0 select-none cursor-grab active:cursor-grabbing"
           >
-            {/* Mobile Drag Indicator */}
-            <div className="sm:hidden w-full pb-2 flex items-center justify-center -mt-2">
-              <div className="modal-drag-handle" />
-            </div>
-
-            {/* Ambient internal glows */}
-            <div className="absolute -top-16 -right-16 w-52 h-52 bg-[#17375E]/35 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-16 -left-16 w-52 h-52 bg-[#0F2A4A]/30 rounded-full blur-3xl pointer-events-none" />
-
             {/* Close button */}
             <button
               type="button"
@@ -663,10 +664,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 e.stopPropagation();
                 onClose();
               }}
-              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} p-2 rounded-2xl bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/25 text-[#FFFFFF] transition-all cursor-pointer z-30 active:scale-95`}
+              className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} w-10 h-10 rounded-full bg-mint-soft text-navy hover:bg-mint flex items-center justify-center transition-colors cursor-pointer z-30 active:scale-95`}
               title={t('close')}
             >
-              <X className="w-5 h-5" />
+              <AppIcon name="close" size={18} weight="bold" />
             </button>
 
             <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10 ${isRTL ? 'pl-10' : 'pr-10'}`}>
@@ -675,48 +676,49 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   student={student}
                   size="xl"
                   showFrame={true}
-                  className="shrink-0 shadow-lg"
+                  className="shrink-0 shadow-md"
                 />
 
-                <div className="space-y-1 min-w-0">
+                <div className="space-y-1 min-w-0 text-start">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl sm:text-2xl font-black text-[#FFFFFF] tracking-tight truncate">
+                    <h2 className="t-title text-navy font-bold text-xl sm:text-2xl truncate">
                       {student.name}
                     </h2>
 
                     {/* Archived Status Badge */}
                     {isArchived && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#17375E]/20 text-[#E1EBEC] border border-[#17375E]/30 flex items-center gap-1 shadow-2xs">
-                        <Archive className="w-3 h-3 text-[#E1EBEC]" />
-                        <span>{t('archived')}</span>
-                      </span>
+                      <StatusBadge status="archived" label={t('archived')} />
                     )}
 
                     {/* Service Badges */}
                     {serviceType === 'both' && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/25">
-                        {isEn ? 'Group + Private' : 'مجموعة + درس خاص'}
-                      </span>
+                      <StatusBadge
+                        status="active"
+                        label={isEn ? 'Group + Private' : 'مجموعة + درس خاص'}
+                      />
                     )}
                     {serviceType === 'private_only' && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/15 text-[#FFFFFF] border border-[#E1EBEC]/30">
-                        {isEn ? 'Private Lesson' : 'درس خاص'}
-                      </span>
+                      <StatusBadge
+                        status="pending"
+                        label={isEn ? 'Private Lesson' : 'درس خاص'}
+                      />
                     )}
                     {serviceType === 'group_only' && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/20 text-[#E1EBEC] border border-[#E1EBEC]/25">
-                        {isEn ? 'Group Only' : 'مجموعة فقط'}
-                      </span>
+                      <StatusBadge
+                        status="active"
+                        label={isEn ? 'Group Only' : 'مجموعة فقط'}
+                      />
                     )}
                     {serviceType === 'none' && !isArchived && (
-                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#FFFFFF]/10 text-[#E1EBEC]/90 border border-[#E1EBEC]/20">
-                        {isEn ? 'No Active Enrollment' : 'بدون اشتراك نشط'}
-                      </span>
+                      <StatusBadge
+                        status="inactive"
+                        label={isEn ? 'No Active Enrollment' : 'بدون اشتراك نشط'}
+                      />
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-[#E1EBEC]/90 font-medium flex-wrap">
-                    <span className="font-bold bg-[#FFFFFF]/15 px-2.5 py-0.5 rounded-lg border border-[#E1EBEC]/15">
+                  <div className="flex items-center gap-2 text-xs text-slate font-medium flex-wrap">
+                    <span className="font-bold bg-mint-soft px-2.5 py-0.5 rounded-lg border border-line text-navy">
                       {getLocalizedStageName(student.gradeLevel) || (isEn ? 'Grade Not Set' : 'الصف غير محدد')}
                     </span>
                     {student.school && <span>• {isEn ? `School: ${student.school}` : `مدرسة ${student.school}`}</span>}
@@ -728,160 +730,136 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
             {/* Archived Alert Banner */}
             {isArchived && (
-              <div className="mt-4 p-3 rounded-2xl bg-[#0F2A4A]/20 border border-[#17375E]/30 text-[#FFFFFF] flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
+              <div className="mt-4 p-3 rounded-2xl bg-coral-soft border border-coral/30 text-navy flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
                 <div className={`text-xs font-medium leading-relaxed ${isRTL ? 'text-right' : 'text-left'} w-full sm:w-auto`}>
-                  <strong className="font-black block text-[#FFFFFF]">{isEn ? 'Student is currently archived' : 'هذا الطالب مؤرشف حالياً'}</strong>
-                  <span>{isEn ? 'All historical records, sessions, and payments are preserved.' : 'كافة السجلات والحصص والمدفوعات التاريخية محفوظة بالكامل.'}</span>
+                  <strong className="font-black block text-coral">{isEn ? 'Student is currently archived' : 'هذا الطالب مؤرشف حالياً'}</strong>
+                  <span className="text-slate">{isEn ? 'All historical records, sessions, and payments are preserved.' : 'كافة السجلات والحصص والمدفوعات التاريخية محفوظة بالكامل.'}</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleRestoreStudent}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] hover:from-[#0F2A4A] hover:to-[#5F7083] text-[#FFFFFF] font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer shrink-0 active:scale-95"
+                  className="btn-navy w-full sm:w-auto px-4 py-2 text-xs flex items-center justify-center gap-1.5 shrink-0"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <AppIcon name="refresh" size={14} />
                   <span>{isEn ? 'Restore Student' : 'استعادة الطالب للنشاط'}</span>
                 </button>
               </div>
             )}
 
             {/* Quick Contacts & Actions Ribbon */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-4 border-t border-[#E1EBEC]/20 relative z-10">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-4 border-t border-line relative z-10">
               <button
                 type="button"
                 onClick={() => setIsRecordPrivateModalOpen(true)}
-                className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] text-xs font-black flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer active:scale-95 hover:brightness-105"
+                className="btn-orange py-2 px-3 text-xs flex items-center justify-center gap-1.5"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <AppIcon name="sparkles" size={14} weight="fill" />
                 <span>{isEn ? '+ Private Class' : '+ حصة خاصة'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onOpenAddPayment(student)}
-                className="py-2 px-3 rounded-xl bg-[#FFFFFF] text-[#0F2A4A] hover:bg-[#FFFFFF] text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                className="btn-soft py-2 px-3 text-xs flex items-center justify-center gap-1.5"
               >
-                <DollarSign className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                <AppIcon name="coins" size={14} weight="bold" />
                 <span>+ {t('recordPayment')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsQuickBehaviorModalOpen(true)}
-                className="py-2 px-3 rounded-xl bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/25 text-[#FFFFFF] border border-[#E1EBEC]/25 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="btn-soft py-2 px-3 text-xs flex items-center justify-center gap-1.5"
               >
-                <Zap className="w-3.5 h-3.5 text-[#E1EBEC]" />
+                <AppIcon name="award" size={14} weight="bold" />
                 <span>{isEn ? 'Behavior Rating' : 'تقييم سلوك'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onEditStudent(student)}
-                className="py-2 px-3 rounded-xl bg-[#FFFFFF]/15 hover:bg-[#FFFFFF]/25 text-[#FFFFFF] border border-[#E1EBEC]/25 text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="btn-soft py-2 px-3 text-xs flex items-center justify-center gap-1.5"
                 title={t('editStudent')}
               >
-                <Edit2 className="w-3.5 h-3.5" />
+                <AppIcon name="edit" size={14} />
                 <span>{t('editStudent')}</span>
               </button>
             </div>
           </div>
 
           {/* =========================================================================
-              2. SUB-NAVIGATION TABS (Horizontal Scrollable Strip)
+              2. SUB-NAVIGATION TABS (Horizontal Scrollable Chips)
               ========================================================================= */}
-          <div className="flex border-b border-[#E1EBEC] bg-[#FFFFFF] px-2 overflow-x-auto android-scrollbar shrink-0 z-10 sticky top-0">
+          <div className="flex items-center gap-1.5 border-b border-line bg-page px-3 py-2 overflow-x-auto no-scrollbar shrink-0 z-10 sticky top-0">
             <button
+              type="button"
               onClick={() => setActiveSubTab('overview')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'overview'
-                  ? 'border-[#17375E] text-[#17375E] bg-[#E1EBEC]/30'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'overview' ? 'chip-active' : ''}`}
             >
-              <Activity className="w-4 h-4" />
+              <AppIcon name="filter" size={13} />
               <span>{isEn ? 'Overview' : 'لوحة الطالب'}</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveSubTab('groups')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'groups'
-                  ? 'border-[#17375E] text-[#17375E] bg-[#E1EBEC]/30'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'groups' ? 'chip-active' : ''}`}
             >
-              <Layers className="w-4 h-4" />
+              <AppIcon name="groups" size={13} />
               <span>{t('groups')} ({groupEnrollments.length})</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveSubTab('private')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'private'
-                  ? 'border-[#0F2A4A] text-[#0F2A4A] bg-[#E1EBEC]/15'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'private' ? 'chip-active' : ''}`}
             >
-              <Sparkles className="w-4 h-4 text-[#0F2A4A]" />
-              <span>{isEn ? 'Private Lessons' : 'الدرس الخاص'} {privateEnrollments.length > 0 ? `(${privateEnrollments.length})` : ''}</span>
+              <AppIcon name="zap" size={13} />
+              <span>{isEn ? 'Private' : 'الدرس الخاص'} {privateEnrollments.length > 0 ? `(${privateEnrollments.length})` : ''}</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveSubTab('finances')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'finances'
-                  ? 'border-[#17375E] text-[#17375E] bg-[#E1EBEC]/30'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'finances' ? 'chip-active' : ''}`}
             >
-              <DollarSign className="w-4 h-4" />
+              <AppIcon name="coins" size={13} />
               <span>{isEn ? 'Finances' : 'الحسابات والماليات'}</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveSubTab('attendance')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'attendance'
-                  ? 'border-[#17375E] text-[#17375E] bg-[#E1EBEC]/30'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'attendance' ? 'chip-active' : ''}`}
             >
-              <CalendarCheck2 className="w-4 h-4" />
+              <AppIcon name="calendarCheck" size={13} />
               <span>{t('attendance')} ({attendanceList.length})</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveSubTab('behavior')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'behavior'
-                  ? 'border-[#17375E] text-[#17375E] bg-[#E1EBEC]/30'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'behavior' ? 'chip-active' : ''}`}
             >
-              <Zap className="w-4 h-4" />
+              <AppIcon name="award" size={13} />
               <span>{isEn ? 'Behavior' : 'السلوك'} ({studentBehaviorLogs.length})</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveSubTab('history')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'history'
-                  ? 'border-[#17375E] text-[#17375E] bg-[#E1EBEC]/30'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'history' ? 'chip-active' : ''}`}
             >
-              <History className="w-4 h-4" />
+              <AppIcon name="invoice" size={13} />
               <span>{isEn ? 'Payments Log' : 'سجل المدفوعات'}</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveSubTab('credit_logs')}
-              className={`py-3 px-3.5 text-center text-xs font-black border-b-2 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
-                activeSubTab === 'credit_logs'
-                  ? 'border-[#17375E] text-[#17375E] bg-[#E1EBEC]/30'
-                  : 'border-transparent text-[#5F7083] hover:text-[#0F2A4A]'
-              }`}
+              className={`chip ${activeSubTab === 'credit_logs' ? 'chip-active' : ''}`}
             >
-              <Coins className="w-4 h-4" />
+              <AppIcon name="coins" size={13} />
               <span>{isEn ? 'Credit Logs' : 'حركات الرصيد'} ({allCreditLogs.length})</span>
             </button>
           </div>
@@ -918,9 +896,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                       <div className="flex items-center gap-1.5">
                         {todayPrivateSummary.hasIncomplete && (
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#0F2A4A]/50 animate-pulse">
-                            ⚠️ {isEn ? `${todayPrivateSummary.incompleteCount} need(s) completion` : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`}
-                          </span>
+                          <StatusBadge
+                            status="incomplete"
+                            label={
+                              isEn
+                                ? `${todayPrivateSummary.incompleteCount} need(s) completion`
+                                : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`
+                            }
+                          />
                         )}
                         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]">
                           {todayPrivateSummary.visitsCount} {isEn ? (todayPrivateSummary.visitsCount === 1 ? 'Appointment' : 'Appointments') : (todayPrivateSummary.visitsCount === 1 ? 'موعد' : 'مواعيد')}
@@ -1695,9 +1678,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
                       <div className="flex items-center gap-1.5">
                         {todayPrivateSummary.hasIncomplete && (
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#0F2A4A]/50 animate-pulse">
-                            ⚠️ {isEn ? `${todayPrivateSummary.incompleteCount} need(s) completion` : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`}
-                          </span>
+                          <StatusBadge
+                            status="incomplete"
+                            label={
+                              isEn
+                                ? `${todayPrivateSummary.incompleteCount} need(s) completion`
+                                : `${todayPrivateSummary.incompleteCount} حصة تحتاج استكمال`
+                            }
+                          />
                         )}
                         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]">
                           {todayPrivateSummary.visitsCount} {isEn ? (todayPrivateSummary.visitsCount === 1 ? 'Appointment' : 'Appointments') : (todayPrivateSummary.visitsCount === 1 ? 'موعد' : 'مواعيد')}
@@ -2274,25 +2262,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             </div>
 
                             {/* Status Badge */}
-                            <span
-                              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                            <StatusBadge
+                              status={att.status}
+                              label={
                                 att.status === 'present'
-                                  ? 'bg-[#E1EBEC]/65 text-[#0F2A4A] border border-[#17375E]/60'
+                                  ? t('present')
                                   : att.status === 'late'
-                                  ? 'bg-[#E1EBEC]/70 text-[#0F2A4A] border border-[#0F2A4A]/50'
+                                  ? t('late')
                                   : att.status === 'absent_charged'
-                                  ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
-                                  : 'bg-[#E1EBEC]/15 text-[#5F7083] border border-[#E1EBEC]'
-                              }`}
-                            >
-                              {att.status === 'present'
-                                ? t('present')
-                                : att.status === 'late'
-                                ? t('late')
-                                : att.status === 'absent_charged'
-                                ? t('absentCharged')
-                                : t('absentExcused')}
-                            </span>
+                                  ? t('absentCharged')
+                                  : t('absentExcused')
+                              }
+                            />
                           </div>
 
                           <div className="flex items-center justify-between text-[11px] text-[#5F7083] pt-1 border-t border-[#E1EBEC] flex-wrap gap-2">

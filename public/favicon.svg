@@ -7,8 +7,8 @@
     <!-- Owl Body Gradient - Navy -->
     <linearGradient id="owlBodyGrad" x1="40" y1="20" x2="160" y2="180" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#17375E" />
-      <stop offset="55%" stop-color="#0F2A4A" />
-      <stop offset="100%" stop-color="#0F2A4A" />
+      <stop offset="55%" stop-color="#17375E" />
+      <stop offset="100%" stop-color="#17375E" />
     </linearGradient>
 
     <!-- Owl Belly Gradient - White / Mint -->
@@ -21,19 +21,19 @@
     <!-- Eye Glasses / Accent Gradient - Orange -->
     <linearGradient id="owlCoralGrad" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#F5A04A" />
-      <stop offset="100%" stop-color="#E58A2B" />
+      <stop offset="100%" stop-color="#F5A04A" />
     </linearGradient>
 
     <!-- Beak & Feet - Orange -->
     <linearGradient id="owlGoldGrad" x1="0" y1="0" x2="0" y2="100" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#F5A04A" />
-      <stop offset="100%" stop-color="#E58A2B" />
+      <stop offset="100%" stop-color="#F5A04A" />
     </linearGradient>
 
     <!-- Graduation Cap Grad -->
     <linearGradient id="capGrad" x1="50" y1="10" x2="150" y2="50" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#17375E" />
-      <stop offset="100%" stop-color="#0F2A4A" />
+      <stop offset="100%" stop-color="#17375E" />
     </linearGradient>
 
     <!-- Floating Sparkle Gradient -->
@@ -45,8 +45,8 @@
     <!-- Icon Background Radial Lighting -->
     <radialGradient id="iconBgGrad" cx="50%" cy="45%" r="65%">
       <stop offset="0%" stop-color="#17375E" />
-      <stop offset="65%" stop-color="#0F2A4A" />
-      <stop offset="100%" stop-color="#0F2A4A" />
+      <stop offset="65%" stop-color="#17375E" />
+      <stop offset="100%" stop-color="#17375E" />
     </radialGradient>
 
     <!-- Ambient Glow behind Owl -->
@@ -100,7 +100,7 @@
   <path
     d="M48 95 C32 110, 32 145, 54 160 C58 145, 56 115, 48 95 Z"
     fill="#17375E"
-    stroke="#0F2A4A"
+    stroke="#17375E"
     stroke-width="2"
   />
 
@@ -108,7 +108,7 @@
   <path
     d="M152 95 C168 110, 168 145, 146 160 C142 145, 144 115, 152 95 Z"
     fill="#17375E"
-    stroke="#0F2A4A"
+    stroke="#17375E"
     stroke-width="2"
   />
 
@@ -149,16 +149,16 @@
   <ellipse cx="123" cy="85" rx="22" ry="22" fill="#FFFFFF" />
 
   <!-- Left Eye -->
-  <ellipse cx="78" cy="85" rx="14" ry="14" fill="#0F2A4A" />
+  <ellipse cx="78" cy="85" rx="14" ry="14" fill="#17375E" />
   <ellipse cx="80" cy="82" rx="12" ry="12" fill="#17375E" />
-  <ellipse cx="81" cy="84" rx="9" ry="9" fill="#0F2A4A" />
+  <ellipse cx="81" cy="84" rx="9" ry="9" fill="#17375E" />
   <circle cx="77" cy="80" r="4.5" fill="#FFFFFF" />
   <circle cx="84" cy="88" r="2" fill="#FFFFFF" />
 
   <!-- Right Eye -->
-  <ellipse cx="122" cy="85" rx="14" ry="14" fill="#0F2A4A" />
+  <ellipse cx="122" cy="85" rx="14" ry="14" fill="#17375E" />
   <ellipse cx="120" cy="82" rx="12" ry="12" fill="#17375E" />
-  <ellipse cx="119" cy="84" rx="9" ry="9" fill="#0F2A4A" />
+  <ellipse cx="119" cy="84" rx="9" ry="9" fill="#17375E" />
   <circle cx="116" cy="80" r="4.5" fill="#FFFFFF" />
   <circle cx="123" cy="88" r="2" fill="#FFFFFF" />
 
@@ -180,7 +180,7 @@
   <g id="gradCap">
     <path
       d="M80 44 C80 37, 120 37, 120 44 L116 52 C116 54, 84 54, 84 52 Z"
-      fill="#0F2A4A"
+      fill="#17375E"
     />
     <polygon
       points="100,20 152,36 100,48 48,36"

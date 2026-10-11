@@ -1,38 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Bell,
-  X,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  DollarSign,
-  UserCheck,
-  MessageCircle,
-  Phone,
-  Eye,
-  Check,
-  Filter,
-  Trash2,
-  CalendarCheck2,
-  Sparkles,
-  ChevronRight,
-  ShieldCheck,
-  RefreshCw,
-  Archive,
-} from 'lucide-react';
-import {
   Student,
   Group,
   Session,
   Enrollment,
-  Payment,
   SmartReminderItem,
-  NotificationType,
 } from '../types';
 import { db } from '../utils/storage';
 import { getSmartReminders } from '../utils/reminders';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon, type AppIconName } from './ui/AppIcon';
+import { StatusBadge } from './ui/StatusBadge';
 
 interface NotificationsModalProps {
   isOpen: boolean;
@@ -72,8 +51,6 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     const attList = db.getAttendance();
     return getSmartReminders(students, groups, sessions, enrollments, attList, true);
   }, [students, groups, sessions, enrollments, isOpen]);
-
-  const modalLayer = useModalLayer('notifications', isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -146,7 +123,6 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
       if (sess) {
         onClose();
         onOpenAttendanceModal(sess);
-        return;
       }
     }
   };
@@ -174,7 +150,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
       } else if (item.type === 'package_almost_due') {
         msg = `السلام عليكم ورحمة الله، نود إحاطتكم علماً بأن الطالب/ة (${item.studentName}) متبقي له ${item.lessonsRemaining === 1 ? 'حصة واحدة' : `${item.lessonsRemaining} حصص`} على اكتمال الباقة الحالية. تحياتنا لكم.`;
       } else if (item.type === 'payment_overdue') {
-        msg = `السلام عليكم ورحمة الله، تذكير ودي بشأن المصروفات الدراسية المستحقة للطالب/ة (${item.studentName}) بمبلغ ${item.amount || 0} ج.م. شكراً لتعاونكم.`;
+        msg = `السلام عليكم ورحمة الله، تذكير ودي بشأن المصروفات الدراسية المستحقة للطالب/ة (${item.studentName}) بمبلغ ${item.amount || 0} ${t('currency')}. شكراً لتعاونكم.`;
       } else if (item.type === 'repeated_absence') {
         msg = `السلام عليكم ورحمة الله، نود الاطمئنان على الطالب/ة (${item.studentName}) نظراً لتغيبه عن آخر حصتين دراسيتين. نتمنى له دوام التوفيق والسلامة.`;
       } else {
@@ -184,56 +160,78 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
   };
 
+  const getItemIcon = (type: string): AppIconName => {
+    switch (type) {
+      case 'package_completed':
+      case 'payment_overdue':
+        return 'coins';
+      case 'package_almost_due':
+      case 'low_credit':
+        return 'receipt';
+      case 'unrecorded_attendance':
+        return 'calendar';
+      case 'repeated_absence':
+        return 'warning';
+      default:
+        return 'bell';
+    }
+  };
+
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#E1EBEC]/15 rounded-[28px] w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[#E1EBEC] overflow-hidden">
-        
-        {/* Signature Classy Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden">
-          <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 flex items-center justify-center text-[#FFFFFF] shadow-sm shrink-0">
-              <Bell className="w-5 h-5 text-[#FFFFFF]" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight">{t('notifications')}</h2>
-                {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#0F2A4A] text-[#FFFFFF] shadow-md shadow-[#0F2A4A]/40 animate-pulse">
-                    {unreadCount} {isEn ? 'new' : 'جديد'}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-[#E1EBEC]/85 font-medium truncate">
-                {isEn ? 'Track packages, dues, overdue payments, and attendance' : 'متابعة استحقاق الباقات، الدفعات، ورصد الحضور والغياب'}
-              </p>
-            </div>
-          </div>
+    <BottomSheet
+      id="notifications"
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('notifications')}
+      subtitle={
+        isEn
+          ? 'Track packages, dues, overdue payments, and attendance'
+          : 'متابعة استحقاق الباقات، الدفعات، ورصد الحضور والغياب'
+      }
+      headerLeading={
+        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name="bell" size={20} weight="duotone" />
+        </div>
+      }
+      headerTrailing={
+        unreadCount > 0 ? (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orange text-white shadow-2xs">
+            {unreadCount} {isEn ? 'new' : 'جديد'}
+          </span>
+        ) : undefined
+      }
+      bodyClassName="p-0"
+      maxWidthClass="sm:max-w-xl"
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[11px] text-slate font-bold">
+            {isEn
+              ? `Total: ${allNotifications.length} (${activeCount} active)`
+              : `الإجمالي: ${allNotifications.length} (${activeCount} نشط)`}
+          </span>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
-            title={t('close')}
+            className="btn-soft px-5 py-2 text-xs"
           >
-            <X className="w-4 h-4" />
+            {t('close')}
           </button>
         </div>
-
+      }
+    >
+      <div className="flex flex-col h-full">
         {/* Quick Feedback Toast */}
         {feedback && (
-          <div className="px-4 py-2.5 bg-[#E1EBEC]/15 text-[#0F2A4A] text-xs font-black border-b border-[#17375E] flex items-center justify-between">
+          <div className="px-4 py-2 bg-mint-soft text-navy text-xs font-bold border-b border-line flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#E1EBEC]" />
+              <AppIcon name="checkCircle" size={16} weight="fill" className="text-navy" />
               <span>{feedback}</span>
             </div>
           </div>
         )}
 
         {/* Filter Tabs & Mark All Read */}
-        <div className="p-3 bg-[#FFFFFF] border-b border-[#E1EBEC] flex items-center justify-between gap-2 shrink-0 flex-wrap">
+        <div className="p-3 border-b border-line flex items-center justify-between gap-2 shrink-0 flex-wrap bg-page">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {[
               { id: 'active' as TabType, label: isEn ? 'Active' : 'النشطة', count: activeCount },
@@ -260,7 +258,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               },
               {
                 id: 'resolved' as TabType,
-                label: isEn ? 'Settled & Completed' : 'المسددة والمكتملة',
+                label: isEn ? 'Settled' : 'المسددة',
                 count: allNotifications.filter((n) => n.status === 'resolved' || n.status === 'dismissed').length,
               },
             ].map((tab) => {
@@ -269,17 +267,13 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                    isSelected
-                      ? 'bg-[#17375E] text-[#FFFFFF] shadow-xs'
-                      : 'bg-[#E1EBEC]/15 text-[#5F7083] hover:bg-[#E1EBEC]/35 border border-[#E1EBEC]'
-                  }`}
+                  className={`chip ${isSelected ? 'chip-active' : ''}`}
                 >
                   <span>{tab.label}</span>
                   {tab.count > 0 && (
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                        isSelected ? 'bg-[#FFFFFF]/20 text-[#FFFFFF]' : 'bg-[#E1EBEC]/25 text-[#17375E]'
+                        isSelected ? 'bg-white/20 text-white' : 'bg-mint-soft text-navy'
                       }`}
                     >
                       {tab.count}
@@ -293,28 +287,28 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           {unreadCount > 0 && activeTab !== 'resolved' && (
             <button
               onClick={handleMarkAllRead}
-              className="text-[11px] font-black text-[#17375E] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+              className="text-[11px] font-black text-navy hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
             >
-              <Check className="w-3.5 h-3.5" />
+              <AppIcon name="check" size={14} weight="bold" />
               <span>{isEn ? 'Mark all as read' : 'تحديد الكل كمقروء'}</span>
             </button>
           )}
         </div>
 
         {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 android-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {filteredNotifications.length === 0 ? (
-            <div className="text-center py-12 space-y-3 bg-[#FFFFFF] rounded-3xl border border-[#E1EBEC] p-6 shadow-sm">
-              <div className="w-14 h-14 rounded-2xl bg-[#E1EBEC]/15 text-[#17375E] flex items-center justify-center mx-auto border border-[#17375E]">
-                <CheckCircle2 className="w-7 h-7 text-[#17375E]" />
+            <div className="text-center py-12 space-y-3 bg-page rounded-3xl border border-line p-6">
+              <div className="w-14 h-14 rounded-2xl bg-mint-soft text-navy flex items-center justify-center mx-auto border border-line">
+                <AppIcon name="checkCircle" size={28} weight="duotone" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-black text-[#0F2A4A]">
+                <h3 className="text-sm font-black text-navy">
                   {activeTab === 'resolved'
                     ? (isEn ? 'No settled notifications yet' : 'لا توجد تنبيهات مسددة أو مكتملة بعد')
                     : (isEn ? 'Great! No pending notifications right now' : 'رائع! لا توجد تنبيهات معلقة حالياً')}
                 </h3>
-                <p className="text-xs text-[#5F7083] max-w-sm mx-auto font-medium leading-relaxed">
+                <p className="text-xs text-slate max-w-sm mx-auto font-medium leading-relaxed">
                   {activeTab === 'resolved'
                     ? (isEn ? 'When packages and payments are settled, completed records will appear here.' : 'عند سداد الباقات والمستحقات، ستظهر سجلات التسوية المكتملة هنا.')
                     : (isEn ? 'All student enrollments, session packages, and attendance logs are up to date.' : 'جميع اشتراكات الطلاب وباقات الحصص وحالات الحضور محدثة ومنتظمة.')}
@@ -330,107 +324,113 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               const isAlmostDue = item.type === 'package_almost_due';
               const isUnread = !item.isRead && !isResolved && !isDismissed;
               const waUrl = getWhatsAppUrl(item);
+              const iconName = getItemIcon(item.type);
 
               return (
                 <div
                   key={item.id}
                   className={`p-4 rounded-2xl border transition-all space-y-2.5 relative ${
                     isResolved
-                      ? 'bg-[#E1EBEC]/15 border-[#17375E] opacity-90'
+                      ? 'bg-mist border-line opacity-85'
                       : isDismissed
-                      ? 'bg-[#FFFFFF]/60 border-[#E1EBEC] opacity-75'
+                      ? 'bg-page border-line opacity-75'
                       : isHigh
-                      ? 'bg-[#E1EBEC]/15 border-[#E1EBEC] shadow-xs'
+                      ? 'bg-coral-soft/40 border-coral/30 shadow-2xs'
                       : isAlmostDue
-                      ? 'bg-[#E1EBEC]/15 border-[#17375E] shadow-xs'
-                      : 'bg-[#FFFFFF] border-[#E1EBEC] shadow-xs'
+                      ? 'bg-mint-soft/50 border-mint shadow-2xs'
+                      : 'bg-page border-line shadow-2xs'
                   }`}
                 >
-                  {/* Top line badge & status */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      {isUnread && (
-                        <span
-                          className="w-2 h-2 rounded-full bg-[#0F2A4A] shrink-0 animate-pulse"
-                          title={isEn ? 'Unread' : 'غير مقروء'}
-                        />
-                      )}
-                      <span
-                        className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black inline-flex items-center gap-1 ${
-                          isResolved
-                            ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#17375E]'
-                            : isHigh
-                            ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC]'
-                            : isAlmostDue
-                            ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#17375E]'
-                            : 'bg-[#E1EBEC]/25 text-[#0F2A4A] border border-[#E1EBEC]'
-                        }`}
-                      >
-                        {isResolved ? (
-                          <CheckCircle2 className="w-3 h-3 text-[#17375E]" />
-                        ) : isHigh ? (
-                          <AlertTriangle className="w-3 h-3 text-[#0F2A4A]" />
-                        ) : (
-                          <Clock className="w-3 h-3 text-[#17375E]" />
+                  {/* Top row with duotone AppIcon in a mint-soft circle, title, slate time, unread orange dot */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      {/* Duotone AppIcon in a mint-soft circle */}
+                      <div className="w-10 h-10 rounded-full bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line relative">
+                        <AppIcon name={iconName} size={20} weight="duotone" />
+                        {/* Unread: small orange dot */}
+                        {isUnread && (
+                          <span
+                            className="absolute -top-0.5 -end-0.5 w-2.5 h-2.5 rounded-full bg-orange ring-2 ring-page"
+                            title={isEn ? 'Unread' : 'غير مقروء'}
+                          />
                         )}
-                        <span>{item.badge}</span>
-                      </span>
+                      </div>
 
-                      {item.groupName && (
-                        <span className="text-[10px] text-[#5F7083] font-bold">
-                          {item.groupName}
-                        </span>
-                      )}
+                      <div className="min-w-0 flex-1 text-start">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4
+                            className={`text-xs sm:text-sm font-black text-navy ${
+                              isResolved ? 'line-through opacity-75' : ''
+                            }`}
+                          >
+                            {item.title}
+                          </h4>
+                          <StatusBadge
+                            status={
+                              isResolved
+                                ? 'resolved'
+                                : isHigh
+                                ? 'overdue'
+                                : isAlmostDue
+                                ? 'package_nearly_used'
+                                : 'pending'
+                            }
+                            label={item.badge}
+                          />
+                        </div>
+
+                        <p className="text-xs text-slate font-medium mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
+
+                        <div className="flex items-center gap-2 mt-1 text-[11px] text-slate">
+                          {item.groupName && (
+                            <span className="font-bold text-navy">
+                              {item.groupName}
+                            </span>
+                          )}
+                          {item.date && (
+                            <span className="t-meta text-slate">
+                              {item.date}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1 text-[10px] text-[#5F7083]">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
+                        type="button"
                         onClick={() => handleToggleRead(item)}
-                        className="p-1.5 rounded-lg hover:bg-[#E1EBEC]/35 text-[#5F7083] transition-all cursor-pointer"
+                        className="p-1.5 rounded-xl hover:bg-mint-soft text-slate hover:text-navy transition-all cursor-pointer"
                         title={item.isRead ? (isEn ? 'Mark as unread' : 'تحديد كغير مقروء') : (isEn ? 'Mark as read' : 'تحديد كمقروء')}
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <AppIcon name="check" size={14} weight="bold" />
                       </button>
                       {!isResolved && !isDismissed && (
                         <button
+                          type="button"
                           onClick={() => handleDismiss(item)}
-                          className="p-1.5 rounded-lg hover:bg-[#E1EBEC]/25 text-[#5F7083] hover:text-[#0F2A4A] transition-all cursor-pointer"
+                          className="p-1.5 rounded-xl hover:bg-coral-soft text-slate hover:text-coral transition-all cursor-pointer"
                           title={isEn ? 'Dismiss notification' : 'إخفاء التنبيه'}
                         >
-                          <Archive className="w-3.5 h-3.5" />
+                          <AppIcon name="archive" size={14} />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Body text */}
-                  <div>
-                    <h4
-                      className={`text-xs sm:text-sm font-black ${
-                        isResolved
-                          ? 'text-[#0F2A4A] line-through opacity-80'
-                          : isUnread
-                          ? 'text-[#0F2A4A]'
-                          : 'text-[#0F2A4A]'
-                      }`}
-                    >
-                      {item.title}
-                    </h4>
-                    <p className="text-xs text-[#5F7083] font-medium mt-0.5 leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
-
                   {/* Action Buttons */}
-                  <div className="pt-2 border-t border-[#E1EBEC]/70 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="pt-2 border-t border-line flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       {targetStudent && (
                         <button
+                          type="button"
                           onClick={() => {
                             onClose();
                             onOpenStudentProfile(targetStudent);
                           }}
-                          className="px-3 py-1 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-[11px] font-black text-[#0F2A4A] hover:bg-[#E1EBEC]/25 transition-all cursor-pointer"
+                          className="btn-soft px-3 py-1 text-[11px]"
                         >
                           {isEn ? 'Profile' : 'الملف الشخصي'}
                         </button>
@@ -441,10 +441,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           href={waUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-3 py-1 rounded-xl bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#17375E] text-[11px] font-black hover:bg-[#0F2A4A] hover:text-[#FFFFFF] transition-all flex items-center gap-1 cursor-pointer"
+                          className="btn-soft px-3 py-1 text-[11px] flex items-center gap-1"
                         >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>{isEn ? 'WhatsApp Parent' : 'واتساب ولي الأمر'}</span>
+                          <AppIcon name="message" size={13} />
+                          <span>{isEn ? 'WhatsApp' : 'واتساب'}</span>
                         </a>
                       )}
                     </div>
@@ -452,20 +452,22 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     <div className="flex items-center gap-1.5">
                       {item.actionType === 'add_payment' && targetStudent && !isResolved && (
                         <button
+                          type="button"
                           onClick={() => handleQuickPay(item)}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17375E] to-[#0F2A4A] text-[#FFFFFF] text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                          className="btn-orange px-3.5 py-1 text-[11px]"
                         >
-                          <DollarSign className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                          <AppIcon name="coins" size={13} weight="bold" />
                           <span>{t('recordPayment')}</span>
                         </button>
                       )}
 
                       {item.actionType === 'record_attendance' && item.sessionId && !isResolved && (
                         <button
+                          type="button"
                           onClick={() => handleOpenAttendance(item)}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] text-[11px] font-black hover:brightness-105 transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                          className="btn-orange px-3.5 py-1 text-[11px]"
                         >
-                          <CalendarCheck2 className="w-3.5 h-3.5 text-[#FFFFFF]" />
+                          <AppIcon name="calendarCheck" size={13} weight="bold" />
                           <span>{isEn ? 'Take Attendance' : 'رصد الحضور'}</span>
                         </button>
                       )}
@@ -476,21 +478,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             })
           )}
         </div>
-
-        {/* Footer */}
-        <div className="p-3.5 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center justify-between shrink-0">
-          <span className="text-[11px] text-[#5F7083] font-bold">
-            {isEn ? `Total Notifications: ${allNotifications.length} (${activeCount} active)` : `إجمالي التنبيهات: ${allNotifications.length} (${activeCount} نشط)`}
-          </span>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-2xl bg-[#17375E] hover:bg-[#0F2A4A] text-[#FFFFFF] text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
-          >
-            {t('close')}
-          </button>
-        </div>
       </div>
-    </div>
-  </ModalPortal>
+    </BottomSheet>
   );
 };

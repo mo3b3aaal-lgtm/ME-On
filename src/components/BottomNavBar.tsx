@@ -1,63 +1,165 @@
-import React from 'react';
-import {
-  LayoutDashboard,
-  Users,
-  Layers,
-  CalendarCheck2,
-  BarChart3,
-} from 'lucide-react';
+import React, { useState } from 'react';
 import { ActiveTab } from '../types';
 import { useTranslation } from '../utils/i18n';
+import { AppIcon, type AppIconName } from './ui/AppIcon';
 
 interface BottomNavBarProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
+  onOpenQuickAdd: () => void;
+  isQuickAddOpen?: boolean;
 }
 
-export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
-  const { t } = useTranslation();
+interface NavTabItem {
+  id: ActiveTab;
+  slotIndex: number;
+  icon: AppIconName;
+  label: string;
+}
 
-  const tabs = [
-    { id: 'dashboard' as ActiveTab, label: t('navDashboard') || 'الرئيسية', icon: LayoutDashboard },
-    { id: 'students' as ActiveTab, label: t('navStudents') || 'الطلاب', icon: Users },
-    { id: 'groups' as ActiveTab, label: t('navGroups') || 'المجموعات', icon: Layers },
-    { id: 'sessions' as ActiveTab, label: t('navSessions') || 'الحصص', icon: CalendarCheck2 },
-    { id: 'reports' as ActiveTab, label: t('navReports') || 'التقارير', icon: BarChart3 },
+export const BottomNavBar: React.FC<BottomNavBarProps> = ({
+  activeTab,
+  onTabChange,
+  onOpenQuickAdd,
+  isQuickAddOpen = false,
+}) => {
+  const { t, isRTL, language } = useTranslation();
+  const [poppingTab, setPoppingTab] = useState<ActiveTab | null>(null);
+
+  const leftTabs: NavTabItem[] = [
+    {
+      id: 'dashboard',
+      slotIndex: 0,
+      icon: 'home',
+      label: t('navDashboard') || 'الرئيسية',
+    },
+    {
+      id: 'sessions',
+      slotIndex: 1,
+      icon: 'sessions',
+      label: t('navSessions') || 'الحصص',
+    },
   ];
+
+  const rightTabs: NavTabItem[] = [
+    {
+      id: 'reports',
+      slotIndex: 3,
+      icon: 'reports',
+      label: t('navReports') || 'التقارير',
+    },
+    {
+      id: 'students',
+      slotIndex: 4,
+      icon: 'students',
+      label: t('navStudents') || 'الطلاب',
+    },
+  ];
+
+  // Resolve which slot index is active (0, 1, 3, 4). If 'groups', map to 'students' (slot 4). Settings has no active slot (-1).
+  const activeSlot =
+    activeTab === 'dashboard'
+      ? 0
+      : activeTab === 'sessions'
+      ? 1
+      : activeTab === 'reports'
+      ? 3
+      : activeTab === 'students' || activeTab === 'groups'
+      ? 4
+      : -1;
+
+  const handleTabClick = (tabId: ActiveTab) => {
+    setPoppingTab(tabId);
+    setTimeout(() => {
+      setPoppingTab(null);
+    }, 300);
+    onTabChange(tabId);
+  };
+
+  const renderTabButton = (tab: NavTabItem) => {
+    const isActive =
+      tab.id === 'students'
+        ? activeTab === 'students' || activeTab === 'groups'
+        : activeTab === tab.id;
+
+    return (
+      <button
+        key={tab.id}
+        type="button"
+        onClick={() => handleTabClick(tab.id)}
+        aria-label={tab.label}
+        className="flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer select-none group"
+      >
+        <span
+          className={`flex items-center justify-center transition-colors duration-200 ${
+            isActive ? 'text-navy' : 'text-fog group-hover:text-slate'
+          } ${poppingTab === tab.id ? 'animate-icon-pop' : ''}`}
+        >
+          <AppIcon name={tab.icon} weight="fill" size={26} />
+        </span>
+      </button>
+    );
+  };
 
   return (
     <nav
       aria-label="Bottom Navigation"
-      className="absolute bottom-[calc(12px+env(safe-area-inset-bottom,0px))] left-3 right-3 h-[68px] bg-[#FFFFFF] border border-[#E1EBEC] rounded-[28px] shadow-[0_6px_18px_rgba(23,55,94,0.07)] z-30 px-2 flex items-center justify-around select-none"
+      dir={isRTL ? 'rtl' : 'ltr'}
+      className="absolute bottom-[calc(12px+env(safe-area-inset-bottom,0px))] inset-x-3 h-[72px] bg-page border border-line rounded-[32px] shadow-nav z-40 px-2 flex items-center justify-between select-none"
     >
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+      {/* Slot 0 & 1: Home and Sessions */}
+      <div className="flex-1 flex items-center h-full">
+        {leftTabs.map(renderTabButton)}
+      </div>
 
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center justify-center flex-1 min-h-[48px] min-w-[48px] py-1 cursor-pointer transition-colors ${
-              isActive ? 'text-[#17375E]' : 'text-[#5F7083] hover:text-[#0F2A4A]'
+      {/* Slot 2: Center Raised Navy FAB (opens QuickAddSheet) */}
+      <div className="w-[72px] flex items-center justify-center shrink-0 relative">
+        <button
+          type="button"
+          onClick={onOpenQuickAdd}
+          aria-label={language.startsWith('en') ? 'Quick Actions' : 'إجراء سريع'}
+          title={language.startsWith('en') ? 'Quick Actions' : 'إجراء سريع'}
+          className="w-14 h-14 -mt-[14px] rounded-full bg-page border-[3px] border-navy flex items-center justify-center shadow-[0_8px_20px_rgba(23,55,94,0.25)] active:scale-[0.92] transition-transform duration-150 cursor-pointer z-10"
+        >
+          <span
+            className={`transition-transform duration-300 text-navy flex items-center justify-center ${
+              isQuickAddOpen ? 'rotate-45' : 'rotate-0'
             }`}
           >
-            <Icon
-              className="w-5 h-5 transition-colors"
-              strokeWidth={1.7}
-              fill={isActive ? 'currentColor' : 'none'}
-            />
-            <span
-              className={`text-[10.5px] mt-1 leading-none tracking-tight ${
-                isActive ? 'font-bold text-[#0F2A4A]' : 'font-medium text-[#5F7083]'
-              }`}
-            >
-              {tab.label}
-            </span>
-          </button>
-        );
-      })}
+            <AppIcon name="plus" weight="fill" size={26} />
+          </span>
+        </button>
+      </div>
+
+      {/* Slot 3 & 4: Reports and Students */}
+      <div className="flex-1 flex items-center h-full">
+        {rightTabs.map(renderTabButton)}
+      </div>
+
+      {/* Sliding Active Indicator Dot (6px navy dot centered under the active icon) */}
+      <div
+        aria-hidden="true"
+        className="absolute bottom-2.5 inset-x-2 h-1.5 pointer-events-none flex"
+      >
+        <div
+          className="h-full flex items-center justify-center transition-all duration-350 ease-out motion-reduce:transition-none"
+          style={{
+            width: '20%',
+            transform:
+              activeSlot >= 0
+                ? isRTL
+                  ? `translateX(-${activeSlot * 100}%)`
+                  : `translateX(${activeSlot * 100}%)`
+                : 'none',
+            opacity: activeSlot >= 0 ? 1 : 0,
+            transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+          }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-navy block" />
+        </div>
+      </div>
     </nav>
   );
 };
+
+export default BottomNavBar;

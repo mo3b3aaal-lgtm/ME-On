@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, CalendarCheck2, Clock, Calendar, BookOpen, DollarSign, Check } from 'lucide-react';
 import { Session, Group } from '../types';
-import { db, getEffectiveSessionPrice, roundMoney, multiplyMoney } from '../utils/storage';
-import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
+import { db, getEffectiveSessionPrice, multiplyMoney } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
+import { BottomSheet } from './ui/BottomSheet';
+import { AppIcon } from './ui/AppIcon';
 
 interface AddEditSessionModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   const todayStr = toLocalISODate();
 
   const [groupId, setGroupId] = useState(defaultGroupId || allGroups[0]?.id || '');
-  const [title, setTitle] = useState('حصة مراجعة وشرح درس جديد');
+  const [title, setTitle] = useState(isEn ? 'Lesson Review & Explanation' : 'حصة مراجعة وشرح درس جديد');
   const [date, setDate] = useState(defaultDate || todayStr);
   const [startTime, setStartTime] = useState('16:00');
   const [endTime, setEndTime] = useState('17:30');
@@ -114,8 +114,8 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!groupId || !date) return;
 
     const parsedDate = parseLocalDateStr(date);
@@ -142,7 +142,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     const savedSession: Session = {
       id: sessionId,
       groupId,
-      title: title.trim() || 'حصة دراسية',
+      title: title.trim() || (isEn ? 'Class Session' : 'حصة دراسية'),
       date,
       dayName,
       month,
@@ -169,279 +169,282 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     onClose();
   };
 
-  const modalLayer = useModalLayer('add-edit-session', isOpen, onClose);
-
   if (!isOpen) return null;
 
   return (
-    <ModalPortal>
-      <div
-        style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-[#17375E]/65 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <div className="bg-[#E1EBEC]/15 border border-[#E1EBEC] rounded-t-[28px] sm:rounded-[28px] max-w-lg w-full mx-auto max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-        
-        {/* Signature Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#17375E] via-[#0F2A4A] to-[#5F7083] text-[#FFFFFF] flex items-center justify-between shrink-0 relative overflow-hidden">
-          <div className="flex items-center gap-3 relative z-10 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFFFFF]/15 backdrop-blur-md border border-[#E1EBEC]/25 flex items-center justify-center text-[#FFFFFF] shadow-sm shrink-0">
-              <CalendarCheck2 className="w-5 h-5 text-[#FFFFFF]" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] tracking-tight truncate">
-                {editingSession ? 'تعديل بيانات الحصة' : 'جدولة حصة دراسية جديدة'}
-              </h2>
-              <p className="text-xs text-[#E1EBEC]/85 font-medium truncate">
-                تدعم أكثر من حصة في نفس اليوم ومرتبطة بالسجل المحاسبي
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-2xl bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-[#FFFFFF] border border-[#E1EBEC]/20 transition-all cursor-pointer relative z-10 active:scale-95"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <BottomSheet
+      id="add-edit-session"
+      isOpen={isOpen}
+      onClose={onClose}
+      title={editingSession ? (isEn ? 'Edit Session' : 'تعديل بيانات الحصة') : (isEn ? 'Schedule New Session' : 'جدولة حصة دراسية جديدة')}
+      subtitle={
+        isEn
+          ? 'Supports multiple sessions on same day, linked to financials'
+          : 'تدعم أكثر من حصة في نفس اليوم ومرتبطة بالسجل المحاسبي'
+      }
+      headerLeading={
+        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+          <AppIcon name="calendarCheck" size={20} weight="duotone" />
         </div>
-
-        {/* Form Body - Scrollable */}
-        <form id="add-session-form" onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto overscroll-contain android-scrollbar flex-1 space-y-3.5 text-xs text-[#0F2A4A]">
-          
-          {/* Select Group */}
-          <div className="classy-card p-3.5 space-y-1.5">
-            <label className="font-black text-xs text-[#0F2A4A] mb-1">المجموعة المستهدفة *</label>
-            <select
-              value={groupId}
-              onChange={(e) => {
-                const gId = e.target.value;
-                setGroupId(gId);
-                const grp = allGroups.find((g) => g.id === gId);
-                if (grp) setPricePerStudent(getEffectiveSessionPrice(null, grp));
-              }}
-              className="classy-select"
-            >
-              {allGroups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name} ({g.subject} - {g.gradeLevel})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Title / Topic */}
-          <div className="classy-card p-3.5 space-y-1.5">
-            <label className="font-black text-xs text-[#0F2A4A] mb-1">عنوان أو موضوع الحصة *</label>
-            <input
-              type="text"
-              required
-              placeholder="مثال: الباب الأول - شرح قوانين الحركة وحل مسائل"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="classy-input"
-            />
-          </div>
-
-          {/* Date & Day */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div className="classy-card p-3 space-y-1">
-              <label className="font-black text-xs text-[#0F2A4A] mb-1">تاريخ الحصة *</label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="classy-input font-bold"
-              />
-            </div>
-
-            <div className="classy-card p-3 space-y-1">
-              <label className="font-black text-xs text-[#0F2A4A] mb-1">رقم الحصة التسلسلي</label>
-              <input
-                type="number"
-                min={1}
-                value={sessionNumber}
-                onChange={(e) => setSessionNumber(Number(e.target.value))}
-                className="classy-input font-bold"
-              />
-            </div>
-          </div>
-
-          {/* Times */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="classy-card p-3 space-y-1">
-              <label className="font-black text-xs text-[#0F2A4A] mb-1">وقت البدء</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => handleTimeChange(e.target.value, endTime)}
-                className="classy-input font-bold"
-              />
-            </div>
-
-            <div className="classy-card p-3 space-y-1">
-              <label className="font-black text-xs text-[#0F2A4A] mb-1">وقت الانتهاء</label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => handleTimeChange(startTime, e.target.value)}
-                className="classy-input font-bold"
-              />
-            </div>
-          </div>
-
-          {/* Status & Pricing Options */}
-          <div className="classy-card p-3.5 space-y-1.5">
-            <label className="font-black text-xs text-[#0F2A4A] mb-1">
-              {isEn ? 'Session Status' : 'حالة الحصة'}
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-              className="classy-select"
-            >
-              <option value="scheduled">{isEn ? 'Scheduled' : 'مجدولة (قادمة)'}</option>
-              <option value="completed">{isEn ? 'Completed' : 'تمت واكتملت'}</option>
-              <option value="cancelled">{isEn ? 'Cancelled' : 'ملغاة'}</option>
-            </select>
-          </div>
-
-          {/* Extra Session Identifier */}
-          <div className="classy-card p-3.5 bg-gradient-to-r from-[#FFFFFF] to-[#FFFFFF] border-[#E1EBEC] space-y-1">
-            <label className="flex items-center justify-between cursor-pointer">
-              <div className="space-y-0.5">
-                <span className="font-black text-xs text-[#0F2A4A] flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 rounded-md bg-[#0F2A4A] text-[#FFFFFF] text-[10px] font-black">
-                    {isEn ? 'Extra' : 'إضافية'}
-                  </span>
-                  {isEn ? 'Extra / Additional Session' : 'حصة إضافية (خارج الجدول المعتاد)'}
-                </span>
-                <p className="text-[11px] text-[#0F2A4A] font-medium">
-                  {isEn ? 'Distinguishes this session as an extra lesson on the Classes Calendar' : 'تمييز هذه الحصة كحصة إضافية في تقويم الحصص وسجلات المتابعة'}
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={isExtraSession}
-                onChange={(e) => setIsExtraSession(e.target.checked)}
-                className="w-4.5 h-4.5 accent-[#0F2A4A] rounded cursor-pointer"
-              />
-            </label>
-          </div>
-
-          {isHourly ? (
-            <div className="classy-card p-4 space-y-3 bg-[#E1EBEC]/30 border-[#E1EBEC]">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#0F2A4A]">حساب الحصة بالساعة (مجموعة بالساعة)</span>
-                <span className="text-xs font-black text-[#17375E]">
-                  الإجمالي: {multiplyMoney(hours, hourlyRate)} ج.م
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-black text-[#5F7083] mb-1">مدة الحصة (بالساعات)</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    min="0.25"
-                    value={hours}
-                    onChange={(e) => {
-                      const h = Number(e.target.value) || 1;
-                      setHours(h);
-                      setPricePerStudent(multiplyMoney(h, hourlyRate));
-                    }}
-                    className="classy-input font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-black text-[#5F7083] mb-1">سعر الساعة للطالب (ج.م)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={hourlyRate}
-                    onChange={(e) => {
-                      const rate = Number(e.target.value) || 0;
-                      setHourlyRate(rate);
-                      setPricePerStudent(multiplyMoney(hours, rate));
-                    }}
-                    className="classy-input font-bold"
-                  />
-                </div>
-              </div>
-
-              {/* Quick Hours Pills */}
-              <div className="flex items-center gap-1.5 pt-0.5">
-                {[1, 1.5, 2, 2.5, 3].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => {
-                      setHours(val);
-                      setPricePerStudent(multiplyMoney(val, hourlyRate));
-                    }}
-                    className={`flex-1 py-1 text-xs font-black rounded-xl border transition-all cursor-pointer ${
-                      hours === val
-                        ? 'bg-[#17375E] text-[#FFFFFF] border-[#17375E] shadow-xs'
-                        : 'bg-[#FFFFFF] text-[#5F7083] border-[#E1EBEC] hover:bg-[#E1EBEC]/35'
-                    }`}
-                  >
-                    {val} س
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="classy-card p-3.5 space-y-1.5">
-              <label className="font-black text-xs text-[#0F2A4A] mb-1">سعر الحصة للطالب (ج.م)</label>
-              <input
-                type="number"
-                step="any"
-                min={0}
-                value={pricePerStudent}
-                onChange={(e) => setPricePerStudent(Number(e.target.value))}
-                className="classy-input font-bold"
-              />
-            </div>
-          )}
-
-          {/* Notes */}
-          <div className="classy-card p-3.5 space-y-1.5">
-            <label className="font-black text-xs text-[#0F2A4A] mb-1">ملاحظات أو واجبات الحصة</label>
-            <textarea
-              rows={2}
-              placeholder="الواجب المطلوب: صفحة 24 إلى 28..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="classy-textarea"
-            />
-          </div>
-
-        </form>
-
-        {/* Pinned Sticky Action Footer */}
-        <div className="p-4 bg-[#FFFFFF] border-t border-[#E1EBEC] flex items-center gap-2.5 shrink-0">
+      }
+      headerTrailing={
+        isExtraSession ? (
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-orange text-white">
+            {isEn ? 'Extra' : 'إضافية'}
+          </span>
+        ) : undefined
+      }
+      bodyClassName="p-4"
+      footer={
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="btn-secondary flex-1"
+            className="btn-soft flex-1"
           >
             {t('cancel')}
           </button>
           <button
             type="submit"
             form="add-session-form"
-            className="btn-primary flex-1"
+            className="btn-orange flex-1"
           >
-            <Check className="w-4 h-4" />
-            <span>{editingSession ? 'حفظ تعديلات الحصة' : '+ جدولة الحصة'}</span>
+            <AppIcon name="check" size={16} weight="bold" />
+            <span>
+              {editingSession
+                ? isEn ? 'Save Changes' : 'حفظ تعديلات الحصة'
+                : isEn ? '+ Schedule Session' : '+ جدولة الحصة'}
+            </span>
           </button>
         </div>
+      }
+    >
+      <form id="add-session-form" onSubmit={handleSubmit} className="space-y-3.5 text-xs text-navy text-start">
+        {/* Select Group */}
+        <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+          <label className="field-label flex items-center gap-1.5">
+            <AppIcon name="book" size={14} className="text-navy" />
+            <span>{isEn ? 'Target Group *' : 'المجموعة المستهدفة *'}</span>
+          </label>
+          <select
+            value={groupId}
+            onChange={(e) => {
+              const gId = e.target.value;
+              setGroupId(gId);
+              const grp = allGroups.find((g) => g.id === gId);
+              if (grp) setPricePerStudent(getEffectiveSessionPrice(null, grp));
+            }}
+            className="classy-select"
+          >
+            {allGroups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name} ({g.subject} - {g.gradeLevel})
+              </option>
+            ))}
+          </select>
+        </div>
 
-      </div>
-    </div>
-    </ModalPortal>
+        {/* Title / Topic */}
+        <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+          <label className="field-label flex items-center gap-1.5">
+            <AppIcon name="edit" size={14} className="text-navy" />
+            <span>{isEn ? 'Topic or Lesson Title *' : 'عنوان أو موضوع الحصة *'}</span>
+          </label>
+          <input
+            type="text"
+            required
+            placeholder={isEn ? 'e.g. Chapter 1 - Motion Laws & Problems' : 'مثال: الباب الأول - شرح قوانين الحركة وحل مسائل'}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="classy-input"
+          />
+        </div>
+
+        {/* Date & Day */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="p-3 rounded-2xl bg-page border border-line space-y-1 shadow-2xs">
+            <label className="field-label flex items-center gap-1">
+              <AppIcon name="calendar" size={13} className="text-navy" />
+              <span>{isEn ? 'Date *' : 'تاريخ الحصة *'}</span>
+            </label>
+            <input
+              type="date"
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="classy-input"
+            />
+          </div>
+
+          <div className="p-3 rounded-2xl bg-page border border-line space-y-1 shadow-2xs">
+            <label className="field-label">{isEn ? 'Session #' : 'رقم الحصة التسلسلي'}</label>
+            <input
+              type="number"
+              min={1}
+              value={sessionNumber}
+              onChange={(e) => setSessionNumber(Number(e.target.value))}
+              className="classy-input"
+            />
+          </div>
+        </div>
+
+        {/* Times */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="p-3 rounded-2xl bg-page border border-line space-y-1 shadow-2xs">
+            <label className="field-label flex items-center gap-1">
+              <AppIcon name="clock" size={13} className="text-navy" />
+              <span>{isEn ? 'Start Time' : 'وقت البدء'}</span>
+            </label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => handleTimeChange(e.target.value, endTime)}
+              className="classy-input"
+            />
+          </div>
+
+          <div className="p-3 rounded-2xl bg-page border border-line space-y-1 shadow-2xs">
+            <label className="field-label flex items-center gap-1">
+              <AppIcon name="clock" size={13} className="text-navy" />
+              <span>{isEn ? 'End Time' : 'وقت الانتهاء'}</span>
+            </label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => handleTimeChange(startTime, e.target.value)}
+              className="classy-input"
+            />
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+          <label className="field-label">{isEn ? 'Session Status' : 'حالة الحصة'}</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as any)}
+            className="classy-select"
+          >
+            <option value="scheduled">{isEn ? 'Scheduled' : 'مجدولة (قادمة)'}</option>
+            <option value="completed">{isEn ? 'Completed' : 'تمت واكتملت'}</option>
+            <option value="cancelled">{isEn ? 'Cancelled' : 'ملغاة'}</option>
+          </select>
+        </div>
+
+        {/* Extra Session Identifier */}
+        <div className="p-3.5 rounded-2xl bg-page border border-line shadow-2xs">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="space-y-0.5">
+              <span className="font-black text-xs text-navy flex items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded-md bg-navy text-white text-[10px] font-black">
+                  {isEn ? 'Extra' : 'إضافية'}
+                </span>
+                {isEn ? 'Extra / Additional Session' : 'حصة إضافية (خارج الجدول المعتاد)'}
+              </span>
+              <p className="text-[11px] text-slate font-medium">
+                {isEn ? 'Marks this session as extra on calendar & reports' : 'تمييز هذه الحصة كحصة إضافية في تقويم الحصص وسجلات المتابعة'}
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={isExtraSession}
+              onChange={(e) => setIsExtraSession(e.target.checked)}
+              className="classy-checkbox"
+            />
+          </label>
+        </div>
+
+        {isHourly ? (
+          <div className="p-4 rounded-2xl space-y-3 bg-mint-soft border border-line">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-navy">{isEn ? 'Hourly Billing (Group)' : 'حساب الحصة بالساعة (مجموعة بالساعة)'}</span>
+              <span className="text-xs font-black text-navy">
+                {isEn ? 'Total:' : 'الإجمالي:'} {multiplyMoney(hours, hourlyRate)} {t('currency')}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="field-label">{isEn ? 'Duration (Hours)' : 'مدة الحصة (بالساعات)'}</label>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0.25"
+                  value={hours}
+                  onChange={(e) => {
+                    const h = Number(e.target.value) || 1;
+                    setHours(h);
+                    setPricePerStudent(multiplyMoney(h, hourlyRate));
+                  }}
+                  className="classy-input"
+                />
+              </div>
+
+              <div>
+                <label className="field-label">{isEn ? 'Hourly Rate' : 'سعر الساعة للطالب'}</label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={hourlyRate}
+                  onChange={(e) => {
+                    const rate = Number(e.target.value) || 0;
+                    setHourlyRate(rate);
+                    setPricePerStudent(multiplyMoney(hours, rate));
+                  }}
+                  className="classy-input"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+              {[1, 1.5, 2, 2.5, 3].map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => {
+                    setHours(val);
+                    setPricePerStudent(multiplyMoney(val, hourlyRate));
+                  }}
+                  className={`chip flex-1 ${hours === val ? 'chip-active' : ''}`}
+                >
+                  {val} {isEn ? 'h' : 'س'}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+            <label className="field-label flex items-center gap-1">
+              <AppIcon name="coins" size={13} className="text-navy" />
+              <span>{isEn ? 'Price per Student' : 'سعر الحصة للطالب'}</span>
+            </label>
+            <input
+              type="number"
+              step="any"
+              min={0}
+              value={pricePerStudent}
+              onChange={(e) => setPricePerStudent(Number(e.target.value))}
+              className="classy-input"
+            />
+          </div>
+        )}
+
+        {/* Notes */}
+        <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+          <label className="field-label flex items-center gap-1">
+            <AppIcon name="edit" size={13} className="text-navy" />
+            <span>{isEn ? 'Notes or Homework' : 'ملاحظات أو واجبات الحصة'}</span>
+          </label>
+          <textarea
+            rows={2}
+            placeholder={isEn ? 'Homework: pages 24-28...' : 'الواجب المطلوب: صفحة 24 إلى 28...'}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="classy-textarea"
+          />
+        </div>
+      </form>
+    </BottomSheet>
   );
 };

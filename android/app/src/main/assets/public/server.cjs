@@ -1,0 +1,1422 @@
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+
+// server.ts
+var import_express = __toESM(require("express"), 1);
+var import_path = __toESM(require("path"), 1);
+var import_cors = __toESM(require("cors"), 1);
+var import_vite = require("vite");
+var import_genai = require("@google/genai");
+var import_dotenv = __toESM(require("dotenv"), 1);
+
+// server/db.ts
+var import_firestore = require("@google-cloud/firestore");
+var import_node_fs = __toESM(require("node:fs"), 1);
+var import_node_path = __toESM(require("node:path"), 1);
+var import_node_crypto = __toESM(require("node:crypto"), 1);
+var projectId = "corded-elevator-cf6jr";
+var databaseId = "ai-studio-teacherskdb-2ab7b23f-628d-4bc7-9c38-f649ca7153f9";
+try {
+  const configPath = import_node_path.default.join(process.cwd(), "firebase-applet-config.json");
+  if (import_node_fs.default.existsSync(configPath)) {
+    const config = JSON.parse(import_node_fs.default.readFileSync(configPath, "utf-8"));
+    if (config.projectId) projectId = config.projectId;
+    if (config.firestoreDatabaseId) databaseId = config.firestoreDatabaseId;
+  }
+} catch (e) {
+  console.error("Error loading firebase-applet-config.json for Firestore config:", e);
+}
+var db = new import_firestore.Firestore({
+  projectId,
+  databaseId
+});
+var localUserMemoryCache = /* @__PURE__ */ new Map();
+var localUserTokenCache = /* @__PURE__ */ new Map();
+function generateRandomSessionToken() {
+  return import_node_crypto.default.randomBytes(32).toString("hex");
+}
+async function authenticateUser(identifierOrParams, explicitPassword) {
+  let clean = "";
+  let password = explicitPassword;
+  if (typeof identifierOrParams === "object" && identifierOrParams !== null) {
+    clean = (identifierOrParams.identifier || identifierOrParams.email || identifierOrParams.phone || "").trim();
+    if (!password) {
+      password = identifierOrParams.password;
+    }
+  } else if (typeof identifierOrParams === "string") {
+    clean = identifierOrParams.trim();
+  }
+  if (!clean) {
+    throw new Error("\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 \u0623\u0648 \u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645");
+  }
+  console.log(`[Auth Diagnostic - LOGIN]`, {
+    identifierReceived: clean,
+    hasPasswordProvided: Boolean(password)
+  });
+  const usersColl = db.collection("users");
+  let matchedDoc = null;
+  const queryErrors = [];
+  try {
+    const directDoc = await usersColl.doc(clean).get();
+    if (directDoc.exists) {
+      matchedDoc = directDoc;
+    }
+  } catch (e) {
+    queryErrors.push(`directDoc: [${e.code || "ERR"}] ${e.message}`);
+    console.warn(`[Auth Diagnostic] directDoc lookup error:`, e.message);
+  }
+  if (!matchedDoc) {
+    try {
+      const snap = await usersColl.where("email", "==", clean.toLowerCase()).get();
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+      queryErrors.push(`queryEmailLower: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qEmailLower lookup error:`, e.message);
+    }
+  }
+  if (!matchedDoc) {
+    try {
+      const snap = await usersColl.where("email", "==", clean).get();
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+      queryErrors.push(`queryEmailRaw: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qEmailRaw lookup error:`, e.message);
+    }
+  }
+  if (!matchedDoc) {
+    try {
+      const snap = await usersColl.where("phone", "==", clean).get();
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+      queryErrors.push(`queryPhone: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qPhone lookup error:`, e.message);
+    }
+  }
+  if (!matchedDoc) {
+    try {
+      const snap = await usersColl.where("name", "==", clean).get();
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch (e) {
+      queryErrors.push(`queryName: [${e.code || "ERR"}] ${e.message}`);
+      console.warn(`[Auth Diagnostic] qName lookup error:`, e.message);
+    }
+  }
+  const userFound = Boolean(matchedDoc);
+  console.log(`[Auth Diagnostic] Database Search Result:`, {
+    userFound,
+    matchedUserId: matchedDoc ? matchedDoc.id : null,
+    queryErrorsCount: queryErrors.length,
+    queryErrors: queryErrors.length > 0 ? queryErrors : void 0
+  });
+  if (!matchedDoc) {
+    if (queryErrors.length > 0 && queryErrors.some((err) => err.includes("permission-denied") || err.includes("insufficient"))) {
+      throw new Error(`\u062E\u0637\u0623 \u0641\u064A \u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0642\u0627\u0639\u062F\u0629 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0633\u062D\u0627\u0628\u064A\u0629 (Missing or insufficient permissions): ${queryErrors[0]}`);
+    }
+    throw new Error("\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628 \u0645\u0633\u062C\u0644 \u0628\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0627\u0644\u0647\u0627\u062A\u0641 \u0641\u064A \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0633\u062D\u0627\u0628\u064A");
+  }
+  const userData = matchedDoc.data();
+  const storedHash = userData.password_hash || "";
+  const storedPlain = userData.password || "";
+  const hasPasswordHash = Boolean(storedHash || storedPlain);
+  let verificationResult = false;
+  if (password) {
+    const inputHash = import_node_crypto.default.createHash("sha256").update(password).digest("hex");
+    verificationResult = storedHash && storedHash === inputHash || storedPlain && storedPlain === password || !storedHash && !storedPlain;
+    console.log(`[Auth Diagnostic] Password Verification:`, {
+      passwordHashExists: hasPasswordHash,
+      verificationResult,
+      isHashMatch: Boolean(storedHash && storedHash === inputHash),
+      isPlainMatch: Boolean(storedPlain && storedPlain === password),
+      isEmptyFallback: Boolean(!storedHash && !storedPlain)
+    });
+    if (!verificationResult) {
+      throw new Error("\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D\u0629\u060C \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0623\u0643\u062F \u0648\u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0645\u062C\u062F\u062F\u0627\u064B");
+    }
+  } else {
+    console.log(`[Auth Diagnostic] Password Verification: No password provided in request`, {
+      passwordHashExists: hasPasswordHash,
+      verificationResult: false
+    });
+  }
+  const token = generateRandomSessionToken();
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  await matchedDoc.ref.set(
+    {
+      auth_token: token,
+      last_login_at: now,
+      updated_at: now
+    },
+    { merge: true }
+  );
+  const updatedUser = {
+    ...userData,
+    auth_token: token
+  };
+  return { user: updatedUser, token };
+}
+async function registerUser(account) {
+  const cleanEmail = (account.email || "").trim().toLowerCase();
+  const cleanPhone = (account.phone || "").trim();
+  const usersColl = db.collection("users");
+  if (cleanEmail) {
+    try {
+      const snap = await usersColl.where("email", "==", cleanEmail).get();
+      if (!snap.empty) {
+        const existing = snap.docs[0].data();
+        const pwdHash2 = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
+        if (pwdHash2 && existing.password_hash && pwdHash2 !== existing.password_hash) {
+          throw new Error("\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0645\u0633\u062C\u0644 \u0628\u0627\u0644\u0641\u0639\u0644 \u0628\u062D\u0633\u0627\u0628 \u0622\u062E\u0631 \u0628\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0645\u062E\u062A\u0644\u0641\u0629.");
+        }
+        const token2 = generateRandomSessionToken();
+        const now2 = (/* @__PURE__ */ new Date()).toISOString();
+        await snap.docs[0].ref.set(
+          {
+            auth_token: token2,
+            last_login_at: now2,
+            updated_at: now2
+          },
+          { merge: true }
+        );
+        localUserTokenCache.set(token2, existing);
+        return { user: { ...existing, auth_token: token2 }, token: token2 };
+      }
+    } catch (err) {
+      if (err.message && err.message.includes("\u0645\u0633\u062C\u0644 \u0628\u0627\u0644\u0641\u0639\u0644")) {
+        throw err;
+      }
+      console.warn("[Auth Diagnostic - REGISTER] Email query failed in Firestore:", err.message);
+    }
+    const cached = localUserMemoryCache.get(cleanEmail);
+    if (cached) {
+      const token2 = generateRandomSessionToken();
+      localUserTokenCache.set(token2, cached);
+      return { user: { ...cached, auth_token: token2 }, token: token2 };
+    }
+  }
+  const userId = account.id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const token = generateRandomSessionToken();
+  const pwdHash = account.password ? import_node_crypto.default.createHash("sha256").update(account.password).digest("hex") : "";
+  const newUser = {
+    id: userId,
+    email: cleanEmail || `${userId}@teachermanager.local`,
+    name: account.name || "\u0645\u0639\u0644\u0645",
+    phone: cleanPhone || "",
+    password_hash: pwdHash,
+    auth_token: token,
+    recovery_pin: account.recoveryPin || "123456",
+    created_at: now,
+    updated_at: now
+  };
+  const userRef = usersColl.doc(userId);
+  try {
+    await userRef.set({
+      ...newUser,
+      subject: account.subject || "\u0639\u0627\u0645",
+      centerOrSchool: account.centerOrSchool || ""
+    });
+    console.log(`[Auth Diagnostic - REGISTER]`, {
+      userCreated: true,
+      userDocumentPath: `users/${userId}`,
+      userId,
+      emailType: cleanEmail ? "provided" : "generated",
+      hasPasswordHash: Boolean(pwdHash)
+    });
+  } catch (err) {
+    console.warn(`[Auth Diagnostic - REGISTER] Firestore write failed (using memory cache fallback):`, err.message);
+  }
+  localUserMemoryCache.set(userId, newUser);
+  if (cleanEmail) localUserMemoryCache.set(cleanEmail, newUser);
+  localUserTokenCache.set(token, newUser);
+  return { user: newUser, token };
+}
+async function resetUserPasswordInFirestore(identifier, newPassword, recoveryPin) {
+  const clean = (identifier || "").trim();
+  const usersColl = db.collection("users");
+  let matchedDoc = null;
+  const snapEmail = await usersColl.where("email", "==", clean.toLowerCase()).get();
+  if (!snapEmail.empty) {
+    matchedDoc = snapEmail.docs[0];
+  } else {
+    const snapPhone = await usersColl.where("phone", "==", clean).get();
+    if (!snapPhone.empty) {
+      matchedDoc = snapPhone.docs[0];
+    }
+  }
+  if (!matchedDoc) {
+    throw new Error("\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062D\u0633\u0627\u0628 \u0628\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0627\u0644\u0647\u0627\u062A\u0641 \u0641\u064A \u0627\u0644\u062E\u0627\u062F\u0645 \u0627\u0644\u0633\u062D\u0627\u0628\u064A.");
+  }
+  const user = matchedDoc.data();
+  if (recoveryPin && user.recovery_pin && user.recovery_pin.trim() !== recoveryPin.trim()) {
+    throw new Error("\u0643\u0648\u062F \u0627\u0644\u0627\u0633\u062A\u0631\u062F\u0627\u062F \u0627\u0644\u0633\u0631\u064A (PIN) \u063A\u064A\u0631 \u0635\u062D\u064A\u062D.");
+  }
+  const newHash = import_node_crypto.default.createHash("sha256").update(newPassword).digest("hex");
+  const newToken = generateRandomSessionToken();
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  await matchedDoc.ref.set(
+    {
+      password_hash: newHash,
+      auth_token: newToken,
+      updated_at: now
+    },
+    { merge: true }
+  );
+  return { success: true, message: "\u062A\u0645 \u062A\u062D\u062F\u064A\u062B \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0628\u0646\u062C\u0627\u062D \u0641\u064A \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0633\u062D\u0627\u0628\u064A \u0648\u062A\u062C\u062F\u064A\u062F \u062C\u0644\u0633\u0629 \u0627\u0644\u0623\u0645\u0627\u0646." };
+}
+async function registerOrAuthenticateUser(account) {
+  return registerUser(account);
+}
+async function getUserByToken(token) {
+  if (!token || typeof token !== "string") return null;
+  const cleanToken = token.trim();
+  try {
+    const usersColl = db.collection("users");
+    const snap = await usersColl.where("auth_token", "==", cleanToken).get();
+    if (!snap.empty) {
+      const u = snap.docs[0].data();
+      localUserTokenCache.set(cleanToken, u);
+      return u;
+    }
+  } catch (err) {
+    console.warn("Firestore lookup failed in getUserByToken (falling back to cache):", err.message);
+  }
+  return localUserTokenCache.get(cleanToken) || null;
+}
+async function getCloudDataPackage(userId) {
+  if (!userId) return null;
+  try {
+    const syncDocRef = db.collection("user_sync_stores").doc(userId);
+    const snap = await syncDocRef.get();
+    if (!snap.exists) {
+      console.log(`[Server Cloud Storage] No sync package document found in Firestore for user ${userId}`);
+      return null;
+    }
+    const data = snap.data();
+    if (!data) return null;
+    const rawPkg = data.package || data.data_package || null;
+    if (!rawPkg) {
+      console.log(`[Server Cloud Storage] Sync store document for user ${userId} contains empty package`);
+      return null;
+    }
+    const resetTime = rawPkg.resetAllBefore ? new Date(rawPkg.resetAllBefore).getTime() : 0;
+    const tombstoneMap = /* @__PURE__ */ new Map();
+    for (const t of rawPkg.tombstones || []) {
+      if (t && t.id && t.entityType) {
+        const key = `${t.entityType}:${t.id}`;
+        const existing = tombstoneMap.get(key);
+        if (!existing || new Date(t.deletedAt).getTime() > new Date(existing).getTime()) {
+          tombstoneMap.set(key, t.deletedAt);
+        }
+      }
+    }
+    const filterList = (entityType, list = []) => {
+      if (!Array.isArray(list)) return [];
+      return list.filter((item) => {
+        if (!item || !item.id) return false;
+        const itemTimeStr = item.updatedAt || item.createdAt || "";
+        const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+        if (resetTime > 0 && itemTime <= resetTime) {
+          return false;
+        }
+        const delTimeStr = tombstoneMap.get(`${entityType}:${item.id}`);
+        if (delTimeStr && itemTime <= new Date(delTimeStr).getTime()) {
+          return false;
+        }
+        return true;
+      });
+    };
+    const sanitizedStudents = filterList("student", rawPkg.students);
+    const sanitizedGroups = filterList("group", rawPkg.groups);
+    const sanitizedEnrollments = filterList("enrollment", rawPkg.enrollments);
+    const sanitizedSessions = filterList("session", rawPkg.sessions);
+    const sanitizedAttendance = filterList("attendance", rawPkg.attendance);
+    const sanitizedPayments = filterList("payment", rawPkg.payments);
+    const sanitizedCreditLogs = filterList("creditLog", rawPkg.creditLogs);
+    const sanitizedPkg = {
+      ...rawPkg,
+      students: sanitizedStudents,
+      groups: sanitizedGroups,
+      enrollments: sanitizedEnrollments,
+      sessions: sanitizedSessions,
+      attendance: sanitizedAttendance,
+      payments: sanitizedPayments,
+      creditLogs: sanitizedCreditLogs,
+      stats: {
+        totalStudents: sanitizedStudents.length,
+        totalGroups: sanitizedGroups.length,
+        totalSessions: sanitizedSessions.length,
+        totalPayments: sanitizedPayments.length
+      }
+    };
+    console.log(`[Server Cloud Storage] getCloudDataPackage sanitized for user ${userId}:`, {
+      resetAllBefore: sanitizedPkg.resetAllBefore,
+      students: sanitizedStudents.length,
+      groups: sanitizedGroups.length,
+      sessions: sanitizedSessions.length,
+      payments: sanitizedPayments.length,
+      tombstones: rawPkg.tombstones?.length || 0
+    });
+    return sanitizedPkg;
+  } catch (err) {
+    console.error(`Error reading cloud data package from Firestore for ${userId}:`, err);
+    return null;
+  }
+}
+function sanitizeForFirestore(val) {
+  if (val === void 0) return null;
+  if (val === null) return null;
+  if (Array.isArray(val)) {
+    return val.map((item) => sanitizeForFirestore(item));
+  }
+  if (typeof val === "object") {
+    const res = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v !== void 0) {
+        res[k] = sanitizeForFirestore(v);
+      }
+    }
+    return res;
+  }
+  return val;
+}
+async function saveCloudDataPackage(userId, dataPackage) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const updatedPkg = sanitizeForFirestore({
+    ...dataPackage,
+    userId,
+    lastSyncTime: now
+  });
+  const syncDocRef = db.collection("user_sync_stores").doc(userId);
+  await syncDocRef.set(
+    {
+      user_id: userId,
+      version: dataPackage.version || "2.0",
+      last_sync_time: now,
+      data_package: updatedPkg,
+      package: updatedPkg,
+      updated_at: now
+    },
+    { merge: true }
+  );
+  try {
+    const auditRef = db.collection("sync_audit_logs").doc();
+    const totalRecords = (dataPackage.students?.length || 0) + (dataPackage.groups?.length || 0) + (dataPackage.sessions?.length || 0) + (dataPackage.payments?.length || 0);
+    auditRef.set({
+      id: auditRef.id,
+      user_id: userId,
+      action: "sync_push",
+      client_ip: "cloud_server",
+      timestamp: now,
+      records_count: totalRecords
+    }).catch(() => {
+    });
+  } catch {
+  }
+  return { lastSyncTime: now, stats: updatedPkg.stats };
+}
+function mergeTombstones(localTombstones = [], cloudTombstones = []) {
+  const map = /* @__PURE__ */ new Map();
+  for (const t of [...cloudTombstones || [], ...localTombstones || []]) {
+    if (!t || !t.id || !t.entityType) continue;
+    const key = `${t.entityType}:${t.id}`;
+    const existing = map.get(key);
+    if (!existing || new Date(t.deletedAt).getTime() > new Date(existing.deletedAt).getTime()) {
+      map.set(key, t);
+    }
+  }
+  return Array.from(map.values());
+}
+function mergeEntities(entityType, localList = [], cloudList = [], tombstoneMap, resetAllBefore) {
+  const map = /* @__PURE__ */ new Map();
+  const resetTime = resetAllBefore ? new Date(resetAllBefore).getTime() : 0;
+  for (const item of cloudList || []) {
+    if (!item || !item.id) continue;
+    const itemTimeStr = item.updatedAt || item.createdAt || "";
+    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+    if (resetTime > 0 && itemTime <= resetTime) {
+      continue;
+    }
+    const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
+    if (deletedAt) {
+      const delTime = new Date(deletedAt).getTime();
+      if (itemTime <= delTime) {
+        continue;
+      }
+    }
+    map.set(item.id, item);
+  }
+  for (const item of localList || []) {
+    if (!item || !item.id) continue;
+    const itemTimeStr = item.updatedAt || item.createdAt || "";
+    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+    if (resetTime > 0 && itemTime <= resetTime) {
+      continue;
+    }
+    const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
+    if (deletedAt) {
+      const delTime = new Date(deletedAt).getTime();
+      if (itemTime <= delTime) {
+        continue;
+      }
+    }
+    const existing = map.get(item.id);
+    if (existing) {
+      const existingTimeStr = existing.updatedAt || existing.createdAt || "";
+      const existingTime = existingTimeStr ? new Date(existingTimeStr).getTime() : 0;
+      if (existingTime > itemTime) {
+        map.set(item.id, { ...item, ...existing });
+      } else {
+        map.set(item.id, { ...existing, ...item });
+      }
+    } else {
+      map.set(item.id, item);
+    }
+  }
+  return Array.from(map.values());
+}
+async function mergeCloudDataPackage(userId, incomingPackage) {
+  const existingCloud = await getCloudDataPackage(userId);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  console.log(`[Server Cloud Merge] Starting merge for user ${userId}:`, {
+    incomingResetAllBefore: incomingPackage?.resetAllBefore,
+    existingCloudResetAllBefore: existingCloud?.resetAllBefore,
+    incomingStudentsCount: incomingPackage?.students?.length || 0,
+    existingCloudStudentsCount: existingCloud?.students?.length || 0,
+    incomingTombstonesCount: incomingPackage?.tombstones?.length || 0,
+    existingCloudTombstonesCount: existingCloud?.tombstones?.length || 0
+  });
+  const mergedTombstones = mergeTombstones(
+    incomingPackage?.tombstones || [],
+    existingCloud?.tombstones || []
+  );
+  const tombstoneMap = /* @__PURE__ */ new Map();
+  for (const t of mergedTombstones) {
+    if (t && t.id && t.entityType) {
+      tombstoneMap.set(`${t.entityType}:${t.id}`, t.deletedAt);
+    }
+  }
+  let effectiveResetAllBefore = void 0;
+  const localReset = incomingPackage?.resetAllBefore;
+  const cloudReset = existingCloud?.resetAllBefore;
+  if (localReset && cloudReset) {
+    effectiveResetAllBefore = new Date(localReset).getTime() >= new Date(cloudReset).getTime() ? localReset : cloudReset;
+  } else {
+    effectiveResetAllBefore = localReset || cloudReset;
+  }
+  console.log(`[Server Cloud Merge] Effective resetAllBefore for ${userId}: ${effectiveResetAllBefore}`);
+  if (!existingCloud) {
+    const initialStudents = mergeEntities("student", incomingPackage.students || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialGroups = mergeEntities("group", incomingPackage.groups || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialEnrollments = mergeEntities("enrollment", incomingPackage.enrollments || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialSessions = mergeEntities("session", incomingPackage.sessions || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialAttendance = mergeEntities("attendance", incomingPackage.attendance || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialPayments = mergeEntities("payment", incomingPackage.payments || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialCreditLogs = mergeEntities("creditLog", incomingPackage.creditLogs || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialHomeworkTests = mergeEntities("homeworkTest", incomingPackage.homeworkTests || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialHomeworkAssignments = mergeEntities("homeworkAssignment", incomingPackage.homeworkAssignments || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialHomeworkQuestionResults = incomingPackage.homeworkQuestionResults || [];
+    const saved = {
+      ...incomingPackage,
+      userId,
+      lastSyncTime: now,
+      students: initialStudents,
+      groups: initialGroups,
+      enrollments: initialEnrollments,
+      sessions: initialSessions,
+      attendance: initialAttendance,
+      payments: initialPayments,
+      creditLogs: initialCreditLogs,
+      homeworkTests: initialHomeworkTests,
+      homeworkAssignments: initialHomeworkAssignments,
+      homeworkQuestionResults: initialHomeworkQuestionResults,
+      tombstones: mergedTombstones,
+      resetAllBefore: effectiveResetAllBefore,
+      stats: {
+        totalStudents: initialStudents.length,
+        totalGroups: initialGroups.length,
+        totalSessions: initialSessions.length,
+        totalPayments: initialPayments.length,
+        totalHomeworkAssignments: initialHomeworkAssignments.length
+      }
+    };
+    await saveCloudDataPackage(userId, saved);
+    console.log(`[Server Cloud Merge] Created initial package for user ${userId}:`, saved.stats);
+    return { dataPackage: saved, merged: false };
+  }
+  const mergedStudents = mergeEntities("student", incomingPackage.students, existingCloud.students, tombstoneMap, effectiveResetAllBefore);
+  const mergedGroups = mergeEntities("group", incomingPackage.groups, existingCloud.groups, tombstoneMap, effectiveResetAllBefore);
+  const mergedEnrollments = mergeEntities("enrollment", incomingPackage.enrollments, existingCloud.enrollments, tombstoneMap, effectiveResetAllBefore);
+  const mergedSessions = mergeEntities("session", incomingPackage.sessions, existingCloud.sessions, tombstoneMap, effectiveResetAllBefore);
+  const mergedAttendance = mergeEntities("attendance", incomingPackage.attendance, existingCloud.attendance, tombstoneMap, effectiveResetAllBefore);
+  const mergedPayments = mergeEntities("payment", incomingPackage.payments, existingCloud.payments, tombstoneMap, effectiveResetAllBefore);
+  const mergedCreditLogs = mergeEntities("creditLog", incomingPackage.creditLogs || [], existingCloud.creditLogs || [], tombstoneMap, effectiveResetAllBefore);
+  const mergedHomeworkTests = mergeEntities("homeworkTest", incomingPackage.homeworkTests || [], existingCloud.homeworkTests || [], tombstoneMap, effectiveResetAllBefore);
+  const mergedHomeworkAssignments = mergeEntities("homeworkAssignment", incomingPackage.homeworkAssignments || [], existingCloud.homeworkAssignments || [], tombstoneMap, effectiveResetAllBefore);
+  const qMap = /* @__PURE__ */ new Map();
+  for (const q of existingCloud.homeworkQuestionResults || []) {
+    if (q && q.id) qMap.set(q.id, q);
+  }
+  for (const q of incomingPackage.homeworkQuestionResults || []) {
+    if (q && q.id) qMap.set(q.id, q);
+  }
+  const mergedHomeworkQuestionResults = Array.from(qMap.values());
+  const mergedMonthlyInvoices = incomingPackage.monthlyInvoices || existingCloud.monthlyInvoices || [];
+  const mergedProfile = { ...existingCloud.teacherProfile || {}, ...incomingPackage.teacherProfile || {} };
+  const mergedPackage = {
+    version: incomingPackage.version || "2.0",
+    userId,
+    lastSyncTime: now,
+    students: mergedStudents,
+    groups: mergedGroups,
+    enrollments: mergedEnrollments,
+    sessions: mergedSessions,
+    attendance: mergedAttendance,
+    payments: mergedPayments,
+    creditLogs: mergedCreditLogs,
+    homeworkTests: mergedHomeworkTests,
+    homeworkAssignments: mergedHomeworkAssignments,
+    homeworkQuestionResults: mergedHomeworkQuestionResults,
+    monthlyInvoices: mergedMonthlyInvoices,
+    teacherProfile: mergedProfile,
+    tombstones: mergedTombstones,
+    resetAllBefore: effectiveResetAllBefore,
+    stats: {
+      totalStudents: mergedStudents.length,
+      totalGroups: mergedGroups.length,
+      totalSessions: mergedSessions.length,
+      totalPayments: mergedPayments.length,
+      totalHomeworkAssignments: mergedHomeworkAssignments.length
+    }
+  };
+  await saveCloudDataPackage(userId, mergedPackage);
+  console.log(`[Server Cloud Merge] Successfully saved merged package for ${userId}:`, {
+    effectiveResetAllBefore,
+    stats: mergedPackage.stats
+  });
+  return { dataPackage: mergedPackage, merged: true };
+}
+async function resetUserCloudData(userId, resetAllBefore) {
+  const resetTimestamp = resetAllBefore || (/* @__PURE__ */ new Date()).toISOString();
+  const resetTime = new Date(resetTimestamp).getTime();
+  console.log(`[Server Cloud Reset] Processing reset for user ${userId} with timestamp ${resetTimestamp}...`);
+  const syncDocRef = db.collection("user_sync_stores").doc(userId);
+  const snap = await syncDocRef.get();
+  let existingPkg = {};
+  if (snap.exists) {
+    const d = snap.data();
+    if (d) {
+      existingPkg = d.package || d.data_package || {};
+    }
+  }
+  let effectiveReset = resetTimestamp;
+  if (existingPkg.resetAllBefore) {
+    if (new Date(existingPkg.resetAllBefore).getTime() > resetTime) {
+      effectiveReset = existingPkg.resetAllBefore;
+    }
+  }
+  const effectiveResetTime = new Date(effectiveReset).getTime();
+  const filterPostReset = (items = []) => {
+    if (!Array.isArray(items)) return [];
+    return items.filter((it) => {
+      if (!it || !it.id) return false;
+      const tStr = it.updatedAt || it.createdAt || "";
+      const t = tStr ? new Date(tStr).getTime() : 0;
+      return t > effectiveResetTime;
+    });
+  };
+  const remainingStudents = filterPostReset(existingPkg.students);
+  const remainingGroups = filterPostReset(existingPkg.groups);
+  const remainingEnrollments = filterPostReset(existingPkg.enrollments);
+  const remainingSessions = filterPostReset(existingPkg.sessions);
+  const remainingAttendance = filterPostReset(existingPkg.attendance);
+  const remainingPayments = filterPostReset(existingPkg.payments);
+  const remainingCreditLogs = filterPostReset(existingPkg.creditLogs);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const resetPackage = sanitizeForFirestore({
+    version: "2.0",
+    userId,
+    lastSyncTime: now,
+    resetAllBefore: effectiveReset,
+    students: remainingStudents,
+    groups: remainingGroups,
+    enrollments: remainingEnrollments,
+    sessions: remainingSessions,
+    attendance: remainingAttendance,
+    payments: remainingPayments,
+    creditLogs: remainingCreditLogs,
+    monthlyInvoices: [],
+    teacherProfile: existingPkg.teacherProfile || null,
+    tombstones: [],
+    stats: {
+      totalStudents: remainingStudents.length,
+      totalGroups: remainingGroups.length,
+      totalSessions: remainingSessions.length,
+      totalPayments: remainingPayments.length
+    }
+  });
+  await syncDocRef.set(
+    {
+      user_id: userId,
+      version: "2.0",
+      last_sync_time: now,
+      data_package: resetPackage,
+      package: resetPackage,
+      updated_at: now
+    },
+    { merge: false }
+  );
+  const verifySnap = await syncDocRef.get();
+  if (!verifySnap.exists) {
+    throw new Error("Firestore read-after-write verification failed: sync store document not found");
+  }
+  const verifyData = verifySnap.data();
+  const verifyPkg = verifyData?.package || verifyData?.data_package;
+  if (!verifyPkg || verifyPkg.resetAllBefore !== effectiveReset) {
+    throw new Error("Firestore read-after-write verification failed: resetAllBefore mismatch");
+  }
+  const verifiedActiveStudents = verifyPkg.students?.length || 0;
+  const verifiedActiveGroups = verifyPkg.groups?.length || 0;
+  const verifiedActiveSessions = verifyPkg.sessions?.length || 0;
+  console.log(`[Server Cloud Reset] Cloud reset acknowledged and verified for ${userId}:`, {
+    resetAllBefore: effectiveReset,
+    verifiedActiveStudents,
+    verifiedActiveGroups,
+    verifiedActiveSessions
+  });
+  return {
+    success: true,
+    acknowledged: true,
+    resetAllBefore: effectiveReset,
+    verifiedActiveStudents,
+    verifiedActiveGroups,
+    verifiedActiveSessions
+  };
+}
+
+// server.ts
+import_dotenv.default.config();
+var app = (0, import_express.default)();
+var PORT = 3e3;
+app.use(
+  (0, import_cors.default)({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "x-auth-token",
+      "Cache-Control",
+      "Pragma",
+      "Expires"
+    ]
+  })
+);
+app.options("*", (0, import_cors.default)());
+app.use(
+  import_express.default.json({
+    limit: "50mb",
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    }
+  })
+);
+app.use(
+  import_express.default.urlencoded({
+    extended: true,
+    limit: "50mb",
+    verify: (req, _res, buf) => {
+      if (!req.rawBody) {
+        req.rawBody = buf;
+      }
+    }
+  })
+);
+var AI_MODELS_CASCADE = ["gemini-3.8-flash", "gemini-3.7-flash"];
+var aiClient = null;
+function getGenAI() {
+  if (!aiClient && process.env.GEMINI_API_KEY) {
+    aiClient = new import_genai.GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build"
+        }
+      }
+    });
+  }
+  return aiClient;
+}
+async function safeGenerateContent(ai, params) {
+  for (const model of AI_MODELS_CASCADE) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.contents,
+        config: params.config
+      });
+      if (response && response.text) {
+        return response.text;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+app.get("/api/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    database: "Firebase Firestore (Project: corded-elevator-cf6jr)",
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    hasApiKey: Boolean(process.env.GEMINI_API_KEY)
+  });
+});
+async function requireAuth(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    let token = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (req.headers["x-auth-token"]) {
+      token = String(req.headers["x-auth-token"]).trim();
+    } else if (req.body && req.body.token) {
+      token = String(req.body.token).trim();
+    }
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Missing authentication token."
+      });
+    }
+    const user = await getUserByToken(token);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Invalid or expired authentication session token."
+      });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error("Auth middleware error:", err);
+    return res.status(500).json({ success: false, error: "Internal authentication error" });
+  }
+}
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const rawBody = req.body || {};
+    const bodyKeys = Object.keys(rawBody);
+    const identifier = rawBody.identifier || rawBody.email || rawBody.phone || rawBody.id || rawBody.username;
+    const hasPassword = Boolean(rawBody.password);
+    let idType = "unknown";
+    if (rawBody.email || identifier && identifier.includes("@")) {
+      idType = "email";
+    } else if (rawBody.phone || identifier && /^[0-9+\s()-]+$/.test(identifier)) {
+      idType = "phone";
+    } else if (rawBody.id || identifier && identifier.startsWith("acc_")) {
+      idType = "userId";
+    } else if (identifier) {
+      idType = "name_or_string";
+    }
+    console.log(`[Auth Diagnostic] Login Request Received:`, {
+      bodyKeys,
+      receivedIdentifierType: idType,
+      hasIdentifier: Boolean(identifier),
+      hasPassword,
+      clientIp: req.ip || req.headers["x-forwarded-for"],
+      userAgent: req.headers["user-agent"]
+    });
+    if (!identifier) {
+      console.warn(`[Auth Diagnostic] Login failed: Missing identifier in request body.`);
+      return res.status(400).json({
+        success: false,
+        error: "\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641",
+        diagnostic: { reason: "MISSING_IDENTIFIER", receivedKeys: bodyKeys }
+      });
+    }
+    const { user, token } = await authenticateUser(identifier, rawBody.password);
+    console.log(`[Auth Diagnostic] Login successful! User ID: ${user.id}, Email: ${user.email}`);
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "",
+        subject: user.subject || "\u0639\u0627\u0645",
+        centerOrSchool: user.centerOrSchool || "",
+        recoveryPin: user.recovery_pin || "123456",
+        createdAt: user.created_at,
+        lastLoginAt: user.updated_at
+      }
+    });
+  } catch (error) {
+    console.warn(`[Auth Diagnostic] Authentication failed:`, {
+      message: error.message,
+      code: error.code || "AUTH_FAILED",
+      stack: error.stack?.split("\n").slice(0, 3).join(" | ")
+    });
+    res.status(401).json({
+      success: false,
+      error: error.message || "\u0641\u0634\u0644 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644",
+      errorCode: error.code || "AUTHENTICATION_FAILED",
+      diagnostic: {
+        errorMessage: error.message,
+        errorName: error.name,
+        errorCode: error.code
+      }
+    });
+  }
+});
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const rawBody = req.body || {};
+    const receivedFields = Object.keys(rawBody);
+    const name = (rawBody.name || "").trim();
+    const email = (rawBody.email || "").trim().toLowerCase();
+    const phone = (rawBody.phone || "").trim();
+    const password = rawBody.password;
+    const subject = rawBody.subject || "\u0639\u0627\u0645";
+    const centerOrSchool = rawBody.centerOrSchool || rawBody.center_or_school || "";
+    const recoveryPin = rawBody.recoveryPin || rawBody.recovery_pin || "123456";
+    const id = rawBody.id;
+    const missingFields = [];
+    if (!name) missingFields.push("name (\u0627\u0633\u0645 \u0627\u0644\u0645\u0639\u0644\u0645)");
+    if (!email && !phone) missingFields.push("email or phone (\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0623\u0648 \u0627\u0644\u0647\u0627\u062A\u0641)");
+    if (!password) {
+      missingFields.push("password (\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631)");
+    } else if (String(password).length < 4) {
+      missingFields.push("password_too_short (\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u064A\u062C\u0628 \u0623\u0644\u0627 \u062A\u0642\u0644 \u0639\u0646 4 \u0623\u062D\u0631\u0641)");
+    }
+    console.log(`[Auth Diagnostic - REGISTER Request]`, {
+      receivedFields,
+      hasName: Boolean(name),
+      hasEmail: Boolean(email),
+      hasPhone: Boolean(phone),
+      hasPassword: Boolean(password),
+      missingFields,
+      clientIp: req.ip || req.headers["x-forwarded-for"]
+    });
+    if (missingFields.length > 0) {
+      const firstMissing = missingFields[0];
+      return res.status(400).json({
+        success: false,
+        error: `Missing field: ${firstMissing}`,
+        errorCode: "VALIDATION_FAILED",
+        missingFields,
+        receivedFields
+      });
+    }
+    const { user, token } = await registerUser({
+      id,
+      email,
+      name,
+      phone,
+      subject,
+      centerOrSchool,
+      password,
+      recoveryPin
+    });
+    console.log(`[Auth API /api/auth/register] Registration successful! User ID: ${user.id}`);
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone || "",
+        subject: user.subject || "\u0639\u0627\u0645",
+        centerOrSchool: user.centerOrSchool || "",
+        recoveryPin: user.recovery_pin || "123456",
+        createdAt: user.created_at,
+        lastLoginAt: user.updated_at
+      }
+    });
+  } catch (error) {
+    console.error(`[Auth API /api/auth/register] Registration error:`, error);
+    res.status(400).json({
+      success: false,
+      error: error.message || "\u0641\u0634\u0644 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628",
+      errorCode: error.code || "REGISTRATION_FAILED"
+    });
+  }
+});
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { identifier, newPassword, recoveryPin } = req.body;
+    const result = await resetUserPasswordInFirestore(identifier, newPassword, recoveryPin);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message || "\u0641\u0634\u0644 \u0627\u0633\u062A\u0639\u0627\u062F\u0629 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631" });
+  }
+});
+app.post("/api/auth/sync-session", async (req, res) => {
+  try {
+    const { id, email, name, phone, password, recoveryPin } = req.body;
+    const userId = id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const userEmail = email || `${userId}@teachermanager.local`;
+    const { user, token } = await registerOrAuthenticateUser({
+      id: userId,
+      email: userEmail,
+      name: name || "\u0645\u0639\u0644\u0645",
+      phone,
+      password,
+      recoveryPin
+    });
+    res.json({ success: true, token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (error) {
+    console.error("Auth sync error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to authenticate session" });
+  }
+});
+app.post("/api/sync/push", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = req.user.id;
+    const { dataPackage } = req.body;
+    if (!dataPackage) {
+      return res.status(400).json({ success: false, error: "Missing dataPackage" });
+    }
+    const result = await saveCloudDataPackage(authenticatedUserId, dataPackage);
+    res.json({ success: true, lastSyncTime: result.lastSyncTime, stats: result.stats });
+  } catch (error) {
+    console.error("Sync push error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to push sync data" });
+  }
+});
+app.get("/api/sync/pull", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = req.user.id;
+    const cloudData = await getCloudDataPackage(authenticatedUserId);
+    if (!cloudData) {
+      return res.json({ success: true, hasCloudData: false, dataPackage: null });
+    }
+    res.json({ success: true, hasCloudData: true, dataPackage: cloudData });
+  } catch (error) {
+    console.error("Sync pull error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
+  }
+});
+app.get("/api/sync/pull/:userId", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = req.user.id;
+    const cloudData = await getCloudDataPackage(authenticatedUserId);
+    if (!cloudData) {
+      return res.json({ success: true, hasCloudData: false, dataPackage: null });
+    }
+    res.json({ success: true, hasCloudData: true, dataPackage: cloudData });
+  } catch (error) {
+    console.error("Sync pull error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
+  }
+});
+app.post("/api/sync/merge", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = req.user.id;
+    const { dataPackage } = req.body;
+    if (!dataPackage) {
+      return res.status(400).json({ success: false, error: "Missing dataPackage" });
+    }
+    const result = await mergeCloudDataPackage(authenticatedUserId, dataPackage);
+    res.json({ success: true, dataPackage: result.dataPackage, merged: result.merged });
+  } catch (error) {
+    console.error("Sync merge error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to merge sync data" });
+  }
+});
+app.post("/api/sync/reset", requireAuth, async (req, res) => {
+  try {
+    const authenticatedUserId = req.user.id;
+    const { resetAllBefore } = req.body;
+    const result = await resetUserCloudData(authenticatedUserId, resetAllBefore);
+    res.json({
+      success: true,
+      acknowledged: true,
+      resetAllBefore: result.resetAllBefore,
+      verifiedActiveStudents: result.verifiedActiveStudents,
+      verifiedActiveGroups: result.verifiedActiveGroups,
+      verifiedActiveSessions: result.verifiedActiveSessions
+    });
+  } catch (error) {
+    console.error("Sync reset error:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to reset cloud sync data" });
+  }
+});
+app.post("/api/ai/lesson-plan", async (req, res) => {
+  const { topic, subject, gradeLevel, duration = "45 mins", objectives } = req.body;
+  const ai = getGenAI();
+  const fallbackPlan = `# \u062E\u0637\u0629 \u062F\u0631\u0633: ${topic || "\u0627\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629"}
+**\u0627\u0644\u0645\u0627\u062F\u0629:** ${subject || "\u0639\u0627\u0645"} | **\u0627\u0644\u0635\u0641:** ${gradeLevel || "\u0627\u0644\u0645\u0631\u062D\u0644\u0629 \u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629"} | **\u0627\u0644\u0645\u062F\u0629:** ${duration}
+
+## \u{1F3AF} \u0627\u0644\u0623\u0647\u062F\u0627\u0641 \u0627\u0644\u062A\u0639\u0644\u064A\u0645\u064A\u0629
+- \u0641\u0647\u0645 \u0627\u0644\u0637\u0627\u0644\u0628 \u0644\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629 \u0644\u0640 ${topic || "\u0645\u0648\u0636\u0648\u0639 \u0627\u0644\u062F\u0631\u0633"}.
+- \u062A\u0637\u0628\u064A\u0642 3 \u0623\u0645\u062B\u0644\u0629 \u0639\u0645\u0644\u064A\u0629 \u0648\u062A\u0645\u0627\u0631\u064A\u0646 \u062A\u0641\u0627\u0639\u0644\u064A\u0629.
+- \u062A\u0642\u064A\u064A\u0645 \u0627\u0633\u062A\u064A\u0639\u0627\u0628 \u0627\u0644\u0637\u0644\u0627\u0628 \u0648\u0645\u062A\u0627\u0628\u0639\u0629 \u0627\u0644\u0623\u062F\u0627\u0621.
+
+## \u23F1\uFE0F \u0633\u064A\u0631 \u0627\u0644\u062D\u0635\u0629 \u0648\u0627\u0644\u0623\u0646\u0634\u0637\u0629
+1. **\u0627\u0644\u062A\u0647\u064A\u0626\u0629 \u0648\u0627\u0644\u062A\u0645\u0647\u064A\u062F (5-8 \u062F\u0642\u0627\u0626\u0642):** \u0645\u0631\u0627\u062C\u0639\u0629 \u0633\u0631\u064A\u0639\u0629 \u0648\u0637\u0631\u062D \u0633\u0624\u0627\u0644 \u062A\u0641\u0627\u0639\u0644\u064A \u0645\u0634\u0648\u0642.
+2. **\u0627\u0644\u0634\u0631\u062D \u0648\u0627\u0644\u062A\u062F\u0631\u064A\u0633 \u0627\u0644\u0645\u0628\u0627\u0634\u0631 (15 \u062F\u0642\u064A\u0642\u0629):** \u062A\u0648\u0636\u064A\u062D \u0627\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0648\u0627\u0644\u0623\u0641\u0643\u0627\u0631 \u0645\u0639 \u0623\u0645\u062B\u0644\u0629 \u0639\u0644\u0649 \u0627\u0644\u0633\u0628\u0648\u0631\u0629.
+3. **\u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0648\u0627\u0644\u0645\u0645\u0627\u0631\u0633\u0629 \u0627\u0644\u0645\u0648\u062C\u0647\u0629 (12 \u062F\u0642\u064A\u0642\u0629):** \u062D\u0644 \u0645\u0633\u0627\u0626\u0644 \u0648\u062A\u0645\u0627\u0631\u064A\u0646 \u062B\u0646\u0627\u0626\u064A\u0629 \u0628\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0637\u0644\u0627\u0628.
+4. **\u0627\u0644\u062A\u0642\u064A\u064A\u0645 \u0627\u0644\u062A\u0643\u0648\u064A\u0646\u064A (7 \u062F\u0642\u0627\u0626\u0642):** \u0633\u0624\u0627\u0644 \u0633\u0631\u064A\u0639 \u0644\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0641\u0647\u0645 \u0648\u0627\u0644\u062A\u0637\u0628\u064A\u0642.
+5. **\u0627\u0644\u062E\u0627\u062A\u0645\u0629 \u0648\u0627\u0644\u0648\u0627\u062C\u0628 (3 \u062F\u0642\u0627\u0626\u0642):** \u062A\u0644\u062E\u064A\u0635 \u0627\u0644\u0646\u0642\u0627\u0637 \u0627\u0644\u0647\u0627\u0645\u0629 \u0648\u062A\u062D\u062F\u064A\u062F \u0627\u0644\u0648\u0627\u062C\u0628 \u0627\u0644\u0645\u0646\u0632\u0644\u064A.`;
+  if (!ai) {
+    return res.json({ plan: fallbackPlan });
+  }
+  try {
+    const prompt = `You are a master educator. Create a detailed, highly practical, engaging lesson plan for a teacher in Arabic (or matching the language requested).
+Subject: ${subject}
+Grade Level: ${gradeLevel}
+Topic: ${topic}
+Duration: ${duration}
+Specific Goals/Notes: ${objectives || "Engaging hands-on activity, clear formative assessment"}
+
+Format your response cleanly in Markdown with bold headers, bullet points, time breakdown, interactive activities, and an exit ticket.`;
+    const text = await safeGenerateContent(ai, { contents: prompt });
+    res.json({ plan: text || fallbackPlan });
+  } catch {
+    res.json({ plan: fallbackPlan });
+  }
+});
+app.post("/api/ai/parent-message", async (req, res) => {
+  const { studentName, parentName, reason, tone = "professional & warm", details, teacherName = "\u0627\u0644\u0645\u0639\u0644\u0645" } = req.body;
+  const ai = getGenAI();
+  let fallbackSubject = `\u062A\u0642\u0631\u064A\u0631 \u0645\u062A\u0627\u0628\u0639\u0629 \u0628\u062E\u0635\u0648\u0635 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName || "\u0627\u0644\u0645\u062D\u062A\u0631\u0645/\u0629"}`;
+  let fallbackBody = `\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645 \u0648\u0631\u062D\u0645\u0629 \u0627\u0644\u0644\u0647 \u0648\u0628\u0631\u0643\u0627\u062A\u0647 \u0648\u0644\u064A \u0623\u0645\u0631 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName || "\u0627\u0644\u0645\u062D\u062A\u0631\u0645/\u0629"}\u060C
+
+\u0646\u0648\u062F \u0625\u062D\u0627\u0637\u062A\u0643\u0645 \u0639\u0644\u0645\u0627\u064B \u0628\u0645\u062A\u0627\u0628\u0639\u0629 \u0623\u062F\u0627\u0621 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 \u0641\u064A \u0627\u0644\u062D\u0635\u0635 \u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629.
+${details ? `\u0645\u0644\u0627\u062D\u0638\u0627\u062A: ${details}
+` : ""}
+\u0634\u0627\u0643\u0631\u064A\u0646 \u0648\u0645\u0642\u062F\u0631\u064A\u0646 \u062D\u0633\u0646 \u062A\u0639\u0627\u0648\u0646\u0643\u0645 \u0645\u0639\u0646\u0627.
+\u0645\u0639 \u0623\u0637\u064A\u0628 \u0627\u0644\u062A\u062D\u064A\u0627\u062A\u060C
+${teacherName}`;
+  if (reason === "attendance") {
+    fallbackSubject = `\u0625\u0634\u0639\u0627\u0631 \u0628\u062E\u0635\u0648\u0635 \u062D\u0636\u0648\u0631 \u0648\u063A\u064A\u0627\u0628 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName}`;
+    fallbackBody = `\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645 \u0648\u0631\u062D\u0645\u0629 \u0627\u0644\u0644\u0647 \u0648\u0628\u0631\u0643\u0627\u062A\u0647\u060C
+
+\u0646\u062D\u064A\u0637\u0643\u0645 \u0639\u0644\u0645\u0627\u064B \u0628\u063A\u064A\u0627\u0628 \u0627\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName} \u0639\u0646 \u0627\u0644\u062D\u0635\u0629 \u0627\u0644\u0645\u0642\u0631\u0631\u0629 \u0627\u0644\u064A\u0648\u0645. \u0646\u0631\u062C\u0648 \u0627\u0644\u0627\u0637\u0645\u0626\u0646\u0627\u0646 \u0639\u0644\u064A\u0647 \u0648\u0627\u0644\u062A\u0648\u0627\u0635\u0644 \u0645\u0639\u0646\u0627 \u0644\u062A\u0631\u062A\u064A\u0628 \u062A\u0639\u0648\u064A\u0636 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u062F\u0631\u0627\u0633\u064A.
+
+\u0645\u0639 \u062E\u0627\u0644\u0635 \u0627\u0644\u062A\u0642\u062F\u064A\u0631\u060C
+${teacherName}`;
+  } else if (reason === "praise") {
+    fallbackSubject = `\u0634\u0647\u0627\u062F\u0629 \u0634\u0643\u0631 \u0648\u062A\u0645\u064A\u0632 \u0644\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName} \u{1F31F}`;
+    fallbackBody = `\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645 \u0648\u0631\u062D\u0645\u0629 \u0627\u0644\u0644\u0647 \u0648\u0628\u0631\u0643\u0627\u062A\u0647\u060C
+
+\u064A\u0633\u0639\u062F\u0646\u0627 \u0625\u0628\u0644\u0627\u063A\u0643\u0645 \u0628\u0627\u0644\u0645\u0633\u062A\u0648\u0649 \u0627\u0644\u0645\u062A\u0645\u064A\u0632 \u0648\u0627\u0644\u062A\u0641\u0627\u0639\u0644 \u0627\u0644\u0625\u064A\u062C\u0627\u0628\u064A \u0627\u0644\u0631\u0627\u0626\u0639 \u0644\u0644\u0637\u0627\u0644\u0628/\u0629 ${studentName} \u062E\u0644\u0627\u0644 \u0627\u0644\u062D\u0635\u0629\u060C \u0645\u0645\u0627 \u064A\u0639\u0643\u0633 \u062A\u0641\u0648\u0642\u0647 \u0648\u062D\u0631\u0635\u0647 \u0627\u0644\u062F\u0627\u0626\u0645.
+
+\u062F\u0645\u062A\u0645 \u0641\u062E\u0648\u0631\u064A\u0646 \u0628\u0647 \u062F\u0627\u0626\u0645\u0627\u064B\u060C
+${teacherName}`;
+  }
+  if (!ai) {
+    return res.json({ subject: fallbackSubject, message: fallbackBody });
+  }
+  try {
+    const prompt = `You are an empathetic, professional teacher communicating with a student's parent/guardian in Arabic.
+Teacher Name: ${teacherName}
+Student Name: ${studentName}
+Parent Name: ${parentName || "\u0648\u0644\u064A \u0627\u0644\u0623\u0645\u0631"}
+Type/Reason: ${reason}
+Tone: ${tone}
+Specific Notes: ${details || "None"}
+
+Generate a JSON object with two fields:
+"subject": A concise, clear email/SMS subject line in Arabic
+"message": The body of the message in Arabic.`;
+    const text = await safeGenerateContent(ai, {
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        return res.json(parsed);
+      } catch {
+      }
+    }
+    res.json({ subject: fallbackSubject, message: text || fallbackBody });
+  } catch {
+    res.json({ subject: fallbackSubject, message: fallbackBody });
+  }
+});
+app.post("/api/ai/quiz-generator", async (req, res) => {
+  const { topic, subject, gradeLevel, questionCount = 4, difficulty = "Medium" } = req.body;
+  const ai = getGenAI();
+  const fallbackQuestions = [
+    {
+      id: "q1",
+      question: `\u0645\u0627 \u0647\u0648 \u0627\u0644\u0645\u0641\u0647\u0648\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A \u0627\u0644\u0645\u0631\u062A\u0628\u0637 \u0628\u0640 (${topic || "\u0647\u0630\u0627 \u0627\u0644\u0645\u0648\u0636\u0648\u0639"})\u061F`,
+      options: ["\u0645\u0641\u0647\u0648\u0645 \u0631\u0626\u064A\u0633\u064A \u0645\u062D\u0648\u0631\u064A", "\u0639\u0627\u0645\u0644 \u062B\u0627\u0646\u0648\u064A \u063A\u064A\u0631 \u0645\u0628\u0627\u0634\u0631", "\u062D\u0627\u0644\u0629 \u0634\u0627\u0630\u0629 \u0645\u0624\u0642\u062A\u0629", "\u0645\u0639\u0644\u0648\u0645\u0629 \u063A\u064A\u0631 \u0645\u0631\u062A\u0628\u0637\u0629"],
+      correctAnswer: "\u0645\u0641\u0647\u0648\u0645 \u0631\u0626\u064A\u0633\u064A \u0645\u062D\u0648\u0631\u064A",
+      explanation: "\u0647\u0630\u0627 \u0647\u0648 \u0627\u0644\u0623\u0633\u0627\u0633 \u0627\u0644\u0630\u064A \u064A\u0646\u0628\u0646\u064A \u0639\u0644\u064A\u0647 \u0627\u0644\u062F\u0631\u0633."
+    },
+    {
+      id: "q2",
+      question: `\u0623\u064A \u0645\u0645\u0627 \u064A\u0644\u064A \u064A\u0645\u062B\u0644 \u0623\u0641\u0636\u0644 \u062A\u0637\u0628\u064A\u0642 \u0639\u0645\u0644\u064A \u0644\u0640 (${topic || "\u0627\u0644\u0645\u062D\u062A\u0648\u0649"})\u061F`,
+      options: ["\u0627\u0644\u062A\u062C\u0631\u0628\u0629 \u0648\u0627\u0644\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0637\u0642\u064A", "\u0627\u0644\u062A\u062E\u0645\u064A\u0646 \u0627\u0644\u0639\u0634\u0648\u0627\u0626\u064A", "\u062A\u062C\u0627\u0647\u0644 \u0627\u0644\u0634\u0631\u0648\u0637 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629", "\u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636 \u063A\u064A\u0631 \u0627\u0644\u0645\u062F\u0631\u0648\u0633"],
+      correctAnswer: "\u0627\u0644\u062A\u062C\u0631\u0628\u0629 \u0648\u0627\u0644\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0637\u0642\u064A",
+      explanation: "\u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0639\u0645\u0644\u064A \u0627\u0644\u0633\u0644\u064A\u0645 \u064A\u062A\u0637\u0644\u0628 \u062A\u062D\u0644\u064A\u0644\u0627\u064B \u0648\u062A\u062C\u0631\u0628\u0629 \u062F\u0642\u064A\u0642\u0629."
+    }
+  ];
+  if (!ai) {
+    return res.json({ questions: fallbackQuestions });
+  }
+  try {
+    const prompt = `Generate a ${questionCount}-question multiple-choice quiz in Arabic on:
+Subject: ${subject}
+Grade Level: ${gradeLevel}
+Topic: ${topic}
+Difficulty: ${difficulty}
+
+Return a valid JSON array of objects with the structure:
+[
+  {
+    "id": "q1",
+    "question": "question text in Arabic",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "Option A",
+    "explanation": "Brief reasoning in Arabic"
+  }
+]`;
+    const text = await safeGenerateContent(ai, {
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        return res.json({ questions: Array.isArray(parsed) ? parsed : parsed.questions || fallbackQuestions });
+      } catch {
+      }
+    }
+    res.json({ questions: fallbackQuestions });
+  } catch {
+    res.json({ questions: fallbackQuestions });
+  }
+});
+app.post("/api/ai/attendance-insights", async (req, res) => {
+  const { students = [], attendanceSummary = [], teacherSubject = "\u0639\u0627\u0645", teacherName = "\u0627\u0644\u0645\u0639\u0644\u0645" } = req.body;
+  const ai = getGenAI();
+  const generateFallbackInsights = () => {
+    const atRiskStudents = [];
+    let totalPresent = 0;
+    let totalAbsences = 0;
+    let totalRecorded = 0;
+    attendanceSummary.forEach((stSummary) => {
+      totalPresent += stSummary.presentCount || 0;
+      totalAbsences += (stSummary.absentChargedCount || 0) + (stSummary.absentFreeCount || 0);
+      totalRecorded += stSummary.totalSessions || 0;
+      const rate = stSummary.totalSessions > 0 ? Math.round(stSummary.presentCount / stSummary.totalSessions * 100) : 100;
+      const recentAbsences = (stSummary.recentStatuses || []).slice(0, 2).filter((s) => s && s.includes("absent")).length;
+      if (recentAbsences >= 2 || rate < 75) {
+        const studentInfo = students.find((s) => s.id === stSummary.studentId);
+        atRiskStudents.push({
+          studentId: stSummary.studentId,
+          studentName: stSummary.studentName || studentInfo?.name || "\u0637\u0627\u0644\u0628",
+          riskLevel: recentAbsences >= 2 ? "high" : "medium",
+          attendanceRate: rate,
+          reason: recentAbsences >= 2 ? "\u063A\u064A\u0627\u0628 \u0645\u062A\u062A\u0627\u0644\u064A \u0641\u064A \u0622\u062E\u0631 \u062D\u0635\u062A\u064A\u0646" : `\u0646\u0633\u0628\u0629 \u0627\u0644\u062D\u0636\u0648\u0631 \u0645\u0646\u062E\u0641\u0636\u0629 (${rate}%)`,
+          recommendation: "\u0627\u0644\u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0648\u0644\u064A \u0627\u0644\u0623\u0645\u0631 \u0644\u0644\u0627\u0637\u0645\u0626\u0646\u0627\u0646 \u0648\u0645\u062A\u0627\u0628\u0639\u0629 \u062A\u0639\u0648\u064A\u0636 \u0627\u0644\u062F\u0631\u0648\u0633 \u0627\u0644\u0641\u0627\u0626\u062A\u0629",
+          parentPhone: studentInfo?.parentPhone || studentInfo?.phone || ""
+        });
+      }
+    });
+    const overallRate = totalRecorded > 0 ? Math.round(totalPresent / totalRecorded * 100) : 100;
+    return {
+      overallHealthScore: overallRate,
+      headline: atRiskStudents.length > 0 ? `\u062A\u0645 \u0631\u0635\u062F ${atRiskStudents.length} \u0637\u0644\u0627\u0628 \u0628\u062D\u0627\u062C\u0629 \u0644\u0645\u062A\u0627\u0628\u0639\u0629 \u0625\u0636\u0627\u0641\u064A\u0629 \u0644\u062A\u0639\u0632\u064A\u0632 \u0627\u0644\u062A\u0632\u0627\u0645\u0647\u0645 \u0628\u0627\u0644\u062D\u0636\u0648\u0631` : "\u0645\u0639\u062F\u0644 \u0627\u0644\u062A\u0632\u0627\u0645 \u0645\u0645\u062A\u0627\u0632 \u0648\u0627\u0633\u062A\u0642\u0631\u0627\u0631 \u0639\u0627\u0645 \u0641\u064A \u062D\u0636\u0648\u0631 \u0627\u0644\u0637\u0644\u0627\u0628 \u0644\u062C\u0645\u064A\u0639 \u0627\u0644\u0645\u062C\u0645\u0648\u0639\u0627\u062A",
+      summary: `\u0645\u0639\u062F\u0644 \u0627\u0644\u062D\u0636\u0648\u0631 \u0627\u0644\u0639\u0627\u0645 ${overallRate}%. \u064A\u0648\u0635\u0649 \u0628\u0645\u062A\u0627\u0628\u0639\u0629 \u0627\u0644\u0637\u0644\u0627\u0628 \u0627\u0644\u0645\u062A\u063A\u064A\u0628\u064A\u0646 \u0644\u0644\u062D\u0641\u0627\u0638 \u0639\u0644\u0649 \u0627\u0633\u062A\u0645\u0631\u0627\u0631\u064A\u0629 \u0627\u0644\u062A\u062D\u0635\u064A\u0644 \u0627\u0644\u0623\u0643\u0627\u062F\u064A\u0645\u064A.`,
+      attentionNeededStudents: atRiskStudents.slice(0, 5),
+      positiveNotes: totalRecorded > 0 ? "\u0645\u0639\u0638\u0645 \u0627\u0644\u0637\u0644\u0627\u0628 \u064A\u062D\u0627\u0641\u0638\u0648\u0646 \u0639\u0644\u0649 \u062D\u0636\u0648\u0631 \u0645\u0646\u062A\u0638\u0645 \u062F\u0648\u0646 \u0627\u0646\u0642\u0637\u0627\u0639" : "\u0633\u062C\u0644 \u0627\u0644\u062D\u0636\u0648\u0631 \u0645\u0646\u062A\u0638\u0645",
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  };
+  if (!ai || attendanceSummary.length === 0) {
+    return res.json(generateFallbackInsights());
+  }
+  try {
+    const prompt = `You are an expert educational data analyst assisting teacher "${teacherName}" (Subject: ${teacherSubject}).
+Analyze the following student attendance records and generate actionable pedagogical insights in Arabic.
+
+Student Attendance Data:
+${JSON.stringify(attendanceSummary.slice(0, 30), null, 2)}
+
+Instructions:
+1. Calculate overall health score (0-100) of attendance.
+2. Identify students who need extra attention due to:
+   - Repeated/consecutive absences
+   - Frequent tardiness
+   - Sudden drop in attendance rate
+3. For each identified student, provide:
+   - studentId
+   - studentName
+   - riskLevel: "high" (2+ consecutive absences or <60% attendance) or "medium" (tardiness or 60-75% attendance) or "low"
+   - attendanceRate: number (0-100)
+   - reason: concise explanation in Arabic (e.g. "\u063A\u064A\u0627\u0628 \u0645\u062A\u062A\u0627\u0644\u064A \u0644\u0622\u062E\u0631 \u062D\u0635\u062A\u064A\u0646", "\u062A\u0643\u0631\u0627\u0631 \u0627\u0644\u062A\u0623\u062E\u0631 \u0645\u0639 \u0627\u0646\u062E\u0641\u0627\u0636 \u0627\u0644\u062D\u0636\u0648\u0631")
+   - recommendation: practical action for the teacher in Arabic
+4. Provide a positive note acknowledging good performance or overall trend.
+
+Respond ONLY with this JSON schema:
+{
+  "overallHealthScore": number,
+  "headline": "Short punchy 1-sentence headline in Arabic",
+  "summary": "1-2 sentences explaining the trend and key action in Arabic",
+  "attentionNeededStudents": [
+    {
+      "studentId": "string",
+      "studentName": "string",
+      "riskLevel": "high" | "medium" | "low",
+      "attendanceRate": number,
+      "reason": "string",
+      "recommendation": "string"
+    }
+  ],
+  "positiveNotes": "string in Arabic"
+}`;
+    const text = await safeGenerateContent(ai, {
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.attentionNeededStudents && Array.isArray(parsed.attentionNeededStudents)) {
+          parsed.attentionNeededStudents = parsed.attentionNeededStudents.map((st) => {
+            const matched = students.find((s) => s.id === st.studentId);
+            return {
+              ...st,
+              parentPhone: matched?.parentPhone || matched?.phone || ""
+            };
+          });
+        }
+        return res.json(parsed);
+      } catch {
+      }
+    }
+    res.json(generateFallbackInsights());
+  } catch {
+    res.json(generateFallbackInsights());
+  }
+});
+app.post("/api/ai/student-remark", async (req, res) => {
+  const { studentName, subject, gradeAverage, attendanceRate, behaviorPoints, strengths, areasForGrowth } = req.body;
+  const fallbackRemark = {
+    remark: `${studentName || "\u0627\u0644\u0637\u0627\u0644\u0628"} \u0623\u0638\u0647\u0631 \u0627\u0644\u062A\u0632\u0627\u0645\u0627\u064B \u0648\u0627\u062C\u062A\u0647\u0627\u062F\u0627\u064B \u0645\u0644\u062D\u0648\u0638\u0627\u064B \u0641\u064A \u0645\u0627\u062F\u0629 ${subject || "\u0627\u0644\u062F\u0631\u0627\u0633\u064A\u0629"}. \u0628\u0645\u0639\u062F\u0644 \u0625\u062C\u0645\u0627\u0644\u064A ${gradeAverage || "88%"} \u0648\u0646\u0633\u0628\u0629 \u062D\u0636\u0648\u0631 \u0645\u0645\u062A\u0627\u0632\u0629 (${attendanceRate || "95%"})\u060C \u064A\u0634\u0627\u0631\u0643 \u0628\u0641\u0627\u0639\u0644\u064A\u0629 \u0648\u062A\u0631\u0643\u064A\u0632 \u0641\u064A \u0627\u0644\u0623\u0646\u0634\u0637\u0629. \u0644\u0644\u0627\u0633\u062A\u0645\u0631\u0627\u0631 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u062A\u0645\u064A\u0632\u060C \u064A\u0648\u0635\u0649 \u0628\u0627\u0644\u062A\u0631\u0643\u064A\u0632 \u0639\u0644\u0649 \u0645\u0631\u0627\u062C\u0639\u0629 \u0627\u0644\u0646\u0642\u0627\u0637 \u0627\u0644\u062F\u0642\u064A\u0642\u0629 \u0642\u0628\u0644 \u0627\u0644\u0627\u062E\u062A\u0628\u0627\u0631\u0627\u062A.`,
+    actionPlan: [
+      "\u0627\u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0645\u0633\u062A\u0645\u0631\u0629 \u0641\u064A \u0627\u0644\u062A\u062F\u0631\u064A\u0628\u0627\u062A \u0648\u0627\u0644\u0623\u0646\u0634\u0637\u0629 \u0627\u0644\u062A\u0637\u0628\u064A\u0642\u064A\u0629",
+      "\u062A\u062E\u0635\u064A\u0635 \u0648\u0642\u062A \u0644\u0644\u0645\u0631\u0627\u062C\u0639\u0629 \u0627\u0644\u0623\u0633\u0628\u0648\u0639\u064A\u0629 \u0644\u0644\u0645\u0641\u0627\u0647\u064A\u0645 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629",
+      "\u0637\u0631\u062D \u0627\u0644\u0623\u0633\u0626\u0644\u0629 \u0648\u0645\u062A\u0627\u0628\u0639\u0629 \u0623\u064A \u0627\u0633\u062A\u0641\u0633\u0627\u0631\u0627\u062A \u0623\u062B\u0646\u0627\u0621 \u0627\u0644\u062D\u0635\u0629"
+    ]
+  };
+  const ai = getGenAI();
+  if (!ai) {
+    return res.json(fallbackRemark);
+  }
+  try {
+    const prompt = `Write a balanced, constructive, and motivating report card comment in Arabic for a student.
+Student Name: ${studentName}
+Subject: ${subject}
+Current Grade Average: ${gradeAverage}%
+Attendance: ${attendanceRate}%
+Merit/Demerit Points: ${behaviorPoints}
+Observed Strengths: ${strengths || "\u0645\u0634\u0627\u0631\u0643\u0629 \u062C\u064A\u062F\u0629\u060C \u062A\u0631\u0643\u064A\u0632 \u0641\u064A \u0627\u0644\u062D\u0635\u0629\u060C \u0623\u062F\u0628 \u0648\u0627\u062C\u062A\u0647\u0627\u062F"}
+Areas for Growth: ${areasForGrowth || "\u0627\u0644\u0645\u062F\u0627\u0648\u0645\u0629 \u0639\u0644\u0649 \u062D\u0644 \u0627\u0644\u0648\u0627\u062C\u0628\u0627\u062A \u0628\u062F\u0642\u0629\u060C \u0627\u0644\u0645\u0631\u0627\u062C\u0639\u0629 \u0642\u0628\u0644 \u0627\u0644\u0627\u062E\u062A\u0628\u0627\u0631\u0627\u062A"}
+
+Return a JSON object:
+{
+  "remark": "2-3 polished sentences suitable for official report cards in Arabic",
+  "actionPlan": ["Bullet 1 in Arabic", "Bullet 2 in Arabic", "Bullet 3 in Arabic"]
+}`;
+    const text = await safeGenerateContent(ai, {
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        return res.json(parsed);
+      } catch {
+      }
+    }
+    res.json(fallbackRemark);
+  } catch {
+    res.json(fallbackRemark);
+  }
+});
+app.post("/api/ai/copilot", async (req, res) => {
+  const { prompt, context } = req.body;
+  const fallbackResponse = {
+    response: `\u0625\u0644\u064A\u0643 \u0623\u0641\u0636\u0644 \u0627\u0644\u062A\u0648\u0635\u064A\u0627\u062A \u0627\u0644\u0639\u0645\u0644\u064A\u0629 \u0644\u0644\u0645\u0639\u0644\u0645:
+
+1. **\u0627\u0644\u062A\u0646\u0638\u064A\u0645 \u0648\u0627\u0644\u062A\u0633\u0644\u0633\u0644:** \u062A\u0642\u0633\u064A\u0645 \u0627\u0644\u0623\u0646\u0634\u0637\u0629 \u0625\u0644\u0649 \u0645\u0631\u0627\u062D\u0644 \u0648\u0627\u0636\u062D\u0629 (\u062A\u0645\u0647\u064A\u062F\u060C \u0634\u0631\u062D \u062A\u0637\u0628\u064A\u0642\u064A\u060C \u062A\u0642\u064A\u064A\u0645 \u0633\u0631\u064A\u0639).
+2. **\u0627\u0644\u062A\u0641\u0627\u0639\u0644 \u0627\u0644\u0625\u064A\u062C\u0627\u0628\u064A:** \u062A\u0634\u062C\u064A\u0639 \u0627\u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0648\u0637\u0631\u062D \u0623\u0633\u0626\u0644\u0629 \u0628\u0645\u0633\u062A\u0648\u064A\u0627\u062A \u062A\u0641\u0643\u064A\u0631 \u0645\u062A\u062F\u0631\u062C\u0629.
+3. **\u0627\u0644\u0645\u062A\u0627\u0628\u0639\u0629 \u0627\u0644\u0645\u0633\u062A\u0645\u0631\u0629:** \u0631\u0635\u062F \u0627\u0644\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0645\u0628\u0627\u0634\u0631\u0629 \u0644\u062A\u0642\u062F\u064A\u0645 \u0627\u0644\u062F\u0639\u0645 \u0627\u0644\u0645\u0646\u0627\u0633\u0628 \u0644\u0643\u0644 \u0637\u0627\u0644\u0628.`
+  };
+  const ai = getGenAI();
+  if (!ai) {
+    return res.json(fallbackResponse);
+  }
+  try {
+    const systemInstruction = "You are 'Classy Copilot', an expert K-12 educator, classroom management coach, and instructional designer. Provide clear, direct, actionable, practical, and empathetic advice to help teachers save time, engage students, and resolve classroom challenges in Arabic.";
+    const text = await safeGenerateContent(ai, {
+      contents: `${context ? `Context: ${context}
+
+` : ""}Teacher Question: ${prompt}`,
+      config: { systemInstruction }
+    });
+    res.json({ response: text || fallbackResponse.response });
+  } catch {
+    res.json(fallbackResponse);
+  }
+});
+async function startServer() {
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await (0, import_vite.createServer)({
+      server: { middlewareMode: true },
+      appType: "spa"
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = import_path.default.join(process.cwd(), "dist");
+    app.use(import_express.default.static(distPath));
+    app.get("*", (_req, res) => {
+      res.sendFile(import_path.default.join(distPath, "index.html"));
+    });
+  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Classy server running on http://0.0.0.0:${PORT}`);
+  });
+}
+startServer();
+//# sourceMappingURL=server.cjs.map

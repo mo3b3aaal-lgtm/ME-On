@@ -36,7 +36,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
         setGroupId(sessionToEdit.groupId);
         setDate(sessionToEdit.date);
         setStartTime(sessionToEdit.startTime);
-        setDurationMinutes(sessionToEdit.durationMinutes || 60);
+        setDurationMinutes(sessionToEdit.hours ? Math.round(sessionToEdit.hours * 60) : 60);
         setTitle(sessionToEdit.title || "");
         setNotes(sessionToEdit.notes || "");
       } else {
@@ -61,13 +61,24 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
 
     try {
       const sessionId = sessionToEdit?.id || getDeterministicSessionId(date, groupId, "group", startTime);
+      const parts = date.split('-').map(Number);
+      const year = parts[0] || new Date().getFullYear();
+      const month = parts[1] || new Date().getMonth() + 1;
+      const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const d = new Date(year, month - 1, parts[2] || 1);
+      const dayName = !isNaN(d.getTime()) ? dayNames[d.getDay()] : "السبت";
+
       db.saveSession({
+        ...(sessionToEdit || {}),
         id: sessionId,
         groupId,
         studentId: sessionToEdit?.studentId || "group",
         date,
+        dayName,
+        month,
+        year,
         startTime,
-        durationMinutes,
+        hours: durationMinutes / 60,
         title: title || "حصة دراسية",
         notes,
         status: sessionToEdit?.status || "scheduled",

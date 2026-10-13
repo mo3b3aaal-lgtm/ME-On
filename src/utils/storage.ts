@@ -98,6 +98,7 @@ export interface DuplicateSessionCopy {
   attendanceUnits?: number;
   attendanceHours?: number;
   attendanceAmount?: number;
+  selectedForRemoval?: boolean;
 }
 
 export interface DuplicateSessionGroup {
@@ -106,9 +107,11 @@ export interface DuplicateSessionGroup {
   groupName: string;
   date: string;
   time: string;
+  startTime?: string;
   timeSpreadMs: number;
   timeSpreadText: string;
   copies: DuplicateSessionCopy[];
+  sessions: DuplicateSessionCopy[];
   representativeSession: Session;
   defaultKeepId: string;
   defaultRemoveIds: string[];
@@ -613,22 +616,27 @@ ${assignment.launchUrl}
 // Base Generic Storage Helper
 // ==========================================
 
+const memoryStore = new Map<string, string>();
+
 function getList<T>(key: string, fallback: T[] = []): T[] {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : memoryStore.get(key);
     if (!raw) return fallback;
     return JSON.parse(raw) as T[];
   } catch (err) {
-    console.error(`Error reading key ${key} from storage:`, err);
     return fallback;
   }
 }
 
 function saveList<T>(key: string, data: T[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    const json = JSON.stringify(data);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, json);
+    }
+    memoryStore.set(key, json);
   } catch (err) {
-    console.error(`Error saving key ${key} to storage:`, err);
+    // ignore
   }
 }
 
@@ -4710,7 +4718,8 @@ export const db = {
           attendanceAmount = s.totalSessionValue || s.pricePerStudent;
         }
 
-        if (s.id !== defaultKeepId && !hasAttendance) {
+        const isSelectedForRemoval = s.id !== defaultKeepId && !hasAttendance;
+        if (isSelectedForRemoval) {
           defaultRemoveIds.push(s.id);
         }
 
@@ -4727,6 +4736,7 @@ export const db = {
           attendanceUnits,
           attendanceHours,
           attendanceAmount,
+          selectedForRemoval: isSelectedForRemoval,
         };
       });
 
@@ -4737,9 +4747,11 @@ export const db = {
         groupName: firstCopy.groupName,
         date: firstCopy.date,
         time: firstCopy.time,
+        startTime: firstCopy.session.startTime,
         timeSpreadMs,
         timeSpreadText,
         copies,
+        sessions: copies,
         representativeSession: repSession,
         defaultKeepId,
         defaultRemoveIds,
@@ -6159,3 +6171,31 @@ export const db = {
     return subscribeToSyncUpdates(listener);
   },
 };
+
+/**
+ * TASK 23 - STEP 3: Deterministic session ID generator
+ * Generates identical IDs for same date + groupId + studentId + start minutes (no Math.random)
+ */
+export function getDeterministicSessionId(
+  date: string,
+  groupId: string,
+  studentId?: string | null,
+  startTime?: string | null
+): string {
+  const normDate = date || '1970-01-01';
+  const normGroup = groupId || 'group';
+  const normStudent = studentId && studentId.trim() ? studentId.trim() : 'group';
+  const startMins = parseTimeToMinutes(startTime || '00:00');
+  return `sess_${normDate}_${normGroup}_${normStudent}_${startMins}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+export const findDuplicateSessions = (): DuplicateSessionGroup[] => db.findDuplicateSessionGroups();
+export type DuplicateGroup = DuplicateSessionGroup;
+
+export const recordPrivateSessionsForStudent = (...args: Parameters<typeof db.recordPrivateSessionsForStudent>): Session[] =>
+  db.recordPrivateSessionsForStudent(...args);
+
+export const recordBulkSessionsForStudents = (...args: Parameters<typeof db.recordBulkSessionsForStudents>): BulkCreateSessionsResult =>
+  db.recordBulkSessionsForStudents(...args);
+
+export { getSlotKey, pickRepresentativeSession };

@@ -50,36 +50,42 @@ interface DashboardViewProps {
   students: Student[];
   groups: Group[];
   sessions: Session[];
-  payments: Payment[];
-  teacherProfile: TeacherProfile;
-  onOpenAddStudent: () => void;
-  onOpenAddGroup: () => void;
-  onOpenAddSession: () => void;
-  onOpenAddPayment: () => void;
-  onOpenStudentProfile: (student: Student) => void;
-  onOpenGroupProfile: (group: Group) => void;
-  onOpenAttendanceModal: (session: Session) => void;
+  payments?: Payment[];
+  teacherProfile?: TeacherProfile;
+  onOpenAddStudent?: () => void;
+  onOpenAddGroup?: () => void;
+  onOpenAddSession?: () => void;
+  onOpenAddPayment?: () => void;
+  onOpenStudentProfile?: (student: Student) => void;
+  onOpenGroupProfile?: (group: Group) => void;
+  onOpenAttendanceModal?: (session: Session) => void;
   onOpenNotificationsModal?: () => void;
-  onNavigateToTab: (tab: ActiveTab) => void;
+  onNavigateToTab?: (tab: ActiveTab) => void;
   onDataChanged?: () => void;
+  onOpenBulkAdd?: () => void;
+  onOpenRecordAttendance?: (group: any) => void;
+  onRefresh?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   students,
   groups,
   sessions,
-  payments,
+  payments = [],
   teacherProfile,
-  onOpenAddStudent,
-  onOpenAddGroup,
-  onOpenAddSession,
-  onOpenAddPayment,
-  onOpenStudentProfile,
-  onOpenGroupProfile,
-  onOpenAttendanceModal,
+  onOpenAddStudent = () => {},
+  onOpenAddGroup = () => {},
+  onOpenAddSession = () => {},
+  onOpenAddPayment = () => {},
+  onOpenStudentProfile = () => {},
+  onOpenGroupProfile = () => {},
+  onOpenAttendanceModal = () => {},
   onOpenNotificationsModal,
-  onNavigateToTab,
+  onNavigateToTab = () => {},
   onDataChanged,
+  onOpenBulkAdd,
+  onOpenRecordAttendance,
+  onRefresh,
 }) => {
   const { t, language, isRTL } = useTranslation();
   const isEn = language.startsWith('en');

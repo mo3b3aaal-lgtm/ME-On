@@ -118,10 +118,18 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   );
 };
 
+const defaultFallbackModalContext: ModalContextValue = {
+  registerModal: () => {},
+  unregisterModal: () => {},
+  getModalLayer: () => ({ zIndex: BASE_MODAL_Z_INDEX, isTopmost: true, stackIndex: 0 }),
+  popTopModal: () => false,
+  modalStack: [],
+};
+
 export const useModalContext = (): ModalContextValue => {
   const ctx = useContext(ModalContext);
   if (!ctx) {
-    throw new Error('useModalContext must be used within a ModalProvider');
+    return defaultFallbackModalContext;
   }
   return ctx;
 };

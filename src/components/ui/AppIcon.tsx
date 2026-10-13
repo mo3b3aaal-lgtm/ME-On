@@ -197,6 +197,7 @@ export const ICON_MAP = {
   dollarSign: CurrencyDollar,
   warningCircle: WarningCircle,
   alertCircle: WarningCircle,
+  alert: Warning,
   arrowsClockwise: ArrowsClockwise,
   pencilSimple: PencilSimple,
   edit2: PencilSimple,

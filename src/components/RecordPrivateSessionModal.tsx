@@ -1,14 +1,15 @@
 import React, { useState, useRef } from "react";
 import { BottomSheet } from "./ui/BottomSheet";
 import { Student } from "../types";
-import { recordPrivateSessionsForStudent } from "../utils/storage";
+import { db, recordPrivateSessionsForStudent } from "../utils/storage";
 import { useCurrentLocalDate } from "../utils/date";
 
 interface RecordPrivateSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   student: Student | null;
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  onSaveComplete?: () => void;
 }
 
 export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps> = ({
@@ -16,6 +17,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   onClose,
   student,
   onSuccess,
+  onSaveComplete,
 }) => {
   const currentDate = useCurrentLocalDate();
   const [date, setDate] = useState<string>(currentDate);
@@ -24,29 +26,50 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const [notes, setNotes] = useState<string>("");
 
   const isSubmittingRef = useRef<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const lastSubmitTimeRef = useRef<number>(0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const now = Date.now();
-    // STEP 2: Re-entry lock (ignore second call within 1500 ms)
+    // STEP 2 & 3: Re-entry lock (ignore second call within 1500 ms)
     if (isSubmittingRef.current || now - lastSubmitTimeRef.current < 1500) return;
     if (!student) return;
 
     isSubmittingRef.current = true;
+    setIsSubmitting(true);
     lastSubmitTimeRef.current = now;
 
     try {
-      recordPrivateSessionsForStudent(student.id, "private", date, time, {
-        durationMinutes: duration,
-        notes,
-        markPresent: true,
+      const enrollments = db.getEnrollments();
+      const groups = db.getGroups();
+      const studentEnr = enrollments.find(
+        (e) => e.studentId === student.id && (e.serviceType === "private" || groups.find((g) => g.id === e.groupId)?.type === "private")
+      );
+      const privateGroup = groups.find((g) => g.type === "private" || g.id === studentEnr?.groupId);
+
+      const groupId = studentEnr?.groupId || privateGroup?.id || "grp_private_default";
+      const enrollmentId = studentEnr?.id || `enr_priv_${student.id}`;
+
+      db.recordPrivateSessionsForStudent({
+        studentId: student.id,
+        enrollmentId,
+        groupId,
+        date,
+        startTime: time,
+        hours: duration / 60,
+        notes: notes.trim(),
+        attendanceStatus: "present",
+        isCharged: true,
       });
-      onSuccess();
+
+      onSuccess?.();
+      onSaveComplete?.();
       onClose();
     } finally {
       setTimeout(() => {
         isSubmittingRef.current = false;
+        setIsSubmitting(false);
       }, 1500);
     }
   };
@@ -103,7 +126,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
         <button
           type="submit"
-          disabled={isSubmittingRef.current}
+          disabled={isSubmitting || isSubmittingRef.current}
           className="w-full py-3.5 bg-[#0F2A4A] text-white font-bold rounded-xl hover:bg-[#17375E] transition-all disabled:opacity-50"
         >
           تسجيل وحفظ الحصة

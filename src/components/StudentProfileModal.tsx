@@ -55,11 +55,12 @@ interface StudentProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   student: Student | null;
-  allGroups: Group[];
-  onEditStudent: (student: Student) => void;
-  onOpenEnrollModal: (student: Student) => void;
-  onOpenAddPayment: (student: Student, enrollmentId?: string) => void;
-  onDataChanged: () => void;
+  allGroups?: Group[];
+  onEditStudent?: (student: Student) => void;
+  onOpenEnrollModal?: (student: Student) => void;
+  onOpenAddPayment?: (student: Student, enrollmentId?: string) => void;
+  onDataChanged?: () => void;
+  onUpdated?: () => void;
 }
 
 type StudentProfileSubTab =
@@ -76,12 +77,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   isOpen,
   onClose,
   student,
-  allGroups,
-  onEditStudent,
-  onOpenEnrollModal,
-  onOpenAddPayment,
-  onDataChanged,
+  allGroups: propsAllGroups,
+  onEditStudent = () => {},
+  onOpenEnrollModal = () => {},
+  onOpenAddPayment = () => {},
+  onDataChanged = () => {},
+  onUpdated,
 }) => {
+  const allGroups = useMemo(() => propsAllGroups || db.getGroups(), [propsAllGroups]);
+  const notifyDataChanged = () => {
+    onDataChanged();
+    onUpdated?.();
+  };
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
 

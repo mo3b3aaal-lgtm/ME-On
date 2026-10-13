@@ -12,8 +12,10 @@ interface BulkAddSessionModalProps {
   onClose: () => void;
   onSessionsCreated?: (count: number) => void;
   selectedStudents?: Student[];
+  students?: Student[];
   preselectedGroupId?: string;
   allGroups?: Group[];
+  groups?: Group[];
   onSuccess?: () => void;
 }
 
@@ -22,8 +24,10 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
   onClose,
   onSessionsCreated,
   selectedStudents,
+  students,
   preselectedGroupId,
   allGroups,
+  groups: propGroups,
   onSuccess,
 }) => {
   const { t, language } = useTranslation();

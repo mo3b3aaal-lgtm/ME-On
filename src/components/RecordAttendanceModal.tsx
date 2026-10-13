@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { BottomSheet } from "./ui/BottomSheet";
 import { AppIcon } from "./ui/AppIcon";
-import { Group, Student, Session, AttendanceRecord } from "../types";
+import { Group, Student, Session, Attendance } from "../types";
 import { db, getDeterministicSessionId } from "../utils/storage";
 import { useCurrentLocalDate } from "../utils/date";
+import { parseLocalDateStr } from "../utils/localDate";
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -25,13 +26,19 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   const [time, setTime] = useState<string>("16:00");
   const [statuses, setStatuses] = useState<Record<string, "present" | "absent" | "late" | "excused">>({});
   const isSubmittingRef = useRef<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const lastSubmitTimeRef = useRef<number>(0);
 
-  const groupStudents = students.filter(s => group?.studentIds.includes(s.id));
+  const enrollments = db.getEnrollments();
+  const groupEnrollments = enrollments.filter(
+    (e) => e.groupId === group?.id && e.status !== "stopped"
+  );
+  const groupStudents = students.filter((s) => groupEnrollments.some((e) => e.studentId === s.id));
 
   useEffect(() => {
     if (isOpen) {
       isSubmittingRef.current = false;
+      setIsSubmitting(false);
       const initial: Record<string, "present" | "absent" | "late" | "excused"> = {};
       groupStudents.forEach(s => {
         initial[s.id] = "present";
@@ -47,11 +54,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
   const handleSave = () => {
     const now = Date.now();
-    // STEP 2: Re-entry lock
+    // STEP 2 & 3: Re-entry lock (ignore second call within 1500 ms)
     if (isSubmittingRef.current || now - lastSubmitTimeRef.current < 1500) return;
     if (!group) return;
 
     isSubmittingRef.current = true;
+    setIsSubmitting(true);
     lastSubmitTimeRef.current = now;
 
     try {
@@ -59,7 +67,15 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       const currentSessions = db.getSessions();
       const detId = getDeterministicSessionId(date, group.id, "group", time);
 
-      let targetSession = currentSessions.find(s => s.id === detId || (s.groupId === group.id && s.date === date && s.startTime === time && s.status !== "cancelled"));
+      let targetSession = currentSessions.find(
+        (s) => s.id === detId || (s.groupId === group.id && s.date === date && s.startTime === time && s.status !== "cancelled")
+      );
+
+      const dateObj = parseLocalDateStr(date);
+      const month = !isNaN(dateObj.getTime()) ? dateObj.getMonth() + 1 : new Date().getMonth() + 1;
+      const year = !isNaN(dateObj.getTime()) ? dateObj.getFullYear() : new Date().getFullYear();
+      const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const dayName = !isNaN(dateObj.getTime()) ? dayNames[dateObj.getDay()] : "السبت";
 
       if (!targetSession) {
         targetSession = db.saveSession({
@@ -67,8 +83,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
           groupId: group.id,
           studentId: "group",
           date,
+          dayName,
+          month,
+          year,
           startTime: time,
-          durationMinutes: group.durationMinutes || 60,
           title: `حصة ${group.name}`,
           status: "completed",
           sessionUnits: 1,
@@ -83,25 +101,28 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
       // Record attendance
       const nowIso = new Date().toISOString();
-      for (const st of groupStudents) {
-        const attId = `att_${targetSession.id}_${st.id}`;
-        db.saveAttendance({
+      const attendanceBatch: Attendance[] = groupStudents.map((st) => {
+        const enr = groupEnrollments.find((e) => e.studentId === st.id);
+        const attId = `att_${targetSession!.id}_${st.id}`;
+        return {
           id: attId,
-          sessionId: targetSession.id,
+          sessionId: targetSession!.id,
           studentId: st.id,
-          date,
+          enrollmentId: enr?.id,
           status: statuses[st.id] || "present",
           sessionUnits: 1,
-          hours: (group.durationMinutes || 60) / 60,
-          timestamp: nowIso,
-        });
-      }
+          recordedAt: nowIso,
+        };
+      });
+
+      db.saveAttendanceBatch(targetSession.id, attendanceBatch);
 
       onSuccess();
       onClose();
     } finally {
       setTimeout(() => {
         isSubmittingRef.current = false;
+        setIsSubmitting(false);
       }, 1500);
     }
   };

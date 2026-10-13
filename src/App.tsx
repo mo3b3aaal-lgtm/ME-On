@@ -7,7 +7,8 @@ import { RecordAttendanceModal } from "./components/RecordAttendanceModal";
 import { RecordPrivateSessionModal } from "./components/RecordPrivateSessionModal";
 import { StudentProfileModal } from "./components/StudentProfileModal";
 import { db } from "./utils/storage";
-import { Student, Group, Session, AttendanceRecord } from "./types";
+import { Student, Group, Session, Attendance } from "./types";
+import { ModalProvider } from "./contexts/ModalContext";
 import { useCurrentLocalDate } from "./utils/date";
 import { runAllVerifications, VerificationResult } from "./utils/e2e_verification_runner";
 
@@ -17,7 +18,7 @@ export const App: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
 
   // Modals state
   const [isBulkAddOpen, setIsBulkAddOpen] = useState<boolean>(false);
@@ -36,11 +37,11 @@ export const App: React.FC = () => {
     // Seed sample data if totally empty
     if (currentStudents.length === 0) {
       const sampleStudents: Student[] = [
-        { id: "st_1", name: "محمد العراقي", phone: "07801234567", grade: "الثالث متوسط", createdAt: new Date().toISOString() },
-        { id: "st_2", name: "علي الموسوي", phone: "07709876543", grade: "الثالث متوسط", createdAt: new Date().toISOString() },
-        { id: "st_3", name: "فاطمة الزهراء", phone: "07505554433", grade: "الرابع علمي", createdAt: new Date().toISOString() },
-        { id: "st_4", name: "زينب البصري", phone: "07812233445", grade: "الرابع علمي", createdAt: new Date().toISOString() },
-        { id: "st_5", name: "حيدر الكرخي", phone: "07901122334", grade: "السادس إعدادي", createdAt: new Date().toISOString() },
+        { id: "st_1", name: "محمد العراقي", phone: "07801234567", gradeLevel: "الثالث متوسط", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
+        { id: "st_2", name: "علي الموسوي", phone: "07709876543", gradeLevel: "الثالث متوسط", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
+        { id: "st_3", name: "فاطمة الزهراء", phone: "07505554433", gradeLevel: "الرابع علمي", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
+        { id: "st_4", name: "زينب البصري", phone: "07812233445", gradeLevel: "الرابع علمي", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
+        { id: "st_5", name: "حيدر الكرخي", phone: "07901122334", gradeLevel: "السادس إعدادي", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
       ];
       sampleStudents.forEach(s => db.saveStudent(s));
       currentStudents = sampleStudents;
@@ -50,18 +51,26 @@ export const App: React.FC = () => {
           id: "grp_math_3",
           name: "مجموعة الرياضيات - الثالث",
           subject: "رياضيات",
+          gradeLevel: "الثالث متوسط",
+          type: "group",
+          billingType: "monthly",
+          defaultPrice: 100,
+          scheduleDays: ["السبت", "الثلاثاء"],
           scheduleTime: "16:00",
-          durationMinutes: 60,
-          studentIds: ["st_1", "st_2"],
+          accentColor: "#0F2A4A",
           createdAt: new Date().toISOString(),
         },
         {
           id: "grp_physics_4",
           name: "مجموعة الفيزياء - الرابع",
           subject: "فيزياء",
+          gradeLevel: "الرابع علمي",
+          type: "group",
+          billingType: "monthly",
+          defaultPrice: 120,
+          scheduleDays: ["الأحد", "الأربعاء"],
           scheduleTime: "18:00",
-          durationMinutes: 60,
-          studentIds: ["st_3", "st_4"],
+          accentColor: "#17375E",
           createdAt: new Date().toISOString(),
         },
       ];
@@ -74,8 +83,11 @@ export const App: React.FC = () => {
         groupId: "grp_math_3",
         studentId: "group",
         date: currentDate,
+        dayName: "السبت",
+        month: 10,
+        year: 2026,
         startTime: "16:00",
-        durationMinutes: 60,
+        hours: 1,
         title: "حصة الرياضيات - الثالث",
         status: "scheduled",
         sessionUnits: 1,
@@ -104,7 +116,8 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 select-none">
+    <ModalProvider>
+      <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 select-none">
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2.5">
@@ -135,7 +148,6 @@ export const App: React.FC = () => {
             students={students}
             groups={groups}
             sessions={sessions}
-            attendance={attendance}
             onOpenBulkAdd={() => setIsBulkAddOpen(true)}
             onOpenRecordAttendance={g => setAttendanceModalGroup(g)}
             onOpenStudentProfile={st => setProfileModalStudent(st)}
@@ -293,5 +305,6 @@ export const App: React.FC = () => {
         onUpdated={loadData}
       />
     </div>
-  );
+  </ModalProvider>
+);
 };

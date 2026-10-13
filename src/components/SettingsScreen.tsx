@@ -172,7 +172,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onRefresh }) => 
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                       <div>
                         <span className="font-bold text-sm text-[#0F2A4A] block">{group.studentName}</span>
-                        <span className="text-[11px] text-slate-500">{group.groupName} • {group.date} • {group.startTime}</span>
+                        <span className="text-[11px] text-slate-500">
+                          {group.groupName} • {group.date} • {group.time} | فارق التوقيت: {group.timeSpreadText}
+                        </span>
                       </div>
                       <span className="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold border border-rose-100">
                         {group.sessions.length} نسخ
@@ -205,8 +207,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onRefresh }) => 
                                 </span>
                               )}
                             </div>
-                            <div className="text-[10px] text-slate-400">
-                              معرف الحصة: {item.session.id.slice(0, 18)}... | وحدات: {item.sessionUnits} | مدة: {item.hours} ساعة
+                            <div className="text-[10px] text-slate-500">
+                              بادئة: <code className="bg-slate-200 px-1 py-0.5 rounded text-[10px]">{item.idPrefix}</code> | إنشاء: {item.createdAtFormatted} | حالة: {item.status} | وحدات: {item.attendanceUnits ?? item.session.sessionUnits ?? 1} | مدة: {item.attendanceHours ?? item.session.hours ?? 1} س {item.attendanceAmount ? `| المبلغ: ${item.attendanceAmount} ج.م` : ''}
                             </div>
                           </div>
 

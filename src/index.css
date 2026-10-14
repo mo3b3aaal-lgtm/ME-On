@@ -1,45 +1,1680 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Poppins', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Poppins', 'Cairo', system-ui, sans-serif;
+
+  /* =========================================================================
+     HARBOR MINT DESIGN SYSTEM — OFFICIAL DESIGN TOKENS
+     ========================================================================= */
+  --color-page: #FFFFFF;
+  --color-mist: #F1F7F7;
+  --color-mint: #B9DAD6;
+  --color-mint-soft: #DCEDEB;
+  --color-navy: #17375E;
+  --color-navy-deep: #0F2A4A;
+  --color-navy-soft: #2F4E78;
+  --color-orange: #F5A04A;
+  --color-orange-deep: #E58A2B;
+  --color-on-orange: #FFFFFF;
+  --color-slate: #4A5B6E;
+  --color-fog: #8493A3;
+  --color-line: #E1EBEC;
+  --color-teal: #2E8B83;
+  --color-coral: #D64545;
+  --color-skin-light: #F2C9A5;
+  --color-skin-medium: #C98B5E;
+  --color-skin-dark: #8A5A3C;
+  --radius-card: 22px;
+  --radius-hero: 28px;
+  --radius-sheet: 32px;
+  --radius-field: 18px;
+  --radius-pill: 9999px;
+  --radius-tile: 18px;
+
+  --shadow-mint: 0 10px 24px rgba(23, 55, 94, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --shadow-navy: 0 16px 32px rgba(15, 42, 74, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shadow-white: 0 6px 18px rgba(23, 55, 94, 0.08);
+  --shadow-nav: 0 -2px 20px rgba(23, 55, 94, 0.08), 0 12px 30px rgba(23, 55, 94, 0.12);
+  --shadow-orange: 0 8px 18px rgba(245, 160, 74, 0.35);
+
+  /* =========================================================================
+     RE-POINT LEGACY TAILWIND COLOR SCALES (HARBOR MINT RAMPS)
+     ========================================================================= */
+
+  /* 1. blue / sky / cyan / indigo -> navy + mint ramps */
+  --color-blue-50: #DCEDEB;
+  --color-blue-100: color-mix(in srgb, #17375E 10%, #DCEDEB);
+  --color-blue-200: color-mix(in srgb, #17375E 22%, #B9DAD6);
+  --color-blue-300: color-mix(in srgb, #17375E 36%, #B9DAD6);
+  --color-blue-400: color-mix(in srgb, #17375E 52%, #B9DAD6);
+  --color-blue-500: color-mix(in srgb, #17375E 70%, #B9DAD6);
+  --color-blue-600: color-mix(in srgb, #17375E 88%, #B9DAD6);
+  --color-blue-700: #17375E;
+  --color-blue-800: color-mix(in srgb, #0F2A4A 45%, #17375E);
+  --color-blue-900: color-mix(in srgb, #0F2A4A 75%, #17375E);
+  --color-blue-950: #0F2A4A;
+
+  --color-sky-50: #DCEDEB;
+  --color-sky-100: color-mix(in srgb, #17375E 10%, #DCEDEB);
+  --color-sky-200: color-mix(in srgb, #17375E 22%, #B9DAD6);
+  --color-sky-300: color-mix(in srgb, #17375E 36%, #B9DAD6);
+  --color-sky-400: color-mix(in srgb, #17375E 52%, #B9DAD6);
+  --color-sky-500: color-mix(in srgb, #17375E 70%, #B9DAD6);
+  --color-sky-600: color-mix(in srgb, #17375E 88%, #B9DAD6);
+  --color-sky-700: #17375E;
+  --color-sky-800: color-mix(in srgb, #0F2A4A 45%, #17375E);
+  --color-sky-900: color-mix(in srgb, #0F2A4A 75%, #17375E);
+  --color-sky-950: #0F2A4A;
+
+  --color-cyan-50: #DCEDEB;
+  --color-cyan-100: color-mix(in srgb, #17375E 10%, #DCEDEB);
+  --color-cyan-200: color-mix(in srgb, #17375E 22%, #B9DAD6);
+  --color-cyan-300: color-mix(in srgb, #17375E 36%, #B9DAD6);
+  --color-cyan-400: color-mix(in srgb, #17375E 52%, #B9DAD6);
+  --color-cyan-500: color-mix(in srgb, #17375E 70%, #B9DAD6);
+  --color-cyan-600: color-mix(in srgb, #17375E 88%, #B9DAD6);
+  --color-cyan-700: #17375E;
+  --color-cyan-800: color-mix(in srgb, #0F2A4A 45%, #17375E);
+  --color-cyan-900: color-mix(in srgb, #0F2A4A 75%, #17375E);
+  --color-cyan-950: #0F2A4A;
+
+  --color-indigo-50: #DCEDEB;
+  --color-indigo-100: color-mix(in srgb, #17375E 10%, #DCEDEB);
+  --color-indigo-200: color-mix(in srgb, #17375E 22%, #B9DAD6);
+  --color-indigo-300: color-mix(in srgb, #17375E 36%, #B9DAD6);
+  --color-indigo-400: color-mix(in srgb, #17375E 52%, #B9DAD6);
+  --color-indigo-500: color-mix(in srgb, #17375E 70%, #B9DAD6);
+  --color-indigo-600: color-mix(in srgb, #17375E 88%, #B9DAD6);
+  --color-indigo-700: #17375E;
+  --color-indigo-800: color-mix(in srgb, #0F2A4A 45%, #17375E);
+  --color-indigo-900: color-mix(in srgb, #0F2A4A 75%, #17375E);
+  --color-indigo-950: #0F2A4A;
+
+  /* 2. green / emerald / teal -> teal ramp */
+  --color-teal-50: #F1F7F7;
+  --color-teal-100: color-mix(in srgb, #2E8B83 12%, #F1F7F7);
+  --color-teal-200: color-mix(in srgb, #2E8B83 25%, #F1F7F7);
+  --color-teal-300: color-mix(in srgb, #2E8B83 40%, #F1F7F7);
+  --color-teal-400: color-mix(in srgb, #2E8B83 60%, #F1F7F7);
+  --color-teal-500: color-mix(in srgb, #2E8B83 80%, #F1F7F7);
+  --color-teal-600: #2E8B83;
+  --color-teal-700: color-mix(in srgb, #0F2A4A 25%, #2E8B83);
+  --color-teal-800: color-mix(in srgb, #0F2A4A 50%, #2E8B83);
+  --color-teal-900: color-mix(in srgb, #0F2A4A 75%, #2E8B83);
+  --color-teal-950: #0F2A4A;
+
+  --color-green-50: #F1F7F7;
+  --color-green-100: color-mix(in srgb, #2E8B83 12%, #F1F7F7);
+  --color-green-200: color-mix(in srgb, #2E8B83 25%, #F1F7F7);
+  --color-green-300: color-mix(in srgb, #2E8B83 40%, #F1F7F7);
+  --color-green-400: color-mix(in srgb, #2E8B83 60%, #F1F7F7);
+  --color-green-500: color-mix(in srgb, #2E8B83 80%, #F1F7F7);
+  --color-green-600: #2E8B83;
+  --color-green-700: color-mix(in srgb, #0F2A4A 25%, #2E8B83);
+  --color-green-800: color-mix(in srgb, #0F2A4A 50%, #2E8B83);
+  --color-green-900: color-mix(in srgb, #0F2A4A 75%, #2E8B83);
+  --color-green-950: #0F2A4A;
+
+  --color-emerald-50: #F1F7F7;
+  --color-emerald-100: color-mix(in srgb, #2E8B83 12%, #F1F7F7);
+  --color-emerald-200: color-mix(in srgb, #2E8B83 25%, #F1F7F7);
+  --color-emerald-300: color-mix(in srgb, #2E8B83 40%, #F1F7F7);
+  --color-emerald-400: color-mix(in srgb, #2E8B83 60%, #F1F7F7);
+  --color-emerald-500: color-mix(in srgb, #2E8B83 80%, #F1F7F7);
+  --color-emerald-600: #2E8B83;
+  --color-emerald-700: color-mix(in srgb, #0F2A4A 25%, #2E8B83);
+  --color-emerald-800: color-mix(in srgb, #0F2A4A 50%, #2E8B83);
+  --color-emerald-900: color-mix(in srgb, #0F2A4A 75%, #2E8B83);
+  --color-emerald-950: #0F2A4A;
+
+  /* 3. orange / amber / yellow -> orange ramp */
+  --color-orange-50: #FFF9F2;
+  --color-orange-100: color-mix(in srgb, #F5A04A 15%, #FFFFFF);
+  --color-orange-200: color-mix(in srgb, #F5A04A 28%, #FFFFFF);
+  --color-orange-300: color-mix(in srgb, #F5A04A 45%, #FFFFFF);
+  --color-orange-400: color-mix(in srgb, #F5A04A 70%, #FFFFFF);
+  --color-orange-500: #F5A04A;
+  --color-orange-600: #E58A2B;
+  --color-orange-700: color-mix(in srgb, #17375E 30%, #E58A2B);
+  --color-orange-800: color-mix(in srgb, #17375E 55%, #E58A2B);
+  --color-orange-900: color-mix(in srgb, #17375E 75%, #E58A2B);
+  --color-orange-950: #0F2A4A;
+
+  --color-amber-50: #FFF9F2;
+  --color-amber-100: color-mix(in srgb, #F5A04A 15%, #FFFFFF);
+  --color-amber-200: color-mix(in srgb, #F5A04A 28%, #FFFFFF);
+  --color-amber-300: color-mix(in srgb, #F5A04A 45%, #FFFFFF);
+  --color-amber-400: color-mix(in srgb, #F5A04A 70%, #FFFFFF);
+  --color-amber-500: #F5A04A;
+  --color-amber-600: #E58A2B;
+  --color-amber-700: color-mix(in srgb, #17375E 30%, #E58A2B);
+  --color-amber-800: color-mix(in srgb, #17375E 55%, #E58A2B);
+  --color-amber-900: color-mix(in srgb, #17375E 75%, #E58A2B);
+  --color-amber-950: #0F2A4A;
+
+  --color-yellow-50: #FFF9F2;
+  --color-yellow-100: color-mix(in srgb, #F5A04A 15%, #FFFFFF);
+  --color-yellow-200: color-mix(in srgb, #F5A04A 28%, #FFFFFF);
+  --color-yellow-300: color-mix(in srgb, #F5A04A 45%, #FFFFFF);
+  --color-yellow-400: color-mix(in srgb, #F5A04A 70%, #FFFFFF);
+  --color-yellow-500: #F5A04A;
+  --color-yellow-600: #E58A2B;
+  --color-yellow-700: color-mix(in srgb, #17375E 30%, #E58A2B);
+  --color-yellow-800: color-mix(in srgb, #17375E 55%, #E58A2B);
+  --color-yellow-900: color-mix(in srgb, #17375E 75%, #E58A2B);
+  --color-yellow-950: #0F2A4A;
+
+  /* 4. red / rose / pink -> coral ramp */
+  --color-red-50: color-mix(in srgb, #D64545 8%, #FFFFFF);
+  --color-red-100: color-mix(in srgb, #D64545 16%, #FFFFFF);
+  --color-red-200: color-mix(in srgb, #D64545 28%, #FFFFFF);
+  --color-red-300: color-mix(in srgb, #D64545 45%, #FFFFFF);
+  --color-red-400: color-mix(in srgb, #D64545 68%, #FFFFFF);
+  --color-red-500: color-mix(in srgb, #D64545 85%, #FFFFFF);
+  --color-red-600: #D64545;
+  --color-red-700: color-mix(in srgb, #0F2A4A 30%, #D64545);
+  --color-red-800: color-mix(in srgb, #0F2A4A 55%, #D64545);
+  --color-red-900: color-mix(in srgb, #0F2A4A 75%, #D64545);
+  --color-red-950: #0F2A4A;
+
+  --color-rose-50: color-mix(in srgb, #D64545 8%, #FFFFFF);
+  --color-rose-100: color-mix(in srgb, #D64545 16%, #FFFFFF);
+  --color-rose-200: color-mix(in srgb, #D64545 28%, #FFFFFF);
+  --color-rose-300: color-mix(in srgb, #D64545 45%, #FFFFFF);
+  --color-rose-400: color-mix(in srgb, #D64545 68%, #FFFFFF);
+  --color-rose-500: color-mix(in srgb, #D64545 85%, #FFFFFF);
+  --color-rose-600: #D64545;
+  --color-rose-700: color-mix(in srgb, #0F2A4A 30%, #D64545);
+  --color-rose-800: color-mix(in srgb, #0F2A4A 55%, #D64545);
+  --color-rose-900: color-mix(in srgb, #0F2A4A 75%, #D64545);
+  --color-rose-950: #0F2A4A;
+
+  --color-pink-50: color-mix(in srgb, #D64545 8%, #FFFFFF);
+  --color-pink-100: color-mix(in srgb, #D64545 16%, #FFFFFF);
+  --color-pink-200: color-mix(in srgb, #D64545 28%, #FFFFFF);
+  --color-pink-300: color-mix(in srgb, #D64545 45%, #FFFFFF);
+  --color-pink-400: color-mix(in srgb, #D64545 68%, #FFFFFF);
+  --color-pink-500: color-mix(in srgb, #D64545 85%, #FFFFFF);
+  --color-pink-600: #D64545;
+  --color-pink-700: color-mix(in srgb, #0F2A4A 30%, #D64545);
+  --color-pink-800: color-mix(in srgb, #0F2A4A 55%, #D64545);
+  --color-pink-900: color-mix(in srgb, #0F2A4A 75%, #D64545);
+  --color-pink-950: #0F2A4A;
+
+  /* 5. purple / violet / fuchsia -> navy-soft ramp */
+  --color-purple-50: #F1F7F7;
+  --color-purple-100: color-mix(in srgb, #2F4E78 12%, #F1F7F7);
+  --color-purple-200: color-mix(in srgb, #2F4E78 25%, #F1F7F7);
+  --color-purple-300: color-mix(in srgb, #2F4E78 40%, #F1F7F7);
+  --color-purple-400: color-mix(in srgb, #2F4E78 60%, #F1F7F7);
+  --color-purple-500: color-mix(in srgb, #2F4E78 80%, #F1F7F7);
+  --color-purple-600: #2F4E78;
+  --color-purple-700: color-mix(in srgb, #0F2A4A 35%, #2F4E78);
+  --color-purple-800: color-mix(in srgb, #0F2A4A 60%, #2F4E78);
+  --color-purple-900: color-mix(in srgb, #0F2A4A 80%, #2F4E78);
+  --color-purple-950: #0F2A4A;
+
+  --color-violet-50: #F1F7F7;
+  --color-violet-100: color-mix(in srgb, #2F4E78 12%, #F1F7F7);
+  --color-violet-200: color-mix(in srgb, #2F4E78 25%, #F1F7F7);
+  --color-violet-300: color-mix(in srgb, #2F4E78 40%, #F1F7F7);
+  --color-violet-400: color-mix(in srgb, #2F4E78 60%, #F1F7F7);
+  --color-violet-500: color-mix(in srgb, #2F4E78 80%, #F1F7F7);
+  --color-violet-600: #2F4E78;
+  --color-violet-700: color-mix(in srgb, #0F2A4A 35%, #2F4E78);
+  --color-violet-800: color-mix(in srgb, #0F2A4A 60%, #2F4E78);
+  --color-violet-900: color-mix(in srgb, #0F2A4A 80%, #2F4E78);
+  --color-violet-950: #0F2A4A;
+
+  --color-fuchsia-50: #F1F7F7;
+  --color-fuchsia-100: color-mix(in srgb, #2F4E78 12%, #F1F7F7);
+  --color-fuchsia-200: color-mix(in srgb, #2F4E78 25%, #F1F7F7);
+  --color-fuchsia-300: color-mix(in srgb, #2F4E78 40%, #F1F7F7);
+  --color-fuchsia-400: color-mix(in srgb, #2F4E78 60%, #F1F7F7);
+  --color-fuchsia-500: color-mix(in srgb, #2F4E78 80%, #F1F7F7);
+  --color-fuchsia-600: #2F4E78;
+  --color-fuchsia-700: color-mix(in srgb, #0F2A4A 35%, #2F4E78);
+  --color-fuchsia-800: color-mix(in srgb, #0F2A4A 60%, #2F4E78);
+  --color-fuchsia-900: color-mix(in srgb, #0F2A4A 80%, #2F4E78);
+  --color-fuchsia-950: #0F2A4A;
+
+  /* 6. slate / gray / zinc / neutral / stone -> slate ramp */
+  --color-slate-50: #F1F7F7;
+  --color-slate-100: color-mix(in srgb, #4A5B6E 10%, #F1F7F7);
+  --color-slate-200: color-mix(in srgb, #4A5B6E 20%, #F1F7F7);
+  --color-slate-300: #8493A3;
+  --color-slate-400: color-mix(in srgb, #4A5B6E 65%, #8493A3);
+  --color-slate-500: color-mix(in srgb, #4A5B6E 85%, #8493A3);
+  --color-slate-600: #4A5B6E;
+  --color-slate-700: color-mix(in srgb, #17375E 40%, #4A5B6E);
+  --color-slate-800: color-mix(in srgb, #17375E 65%, #4A5B6E);
+  --color-slate-900: color-mix(in srgb, #17375E 85%, #4A5B6E);
+  --color-slate-950: #17375E;
+
+  --color-gray-50: #F1F7F7;
+  --color-gray-100: color-mix(in srgb, #4A5B6E 10%, #F1F7F7);
+  --color-gray-200: color-mix(in srgb, #4A5B6E 20%, #F1F7F7);
+  --color-gray-300: #8493A3;
+  --color-gray-400: color-mix(in srgb, #4A5B6E 65%, #8493A3);
+  --color-gray-500: color-mix(in srgb, #4A5B6E 85%, #8493A3);
+  --color-gray-600: #4A5B6E;
+  --color-gray-700: color-mix(in srgb, #17375E 40%, #4A5B6E);
+  --color-gray-800: color-mix(in srgb, #17375E 65%, #4A5B6E);
+  --color-gray-900: color-mix(in srgb, #17375E 85%, #4A5B6E);
+  --color-gray-950: #17375E;
+
+  --color-zinc-50: #F1F7F7;
+  --color-zinc-100: color-mix(in srgb, #4A5B6E 10%, #F1F7F7);
+  --color-zinc-200: color-mix(in srgb, #4A5B6E 20%, #F1F7F7);
+  --color-zinc-300: #8493A3;
+  --color-zinc-400: color-mix(in srgb, #4A5B6E 65%, #8493A3);
+  --color-zinc-500: color-mix(in srgb, #4A5B6E 85%, #8493A3);
+  --color-zinc-600: #4A5B6E;
+  --color-zinc-700: color-mix(in srgb, #17375E 40%, #4A5B6E);
+  --color-zinc-800: color-mix(in srgb, #17375E 65%, #4A5B6E);
+  --color-zinc-900: color-mix(in srgb, #17375E 85%, #4A5B6E);
+  --color-zinc-950: #17375E;
+
+  --color-neutral-50: #F1F7F7;
+  --color-neutral-100: color-mix(in srgb, #4A5B6E 10%, #F1F7F7);
+  --color-neutral-200: color-mix(in srgb, #4A5B6E 20%, #F1F7F7);
+  --color-neutral-300: #8493A3;
+  --color-neutral-400: color-mix(in srgb, #4A5B6E 65%, #8493A3);
+  --color-neutral-500: color-mix(in srgb, #4A5B6E 85%, #8493A3);
+  --color-neutral-600: #4A5B6E;
+  --color-neutral-700: color-mix(in srgb, #17375E 40%, #4A5B6E);
+  --color-neutral-800: color-mix(in srgb, #17375E 65%, #4A5B6E);
+  --color-neutral-900: color-mix(in srgb, #17375E 85%, #4A5B6E);
+  --color-neutral-950: #17375E;
+
+  --color-stone-50: #F1F7F7;
+  --color-stone-100: color-mix(in srgb, #4A5B6E 10%, #F1F7F7);
+  --color-stone-200: color-mix(in srgb, #4A5B6E 20%, #F1F7F7);
+  --color-stone-300: #8493A3;
+  --color-stone-400: color-mix(in srgb, #4A5B6E 65%, #8493A3);
+  --color-stone-500: color-mix(in srgb, #4A5B6E 85%, #8493A3);
+  --color-stone-600: #4A5B6E;
+  --color-stone-700: color-mix(in srgb, #17375E 40%, #4A5B6E);
+  --color-stone-800: color-mix(in srgb, #17375E 65%, #4A5B6E);
+  --color-stone-900: color-mix(in srgb, #17375E 85%, #4A5B6E);
+  --color-stone-950: #17375E;
+}
+
 @layer base {
-  :root {
-    --color-navy: #0F2A4A;
-    --color-navy-soft: #17375E;
-    --color-slate: #5F7083;
-    --color-line: #E2E8F0;
-    --color-mint: #10B981;
-    --color-mint-soft: #ECFDF5;
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Poppins', 'Cairo', system-ui, sans-serif;
+    background-color: var(--color-page, #FFFFFF);
+    color: var(--color-navy, #17375E);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: 'Poppins', 'Cairo', system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--color-navy, #17375E);
+    letter-spacing: -0.02em;
+  }
+
+  svg.lucide, :where(svg.lucide) {
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 }
 
+/* ==========================================================================
+   HARBOR MINT SEMANTIC THEME TOKENS
+   ========================================================================== */
+:root {
+  --color-page: #FFFFFF;
+  --color-mist: #F1F7F7;
+  --color-mint: #B9DAD6;
+  --color-mint-soft: #DCEDEB;
+  --color-navy: #17375E;
+  --color-navy-deep: #0F2A4A;
+  --color-navy-soft: #2F4E78;
+  --color-orange: #F5A04A;
+  --color-orange-deep: #E58A2B;
+  --color-on-orange: #FFFFFF;
+  --color-slate: #4A5B6E;
+  --color-fog: #8493A3;
+  --color-line: #E1EBEC;
+  --color-teal: #2E8B83;
+  --color-coral: #D64545;
+
+  --radius-card: 22px;
+  --radius-hero: 28px;
+  --radius-sheet: 32px;
+  --radius-field: 18px;
+  --radius-pill: 9999px;
+  --radius-tile: 18px;
+
+  --shadow-mint: 0 10px 24px rgba(23, 55, 94, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --shadow-navy: 0 16px 32px rgba(15, 42, 74, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shadow-white: 0 6px 18px rgba(23, 55, 94, 0.08);
+  --shadow-nav: 0 -2px 20px rgba(23, 55, 94, 0.08), 0 12px 30px rgba(23, 55, 94, 0.12);
+  --shadow-orange: 0 8px 18px rgba(245, 160, 74, 0.35);
+
+  /* Motion & Easing Tokens (Task 18) */
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --ease-out: cubic-bezier(.22, .61, .36, 1);
+  --duration-150: 150ms;
+  --duration-220: 220ms;
+  --duration-300: 300ms;
+  --duration-450: 450ms;
+
+  /* Semantic UI Tokens mapped to Harbor Mint */
+  --classy-primary: var(--color-navy, #17375E);
+  --classy-primary-hover: var(--color-navy-deep, #0F2A4A);
+  --classy-primary-active: var(--color-navy-deep, #0F2A4A);
+
+  --classy-background: var(--color-page, #FFFFFF);
+  --classy-background-secondary: var(--color-mist, #F1F7F7);
+  --classy-surface: var(--color-page, #FFFFFF);
+  --classy-surface-elevated: var(--color-mist, #F1F7F7);
+
+  --classy-secondary: var(--color-slate, #4A5B6E);
+  --classy-accent: var(--color-orange, #F5A04A);
+  --classy-accent-secondary: var(--color-mint, #B9DAD6);
+
+  --classy-text-primary: var(--color-navy, #17375E);
+  --classy-text-secondary: var(--color-slate, #4A5B6E);
+  --classy-text-muted: var(--color-slate, #4A5B6E);
+  --classy-text-on-primary: #FFFFFF;
+
+  --classy-border: var(--color-line, #E1EBEC);
+  --classy-divider: var(--color-line, #E1EBEC);
+
+  --classy-success: var(--color-teal, #2E8B83);
+  --classy-warning: var(--color-orange, #F5A04A);
+  --classy-danger: var(--color-coral, #D64545);
+  --classy-info: var(--color-navy-soft, #2F4E78);
+  --classy-disabled: var(--color-fog, #8493A3);
+
+  /* Aliases for smooth compatibility */
+  --color-canvas: var(--color-page, #FFFFFF);
+  --color-text-main: var(--color-navy, #17375E);
+  --color-text-muted: var(--color-slate, #4A5B6E);
+  --color-border-subtle: var(--color-line, #E1EBEC);
+
+  --status-success: var(--color-teal, #2E8B83);
+  --status-success-bg: var(--color-mist, #F1F7F7);
+  --status-success-border: var(--color-line, #E1EBEC);
+  --status-warning: var(--color-orange, #F5A04A);
+  --status-warning-bg: color-mix(in srgb, #F5A04A 15%, #FFFFFF);
+  --status-warning-border: var(--color-line, #E1EBEC);
+  --status-danger: var(--color-coral, #D64545);
+  --status-danger-bg: color-mix(in srgb, #D64545 15%, #FFFFFF);
+  --status-danger-border: var(--color-line, #E1EBEC);
+  --status-info: var(--color-navy-soft, #2F4E78);
+  --status-info-bg: var(--color-mist, #F1F7F7);
+  --status-info-border: var(--color-line, #E1EBEC);
+}
+
+/* ==========================================================================
+   TYPE CLASSES (HARBOR MINT SPECIFICATION)
+   ========================================================================== */
+.t-display {
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+:lang(ar) .t-display,
+[dir="rtl"] .t-display {
+  line-height: 1.4;
+}
+
+.t-title {
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+:lang(ar) .t-title,
+[dir="rtl"] .t-title {
+  line-height: 1.4;
+}
+
+.t-card {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+:lang(ar) .t-card,
+[dir="rtl"] .t-card {
+  line-height: 1.4;
+}
+
+.t-body {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.t-meta {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 400;
+  color: var(--color-slate, #4A5B6E);
+}
+
+.t-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   FONT UTILITIES
+   ========================================================================== */
+.font-display {
+  font-family: var(--font-display, 'Poppins', 'Cairo', system-ui, sans-serif);
+}
+
+/* ==========================================================================
+   SHAPES & ELEVATIONS (HARBOR MINT)
+   ========================================================================== */
 .classy-card {
+  background-color: var(--color-page, #FFFFFF);
+  border: 1px solid var(--color-line, #E1EBEC);
+  border-radius: var(--radius-card, 22px);
+  box-shadow: var(--shadow-white);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.classy-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-mint);
+  border-color: var(--color-mint, #B9DAD6);
+}
+
+.classy-lavender-card {
+  background-color: var(--color-mint-soft, #DCEDEB);
+  border-radius: var(--radius-card, 22px);
+  box-shadow: none;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4A5B6E;
+  letter-spacing: 0.08em;
+}
+:lang(en) .section-label,
+[dir="ltr"] .section-label {
+  text-transform: uppercase;
+}
+
+.chip {
+  border-radius: var(--radius-pill, 9999px);
+  background-color: var(--color-mint-soft);
+  border: 1px solid transparent;
+  color: var(--color-navy);
+  height: 36px;
+  min-height: 36px;
+  padding-inline: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.chip-active {
+  background-color: var(--color-navy);
+  color: var(--color-page);
+  border-color: var(--color-navy);
+}
+
+.classy-subtle-card {
+  background-color: var(--color-mint-soft);
+  border-radius: var(--radius-tile, 18px);
+  border: 1px solid var(--color-line);
+  padding: 0.875rem;
+}
+
+.classy-bento-sapphire,
+.classy-bento-navy,
+.classy-bento-steel,
+.classy-bento-silver,
+.classy-rose-card,
+.classy-cyan-card,
+.classy-mint-card {
+  background-color: var(--color-page);
+  border-radius: 20px;
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-white);
+}
+
+.classy-dark-card,
+.classy-sheen-header {
+  background: linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-deep) 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(225, 235, 236, 0.3);
+  box-shadow: var(--shadow-navy);
+  color: var(--color-page);
+}
+
+/* ==========================================================================
+   BUTTONS (HARBOR MINT SPECIFICATION)
+   ========================================================================== */
+.btn-orange,
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-inline: 1.25rem;
+  background-color: var(--color-orange);
+  color: var(--color-on-orange);
+  border-radius: var(--radius-pill, 9999px);
+  font-weight: 600;
+  font-size: 16px;
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-orange);
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-orange:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-orange-deep);
+}
+
+.btn-orange:active:not(:disabled),
+.btn-primary:active:not(:disabled) {
+  background-color: var(--color-orange-deep);
+  transform: scale(0.97);
+}
+
+.btn-navy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-inline: 1.25rem;
+  background-color: var(--color-navy);
+  color: var(--color-page);
+  border-radius: var(--radius-pill, 9999px);
+  font-weight: 600;
+  font-size: 16px;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-navy:hover:not(:disabled) {
+  background-color: var(--color-navy-deep);
+}
+
+.btn-navy:active:not(:disabled) {
+  background-color: var(--color-navy-deep);
+  transform: scale(0.97);
+}
+
+.btn-soft,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-inline: 1.25rem;
+  background-color: var(--color-mint-soft);
+  color: var(--color-navy);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill, 9999px);
+  font-weight: 600;
+  font-size: 16px;
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-soft:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-mint);
+}
+
+.btn-soft:active:not(:disabled),
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-tertiary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-inline: 1rem;
+  background-color: transparent;
+  color: var(--color-navy);
+  border-radius: var(--radius-pill, 9999px);
+  font-weight: 600;
+  font-size: 16px;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-tertiary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-mint-soft);
+}
+
+.btn-tertiary:active:not(:disabled),
+.btn-ghost:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-danger,
+.btn-destructive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  min-height: 48px;
+  padding-inline: 1.25rem;
+  background-color: color-mix(in srgb, var(--color-coral) 12%, transparent);
+  color: var(--color-coral);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill, 9999px);
+  font-weight: 600;
+  font-size: 16px;
+  transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-danger:hover:not(:disabled),
+.btn-destructive:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-coral) 18%, transparent);
+}
+
+.btn-danger:active:not(:disabled),
+.btn-destructive:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Solid coral only for the final confirm */
+.btn-danger-solid,
+.btn-destructive-solid {
+  background-color: var(--color-coral) !important;
+  color: var(--color-page) !important;
+  border-color: var(--color-coral) !important;
+}
+
+.btn-danger-solid:hover:not(:disabled),
+.btn-destructive-solid:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-navy-deep) 12%, var(--color-coral)) !important;
+}
+
+.btn-danger-solid:active:not(:disabled),
+.btn-destructive-solid:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-lg {
+  height: 56px;
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 600;
+  padding-inline: 1.5rem;
+}
+
+.btn-orange:disabled,
+.btn-orange.disabled,
+.btn-navy:disabled,
+.btn-navy.disabled,
+.btn-soft:disabled,
+.btn-soft.disabled,
+.btn-primary:disabled,
+.btn-primary.disabled,
+.btn-secondary:disabled,
+.btn-secondary.disabled,
+.btn-tertiary:disabled,
+.btn-tertiary.disabled,
+.btn-ghost:disabled,
+.btn-ghost.disabled,
+.btn-danger:disabled,
+.btn-danger.disabled,
+.btn-destructive:disabled,
+.btn-destructive.disabled,
+.btn-danger-solid:disabled,
+.btn-destructive-solid:disabled,
+.btn-disabled {
+  background-color: var(--color-mint-soft) !important;
+  color: var(--color-fog) !important;
+  border-color: transparent !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+/* Button icons must stay at 18px */
+:where(.btn-orange, .btn-navy, .btn-soft, .btn-primary, .btn-secondary, .btn-ghost, .btn-tertiary, .btn-danger, .btn-destructive, .btn-danger-solid, .btn-destructive-solid) > svg,
+:where(.btn-orange, .btn-navy, .btn-soft, .btn-primary, .btn-secondary, .btn-ghost, .btn-tertiary, .btn-danger, .btn-destructive, .btn-danger-solid, .btn-destructive-solid) svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.btn-violet,
+.btn-coral {
+  background: var(--color-navy);
+  color: var(--color-page);
+  border-radius: var(--radius-pill, 9999px);
+  font-weight: 600;
+  font-size: 16px;
+  height: 48px;
+  min-height: 48px;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   INPUTS & FORMS (HARBOR MINT SPECIFICATION)
+   ========================================================================== */
+.field,
+.input-field,
+.classy-input,
+.classy-select {
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  background-color: var(--color-page);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-field, 18px);
+  padding-inline: 1rem;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-navy);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.classy-textarea,
+textarea.field,
+textarea.input-field {
+  width: 100%;
+  min-height: 52px;
+  background-color: var(--color-page);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-field, 18px);
+  padding: 0.875rem 1rem;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-navy);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field:focus,
+.input-field:focus,
+.classy-input:focus,
+.classy-select:focus,
+.classy-textarea:focus,
+textarea.field:focus {
+  outline: none;
+  border-color: var(--color-navy);
+  background-color: var(--color-page);
+  box-shadow: 0 0 0 3px rgba(23, 55, 94, 0.12);
+}
+
+.field::placeholder,
+.input-field::placeholder,
+.classy-input::placeholder,
+.classy-textarea::placeholder,
+textarea.field::placeholder {
+  color: var(--color-slate);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.field-error,
+.input-field-error,
+.classy-input-error {
+  border-color: var(--color-coral) !important;
+}
+
+.field-error:focus,
+.input-field-error:focus,
+.classy-input-error:focus {
+  border-color: var(--color-coral) !important;
+  box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.12) !important;
+}
+
+.field-error-msg,
+.classy-error-msg {
+  font-size: 12px;
+  color: var(--color-coral);
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.classy-label,
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-slate);
+  margin-bottom: 0.375rem;
+}
+
+/* Checkbox, Radio, and Toggle - Navy Active */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-navy);
+  cursor: pointer;
+}
+
+.classy-toggle {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  padding: 4px;
+  border-radius: var(--radius-pill, 9999px);
+  background-color: var(--color-fog);
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  border: none;
+  flex-shrink: 0;
+  transition: background-color 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.classy-toggle-on,
+.classy-toggle[aria-checked="true"] {
+  background-color: var(--color-navy);
+}
+
+.classy-toggle-knob {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill, 9999px);
+  background-color: var(--color-page);
+  box-shadow: 0 2px 6px rgba(15, 42, 74, 0.2);
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateX(0);
+  pointer-events: none;
+}
+
+.classy-toggle-on .classy-toggle-knob,
+.classy-toggle[aria-checked="true"] .classy-toggle-knob {
+  transform: translateX(20px);
+}
+
+[dir="rtl"] .classy-toggle-on .classy-toggle-knob,
+[dir="rtl"] .classy-toggle[aria-checked="true"] .classy-toggle-knob {
+  transform: translateX(-20px);
+}
+
+/* ==========================================================================
+   SEMANTIC BADGES & CARD PRIMITIVES (HARBOR MINT SPECIFICATION)
+   ========================================================================== */
+.navy-card {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-navy);
+  color: var(--color-page);
+  border-radius: var(--radius-hero, 28px);
+  padding: 20px;
+  box-shadow: var(--shadow-navy);
+}
+
+.mint-card {
+  background-color: var(--color-mint);
+  color: var(--color-navy);
+  border-radius: var(--radius-card, 22px);
+  padding: 16px;
+  box-shadow: var(--shadow-mint);
+}
+
+.white-card {
+  background-color: var(--color-page);
+  color: var(--color-navy);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card, 22px);
+  box-shadow: var(--shadow-white);
+}
+
+.badge-success {
+  background-color: color-mix(in srgb, var(--color-teal) 12%, transparent);
+  color: var(--color-teal);
+  border-radius: var(--radius-pill, 9999px);
+  padding: 0.25rem 0.625rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.badge-warning {
+  background-color: color-mix(in srgb, var(--color-orange) 15%, transparent);
+  color: var(--color-orange-deep);
+  border-radius: var(--radius-pill, 9999px);
+  padding: 0.25rem 0.625rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.badge-danger {
+  background-color: color-mix(in srgb, var(--color-coral) 12%, transparent);
+  color: var(--color-coral);
+  border-radius: var(--radius-pill, 9999px);
+  padding: 0.25rem 0.625rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.badge-info,
+.badge-neutral {
+  background-color: var(--color-mint-soft);
+  color: var(--color-slate);
+  border-radius: var(--radius-pill, 9999px);
+  padding: 0.25rem 0.625rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.badge-primary {
+  background-color: var(--color-mint-soft);
+  color: var(--color-navy);
+  border-radius: var(--radius-pill, 9999px);
+  padding: 0.25rem 0.625rem;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ==========================================================================
+   SEGMENTED CONTROLS / TABS (HARBOR MINT SPECIFICATION)
+   ========================================================================== */
+.segmented-control,
+.classy-segment {
+  position: relative;
+  background-color: var(--color-mint-soft);
+  border-radius: var(--radius-pill, 9999px);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.segmented-control.grid {
+  display: grid;
+}
+
+.segmented-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  inset-inline-start: 4px;
+  background-color: var(--color-navy);
+  border-radius: var(--radius-pill, 9999px);
+  transition: transform 280ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.segmented-item,
+.classy-segment-btn {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  height: 40px;
+  min-height: 40px;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-pill, 9999px);
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 200ms ease, background-color 200ms ease;
+  cursor: pointer;
+  text-align: center;
+  border: none;
+  color: var(--color-navy);
+  background-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  user-select: none;
+}
+
+.segmented-item:hover:not(.segmented-item-active),
+.classy-segment-btn:hover:not(.classy-segment-btn-active) {
+  color: var(--color-navy-deep);
+}
+
+.segmented-item-active {
+  color: var(--color-page) !important;
+}
+
+.classy-segment-btn-active {
+  background-color: var(--color-navy) !important;
+  color: var(--color-page) !important;
+}
+
+.segmented-item-inactive,
+.classy-segment-btn-inactive {
+  color: var(--color-navy);
+  background-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-thumb,
+  .classy-toggle,
+  .classy-toggle-knob,
+  .btn-orange,
+  .btn-navy,
+  .btn-soft,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-tertiary,
+  .btn-danger,
+  .btn-destructive,
+  .btn-danger-solid,
+  .btn-destructive-solid,
+  .chip {
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   FLOATING ACTION BUTTON (FAB)
+   ========================================================================== */
+.classy-fab {
+  position: fixed;
+  bottom: 84px;
+  left: 20px;
+  z-index: 40;
+  width: 56px;
+  height: 56px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #17375E 0%, #0F2A4A 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 28px -4px rgba(23, 55, 94, 0.42), 0 4px 10px rgba(15, 42, 74, 0.25);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.classy-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 16px 34px -4px rgba(23, 55, 94, 0.52);
+}
+
+.classy-fab:active {
+  transform: scale(0.96);
+}
+
+/* ==========================================================================
+   BACKWARD COMPATIBILITY ALIASES
+   ========================================================================== */
+.neu-card, .royal-card, .bento-stat-card {
   background-color: #FFFFFF;
   border-radius: 20px;
-  border: 1px solid #E2E8F0;
-  box-shadow: 0 4px 20px -2px rgba(15, 42, 74, 0.05);
+  box-shadow: 0 6px 18px rgba(23, 55, 94, 0.07);
+  border: 1px solid #E1EBEC;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.btn-soft {
-  background-color: #F1F5F9;
-  color: #0F2A4A;
-  border-radius: 14px;
-  font-weight: 700;
-  transition: all 0.2s;
-}
-.btn-soft:hover {
-  background-color: #E2E8F0;
+.neu-card-hover:hover, .royal-card-hover:hover, .bento-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(23, 55, 94, 0.12);
+  border-color: #E58A2B;
 }
 
-.btn-danger {
-  background-color: #EF4444;
-  color: #FFFFFF;
-  border-radius: 14px;
-  font-weight: 700;
-  transition: all 0.2s;
+/* ==========================================================================
+   ANIMATIONS & SCROLLBARS
+   ========================================================================== */
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.btn-danger:hover {
-  background-color: #DC2626;
+
+.animate-slide-up-fade {
+  animation: slideUpFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loadingBar {
+  0% {
+    transform: translateX(100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-bounce-subtle {
+  animation: bounceSubtle 3s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 20s linear infinite;
+}
+
+.animate-loading-bar {
+  animation: loadingBar 2s ease-in-out infinite;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.android-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.android-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.android-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(225, 235, 236, 0.85);
+  border-radius: 9999px;
+}
+.android-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(23, 55, 94, 0.65);
+}
+
+/* ==========================================================================
+   TOUCH & GESTURES OPTIMIZATION (TASK 18)
+   ========================================================================== */
+html, body {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  overscroll-behavior-y: contain;
+}
+
+button, a, input, select, textarea, [role="button"], .interactive-touch {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tap targets >= 44px */
+.btn-orange,
+.btn-navy,
+.btn-soft,
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-tertiary,
+.btn-danger,
+.btn-destructive,
+.btn-danger-solid,
+.btn-destructive-solid {
+  min-height: 44px;
+}
+
+/* Restrict rule so compact circular/square controls and tight chips are not distorted */
+.compact-control,
+.calendar-cell,
+.calendar-chevron,
+.avatar-btn,
+button.w-9,
+button.h-9,
+button.w-8,
+button.h-8,
+button.w-7,
+button.h-7,
+button.w-6,
+button.h-6,
+button.w-5,
+button.h-5,
+button.w-4,
+button.h-4 {
+  min-height: unset;
+  min-width: unset;
+}
+
+/* Press feedback: every tappable card/tile/chip/button: active scale .97 (150ms) */
+.press-feedback,
+.touch-feedback,
+.chip,
+.classy-card-hover,
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  transition: transform 150ms var(--ease-out, cubic-bezier(.22, .61, .36, 1));
+}
+
+.press-feedback:active,
+.touch-feedback:active,
+.chip:active,
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+}
+
+.modal-drag-handle {
+  width: 40px;
+  height: 5px;
+  background-color: #E1EBEC;
+  border-radius: 9999px;
+  margin: 0 auto;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.modal-drag-handle:active {
+  background-color: #17375E;
+  transform: scaleX(1.2);
+}
+
+.select-none-touch {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* ==========================================================================
+   CONTAINERS & HORIZONTAL ROWS (TASK 18)
+   ========================================================================== */
+/* Horizontal rows: scroll-snap-x, hidden scrollbars, momentum, 20px edge padding */
+.horizontal-scroll-row,
+.horizontal-row-snap,
+.scroll-snap-x {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-inline: 20px;
+}
+.horizontal-scroll-row::-webkit-scrollbar,
+.horizontal-row-snap::-webkit-scrollbar,
+.scroll-snap-x::-webkit-scrollbar {
+  display: none;
+}
+.horizontal-scroll-row > *,
+.horizontal-row-snap > *,
+.scroll-snap-x > * {
+  scroll-snap-align: start;
+}
+
+/* Vertical containers: overscroll-behavior contain */
+.vertical-container,
+.overscroll-contain,
+main,
+[role="main"] {
+  overscroll-behavior-y: contain;
+  overscroll-behavior: contain;
+}
+
+/* Sticky headers get a 1px line shadow only after scrolling */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: var(--color-page);
+  transition: box-shadow 200ms var(--ease-out, cubic-bezier(.22, .61, .36, 1));
+}
+
+.sticky-header.scrolled,
+.sticky-header[data-scrolled="true"],
+.sticky-header.has-scroll-shadow {
+  box-shadow: 0 1px 0 var(--color-line);
+}
+
+/* Safe areas respected on header, nav, FAB, sheets, toasts */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ==========================================================================
+   NAVIGATION & SHEET ANIMATIONS (TASK 9 & TASK 18)
+   ========================================================================== */
+@keyframes icon-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.animate-icon-pop {
+  animation: icon-pop 300ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+@keyframes tile-stagger {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-tile-stagger {
+  animation: tile-stagger 280ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-icon-pop,
+  .animate-tile-stagger,
+  .animate-day-pop,
+  .animate-slide-month-left,
+  .animate-slide-month-right {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   SCREEN / TAB TRANSITION (TASK 18)
+   ========================================================================== */
+@keyframes screen-tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-screen-enter {
+  animation: screen-tab-enter 260ms var(--ease-out, cubic-bezier(.22, .61, .36, 1)) both;
+}
+
+/* ==========================================================================
+   CALENDAR ANIMATIONS (TASK 12 & TASK 18)
+   ========================================================================== */
+@keyframes day-pop {
+  0% { transform: scale(0.65); opacity: 0.8; }
+  60% { transform: scale(1.14); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-day-pop {
+  animation: day-pop 300ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+@keyframes slide-month-left {
+  from { transform: translateX(24px); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-month-right {
+  from { transform: translateX(-24px); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-month-left {
+  animation: slide-month-left 250ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1));
+}
+
+.animate-slide-month-right {
+  animation: slide-month-right 250ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1));
+}
+
+/* ==========================================================================
+   LIST ANIMATIONS & STAGGER (TASK 13 & TASK 18)
+   ========================================================================== */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 220ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
+}
+
+.stagger-1 { animation-delay: 35ms; }
+.stagger-2 { animation-delay: 70ms; }
+.stagger-3 { animation-delay: 105ms; }
+.stagger-4 { animation-delay: 140ms; }
+.stagger-5 { animation-delay: 175ms; }
+.stagger-6 { animation-delay: 210ms; }
+.stagger-7 { animation-delay: 245ms; }
+.stagger-8 { animation-delay: 280ms; }
+
+/* ==========================================================================
+   BOTTOM SHEET & DIALOG ANIMATIONS (TASK 15, 16, 17, 18)
+   ========================================================================== */
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-mint-soft) 0%,
+    color-mix(in srgb, var(--color-mint) 45%, var(--color-mint-soft)) 50%,
+    var(--color-mint-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes toast-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-toast-slide-up {
+  animation: toast-slide-up 250ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+
+.animate-sheet-slide-up {
+  animation: sheet-slide-up 300ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+
+.animate-backdrop-fade {
+  animation: backdrop-fade 200ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
+}
+
+.animate-pop-in {
+  animation: pop-in 180ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+
+/* ==========================================================================
+   PREFERS-REDUCED-MOTION (TASK 18)
+   Remove translate / scale, keep cross-fade only or instant
+   ========================================================================== */
+@keyframes screen-fade-reduced {
+  from { opacity: 0; transform: none; }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-screen-enter {
+    animation: screen-fade-reduced 260ms ease-out both !important;
+    transform: none !important;
+  }
+
+  .animate-fade-up {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  .animate-sheet-slide-up,
+  .animate-toast-slide-up,
+  .animate-day-pop,
+  .animate-icon-pop,
+  .animate-pop-in,
+  .animate-tile-stagger,
+  .animate-slide-month-left,
+  .animate-slide-month-right,
+  .press-feedback,
+  .touch-feedback,
+  .chip,
+  .segmented-thumb,
+  .btn-orange,
+  .btn-navy,
+  .btn-soft,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-tertiary,
+  .btn-danger,
+  .btn-destructive,
+  .btn-danger-solid,
+  .btn-destructive-solid {
+    transform: none !important;
+  }
+
+  .skeleton-shimmer,
+  .animate-slide-up-fade,
+  .animate-bounce-subtle,
+  .animate-spin-slow,
+  .animate-loading-bar,
+  .animate-pulse,
+  .animate-spin,
+  .animate-bounce,
+  .animate-ping,
+  .animate-in,
+  .zoom-in,
+  .fade-in,
+  .slide-in-from-bottom-8,
+  .slide-in-from-bottom-3,
+  .slide-in-from-top-1 {
+    animation: none !important;
+  }
+}
+

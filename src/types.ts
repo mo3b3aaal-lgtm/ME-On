@@ -783,7 +783,6 @@ export interface AutoSyncConfig {
   lastSyncTime: string | null;
   nextSyncTime: string | null;
   status: AutoSyncStatus;
-  lastSyncStatus?: AutoSyncStatus;
   statusMessage?: string;
   autoRetryOnReconnect: boolean;
 }
@@ -826,7 +825,6 @@ export interface BulkCreateSessionsParams {
   attendanceStatus?: AttendanceStatus;
   isCharged?: boolean;
   idempotencyKey?: string;
-  allowSameSlotDuplicate?: boolean;
 }
 
 export interface BulkStudentResultItem {
@@ -851,9 +849,6 @@ export interface BulkCreateSessionsResult {
   studentCount: number;
   createdSessions: Session[];
   results: BulkStudentResultItem[];
-  requiresConfirmation?: boolean;
-  clampedCount?: number;
-  error?: string;
 }
 
 // ==========================================
@@ -920,7 +915,6 @@ export interface SmartReminderItem {
   amount?: number;
   remainingCredits?: number;
   timeStr?: string;
-  date?: string;
   actionType: NotificationActionType;
   // Package / Cycle tracking metadata
   enrollmentId?: string;

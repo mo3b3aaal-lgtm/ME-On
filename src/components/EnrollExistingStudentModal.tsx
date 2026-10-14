@@ -81,7 +81,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   const [groupHourlyRate, setGroupHourlyRate] = useState<number>(selectedGroup?.hourlyRate || 150);
   const [baseSessionsPerMonth, setBaseSessionsPerMonth] = useState<number>(selectedGroup?.baseSessionsPerMonth || 8);
   const [packageSessionsCount, setPackageSessionsCount] = useState<number>(selectedGroup?.packageSessionsCount || 8);
-  const [pricingType, setPricingType] = useState<any>('standard');
+  const [pricingType, setPricingType] = useState<PricingModifierType>('standard');
   const [pricingValue, setPricingValue] = useState<number>(0);
 
   const basePrice = selectedGroup ? selectedGroup.defaultPrice : 0;

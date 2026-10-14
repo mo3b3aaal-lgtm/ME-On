@@ -59,7 +59,7 @@ import {
 } from '../types';
 import { getAppLanguage } from './i18n';
 import { getLocalDateString, toLocalISODate, parseLocalDateStr } from './localDate';
-import { formatTimeDisplay, parseTimeToMinutes, getScheduledClassesForDate, getSlotKey, pickRepresentativeSession } from './schedule';
+import { formatTimeDisplay, parseTimeToMinutes, getScheduledClassesForDate } from './schedule';
 import {
   roundMoney,
   multiplyMoney,
@@ -84,38 +84,6 @@ export {
   calculateMoneyRemainder,
   formatMoney,
 };
-
-export interface DuplicateSessionCopy {
-  session: Session;
-  studentName: string;
-  groupName: string;
-  date: string;
-  time: string;
-  idPrefix: string;
-  createdAtFormatted: string;
-  status: string;
-  hasAttendance: boolean;
-  attendanceUnits?: number;
-  attendanceHours?: number;
-  attendanceAmount?: number;
-  selectedForRemoval?: boolean;
-}
-
-export interface DuplicateSessionGroup {
-  slotKey: string;
-  studentName: string;
-  groupName: string;
-  date: string;
-  time: string;
-  startTime?: string;
-  timeSpreadMs: number;
-  timeSpreadText: string;
-  copies: DuplicateSessionCopy[];
-  sessions: DuplicateSessionCopy[];
-  representativeSession: Session;
-  defaultKeepId: string;
-  defaultRemoveIds: string[];
-}
 
 /**
  * Universal Formatter for Session Quantity / Duration
@@ -616,27 +584,22 @@ ${assignment.launchUrl}
 // Base Generic Storage Helper
 // ==========================================
 
-const memoryStore = new Map<string, string>();
-
 function getList<T>(key: string, fallback: T[] = []): T[] {
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : memoryStore.get(key);
+    const raw = localStorage.getItem(key);
     if (!raw) return fallback;
     return JSON.parse(raw) as T[];
   } catch (err) {
+    console.error(`Error reading key ${key} from storage:`, err);
     return fallback;
   }
 }
 
 function saveList<T>(key: string, data: T[]): void {
   try {
-    const json = JSON.stringify(data);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(key, json);
-    }
-    memoryStore.set(key, json);
+    localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
-    // ignore
+    console.error(`Error saving key ${key} to storage:`, err);
   }
 }
 
@@ -2323,7 +2286,7 @@ export const db = {
     return db.getSessions().find((s) => s.id === id);
   },
 
-  saveSession: (session: Session, options?: { allowSameSlotDuplicate?: boolean }): Session => {
+  saveSession: (session: Session): void => {
     const activeUserId = getActiveUserId();
     const now = new Date().toISOString();
     const sessionWithUser: Session = {
@@ -2337,42 +2300,11 @@ export const db = {
     const idx = list.findIndex((s) => s.id === session.id);
     if (idx >= 0) {
       list[idx] = sessionWithUser;
-      saveList(STORAGE_KEYS.SESSIONS, list);
-      autoSyncUserAccount(activeUserId);
-      return sessionWithUser;
+    } else {
+      list.unshift(sessionWithUser);
     }
-
-    // New ID being inserted: check for existing non-cancelled session with the same slot key
-    if (session.status !== 'cancelled' && !options?.allowSameSlotDuplicate) {
-      const enrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
-      const slotKey = getSlotKey(session, enrollments);
-      const existingIdx = list.findIndex((s) => {
-        if (s.status === 'cancelled') return false;
-        return getSlotKey(s, enrollments) === slotKey;
-      });
-
-      if (existingIdx >= 0) {
-        console.warn(`[saveSession] Prevented duplicate session for slot key: ${slotKey}. Updating existing session: ${list[existingIdx].id}`);
-        const existing = list[existingIdx];
-        const updatedExisting: Session = {
-          ...existing,
-          ...session,
-          id: existing.id,
-          createdAt: existing.createdAt || session.createdAt || now,
-          updatedAt: now,
-          userId: existing.userId || sessionWithUser.userId,
-        };
-        list[existingIdx] = updatedExisting;
-        saveList(STORAGE_KEYS.SESSIONS, list);
-        autoSyncUserAccount(activeUserId);
-        return updatedExisting;
-      }
-    }
-
-    list.unshift(sessionWithUser);
     saveList(STORAGE_KEYS.SESSIONS, list);
     autoSyncUserAccount(activeUserId);
-    return sessionWithUser;
   },
 
   /**
@@ -2523,14 +2455,14 @@ export const db = {
       createdAt: new Date().toISOString(),
     };
 
-    const saved = db.saveSession(newSession);
-    createdSessions.push(saved);
+    db.saveSession(newSession);
+    createdSessions.push(newSession);
 
     // Create attendance record
     const attendanceRec: Attendance = {
       id: `att_priv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       userId: activeUserId,
-      sessionId: saved.id,
+      sessionId: newSession.id,
       studentId: params.studentId,
       enrollmentId: params.enrollmentId,
       status: finalAttendanceStatus,
@@ -2543,7 +2475,7 @@ export const db = {
       notes: params.notes || (params.absenceReason ? `سبب الغياب: ${params.absenceReason}` : undefined),
     };
 
-    db.saveAttendanceBatch(saved.id, [attendanceRec]);
+    db.saveAttendanceBatch(newSession.id, [attendanceRec]);
 
     return createdSessions;
   },
@@ -2553,48 +2485,12 @@ export const db = {
    */
   recordBulkSessionsForStudents: (params: BulkCreateSessionsParams): BulkCreateSessionsResult => {
     const activeUserId = getActiveUserId();
-    const requestedCount = Number(params.sessionCount) || 1;
-    // TASK 23: Max sessionCount per student per submit = 10 (clamp in storage and input)
-    const clampedCount = Math.min(10, Math.max(1, Math.floor(requestedCount)));
+    const count = Math.max(1, Math.floor(params.sessionCount || 1));
     const idempotencyKey = params.idempotencyKey?.trim();
 
     if (idempotencyKey && executedBulkBatches.has(idempotencyKey)) {
       return executedBulkBatches.get(idempotencyKey)!;
     }
-
-    // TASK 23: Safety net: if one user action would create more than 5 sessions for the same student and date, abort
-    if (clampedCount > 5) {
-      return {
-        success: false,
-        totalCreated: 0,
-        totalRequested: clampedCount * (params.students?.length || 1),
-        sessionsPerStudent: 0,
-        studentCount: params.students?.length || 0,
-        createdSessions: [],
-        results: [],
-        clampedCount: 10,
-        requiresConfirmation: true,
-        error: 'Safety net triggered: Cannot create more than 5 sessions for the same student and date.',
-      };
-    }
-
-    // TASK 23: If sessionCount > 1, or a same-slot session already exists, require confirmation before saving
-    if (clampedCount > 1 && !params.allowSameSlotDuplicate) {
-      return {
-        success: false,
-        totalCreated: 0,
-        totalRequested: clampedCount * (params.students?.length || 1),
-        sessionsPerStudent: 0,
-        studentCount: params.students?.length || 0,
-        createdSessions: [],
-        results: [],
-        clampedCount,
-        requiresConfirmation: true,
-        error: `Confirmation required to create ${clampedCount} sessions in the same slot.`,
-      };
-    }
-
-    const count = clampedCount;
 
     const createdSessions: Session[] = [];
     const results: BulkStudentResultItem[] = [];
@@ -2736,13 +2632,13 @@ export const db = {
           hoursSnapshot: isHourly ? hours : undefined,
         };
 
-        const saved = db.saveSession(newSession, { allowSameSlotDuplicate: params.allowSameSlotDuplicate });
-        createdSessions.push(saved);
+        db.saveSession(newSession);
+        createdSessions.push(newSession);
 
         const attendanceRec: Attendance = {
           id: `att_bulk_${Date.now()}_${student.id}_${i}_${Math.random().toString(36).substr(2, 6)}`,
           userId: activeUserId,
-          sessionId: saved.id,
+          sessionId: newSession.id,
           studentId: target.studentId,
           enrollmentId: target.enrollmentId,
           status: params.attendanceStatus || 'present',
@@ -4373,22 +4269,8 @@ export const db = {
 
     const sessionItems: TodayPrivateSessionItem[] = [];
 
-    // TASK 23: Collapse duplicate sessions sharing the same slot key into ONE card
-    const slotMap = new Map<string, Session[]>();
+    // 1. First add recorded / existing session records for today
     todaySessions.forEach((s) => {
-      const key = getSlotKey(s, allEnrs);
-      const list = slotMap.get(key) || [];
-      list.push(s);
-      slotMap.set(key, list);
-    });
-
-    const representativeTodaySessions: Session[] = [];
-    for (const list of slotMap.values()) {
-      representativeTodaySessions.push(pickRepresentativeSession(list, todayAttendance));
-    }
-
-    // 1. First add recorded / existing session records for today (collapsed by slot)
-    representativeTodaySessions.forEach((s) => {
       const att = todayAttendance.find((a) => a.sessionId === s.id);
       const enr = allEnrollments.find(
         (e) => e.enrollment.id === s.enrollmentId || e.enrollment.groupId === s.groupId
@@ -4507,14 +4389,7 @@ export const db = {
 
     // 2. Add scheduled appointments not yet converted to a session
     studentScheduledPrivate.forEach((sch) => {
-      const schSlotKey = getSlotKey({
-        studentId,
-        groupId: sch.groupId,
-        enrollmentId: sch.enrollmentId,
-        date,
-        startTime: sch.time,
-      }, allEnrs);
-      const alreadyHas = slotMap.has(schSlotKey) || sessionItems.some(
+      const alreadyHas = sessionItems.some(
         (it) => it.time === sch.time || (it.sessionId && sch.id.includes(it.sessionId))
       );
       if (!alreadyHas) {
@@ -4618,147 +4493,6 @@ export const db = {
     });
 
     return list;
-  },
-
-  /**
-   * TASK 23 - STEP 5: Cleanup tool - Find duplicate appointment groups
-   * Groups sessions by slot key and identifies non-cancelled duplicates.
-   */
-  findDuplicateSessionGroups: (): DuplicateSessionGroup[] => {
-    const all = db.getSessions();
-    const nonCancelled = all.filter((s) => s.status !== 'cancelled');
-    const enrollments = db.getEnrollments();
-    const students = db.getStudents();
-    const groups = db.getGroups();
-    const allAttendance = db.getAttendance();
-
-    const slotMap = new Map<string, Session[]>();
-    for (const s of nonCancelled) {
-      const key = getSlotKey(s, enrollments);
-      const list = slotMap.get(key) || [];
-      list.push(s);
-      slotMap.set(key, list);
-    }
-
-    const duplicateGroups: DuplicateSessionGroup[] = [];
-
-    for (const [slotKey, sessionsInSlot] of slotMap.entries()) {
-      if (sessionsInSlot.length <= 1) continue;
-
-      const repSession = pickRepresentativeSession(sessionsInSlot, allAttendance);
-
-      // Calculate time spread
-      let minCreated = Infinity;
-      let maxCreated = -Infinity;
-      sessionsInSlot.forEach((s) => {
-        const t = s.createdAt ? new Date(s.createdAt).getTime() : 0;
-        if (t > 0) {
-          if (t < minCreated) minCreated = t;
-          if (t > maxCreated) maxCreated = t;
-        }
-      });
-
-      const timeSpreadMs = (minCreated !== Infinity && maxCreated !== -Infinity && maxCreated >= minCreated)
-        ? maxCreated - minCreated
-        : 0;
-
-      let timeSpreadText = '0s';
-      if (timeSpreadMs > 0) {
-        const totalSecs = Math.round(timeSpreadMs / 1000);
-        if (totalSecs < 60) {
-          timeSpreadText = `${totalSecs}s`;
-        } else {
-          const mins = Math.floor(totalSecs / 60);
-          const secs = totalSecs % 60;
-          timeSpreadText = secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-        }
-      }
-
-      const defaultKeepId = repSession.id;
-      const defaultRemoveIds: string[] = [];
-
-      const copies: DuplicateSessionCopy[] = sessionsInSlot.map((s) => {
-        const student = s.studentId ? students.find((st) => st.id === s.studentId) : undefined;
-        const group = groups.find((g) => g.id === s.groupId);
-        const stuName = student?.name || (s.studentId ? 'طالب' : (group?.name || 'مجموعة'));
-        const grpName = group?.name || s.title || 'حصة';
-
-        let idPrefix = 'sess_';
-        if (s.id.startsWith('ses_priv_')) idPrefix = 'ses_priv_';
-        else if (s.id.startsWith('ses_bulk_')) idPrefix = 'ses_bulk_';
-        else if (s.id.startsWith('sess_')) idPrefix = 'sess_';
-        else if (s.id.startsWith('ses_')) idPrefix = 'ses_';
-        else {
-          const parts = s.id.split('_');
-          idPrefix = parts.length > 1 ? `${parts[0]}_` : s.id;
-        }
-
-        let createdAtFormatted = s.createdAt || '';
-        try {
-          if (s.createdAt) {
-            const d = new Date(s.createdAt);
-            if (!isNaN(d.getTime())) {
-              createdAtFormatted = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-            }
-          }
-        } catch {
-          // fallback
-        }
-
-        const attRecords = allAttendance.filter((a) => a.sessionId === s.id);
-        const hasAttendance = attRecords.length > 0;
-        let attendanceUnits: number | undefined;
-        let attendanceHours: number | undefined;
-        let attendanceAmount: number | undefined;
-
-        if (hasAttendance) {
-          const firstAtt = attRecords[0];
-          attendanceUnits = firstAtt.sessionUnits || s.sessionUnits;
-          attendanceHours = firstAtt.hours || s.hours;
-          attendanceAmount = s.totalSessionValue || s.pricePerStudent;
-        }
-
-        const isSelectedForRemoval = s.id !== defaultKeepId && !hasAttendance;
-        if (isSelectedForRemoval) {
-          defaultRemoveIds.push(s.id);
-        }
-
-        return {
-          session: s,
-          studentName: stuName,
-          groupName: grpName,
-          date: s.date,
-          time: formatTimeDisplay(s.startTime, true),
-          idPrefix,
-          createdAtFormatted,
-          status: s.status,
-          hasAttendance,
-          attendanceUnits,
-          attendanceHours,
-          attendanceAmount,
-          selectedForRemoval: isSelectedForRemoval,
-        };
-      });
-
-      const firstCopy = copies[0];
-      duplicateGroups.push({
-        slotKey,
-        studentName: firstCopy.studentName,
-        groupName: firstCopy.groupName,
-        date: firstCopy.date,
-        time: firstCopy.time,
-        startTime: firstCopy.session.startTime,
-        timeSpreadMs,
-        timeSpreadText,
-        copies,
-        sessions: copies,
-        representativeSession: repSession,
-        defaultKeepId,
-        defaultRemoveIds,
-      });
-    }
-
-    return duplicateGroups;
   },
 
   /**
@@ -6171,31 +5905,3 @@ export const db = {
     return subscribeToSyncUpdates(listener);
   },
 };
-
-/**
- * TASK 23 - STEP 3: Deterministic session ID generator
- * Generates identical IDs for same date + groupId + studentId + start minutes (no Math.random)
- */
-export function getDeterministicSessionId(
-  date: string,
-  groupId: string,
-  studentId?: string | null,
-  startTime?: string | null
-): string {
-  const normDate = date || '1970-01-01';
-  const normGroup = groupId || 'group';
-  const normStudent = studentId && studentId.trim() ? studentId.trim() : 'group';
-  const startMins = parseTimeToMinutes(startTime || '00:00');
-  return `sess_${normDate}_${normGroup}_${normStudent}_${startMins}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-}
-
-export const findDuplicateSessions = (): DuplicateSessionGroup[] => db.findDuplicateSessionGroups();
-export type DuplicateGroup = DuplicateSessionGroup;
-
-export const recordPrivateSessionsForStudent = (...args: Parameters<typeof db.recordPrivateSessionsForStudent>): Session[] =>
-  db.recordPrivateSessionsForStudent(...args);
-
-export const recordBulkSessionsForStudents = (...args: Parameters<typeof db.recordBulkSessionsForStudents>): BulkCreateSessionsResult =>
-  db.recordBulkSessionsForStudents(...args);
-
-export { getSlotKey, pickRepresentativeSession };

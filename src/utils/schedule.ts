@@ -734,19 +734,14 @@ export function getScheduledClassesForDate(
 
   const scheduledItems: ScheduledClassItem[] = [];
 
-  // 1. Regular Study Groups (Strictly groups only - never private pseudo-groups)
   for (const group of groups) {
-    if (group.type === 'private') continue;
+    const isPrivate = group.type === 'private';
+    const groupEnrollments = studentEnrollmentsByGroup.get(group.id) || [];
 
-    const groupEnrollments = (studentEnrollmentsByGroup.get(group.id) || []).filter(
-      (enr) => enr.serviceType !== 'private'
-    );
-    const groupNormalizedDays = group.scheduleDays && Array.isArray(group.scheduleDays)
-      ? normalizeScheduleDays(group.scheduleDays)
-      : [];
+    const groupNormalizedDays = group.scheduleDays && Array.isArray(group.scheduleDays) ? normalizeScheduleDays(group.scheduleDays) : [];
     const groupMeetsToday = groupNormalizedDays.includes(canonicalTodayKey);
 
-    // Check if any active group enrollment in this group has custom schedule days meeting today
+    // Check if any active enrollment in this group has custom schedule days meeting today
     const customEnrollmentsMeetingToday = groupEnrollments.filter((enr) => {
       if (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0) {
         return normalizeScheduleDays(enr.scheduleDays).includes(canonicalTodayKey);
@@ -758,44 +753,61 @@ export function getScheduledClassesForDate(
       continue;
     }
 
-    if (groupMeetsToday) {
-      const groupTimes = getTimesForDayInGroup(group, canonicalTodayKey);
-      const effectiveGroupTimes = groupTimes.length > 0 ? groupTimes : [group.scheduleTime || '16:00'];
+    if (isPrivate) {
+      // Private lesson: each private enrollment represents a scheduled private lesson
+      if (groupEnrollments.length > 0) {
+        for (const enr of groupEnrollments) {
+          const stu = activeStudentsMap.get(enr.studentId);
+          if (!stu) continue;
 
-      effectiveGroupTimes.forEach((rawTime, timeIdx) => {
-        const sortMinutes = parseTimeToMinutes(rawTime);
-        const formattedTime = formatTimeDisplay(rawTime, isRTL);
-        const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
-        const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
-        const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
+          // Check custom enrollment schedule days if defined
+          if (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0) {
+            const enrDays = normalizeScheduleDays(enr.scheduleDays);
+            if (!enrDays.includes(canonicalTodayKey)) {
+              continue;
+            }
+          } else if (!groupMeetsToday) {
+            continue;
+          }
 
-        scheduledItems.push({
-          id: `sched_grp_${group.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
-          studentId: '',
-          studentName: group.name,
-          groupId: group.id,
-          groupName: group.name,
-          group: group,
-          isPrivate: false,
-          subject: subj,
-          dayName: localizedDayName,
-          time: formattedTime,
-          rawTime,
-          sortMinutes,
-          location: loc,
-          accentColor: group.accentColor || '#17375E',
-        });
-      });
-    }
+          const occurrenceTimes = getTimesForDayInEnrollment(enr, group, canonicalTodayKey);
+          const effectiveTimes = occurrenceTimes.length > 0 ? occurrenceTimes : [group.scheduleTime || '16:00'];
 
-    // If enrollment has custom schedule override meeting today when group itself doesn't meet
-    if (!groupMeetsToday && customEnrollmentsMeetingToday.length > 0) {
-      for (const enr of customEnrollmentsMeetingToday) {
-        const stu = activeStudentsMap.get(enr.studentId);
-        const rawTimes = getTimesForDayInEnrollment(enr, group, canonicalTodayKey);
-        const effectiveTimes = rawTimes.length > 0 ? rawTimes : [group.scheduleTime || '16:00'];
+          effectiveTimes.forEach((rawTime, timeIdx) => {
+            const sortMinutes = parseTimeToMinutes(rawTime);
+            const formattedTime = formatTimeDisplay(rawTime, isRTL);
+            const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+            const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+            const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
 
-        effectiveTimes.forEach((rawTime, timeIdx) => {
+            scheduledItems.push({
+              id: `sched_priv_${group.id}_${stu.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
+              studentId: stu.id,
+              studentName: stu.name,
+              student: stu,
+              groupId: group.id,
+              groupName: isRTL ? 'درس خاص' : 'Private Lesson',
+              group: group,
+              enrollmentId: enr.id,
+              isPrivate: true,
+              subject: subj,
+              dayName: localizedDayName,
+              time: formattedTime,
+              rawTime,
+              sortMinutes,
+              location: loc,
+              accentColor: group.accentColor || '#0F2A4A',
+            });
+          });
+        }
+      }
+    } else {
+      // Regular Study Group
+      if (groupMeetsToday) {
+        const groupTimes = getTimesForDayInGroup(group, canonicalTodayKey);
+        const effectiveGroupTimes = groupTimes.length > 0 ? groupTimes : [group.scheduleTime || '16:00'];
+
+        effectiveGroupTimes.forEach((rawTime, timeIdx) => {
           const sortMinutes = parseTimeToMinutes(rawTime);
           const formattedTime = formatTimeDisplay(rawTime, isRTL);
           const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
@@ -803,13 +815,12 @@ export function getScheduledClassesForDate(
           const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
 
           scheduledItems.push({
-            id: `sched_enr_custom_${group.id}_${enr.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
-            studentId: stu?.id || '',
-            studentName: stu?.name || group.name,
+            id: `sched_grp_${group.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
+            studentId: '',
+            studentName: group.name,
             groupId: group.id,
             groupName: group.name,
             group: group,
-            enrollmentId: enr.id,
             isPrivate: false,
             subject: subj,
             dayName: localizedDayName,
@@ -821,98 +832,80 @@ export function getScheduledClassesForDate(
           });
         });
       }
+
+      // If enrollment has custom schedule override meeting today when group itself doesn't meet
+      if (!groupMeetsToday && customEnrollmentsMeetingToday.length > 0) {
+        for (const enr of customEnrollmentsMeetingToday) {
+          const stu = activeStudentsMap.get(enr.studentId);
+          const rawTimes = getTimesForDayInEnrollment(enr, group, canonicalTodayKey);
+          const effectiveTimes = rawTimes.length > 0 ? rawTimes : [group.scheduleTime || '16:00'];
+
+          effectiveTimes.forEach((rawTime, timeIdx) => {
+            const sortMinutes = parseTimeToMinutes(rawTime);
+            const formattedTime = formatTimeDisplay(rawTime, isRTL);
+            const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+            const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+            const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
+
+            scheduledItems.push({
+              id: `sched_enr_custom_${group.id}_${enr.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
+              studentId: stu?.id || '',
+              studentName: stu?.name || group.name,
+              groupId: group.id,
+              groupName: group.name,
+              group: group,
+              enrollmentId: enr.id,
+              isPrivate: false,
+              subject: subj,
+              dayName: localizedDayName,
+              time: formattedTime,
+              rawTime,
+              sortMinutes,
+              location: loc,
+              accentColor: group.accentColor || '#17375E',
+            });
+          });
+        }
+      }
     }
   }
 
-  // 2. Private Tutoring Appointments (Direct student identity, deduplicated per student per time slot)
-  const seenStudentSlots = new Set<string>();
-
+  // Also check active students with direct privateDays or scheduleDays not yet covered by a group
+  const coveredStudentIds = new Set(scheduledItems.filter((i) => i.isPrivate && i.studentId).map((i) => i.studentId));
   for (const stu of activeStudentsMap.values()) {
-    // Find any private enrollments for this student
-    const studentPrivateEnrollments = enrollments.filter(
-      (e) => e.studentId === stu.id && (e.serviceType === 'private' || groups.find((g) => g.id === e.groupId)?.type === 'private') && e.status !== 'stopped'
-    );
+    if (coveredStudentIds.has(stu.id)) continue;
 
-    // Collect effective private appointment times for today
-    const todayPrivateTimes: { rawTime: string; enrollmentId?: string; location?: string; subject?: string }[] = [];
+    if (stu.privateDays && Array.isArray(stu.privateDays) && stu.privateDays.length > 0) {
+      const normPD = normalizeScheduleDays(stu.privateDays);
+      if (normPD.includes(canonicalTodayKey)) {
+        const normPT = normalizeScheduleTimes(stu.privateTimes);
+        const effectiveTimes = normPT[canonicalTodayKey]?.length ? normPT[canonicalTodayKey] : [stu.privateTime || '16:30'];
 
-    // From private enrollments
-    for (const enr of studentPrivateEnrollments) {
-      const enrGroup = groups.find((g) => g.id === enr.groupId);
-      const enrDays = enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0
-        ? normalizeScheduleDays(enr.scheduleDays)
-        : (enrGroup?.scheduleDays ? normalizeScheduleDays(enrGroup.scheduleDays) : []);
+        effectiveTimes.forEach((rawTime, timeIdx) => {
+          const sortMinutes = parseTimeToMinutes(rawTime);
+          const formattedTime = formatTimeDisplay(rawTime, isRTL);
+          const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+          const loc = getLocalizedLocationName(stu.privateLocation || (isRTL ? 'منزل الطالب' : "Student's Home"), isRTL);
+          const subj = getLocalizedSubjectName(stu.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
 
-      if (enrDays.includes(canonicalTodayKey)) {
-        const times = enrGroup
-          ? getTimesForDayInEnrollment(enr, enrGroup, canonicalTodayKey)
-          : (enr.scheduleTimes?.[canonicalTodayKey] ? normalizeScheduleTimesList(enr.scheduleTimes[canonicalTodayKey]) : [enr.scheduleTime || '16:00']);
-
-        const effectiveTimes = times.length > 0 ? times : [enr.scheduleTime || enrGroup?.scheduleTime || '16:00'];
-        effectiveTimes.forEach((t) => {
-          todayPrivateTimes.push({
-            rawTime: t,
-            enrollmentId: enr.id,
-            location: enrGroup?.roomOrLocation,
-            subject: enrGroup?.subject || stu.subject,
+          scheduledItems.push({
+            id: `sched_priv_direct_${stu.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
+            studentId: stu.id,
+            studentName: stu.name,
+            student: stu,
+            groupId: `direct_priv_${stu.id}`,
+            groupName: isRTL ? 'درس خاص' : 'Private Lesson',
+            isPrivate: true,
+            subject: subj,
+            dayName: localizedDayName,
+            time: formattedTime,
+            rawTime,
+            sortMinutes,
+            location: loc,
+            accentColor: '#0F2A4A',
           });
         });
       }
-    }
-
-    // From student direct privateDays or scheduleDays (if student has private lessons and not yet covered)
-    const directPrivateDays = (stu.privateDays && stu.privateDays.length > 0)
-      ? normalizeScheduleDays(stu.privateDays)
-      : (stu.serviceType === 'private' && stu.scheduleDays && stu.scheduleDays.length > 0 ? normalizeScheduleDays(stu.scheduleDays) : []);
-
-    if (directPrivateDays.includes(canonicalTodayKey)) {
-      const directTimesMap = normalizeScheduleTimes(stu.privateTimes || (stu.serviceType === 'private' ? stu.scheduleTimes : undefined));
-      const times = directTimesMap[canonicalTodayKey]?.length
-        ? directTimesMap[canonicalTodayKey]
-        : [stu.privateTime || (stu.serviceType === 'private' ? stu.scheduleTime : undefined) || '16:00'];
-
-      times.forEach((t) => {
-        todayPrivateTimes.push({
-          rawTime: t,
-          enrollmentId: studentPrivateEnrollments[0]?.id,
-          location: stu.privateLocation,
-          subject: stu.subject,
-        });
-      });
-    }
-
-    // Add each distinct time slot once for this student
-    for (const item of todayPrivateTimes) {
-      const sortMinutes = parseTimeToMinutes(item.rawTime);
-      const slotKey = `${stu.id}_${sortMinutes}`;
-
-      if (seenStudentSlots.has(slotKey)) {
-        continue; // Prevent duplicate appointment for the same student at the same time
-      }
-      seenStudentSlots.add(slotKey);
-
-      const formattedTime = formatTimeDisplay(item.rawTime, isRTL);
-      const cleanTimeKey = (item.rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
-      const loc = getLocalizedLocationName(item.location || stu.privateLocation || (isRTL ? 'منزل الطالب' : "Student's Home"), isRTL);
-      const subj = getLocalizedSubjectName(item.subject || stu.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
-
-      scheduledItems.push({
-        id: `sched_priv_${stu.id}_${targetDayIdx}_${cleanTimeKey}`,
-        studentId: stu.id,
-        studentName: stu.name, // Display the student's real name directly
-        student: stu,
-        groupId: '', // Independent of fake groups
-        groupName: isRTL ? 'درس خاص' : 'Private Lesson',
-        enrollmentId: item.enrollmentId,
-        isPrivate: true,
-        subject: subj,
-        dayName: localizedDayName,
-        time: formattedTime,
-        rawTime: item.rawTime,
-        sortMinutes,
-        location: loc,
-        accentColor: '#0F2A4A',
-      });
     }
   }
 

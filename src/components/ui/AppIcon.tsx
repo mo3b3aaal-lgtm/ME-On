@@ -150,10 +150,8 @@ export const ICON_MAP = {
   whatsapp: WhatsappLogo,
   message: ChatCircleDots,
   mail: EnvelopeSimple,
-  email: EnvelopeSimple,
   building: Buildings,
   school: GraduationCap,
-  graduation: GraduationCap,
   mapPin: MapPin,
   dollar: CurrencyDollar,
   creditCard: CreditCard,
@@ -197,7 +195,6 @@ export const ICON_MAP = {
   dollarSign: CurrencyDollar,
   warningCircle: WarningCircle,
   alertCircle: WarningCircle,
-  alert: Warning,
   arrowsClockwise: ArrowsClockwise,
   pencilSimple: PencilSimple,
   edit2: PencilSimple,
@@ -217,15 +214,10 @@ export const ICON_MAP = {
   restore: ArrowCounterClockwise,
   eye: Eye,
   eyeOff: EyeSlash,
-  copy: FileText,
-  x: X,
-  bookOpen: BookOpen,
-  spinner: ArrowsClockwise,
-  speaker: SpeakerHigh,
 } satisfies Record<string, Icon>;
 
 export type AppIconName = keyof typeof ICON_MAP;
-export type AppIconWeight = 'fill' | 'duotone' | 'regular' | 'bold' | 'light' | 'thin';
+export type AppIconWeight = 'fill' | 'duotone' | 'regular';
 
 const AUTO_MIRROR_RTL_NAMES = new Set<AppIconName>(['chevronStart', 'chevronEnd']);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
@@ -16,9 +16,6 @@ import {
   DetailedDateAgenda,
   DetailedDateAgendaItem,
   formatDateKey,
-  parseTimeToMinutes,
-  getSlotKey,
-  pickRepresentativeSession,
 } from '../utils/schedule';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
@@ -60,7 +57,6 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
   const [isYearPickerOpen, setIsYearPickerOpen] = useState<boolean>(false);
-  const isStartRecurringLockedRef = useRef(false);
 
   // Enrollments from db
   const enrollments = useMemo(() => {
@@ -188,45 +184,10 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
   };
 
   const handleStartRecurringClass = (item: DetailedDateAgendaItem) => {
-    // Re-entry lock (TASK 23)
-    if (isStartRecurringLockedRef.current) return;
-    isStartRecurringLockedRef.current = true;
-    setTimeout(() => {
-      isStartRecurringLockedRef.current = false;
-    }, 1500);
-
-    // Read CURRENT sessions from db (not stale React props)
-    const currentSessions = db.getSessions();
-    const currentEnrollments = db.getEnrollments();
-    const itemSlotKey = getSlotKey({
-      studentId: item.studentId,
-      groupId: item.groupId,
-      enrollmentId: item.enrollmentId,
-      date: item.dateStr,
-      startTime: item.startTime,
-    }, currentEnrollments);
-
-    const matchingSessions = currentSessions.filter((s) => {
-      if (s.date !== item.dateStr || s.status === 'cancelled') return false;
-      return getSlotKey(s, currentEnrollments) === itemSlotKey;
-    });
-
-    if (matchingSessions.length > 0) {
-      const rep = pickRepresentativeSession(matchingSessions, db.getAttendance());
-      onOpenAttendanceModal(rep);
-      return;
-    }
-
     const targetGroup = groups.find((g) => g.id === item.groupId);
-    const startMins = parseTimeToMinutes(item.startTime || '16:00');
-    const studentPart = item.studentId || 'grp';
-
-    // Deterministic ID from date + groupId + studentId + start minutes (no Math.random)
-    const deterministicId = `sess_${item.dateStr}_${item.groupId}_${studentPart}_${startMins}`;
-
     const now = new Date().toISOString();
     const newSession: Session = {
-      id: deterministicId,
+      id: 'ses_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       groupId: item.groupId,
       title: item.studentName
         ? (isEn ? `Class: ${item.studentName} (${targetGroup?.name || ''})` : `حصة ${item.studentName} (${targetGroup?.name || ''})`)
@@ -248,9 +209,9 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
       updatedAt: now,
     };
 
-    const saved = db.saveSession(newSession);
+    db.saveSession(newSession);
     if (onDataChanged) onDataChanged();
-    onOpenAttendanceModal(saved);
+    onOpenAttendanceModal(newSession);
   };
 
   const handlePrevDay = () => {

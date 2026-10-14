@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ScreenHeader } from './ui/ScreenHeader';
 import { NavyCard } from './ui/NavyCard';
 import { ProgressRing } from './ui/ProgressRing';
@@ -36,8 +36,6 @@ import {
   formatTimeDisplay,
   getLocalizedWeekdayName,
   parseTimeToMinutes,
-  getSlotKey,
-  pickRepresentativeSession,
 } from '../utils/schedule';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { parseLocalTimeToStandard } from '../utils/localDate';
@@ -50,42 +48,36 @@ interface DashboardViewProps {
   students: Student[];
   groups: Group[];
   sessions: Session[];
-  payments?: Payment[];
-  teacherProfile?: TeacherProfile;
-  onOpenAddStudent?: () => void;
-  onOpenAddGroup?: () => void;
-  onOpenAddSession?: () => void;
-  onOpenAddPayment?: () => void;
-  onOpenStudentProfile?: (student: Student) => void;
-  onOpenGroupProfile?: (group: Group) => void;
-  onOpenAttendanceModal?: (session: Session) => void;
+  payments: Payment[];
+  teacherProfile: TeacherProfile;
+  onOpenAddStudent: () => void;
+  onOpenAddGroup: () => void;
+  onOpenAddSession: () => void;
+  onOpenAddPayment: () => void;
+  onOpenStudentProfile: (student: Student) => void;
+  onOpenGroupProfile: (group: Group) => void;
+  onOpenAttendanceModal: (session: Session) => void;
   onOpenNotificationsModal?: () => void;
-  onNavigateToTab?: (tab: ActiveTab) => void;
+  onNavigateToTab: (tab: ActiveTab) => void;
   onDataChanged?: () => void;
-  onOpenBulkAdd?: () => void;
-  onOpenRecordAttendance?: (group: any) => void;
-  onRefresh?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   students,
   groups,
   sessions,
-  payments = [],
+  payments,
   teacherProfile,
-  onOpenAddStudent = () => {},
-  onOpenAddGroup = () => {},
-  onOpenAddSession = () => {},
-  onOpenAddPayment = () => {},
-  onOpenStudentProfile = () => {},
-  onOpenGroupProfile = () => {},
-  onOpenAttendanceModal = () => {},
+  onOpenAddStudent,
+  onOpenAddGroup,
+  onOpenAddSession,
+  onOpenAddPayment,
+  onOpenStudentProfile,
+  onOpenGroupProfile,
+  onOpenAttendanceModal,
   onOpenNotificationsModal,
-  onNavigateToTab = () => {},
+  onNavigateToTab,
   onDataChanged,
-  onOpenBulkAdd,
-  onOpenRecordAttendance,
-  onRefresh,
 }) => {
   const { t, language, isRTL } = useTranslation();
   const isEn = language.startsWith('en');
@@ -165,169 +157,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return getScheduledClassesForDate(new Date(), groups, enrollments, students);
   }, [groups, enrollments, students]);
 
-  // Re-entry locks (TASK 23)
-  const isMarkAllLockedRef = useRef(false);
-  const isQuickAttendanceLockedRef = useRef(false);
-  const isConfirmPrivateLockedRef = useRef(false);
-
-  // Find representative session matching a schedule item by canonical slot key
-  const findSessionForScheduleItem = useCallback((item: ScheduledClassItem): Session | undefined => {
-    const itemSlotKey = getSlotKey({
-      studentId: item.studentId,
-      groupId: item.groupId,
-      enrollmentId: item.enrollmentId,
-      date: todayStr,
-      startTime: item.rawTime || item.time,
-    }, enrollments);
-
-    const matchingSessions = sessions.filter((s) => {
-      if (s.date !== todayStr || s.status === 'cancelled') return false;
-      return getSlotKey(s, enrollments) === itemSlotKey;
-    });
-
-    if (matchingSessions.length === 0) return undefined;
-    return pickRepresentativeSession(matchingSessions, allAttendance);
-  }, [sessions, enrollments, todayStr, allAttendance]);
-
-  // Read CURRENT sessions from db (not stale React props) and use deterministic id
-  const getOrCreateSessionForSchedule = useCallback((item: ScheduledClassItem): Session => {
-    const currentSessions = db.getSessions();
-    const itemSlotKey = getSlotKey({
-      studentId: item.studentId,
-      groupId: item.groupId,
-      enrollmentId: item.enrollmentId,
-      date: todayStr,
-      startTime: item.rawTime || item.time,
-    }, enrollments);
-
-    const matchingSessions = currentSessions.filter((s) => {
-      if (s.date !== todayStr || s.status === 'cancelled') return false;
-      return getSlotKey(s, enrollments) === itemSlotKey;
-    });
-
-    if (matchingSessions.length > 0) {
-      return pickRepresentativeSession(matchingSessions, db.getAttendance());
-    }
-
-    const group = groups.find((g) => g.id === item.groupId);
-    const timeInfo = parseLocalTimeToStandard(item.rawTime);
-    const rawStartTime = timeInfo.normalizedTime;
-    const [h, m] = rawStartTime.split(':').map(Number);
-    const endH = !isNaN(h) ? (h + 1) % 24 : 17;
-    const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
-    const startMins = timeInfo.sortMinutes;
-    const studentPart = item.studentId || 'grp';
-
-    // Deterministic ID (no Math.random)
-    const deterministicId = `sess_${todayStr}_${item.groupId}_${studentPart}_${startMins}`;
-
-    const newSession: Session = {
-      id: deterministicId,
-      groupId: item.groupId,
-      studentId: item.studentId,
-      enrollmentId: item.enrollmentId,
-      title: item.isPrivate ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : item.groupName,
-      date: todayStr,
-      startTime: rawStartTime,
-      endTime,
-      dayName: item.dayName,
-      month: parts.month,
-      year: parts.year,
-      status: 'scheduled',
-      pricePerStudent: group?.defaultPrice || 100,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    return db.saveSession(newSession);
-  }, [groups, enrollments, todayStr, isEn, parts]);
-
-  // Comprehensive list of items to display on today's schedule (scheduled recurring + explicit ad-hoc)
-  // TASK 23: Collapse records with the same slot key into ONE card
-  const allTodayDisplayItems = useMemo(() => {
-    const list: ScheduledClassItem[] = [];
-    const representedSlotKeys = new Set<string>();
-
-    // 1. Group today's non-cancelled sessions by slot key
-    const nonCancelledToday = todaySessions.filter((s) => s.status !== 'cancelled');
-    const slotMap = new Map<string, Session[]>();
-    for (const s of nonCancelledToday) {
-      const key = getSlotKey(s, enrollments);
-      const groupList = slotMap.get(key) || [];
-      groupList.push(s);
-      slotMap.set(key, groupList);
-    }
-
-    // 2. Add scheduledToday recurring items (deduplicated by slot key)
-    scheduledToday.forEach((item) => {
-      const itemSlotKey = getSlotKey({
-        studentId: item.studentId,
-        groupId: item.groupId,
-        enrollmentId: item.enrollmentId,
-        date: todayStr,
-        startTime: item.rawTime || item.time,
-      }, enrollments);
-
-      if (!representedSlotKeys.has(itemSlotKey)) {
-        representedSlotKeys.add(itemSlotKey);
-        list.push(item);
-      }
-    });
-
-    // 3. For any session slot not represented by scheduledToday, add ONE card
-    for (const [slotKey, sessionsInSlot] of slotMap.entries()) {
-      if (representedSlotKeys.has(slotKey)) continue;
-      representedSlotKeys.add(slotKey);
-
-      const repSession = pickRepresentativeSession(sessionsInSlot, allAttendance);
-      const group = groups.find((g) => g.id === repSession.groupId);
-      const isPrivate = group?.type === 'private' || !!repSession.studentId;
-      const student = repSession.studentId ? students.find((st) => st.id === repSession.studentId) : undefined;
-      const sortMinutes = parseTimeToMinutes(repSession.startTime);
-      const formattedTime = formatTimeDisplay(repSession.startTime, isRTL);
-
-      list.push({
-        id: `today_ses_${repSession.id}`,
-        studentId: repSession.studentId || '',
-        studentName: student?.name || repSession.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (group?.name || '')),
-        student,
-        groupId: repSession.groupId,
-        groupName: group?.name || repSession.title || (isEn ? 'Academic Session' : 'حصة دراسية'),
-        group,
-        enrollmentId: repSession.enrollmentId,
-        isPrivate,
-        subject: group?.subject || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'General' : 'عام')),
-        dayName: repSession.dayName || todayArabicDay,
-        time: formattedTime,
-        rawTime: repSession.startTime || '16:00',
-        sortMinutes,
-        location: group?.roomOrLocation,
-        accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
-      });
-    }
-
-    list.sort((a, b) => (a.sortMinutes || 0) - (b.sortMinutes || 0));
-    return list;
-  }, [scheduledToday, todaySessions, enrollments, groups, students, isRTL, isEn, todayArabicDay, allAttendance, todayStr]);
-
-  // Count of completed sessions today (counting distinct slots)
+  // Count of completed sessions today
   const completedTodaySessionsCount = useMemo(() => {
-    return allTodayDisplayItems.filter((item) => {
-      const rep = findSessionForScheduleItem(item);
-      if (!rep) return false;
-      if (rep.status === 'completed') return true;
-      const att = db.getSessionAttendance(rep.id);
-      return att.length > 0;
-    }).length;
-  }, [allTodayDisplayItems, findSessionForScheduleItem]);
+    return todaySessions.filter((s) => s.status === 'completed').length;
+  }, [todaySessions]);
 
   const todayWorkload = useMemo(() => {
     return calculateWorkloadSummary(todaySessions, allAttendance, isRTL);
   }, [todaySessions, allAttendance, isRTL]);
 
   const totalTodayClassesCount = useMemo(() => {
-    return allTodayDisplayItems.length;
-  }, [allTodayDisplayItems]);
+    return Math.max(scheduledToday.length, todaySessions.length);
+  }, [scheduledToday.length, todaySessions.length]);
 
   const remainingTodaySessionsCount = useMemo(() => {
     return Math.max(0, totalTodayClassesCount - completedTodaySessionsCount);
@@ -403,18 +244,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return getSmartReminders(students, groups, sessions, enrollments, allAttendance);
   }, [students, groups, sessions, enrollments, allAttendance]);
 
+  const findSessionForScheduleItem = (item: ScheduledClassItem) => {
+    return sessions.find((s) => {
+      if (s.date !== todayStr) return false;
+      if (s.status === 'cancelled') return false;
+      if (s.groupId !== item.groupId) return false;
+      if (item.studentId && s.studentId && s.studentId !== item.studentId) return false;
+
+      // Match exact start time (parsed to minutes) to strictly isolate multiple sessions on same day
+      const sMins = parseLocalTimeToStandard(s.startTime).sortMinutes;
+      const itemMins = item.sortMinutes || parseLocalTimeToStandard(item.rawTime).sortMinutes;
+      if (sMins !== itemMins) return false;
+      return true;
+    });
+  };
+
+  const getOrCreateSessionForSchedule = (item: ScheduledClassItem): Session => {
+    const existing = findSessionForScheduleItem(item);
+    if (existing) return existing;
+
+    const group = groups.find((g) => g.id === item.groupId);
+    const timeInfo = parseLocalTimeToStandard(item.rawTime);
+    const rawStartTime = timeInfo.normalizedTime;
+    const [h, m] = rawStartTime.split(':').map(Number);
+    const endH = !isNaN(h) ? (h + 1) % 24 : 17;
+    const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
+
+    const newSession: Session = {
+      id: `sess_${todayStr}_${item.groupId}_${item.studentId || 'grp'}_${timeInfo.sortMinutes}_${Math.random().toString(36).substr(2, 5)}`,
+      groupId: item.groupId,
+      studentId: item.studentId,
+      enrollmentId: item.enrollmentId,
+      title: item.isPrivate ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : item.groupName,
+      date: todayStr,
+      startTime: rawStartTime,
+      endTime,
+      dayName: item.dayName,
+      month: parts.month,
+      year: parts.year,
+      status: 'scheduled',
+      pricePerStudent: group?.defaultPrice || 100,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    db.saveSession(newSession);
+    return newSession;
+  };
+
   const [privateIntakeTarget, setPrivateIntakeTarget] = useState<{
     item: ScheduledClassItem;
     studentId: string;
   } | null>(null);
 
   const handleMarkAllPresent = (item: ScheduledClassItem) => {
-    // Re-entry lock (TASK 23)
-    if (isMarkAllLockedRef.current) return;
-    isMarkAllLockedRef.current = true;
-    setTimeout(() => {
-      isMarkAllLockedRef.current = false;
-    }, 1500);
     // If it is a private lesson, open PrivateClassIntakeModal to ask the teacher what the intake was
     if (item.isPrivate || item.studentId) {
       const studentId = item.studentId || (students.find((s) => s.name === item.studentName)?.id || '');
@@ -459,13 +342,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     status: AttendanceStatus,
     isCharged: boolean = true
   ) => {
-    // Re-entry lock (TASK 23)
-    if (isQuickAttendanceLockedRef.current) return;
-    isQuickAttendanceLockedRef.current = true;
-    setTimeout(() => {
-      isQuickAttendanceLockedRef.current = false;
-    }, 1500);
-
     // If it is a private lesson and marked present, ask for intake
     if ((item.isPrivate || item.studentId) && status === 'present') {
       setPrivateIntakeTarget({ item, studentId });
@@ -497,13 +373,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
     if (!privateIntakeTarget) return;
-    // Re-entry lock (TASK 23)
-    if (isConfirmPrivateLockedRef.current) return;
-    isConfirmPrivateLockedRef.current = true;
-    setTimeout(() => {
-      isConfirmPrivateLockedRef.current = false;
-    }, 1500);
-
     const { item, studentId } = privateIntakeTarget;
     const session = getOrCreateSessionForSchedule(item);
     const enr = enrollments.find(
@@ -554,6 +423,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     onDataChanged?.();
   };
 
+  // Comprehensive list of items to display on today's schedule (scheduled recurring + explicit ad-hoc)
+  const allTodayDisplayItems = useMemo(() => {
+    const list: ScheduledClassItem[] = [...scheduledToday];
+
+    todaySessions.forEach((s) => {
+      const alreadyRepresented = list.some((item) => {
+        const matching = findSessionForScheduleItem(item);
+        return matching?.id === s.id;
+      });
+
+      if (!alreadyRepresented) {
+        const group = groups.find((g) => g.id === s.groupId);
+        const isPrivate = group?.type === 'private' || !!s.studentId;
+        const student = s.studentId ? students.find((st) => st.id === s.studentId) : undefined;
+        const sortMinutes = parseTimeToMinutes(s.startTime);
+        const formattedTime = formatTimeDisplay(s.startTime, isRTL);
+
+        list.push({
+          id: `today_ses_${s.id}`,
+          studentId: s.studentId || '',
+          studentName: student?.name || s.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (group?.name || '')),
+          student,
+          groupId: s.groupId,
+          groupName: group?.name || s.title || (isEn ? 'Academic Session' : 'حصة دراسية'),
+          group,
+          enrollmentId: s.enrollmentId,
+          isPrivate,
+          subject: group?.subject || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'General' : 'عام')),
+          dayName: s.dayName || todayArabicDay,
+          time: formattedTime,
+          rawTime: s.startTime || '16:00',
+          sortMinutes,
+          location: group?.roomOrLocation,
+          accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
+        });
+      }
+    });
+
+    list.sort((a, b) => a.sortMinutes - b.sortMinutes);
+    return list;
+  }, [scheduledToday, todaySessions, groups, students, isRTL, isEn, todayArabicDay, sessions]);
+
   // Today's Private Lessons Summary for students with private appointments today (Feature 1)
   const todayPrivateStudentsSummary = useMemo(() => {
     const map = new Map<string, {
@@ -577,7 +488,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const units = att?.sessionUnits !== undefined ? att.sessionUnits : (matching?.sessionUnits !== undefined ? matching.sessionUnits : 0);
       const hours = att?.hours !== undefined ? att.hours : (matching?.hours !== undefined ? matching.hours : 0);
       const rate = enr?.customPrice || item.group?.defaultPrice || 100;
-      const val = (att as any)?.pricePerStudent || matching?.pricePerStudent || (isHourly ? multiplyMoney(hours, rate) : multiplyMoney(units, rate));
+      const val = att?.pricePerStudent || matching?.pricePerStudent || (isHourly ? multiplyMoney(hours, rate) : multiplyMoney(units, rate));
       const isIncomplete = isPresent && (isHourly ? hours <= 0 : units <= 0);
 
       const existing = map.get(stuId) || {
@@ -668,7 +579,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const matching = findSessionForScheduleItem(item);
       return !matching || matching.status !== 'completed';
     });
-  }, [allTodayDisplayItems, findSessionForScheduleItem]);
+  }, [allTodayDisplayItems, sessions]);
 
   const focusSession1 = pendingFocusSessions[0];
   const focusSession2 = pendingFocusSessions[1];
@@ -679,9 +590,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const matching = findSessionForScheduleItem(item);
       if (!matching) return true;
       const att = db.getSessionAttendance(matching.id);
-      return att.length === 0 && matching.status !== 'completed';
+      return att.length === 0 || matching.status === 'scheduled';
     });
-  }, [allTodayDisplayItems, findSessionForScheduleItem]);
+  }, [allTodayDisplayItems, sessions]);
 
   const handleAttendanceToRecordClick = () => {
     if (unrecordedTodaySessions.length > 0) {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Student, Enrollment, Group, Session } from '../types';
 import {
   db,
@@ -134,8 +134,6 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   const [customUnitsInput, setCustomUnitsInput] = useState<string>(String(initialSessionUnits));
   const [customHoursInput, setCustomHoursInput] = useState<string>(String(initialHours));
   const [notes, setNotes] = useState<string>('');
-  const isSubmittingLockRef = useRef<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Smart Memory: Remember last quantity per student and billing mode
   const memoryStorageKey = useMemo(() => {
@@ -296,15 +294,6 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   };
 
   const handleConfirm = () => {
-    // Re-entry lock (TASK 23)
-    if (isSubmittingLockRef.current) return;
-    isSubmittingLockRef.current = true;
-    setIsSubmitting(true);
-    setTimeout(() => {
-      isSubmittingLockRef.current = false;
-      setIsSubmitting(false);
-    }, 1500);
-
     const finalUnits = isHourly ? undefined : selectedUnits;
     const finalHours = isHourly ? selectedHours : undefined;
     const quantityToSave = isHourly ? selectedHours : selectedUnits;
@@ -353,15 +342,13 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
             type="button"
             onClick={onClose}
             className="btn-soft px-6"
-            disabled={isSubmitting}
           >
             {t('cancel')}
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={isSubmitting}
-            className="btn-orange flex-1 disabled:opacity-50"
+            className="btn-orange flex-1"
           >
             <AppIcon name="check" size={16} weight="bold" />
             <span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { BottomSheet } from './ui/BottomSheet';
 import {
@@ -55,12 +55,11 @@ interface StudentProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   student: Student | null;
-  allGroups?: Group[];
-  onEditStudent?: (student: Student) => void;
-  onOpenEnrollModal?: (student: Student) => void;
-  onOpenAddPayment?: (student: Student, enrollmentId?: string) => void;
-  onDataChanged?: () => void;
-  onUpdated?: () => void;
+  allGroups: Group[];
+  onEditStudent: (student: Student) => void;
+  onOpenEnrollModal: (student: Student) => void;
+  onOpenAddPayment: (student: Student, enrollmentId?: string) => void;
+  onDataChanged: () => void;
 }
 
 type StudentProfileSubTab =
@@ -77,18 +76,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   isOpen,
   onClose,
   student,
-  allGroups: propsAllGroups,
-  onEditStudent = () => {},
-  onOpenEnrollModal = () => {},
-  onOpenAddPayment = () => {},
-  onDataChanged = () => {},
-  onUpdated,
+  allGroups,
+  onEditStudent,
+  onOpenEnrollModal,
+  onOpenAddPayment,
+  onDataChanged,
 }) => {
-  const allGroups = useMemo(() => propsAllGroups || db.getGroups(), [propsAllGroups]);
-  const notifyDataChanged = () => {
-    onDataChanged();
-    onUpdated?.();
-  };
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
 
@@ -521,19 +514,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     onClose();
   };
 
-  const isConfirmPrivateProfileLockedRef = useRef(false);
-
   const handleConfirmPrivateIntakeInProfile = (result: PrivateClassIntakeResult) => {
     if (!selectedPrivateIntakeSession || !student) return;
-    // Re-entry lock (TASK 23)
-    if (isConfirmPrivateProfileLockedRef.current) return;
-    isConfirmPrivateProfileLockedRef.current = true;
-    setTimeout(() => {
-      isConfirmPrivateProfileLockedRef.current = false;
-    }, 1500);
-
-    // Read CURRENT session from db (not stale props)
-    const session = db.getSessionById(selectedPrivateIntakeSession.session.id) || selectedPrivateIntakeSession.session;
+    const { session } = selectedPrivateIntakeSession;
     const enrollment = enrollments.find(
       (e) => e.studentId === student.id && (e.groupId === session.groupId || e.id === session.enrollmentId)
     );

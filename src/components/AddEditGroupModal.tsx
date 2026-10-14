@@ -191,7 +191,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       gradeLevel,
       type,
       billingType,
-      billingMode: (billingType as any),
+      billingMode: billingType,
       defaultPrice: Number(defaultPrice) || 0,
       hourlyRate: billingType === 'hourly' ? Number(hourlyRate) || 0 : undefined,
       baseSessionsPerMonth: billingType === 'monthly' ? 8 : undefined,

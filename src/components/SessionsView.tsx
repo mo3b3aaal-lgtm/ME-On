@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Session, Group, Student, Payment, ActiveTab } from '../types';
 import { db } from '../utils/storage';
 import { ScreenHeader } from './ui/ScreenHeader';
@@ -10,9 +10,6 @@ import { AppIcon } from './ui/AppIcon';
 import {
   getDetailedAgendaForDate,
   ScheduledClassItem,
-  getSlotKey,
-  pickRepresentativeSession,
-  parseTimeToMinutes,
 } from '../utils/schedule';
 
 interface SessionsViewProps {
@@ -93,7 +90,6 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const isStartRecurringLockedRef = useRef(false);
 
   // Enrollments
   const enrollments = useMemo(() => {
@@ -148,68 +144,25 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
     });
   }, [selectedDateAgenda.items, students, groups, searchQuery]);
 
-  // Find exact session matching an agenda item by slot key
+  // Find exact session matching an agenda item
   const findSessionForScheduleItem = (item: ScheduledClassItem) => {
     const agendaItem = selectedDateAgenda.items.find((a) => a.id === item.id);
     if (agendaItem?.session) return agendaItem.session;
 
-    const itemSlotKey = getSlotKey({
-      studentId: item.studentId,
-      groupId: item.groupId,
-      enrollmentId: item.enrollmentId,
-      date: selectedDateStr,
-      startTime: item.rawTime || item.time,
-    }, enrollments);
-
-    const matching = sessions.filter((s) => {
+    return sessions.find((s) => {
       if (s.date !== selectedDateStr || s.status === 'cancelled') return false;
-      return getSlotKey(s, enrollments) === itemSlotKey;
+      if (s.groupId !== item.groupId) return false;
+      if (item.studentId && s.studentId && s.studentId !== item.studentId) return false;
+      return true;
     });
-
-    if (matching.length === 0) return undefined;
-    return pickRepresentativeSession(matching);
   };
 
   // Start class / attendance for a recurring item that does not have an explicit session record yet
   const handleStartRecurringClass = (item: ScheduledClassItem) => {
-    // Re-entry lock (TASK 23)
-    if (isStartRecurringLockedRef.current) return;
-    isStartRecurringLockedRef.current = true;
-    setTimeout(() => {
-      isStartRecurringLockedRef.current = false;
-    }, 1500);
-
-    // Read CURRENT sessions from db (not stale React props)
-    const currentSessions = db.getSessions();
-    const itemSlotKey = getSlotKey({
-      studentId: item.studentId,
-      groupId: item.groupId,
-      enrollmentId: item.enrollmentId,
-      date: selectedDateStr,
-      startTime: item.rawTime || item.time,
-    }, enrollments);
-
-    const matchingSessions = currentSessions.filter((s) => {
-      if (s.date !== selectedDateStr || s.status === 'cancelled') return false;
-      return getSlotKey(s, enrollments) === itemSlotKey;
-    });
-
-    if (matchingSessions.length > 0) {
-      const rep = pickRepresentativeSession(matchingSessions, db.getAttendance());
-      onOpenAttendanceModal(rep);
-      return;
-    }
-
     const targetGroup = groups.find((g) => g.id === item.groupId);
-    const startMins = parseTimeToMinutes(item.rawTime || item.time?.split(' - ')[0] || '16:00');
-    const studentPart = item.studentId || 'grp';
-
-    // Deterministic ID from date + groupId + studentId + start minutes (no Math.random)
-    const deterministicId = `sess_${selectedDateStr}_${item.groupId}_${studentPart}_${startMins}`;
-
     const now = new Date().toISOString();
     const newSession: Session = {
-      id: deterministicId,
+      id: 'ses_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       groupId: item.groupId,
       title: item.studentName
         ? (isEn ? `Class: ${item.studentName} (${targetGroup?.name || ''})` : `حصة ${item.studentName} (${targetGroup?.name || ''})`)
@@ -231,9 +184,9 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       updatedAt: now,
     };
 
-    const saved = db.saveSession(newSession);
+    db.saveSession(newSession);
     if (onDataChanged) onDataChanged();
-    onOpenAttendanceModal(saved);
+    onOpenAttendanceModal(newSession);
   };
 
   return (

@@ -1,310 +1,590 @@
-import React, { useState, useEffect } from "react";
-import { AppIcon } from "./components/ui/AppIcon";
-import { DashboardView } from "./components/DashboardView";
-import { SettingsScreen } from "./components/SettingsScreen";
-import { BulkAddSessionModal } from "./components/BulkAddSessionModal";
-import { RecordAttendanceModal } from "./components/RecordAttendanceModal";
-import { RecordPrivateSessionModal } from "./components/RecordPrivateSessionModal";
-import { StudentProfileModal } from "./components/StudentProfileModal";
-import { db } from "./utils/storage";
-import { Student, Group, Session, Attendance } from "./types";
-import { ModalProvider } from "./contexts/ModalContext";
-import { useCurrentLocalDate } from "./utils/date";
-import { runAllVerifications, VerificationResult } from "./utils/e2e_verification_runner";
+import React, { useState, useEffect, useCallback } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
+import { ActiveTab, Student, Group, Session, Payment, TeacherProfile, UserAccount } from './types';
+import { db } from './utils/storage';
+import { useTranslation } from './utils/i18n';
+import { useModalContext } from './contexts/ModalContext';
 
-export const App: React.FC = () => {
-  const currentDate = useCurrentLocalDate();
-  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settings" | "verify">("dashboard");
-  const [students, setStudents] = useState<Student[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
+// Mobile UI components
+import { BottomNavBar } from './components/BottomNavBar';
+import { QuickAddSheet } from './components/QuickAddSheet';
+import { AuthView } from './components/AuthView';
+import { SplashScreen } from './components/SplashScreen';
 
-  // Modals state
-  const [isBulkAddOpen, setIsBulkAddOpen] = useState<boolean>(false);
-  const [attendanceModalGroup, setAttendanceModalGroup] = useState<Group | null>(null);
-  const [privateModalStudent, setPrivateModalStudent] = useState<Student | null>(null);
-  const [profileModalStudent, setProfileModalStudent] = useState<Student | null>(null);
+// Main Views
+import { DashboardView } from './components/DashboardView';
+import { StudentsView } from './components/StudentsView';
+import { GroupsView } from './components/GroupsView';
+import { SessionsView } from './components/SessionsView';
+import { ReportsView } from './components/ReportsView';
+import { SettingsView } from './components/SettingsView';
 
-  // Verification runner state
-  const [verificationResults, setVerificationResults] = useState<VerificationResult[]>([]);
-  const [isRunningVerification, setIsRunningVerification] = useState<boolean>(false);
+// Modals
+import { AddEditStudentModal } from './components/AddEditStudentModal';
+import { AddEditGroupModal } from './components/AddEditGroupModal';
+import { AddEditSessionModal } from './components/AddEditSessionModal';
+import { BulkAddSessionModal } from './components/BulkAddSessionModal';
+import { EnrollExistingStudentModal } from './components/EnrollExistingStudentModal';
+import { StudentProfileModal } from './components/StudentProfileModal';
+import { GroupProfileModal } from './components/GroupProfileModal';
+import { RecordAttendanceModal } from './components/RecordAttendanceModal';
+import { AddPaymentModal } from './components/AddPaymentModal';
+import { NotificationsModal } from './components/NotificationsModal';
+import { initLocalNotifications, scheduleDailyAttendanceReminder } from './utils/localNotifications';
+import { toLocalISODate } from './utils/localDate';
 
-  const loadData = () => {
-    let currentStudents = db.getStudents();
-    let currentGroups = db.getGroups();
+export default function App() {
+  const { t, language, isRTL } = useTranslation();
+  const isEn = language.startsWith('en');
+  const { popTopModal } = useModalContext();
 
-    // Seed sample data if totally empty
-    if (currentStudents.length === 0) {
-      const sampleStudents: Student[] = [
-        { id: "st_1", name: "محمد العراقي", phone: "07801234567", gradeLevel: "الثالث متوسط", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
-        { id: "st_2", name: "علي الموسوي", phone: "07709876543", gradeLevel: "الثالث متوسط", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
-        { id: "st_3", name: "فاطمة الزهراء", phone: "07505554433", gradeLevel: "الرابع علمي", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
-        { id: "st_4", name: "زينب البصري", phone: "07812233445", gradeLevel: "الرابع علمي", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
-        { id: "st_5", name: "حيدر الكرخي", phone: "07901122334", gradeLevel: "السادس إعدادي", status: "active", avatarColor: "#0F2A4A", createdAt: new Date().toISOString() },
-      ];
-      sampleStudents.forEach(s => db.saveStudent(s));
-      currentStudents = sampleStudents;
+  // Animated Splash Screen
+  const [showSplash, setShowSplash] = useState(true);
 
-      const sampleGroups: Group[] = [
-        {
-          id: "grp_math_3",
-          name: "مجموعة الرياضيات - الثالث",
-          subject: "رياضيات",
-          gradeLevel: "الثالث متوسط",
-          type: "group",
-          billingType: "monthly",
-          defaultPrice: 100,
-          scheduleDays: ["السبت", "الثلاثاء"],
-          scheduleTime: "16:00",
-          accentColor: "#0F2A4A",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "grp_physics_4",
-          name: "مجموعة الفيزياء - الرابع",
-          subject: "فيزياء",
-          gradeLevel: "الرابع علمي",
-          type: "group",
-          billingType: "monthly",
-          defaultPrice: 120,
-          scheduleDays: ["الأحد", "الأربعاء"],
-          scheduleTime: "18:00",
-          accentColor: "#17375E",
-          createdAt: new Date().toISOString(),
-        },
-      ];
-      sampleGroups.forEach(g => db.saveGroup(g));
-      currentGroups = sampleGroups;
+  // Navigation
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [studentsSegment, setStudentsSegment] = useState<'students' | 'groups'>('students');
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
 
-      // Seed scheduled sessions for today
-      db.saveSession({
-        id: `sess_${currentDate.replace(/-/g, "")}_grp_math_3_group_960`,
-        groupId: "grp_math_3",
-        studentId: "group",
-        date: currentDate,
-        dayName: "السبت",
-        month: 10,
-        year: 2026,
-        startTime: "16:00",
-        hours: 1,
-        title: "حصة الرياضيات - الثالث",
-        status: "scheduled",
-        sessionUnits: 1,
-        createdAt: new Date().toISOString(),
-      });
-    }
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => db.getCurrentSession());
 
-    setStudents(currentStudents);
-    setGroups(currentGroups);
+  // Database Data States
+  const [students, setStudents] = useState<Student[]>(() => db.getStudents());
+  const [groups, setGroups] = useState<Group[]>(() => db.getGroups());
+  const [sessions, setSessions] = useState<Session[]>(() => db.getSessions());
+  const [payments, setPayments] = useState<Payment[]>(() => db.getPayments());
+  const [teacherProfile, setTeacherProfile] = useState<TeacherProfile>(() => db.getTeacherProfile());
+
+  // Function to refresh state from database
+  const refreshData = useCallback(() => {
+    setStudents(db.getStudents());
+    setGroups(db.getGroups());
     setSessions(db.getSessions());
-    setAttendance(db.getAttendance());
-  };
+    setPayments(db.getPayments());
+    setTeacherProfile(db.getTeacherProfile());
+    scheduleDailyAttendanceReminder({ isEn: language.startsWith('en') }).catch(() => {});
+  }, [language]);
 
+  // Initialize Local Notifications and Tap Action Listener
   useEffect(() => {
-    loadData();
+    initLocalNotifications(() => {
+      setActiveTab('sessions');
+    });
+
+    const handleReminderEvent = () => {
+      setActiveTab('sessions');
+    };
+    window.addEventListener('classy_open_attendance_reminder', handleReminderEvent);
+
+    scheduleDailyAttendanceReminder({ isEn }).catch(() => {});
+
+    return () => {
+      window.removeEventListener('classy_open_attendance_reminder', handleReminderEvent);
+    };
+  }, [isEn]);
+
+  // Process any pending resets on startup or network recovery
+  useEffect(() => {
+    db.processPendingResets().catch(() => {});
   }, []);
 
-  const handleRunE2E = () => {
-    setIsRunningVerification(true);
-    setTimeout(() => {
-      const res = runAllVerifications();
-      setVerificationResults(res);
-      setIsRunningVerification(false);
-      loadData();
-    }, 100);
+  // Auth Handlers
+  const handleLoginSuccess = (user: UserAccount) => {
+    setCurrentUser(user);
+    setActiveTab('dashboard');
+    refreshData();
   };
 
+  const handleLogout = () => {
+    db.logout();
+    setCurrentUser(null);
+  };
+
+  // Modals state
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+
+  const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+
+  const [isAddSessionOpen, setIsAddSessionOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
+  const [sessionDefaultGroupId, setSessionDefaultGroupId] = useState<string | undefined>(undefined);
+  const [sessionDefaultDate, setSessionDefaultDate] = useState<string | undefined>(undefined);
+
+  const [isBulkAddSessionOpen, setIsBulkAddSessionOpen] = useState(false);
+  const [bulkAddStudents, setBulkAddStudents] = useState<Student[]>([]);
+  const [bulkAddGroupId, setBulkAddGroupId] = useState<string | undefined>(undefined);
+
+  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  const [targetStudentForPayment, setTargetStudentForPayment] = useState<Student | null>(null);
+  const [targetEnrollmentIdForPayment, setTargetEnrollmentIdForPayment] = useState<string | undefined>(undefined);
+
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [enrollTargetStudent, setEnrollTargetStudent] = useState<Student | null>(null);
+  const [enrollTargetGroup, setEnrollTargetGroup] = useState<Group | null>(null);
+
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<Student | null>(null);
+  const [selectedGroupForProfile, setSelectedGroupForProfile] = useState<Group | null>(null);
+  const [selectedSessionForAttendance, setSelectedSessionForAttendance] = useState<Session | null>(null);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+
+  // Sync profile data if updated
+  useEffect(() => {
+    if (selectedStudentForProfile) {
+      const refreshed = students.find((s) => s.id === selectedStudentForProfile.id);
+      setSelectedStudentForProfile(refreshed || null);
+    }
+  }, [students]);
+
+  useEffect(() => {
+    if (selectedGroupForProfile) {
+      const refreshed = groups.find((g) => g.id === selectedGroupForProfile.id);
+      setSelectedGroupForProfile(refreshed || null);
+    }
+  }, [groups]);
+
+  // Native Android Back Button & Escape Key Handling
+  useEffect(() => {
+    let backListener: any = null;
+
+    const handleBackAction = () => {
+      // 1. Close topmost active modal/dialog in stack (LIFO order)
+      if (popTopModal()) {
+        return true;
+      }
+
+      // 2. Return to dashboard tab if currently on another tab
+      if (activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        return true;
+      }
+
+      return false; // At root dashboard -> trigger app exit prompt
+    };
+
+    const setupCapacitorBack = async () => {
+      try {
+        backListener = await CapacitorApp.addListener('backButton', () => {
+          const handled = handleBackAction();
+          if (!handled) {
+            if (window.confirm(t('confirmExitApp'))) {
+              CapacitorApp.exitApp();
+            }
+          }
+        });
+      } catch {
+        // Not running in Capacitor native runtime
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleBackAction();
+      }
+    };
+
+    setupCapacitorBack();
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      if (backListener && backListener.remove) {
+        backListener.remove();
+      }
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    selectedSessionForAttendance,
+    selectedStudentForProfile,
+    selectedGroupForProfile,
+    isAddPaymentOpen,
+    isAddStudentOpen,
+    isAddGroupOpen,
+    isAddSessionOpen,
+    isBulkAddSessionOpen,
+    isEnrollModalOpen,
+    activeTab,
+  ]);
+
+  // Handlers for Add/Edit
+  const handleOpenAddStudent = () => {
+    setEditingStudent(null);
+    setIsAddStudentOpen(true);
+  };
+
+  const handleOpenEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setIsAddStudentOpen(true);
+  };
+
+  const handleOpenAddGroup = () => {
+    setEditingGroup(null);
+    setIsAddGroupOpen(true);
+  };
+
+  const handleOpenEditGroup = (group: Group) => {
+    setEditingGroup(group);
+    setIsAddGroupOpen(true);
+  };
+
+  const handleOpenAddSession = (defaultGroupId?: string, defaultDate?: string) => {
+    setEditingSession(null);
+    setSessionDefaultGroupId(defaultGroupId || groups[0]?.id);
+    setSessionDefaultDate(defaultDate);
+    setIsAddSessionOpen(true);
+  };
+
+  const handleOpenBulkAddSession = (studentsToBulk: Student[], groupId?: string) => {
+    setBulkAddStudents(studentsToBulk);
+    setBulkAddGroupId(groupId);
+    setIsBulkAddSessionOpen(true);
+  };
+
+  const handleOpenEditSession = (session: Session) => {
+    setEditingSession(session);
+    setSessionDefaultGroupId(session.groupId);
+    setSessionDefaultDate(session.date);
+    setIsAddSessionOpen(true);
+  };
+
+  const handleOpenAddPayment = (student?: Student, enrollmentId?: string) => {
+    setTargetStudentForPayment(student || null);
+    setTargetEnrollmentIdForPayment(enrollmentId);
+    setIsAddPaymentOpen(true);
+  };
+
+  const handleOpenEnrollForStudent = (student: Student) => {
+    setEnrollTargetStudent(student);
+    setEnrollTargetGroup(null);
+    setIsEnrollModalOpen(true);
+  };
+
+  const handleOpenEnrollForGroup = (group: Group) => {
+    setEnrollTargetStudent(null);
+    setEnrollTargetGroup(group);
+    setIsEnrollModalOpen(true);
+  };
+
+  const handleTabChange = useCallback((tab: ActiveTab) => {
+    if (tab === 'groups') {
+      setStudentsSegment('groups');
+      setActiveTab('students');
+    } else {
+      if (tab === 'students') {
+        setStudentsSegment('students');
+      }
+      setActiveTab(tab);
+    }
+  }, []);
+
+  const handleQuickRecordAttendance = useCallback(() => {
+    const today = toLocalISODate();
+    const todaySessions = sessions.filter((s) => s.date === today && s.status !== 'cancelled');
+    if (todaySessions.length > 0) {
+      const unrecorded = todaySessions.find((s) => s.status === 'scheduled') || todaySessions[0];
+      setSelectedSessionForAttendance(unrecorded);
+    } else {
+      handleTabChange('sessions');
+    }
+  }, [sessions, handleTabChange]);
+
+  const handleOpenAddPrivateSession = useCallback(() => {
+    const privGroup = groups.find((g) => g.type === 'private');
+    if (privGroup) {
+      handleOpenAddSession(privGroup.id);
+    } else {
+      handleOpenAddSession();
+    }
+  }, [groups, handleOpenAddSession]);
+
   return (
-    <ModalProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 select-none">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 py-3 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#0F2A4A] text-white flex items-center justify-center font-black text-sm shadow-sm">
-            C
-          </div>
-          <div>
-            <h1 className="text-base font-black text-[#0F2A4A] leading-tight">Classy</h1>
-            <span className="text-[10px] font-bold text-slate-400">إدارة الحصص والطلاب</span>
-          </div>
-        </div>
+    <div className="min-h-screen bg-page md:bg-mint flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-navy" dir={isRTL ? 'rtl' : 'ltr'}>
+      
+      {/* Animated Splash Screen Experience */}
+      {showSplash && (
+        <SplashScreen onComplete={() => setShowSplash(false)} autoDismissMs={2200} />
+      )}
 
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setActiveTab("verify")}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-emerald-200"
-          >
-            <AppIcon name="shield" size={14} />
-            <span>فحص الأمان (E2E)</span>
-          </button>
-        </div>
-      </header>
+      {/* Modern Mobile Frame */}
+      <div className="relative w-full md:max-w-[440px] h-[100dvh] md:h-[880px] md:max-h-[94vh] bg-page md:rounded-[40px] md:border-[8px] md:border-navy md:ring-1 md:ring-line/50 flex flex-col overflow-hidden shadow-2xl text-navy">
+        
+        {/* Mobile Punch-hole Camera */}
+        <div className="hidden md:block absolute top-3 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-navy border border-line/40 z-50 pointer-events-none shadow-inner" />
 
-      {/* Main Content Area */}
-      <main className="max-w-2xl mx-auto">
-        {activeTab === "dashboard" && (
-          <DashboardView
-            students={students}
-            groups={groups}
-            sessions={sessions}
-            onOpenBulkAdd={() => setIsBulkAddOpen(true)}
-            onOpenRecordAttendance={g => setAttendanceModalGroup(g)}
-            onOpenStudentProfile={st => setProfileModalStudent(st)}
-            onRefresh={loadData}
+        {/* Main Screen Body */}
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-page">
+          
+          {!currentUser ? (
+            <AuthView onLoginSuccess={handleLoginSuccess} />
+          ) : (
+            <div key={activeTab === 'groups' ? 'students' : activeTab} className="flex-1 flex flex-col overflow-hidden animate-screen-enter">
+              {activeTab === 'dashboard' && (
+                <DashboardView
+                  students={students}
+                  groups={groups}
+                  sessions={sessions}
+                  payments={payments}
+                  teacherProfile={teacherProfile}
+                  onOpenAddStudent={handleOpenAddStudent}
+                  onOpenAddGroup={handleOpenAddGroup}
+                  onOpenAddSession={handleOpenAddSession}
+                  onOpenAddPayment={() => handleOpenAddPayment()}
+                  onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
+                  onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
+                  onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+                  onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
+                  onNavigateToTab={handleTabChange}
+                  onDataChanged={refreshData}
+                />
+              )}
+
+              {(activeTab === 'students' || activeTab === 'groups') && (
+                <StudentsView
+                  students={students}
+                  groups={groups}
+                  sessions={sessions}
+                  payments={payments}
+                  activeSegment={activeTab === 'groups' ? 'groups' : studentsSegment}
+                  onSegmentChange={(seg) => setStudentsSegment(seg)}
+                  onOpenAddStudent={handleOpenAddStudent}
+                  onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
+                  onOpenEditStudent={handleOpenEditStudent}
+                  onOpenAddPayment={(s, enrId) => handleOpenAddPayment(s, enrId)}
+                  onOpenAddSession={(defaultGroupId, defaultDate) => handleOpenAddSession(defaultGroupId, defaultDate)}
+                  onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+                  onOpenBulkAddSession={(stList) => handleOpenBulkAddSession(stList)}
+                  onOpenAddGroup={handleOpenAddGroup}
+                  onEditGroup={handleOpenEditGroup}
+                  onOpenGroupProfile={(g) => setSelectedGroupForProfile(g)}
+                  onDataChanged={refreshData}
+                  onNavigateToTab={handleTabChange}
+                  onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
+                />
+              )}
+
+              {activeTab === 'sessions' && (
+                <SessionsView
+                  sessions={sessions}
+                  groups={groups}
+                  students={students}
+                  payments={payments}
+                  onOpenAddSession={handleOpenAddSession}
+                  onEditSession={handleOpenEditSession}
+                  onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+                  onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+                  onOpenGroupProfile={(grp) => setSelectedGroupForProfile(grp)}
+                  onSessionDeleted={refreshData}
+                  onDataChanged={refreshData}
+                  onNavigateToTab={handleTabChange}
+                  onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
+                />
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportsView
+                  students={students}
+                  groups={groups}
+                  sessions={sessions}
+                  payments={payments}
+                  onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+                  onOpenStudentProfile={(s) => setSelectedStudentForProfile(s)}
+                  onNavigateToTab={handleTabChange}
+                  onOpenNotificationsModal={() => setIsNotificationsModalOpen(true)}
+                />
+              )}
+
+              {activeTab === 'settings' && (
+                <SettingsView
+                  teacherProfile={teacherProfile}
+                  currentUser={currentUser}
+                  onProfileUpdated={(p) => {
+                    setTeacherProfile(p);
+                    refreshData();
+                  }}
+                  onDataReset={refreshData}
+                  onLogout={handleLogout}
+                  onNavigateToTab={handleTabChange}
+                />
+              )}
+            </div>
+          )}
+
+        </main>
+
+        {/* 3. Android Bottom Navigation Bar (Visible only when logged in) */}
+        {currentUser && (
+          <BottomNavBar
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+            isQuickAddOpen={isQuickAddOpen}
           />
         )}
 
-        {activeTab === "students" && (
-          <div className="p-4 space-y-4 text-right">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-[#0F2A4A]">قائمة الطلاب ({students.length})</h2>
-            </div>
-            <div className="space-y-2">
-              {students.map(st => (
-                <div
-                  key={st.id}
-                  onClick={() => setProfileModalStudent(st)}
-                  className="classy-card p-4 flex items-center justify-between cursor-pointer hover:border-slate-300 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-[#0F2A4A] font-bold flex items-center justify-center">
-                      {st.name.slice(0, 1)}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-800">{st.name}</h3>
-                      <p className="text-xs text-slate-400">{st.phone || "بدون رقم"}</p>
-                    </div>
-                  </div>
-                  <AppIcon name="chevronEnd" size={16} className="text-slate-400" />
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* --- MODALS (Mounted only when active for instant responsiveness & zero background lag) --- */}
+
+        {/* Add/Edit Student Modal */}
+        {isAddStudentOpen && (
+          <AddEditStudentModal
+            isOpen={isAddStudentOpen}
+            onClose={() => setIsAddStudentOpen(false)}
+            editingStudent={editingStudent}
+            allGroups={groups}
+            onSaveComplete={() => {
+              refreshData();
+            }}
+          />
         )}
 
-        {activeTab === "settings" && (
-          <SettingsScreen onRefresh={loadData} />
+        {/* Add/Edit Group Modal */}
+        {isAddGroupOpen && (
+          <AddEditGroupModal
+            isOpen={isAddGroupOpen}
+            onClose={() => setIsAddGroupOpen(false)}
+            editingGroup={editingGroup}
+            onSaveComplete={() => {
+              refreshData();
+            }}
+          />
         )}
 
-        {activeTab === "verify" && (
-          <div className="p-4 space-y-4 text-right">
-            <div className="classy-card p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <h2 className="text-base font-black text-[#0F2A4A]">اختبارات التحقق التلقائية (TASK 23)</h2>
-                  <p className="text-xs text-slate-500">فحص حماية التكرار، والحدود القصوى، وأداة التطهير</p>
-                </div>
-                <button
-                  onClick={handleRunE2E}
-                  disabled={isRunningVerification}
-                  className="px-4 py-2 bg-[#0F2A4A] text-white rounded-xl text-xs font-bold hover:bg-[#17375E] transition-all disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <AppIcon name="refresh" size={14} />
-                  <span>{isRunningVerification ? "جاري الفحص..." : "تشغيل الفحص الآن"}</span>
-                </button>
-              </div>
-
-              {verificationResults.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">
-                  اضغط على زر &quot;تشغيل الفحص الآن&quot; لاختبار كافة مسارات TASK 23 والتأكد من منع التكرار.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {verificationResults.map(res => (
-                    <div
-                      key={res.step}
-                      className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
-                        res.passed 
-                          ? "bg-emerald-50/70 border-emerald-200 text-emerald-900" 
-                          : "bg-rose-50 border-rose-200 text-rose-900"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between font-bold">
-                        <span className="flex items-center gap-1.5">
-                          <AppIcon name={res.passed ? "checkCircle" : "alert"} size={16} />
-                          <span>الخطوة {res.step}: {res.name}</span>
-                        </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] ${
-                          res.passed ? "bg-emerald-200/80 text-emerald-900" : "bg-rose-200 text-rose-900"
-                        }`}>
-                          {res.passed ? "نجاح (PASSED)" : "فشل (FAILED)"}
-                        </span>
-                      </div>
-                      <p className="text-[11px] opacity-90">{res.details}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Add/Edit Session Modal */}
+        {isAddSessionOpen && (
+          <AddEditSessionModal
+            isOpen={isAddSessionOpen}
+            onClose={() => setIsAddSessionOpen(false)}
+            editingSession={editingSession}
+            defaultGroupId={sessionDefaultGroupId}
+            defaultDate={sessionDefaultDate}
+            allGroups={groups}
+            onSaveComplete={() => {
+              refreshData();
+            }}
+          />
         )}
-      </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 px-6 py-2.5 flex justify-around items-center z-40 shadow-lg">
-        <button
-          onClick={() => setActiveTab("dashboard")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-            activeTab === "dashboard" ? "text-[#0F2A4A]" : "text-slate-400"
-          }`}
-        >
-          <AppIcon name="calendar" size={20} weight={activeTab === "dashboard" ? "fill" : "regular"} />
-          <span>الرئيسية</span>
-        </button>
+        {/* Enroll Existing Student into Group Modal */}
+        {isEnrollModalOpen && (
+          <EnrollExistingStudentModal
+            isOpen={isEnrollModalOpen}
+            onClose={() => setIsEnrollModalOpen(false)}
+            targetStudent={enrollTargetStudent}
+            targetGroup={enrollTargetGroup}
+            allStudents={students}
+            allGroups={groups}
+            onEnrollmentComplete={() => {
+              refreshData();
+            }}
+          />
+        )}
 
-        <button
-          onClick={() => setActiveTab("students")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-            activeTab === "students" ? "text-[#0F2A4A]" : "text-slate-400"
-          }`}
-        >
-          <AppIcon name="students" size={20} weight={activeTab === "students" ? "fill" : "regular"} />
-          <span>الطلاب</span>
-        </button>
+        {/* Student Dossier / Profile Modal */}
+        {selectedStudentForProfile && (
+          <StudentProfileModal
+            isOpen={!!selectedStudentForProfile}
+            onClose={() => setSelectedStudentForProfile(null)}
+            student={selectedStudentForProfile}
+            allGroups={groups}
+            onEditStudent={(st) => handleOpenEditStudent(st)}
+            onOpenEnrollModal={(st) => handleOpenEnrollForStudent(st)}
+            onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+            onDataChanged={refreshData}
+          />
+        )}
 
-        <button
-          onClick={() => setActiveTab("settings")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-bold transition-all ${
-            activeTab === "settings" ? "text-[#0F2A4A]" : "text-slate-400"
-          }`}
-        >
-          <AppIcon name="settings" size={20} weight={activeTab === "settings" ? "fill" : "regular"} />
-          <span>الإعدادات</span>
-        </button>
-      </nav>
+        {/* Group Dossier / Profile Modal */}
+        {selectedGroupForProfile && (
+          <GroupProfileModal
+            isOpen={!!selectedGroupForProfile}
+            onClose={() => setSelectedGroupForProfile(null)}
+            group={selectedGroupForProfile}
+            onEditGroup={(grp) => handleOpenEditGroup(grp)}
+            onAddExistingStudent={(grp) => handleOpenEnrollForGroup(grp)}
+            onAddNewStudentToGroup={(grp) => {
+              handleOpenAddStudent();
+            }}
+            onAddSessionForGroup={(grp) => handleOpenAddSession(grp.id)}
+            onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+            onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+            onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
+            onDataChanged={refreshData}
+          />
+        )}
 
-      {/* Modals */}
-      <BulkAddSessionModal
-        isOpen={isBulkAddOpen}
-        onClose={() => setIsBulkAddOpen(false)}
-        students={students}
-        groups={groups}
-        onSuccess={loadData}
-      />
+        {/* Bulk Add Sessions for Multiple Students Modal */}
+        {isBulkAddSessionOpen && (
+          <BulkAddSessionModal
+            isOpen={isBulkAddSessionOpen}
+            onClose={() => {
+              setIsBulkAddSessionOpen(false);
+              setBulkAddStudents([]);
+              setBulkAddGroupId(undefined);
+            }}
+            selectedStudents={bulkAddStudents}
+            preselectedGroupId={bulkAddGroupId}
+            allGroups={groups}
+            onSuccess={() => {
+              refreshData();
+            }}
+          />
+        )}
 
-      <RecordAttendanceModal
-        isOpen={!!attendanceModalGroup}
-        onClose={() => setAttendanceModalGroup(null)}
-        group={attendanceModalGroup}
-        students={students}
-        onSuccess={loadData}
-      />
+        {/* Record Attendance Modal */}
+        {selectedSessionForAttendance && (
+          <RecordAttendanceModal
+            isOpen={!!selectedSessionForAttendance}
+            onClose={() => setSelectedSessionForAttendance(null)}
+            session={selectedSessionForAttendance}
+            onSaveComplete={refreshData}
+          />
+        )}
 
-      <RecordPrivateSessionModal
-        isOpen={!!privateModalStudent}
-        onClose={() => setPrivateModalStudent(null)}
-        student={privateModalStudent}
-        onSuccess={loadData}
-      />
+        {/* Add Payment Modal */}
+        {isAddPaymentOpen && (
+          <AddPaymentModal
+            isOpen={isAddPaymentOpen}
+            onClose={() => {
+              setIsAddPaymentOpen(false);
+              setTargetStudentForPayment(null);
+              setTargetEnrollmentIdForPayment(undefined);
+            }}
+            targetStudent={targetStudentForPayment}
+            targetEnrollmentId={targetEnrollmentIdForPayment}
+            allStudents={students}
+            onPaymentSaved={refreshData}
+          />
+        )}
 
-      <StudentProfileModal
-        isOpen={!!profileModalStudent}
-        onClose={() => setProfileModalStudent(null)}
-        student={profileModalStudent}
-        onUpdated={loadData}
-      />
+        {/* Notifications & Smart Alerts Modal */}
+        {isNotificationsModalOpen && (
+          <NotificationsModal
+            isOpen={isNotificationsModalOpen}
+            onClose={() => setIsNotificationsModalOpen(false)}
+            students={students}
+            groups={groups}
+            sessions={sessions}
+            enrollments={db.getEnrollments()}
+            onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+            onOpenStudentProfile={(st) => setSelectedStudentForProfile(st)}
+            onOpenAttendanceModal={(ses) => setSelectedSessionForAttendance(ses)}
+            onDataChanged={refreshData}
+          />
+        )}
+
+        {/* Quick Add Bottom Sheet (Center FAB Action) */}
+        <QuickAddSheet
+          isOpen={isQuickAddOpen}
+          onClose={() => setIsQuickAddOpen(false)}
+          onRecordAttendance={handleQuickRecordAttendance}
+          onAddStudent={handleOpenAddStudent}
+          onAddGroup={handleOpenAddGroup}
+          onAddPayment={() => handleOpenAddPayment()}
+          onAddSession={() => handleOpenAddSession()}
+          onAddPrivateSession={handleOpenAddPrivateSession}
+        />
+
+      </div>
     </div>
-  </ModalProvider>
-);
-};
+  );
+}

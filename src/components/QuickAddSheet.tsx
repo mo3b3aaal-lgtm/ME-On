@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { MintCard } from './ui/MintCard';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
 import { useTranslation } from '../utils/i18n';
@@ -34,8 +34,6 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
 }) => {
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
-  const isActionLockedRef = useRef<boolean>(false);
-  const [isLocked, setIsLocked] = useState<boolean>(false);
 
   useModalLayer('quick-add-sheet', isOpen, onClose);
 
@@ -135,22 +133,13 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
           {actions.map((action, index) => (
             <MintCard
               key={action.id}
-              clickable={!isLocked}
+              clickable
               onClick={() => {
-                if (isActionLockedRef.current) return;
-                isActionLockedRef.current = true;
-                setIsLocked(true);
-                setTimeout(() => {
-                  isActionLockedRef.current = false;
-                  setIsLocked(false);
-                }, 1500);
                 onClose();
                 action.onClick();
               }}
               style={{ animationDelay: `${index * 40}ms` }}
-              className={`animate-tile-stagger flex flex-col items-center justify-center p-4 min-h-[104px] text-center cursor-pointer transition-transform group ${
-                isLocked ? 'opacity-50 pointer-events-none' : ''
-              }`}
+              className="animate-tile-stagger flex flex-col items-center justify-center p-4 min-h-[104px] text-center cursor-pointer transition-transform group"
             >
               <div className="w-12 h-12 rounded-full bg-page shadow-xs flex items-center justify-center text-navy mb-2.5 transition-transform group-hover:scale-105 group-active:scale-95">
                 <AppIcon name={action.icon} weight="duotone" size={24} />

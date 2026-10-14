@@ -235,7 +235,7 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
           sess.hourlyRate ||
           group?.hourlyRate ||
           group?.defaultPrice ||
-          (sess.pricePerStudent && sess.pricePerStudent > 0 ? sess.pricePerStudent : 100);
+          (sess.price && sess.price > 0 ? sess.price : 100);
 
         const rev = multiplyMoney(duration, hourlyRate);
 
@@ -260,13 +260,13 @@ export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartPr
           sessAttendances.forEach((att) => {
             if (att.status === 'present' || att.status === 'late' || (att.status === 'absent_charged' || att.isCharged)) {
               const u = att.sessionUnits !== undefined && att.sessionUnits !== null ? Number(att.sessionUnits) : sessionUnits;
-              const rate = att.sessionPriceSnapshot || sess.pricePerStudent || group?.defaultPrice || 50;
+              const rate = att.sessionPriceSnapshot || sess.price || group?.defaultPrice || 50;
               sessionRevenue = addMoney(sessionRevenue, multiplyMoney(u, rate));
             }
           });
         } else {
           // If no attendances yet, estimate from session rate
-          const rate = sess.pricePerStudent || group?.defaultPrice || 50;
+          const rate = sess.price || group?.defaultPrice || 50;
           sessionRevenue = multiplyMoney(sessionUnits, rate);
         }
 

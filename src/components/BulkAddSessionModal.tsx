@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Group, Session, Student } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Group, Session } from '../types';
 import { db } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
-import { parseTimeToMinutes, getSlotKey } from '../utils/schedule';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
 
@@ -11,30 +10,18 @@ interface BulkAddSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSessionsCreated?: (count: number) => void;
-  selectedStudents?: Student[];
-  students?: Student[];
-  preselectedGroupId?: string;
-  allGroups?: Group[];
-  groups?: Group[];
-  onSuccess?: () => void;
 }
 
 export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
   isOpen,
   onClose,
   onSessionsCreated,
-  selectedStudents,
-  students,
-  preselectedGroupId,
-  allGroups,
-  groups: propGroups,
-  onSuccess,
 }) => {
   const { t, language } = useTranslation();
   const isRtl = language === 'ar';
 
   const [groups, setGroups] = useState<Group[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>(preselectedGroupId || '');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [startDate, setStartDate] = useState<string>(() => {
     return toLocalISODate();
   });
@@ -45,10 +32,6 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
   const [location, setLocation] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<{ success: boolean; count: number; error?: string } | null>(null);
-
-  // TASK 23: Re-entry lock and idempotency key per modal open
-  const isSubmittingLockRef = useRef<boolean>(false);
-  const idempotencyKeyRef = useRef<string>('');
 
   const daysOfWeek = useMemo(
     () => [
@@ -63,19 +46,16 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
     [t]
   );
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen) {
-      idempotencyKeyRef.current = `bulk_modal_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      const all = allGroups && allGroups.length > 0 ? allGroups : db.getGroups();
-      setGroups(all);
-      if (preselectedGroupId) {
-        setSelectedGroupId(preselectedGroupId);
-      } else if (all.length > 0 && !selectedGroupId) {
-        setSelectedGroupId(all[0].id);
+      const allGroups = db.getGroups();
+      setGroups(allGroups);
+      if (allGroups.length > 0 && !selectedGroupId) {
+        setSelectedGroupId(allGroups[0].id);
       }
       setResult(null);
     }
-  }, [isOpen, preselectedGroupId, allGroups]);
+  }, [isOpen]);
 
   const toggleDay = (dayKey: string) => {
     setSelectedDays((prev) =>
@@ -83,7 +63,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
     );
   };
 
-  const rawPreviewDates = useMemo(() => {
+  const previewDates = useMemo(() => {
     if (!startDate || selectedDays.length === 0 || weeksCount <= 0) return [];
     const dates: { dateStr: string; dayName: string }[] = [];
     const start = parseLocalDateStr(startDate);
@@ -106,102 +86,26 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
     return dates;
   }, [startDate, selectedDays, weeksCount, daysOfWeek]);
 
-  // TASK 23: Max 10 sessions per submit
-  const isOverLimit = rawPreviewDates.length > 10;
-  const previewDates = useMemo(() => rawPreviewDates.slice(0, 10), [rawPreviewDates]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGroupId || previewDates.length === 0) return;
 
-    // STEP 3: Re-entry lock
-    if (isSubmittingLockRef.current) return;
-    isSubmittingLockRef.current = true;
-    setTimeout(() => {
-      isSubmittingLockRef.current = false;
-    }, 1500);
-
-    // STEP 4: Safety net: if one user action would create more than 5 sessions for the same student/group and date, abort
-    const dateCounts = new Map<string, number>();
-    for (const item of previewDates) {
-      dateCounts.set(item.dateStr, (dateCounts.get(item.dateStr) || 0) + 1);
-      if ((dateCounts.get(item.dateStr) || 0) > 5) {
-        setResult({
-          success: false,
-          count: 0,
-          error: isRtl
-            ? 'لا يمكن إنشاء أكثر من 5 حصص لنفس المجموعة في نفس اليوم'
-            : 'Safety limit: Cannot create more than 5 sessions on the same date.',
-        });
-        return;
-      }
-    }
-
-    // STEP 4: Confirmation if sessionCount > 1 or same slot already exists
-    const existingSessions = db.getSessions();
-    const existingEnrollments = db.getEnrollments();
-    const selectedGroup = groups.find((g) => g.id === selectedGroupId);
-    const startMins = parseTimeToMinutes(sessionTime || '16:00');
-
-    let hasSameSlot = false;
-    for (const item of previewDates) {
-      const key = getSlotKey(
-        {
-          groupId: selectedGroupId,
-          date: item.dateStr,
-          startTime: sessionTime || '16:00',
-        },
-        existingEnrollments
-      );
-      if (
-        existingSessions.some((s) => s.status !== 'cancelled' && getSlotKey(s, existingEnrollments) === key)
-      ) {
-        hasSameSlot = true;
-        break;
-      }
-    }
-
-    let allowSameSlot = false;
-    if (previewDates.length > 1 || hasSameSlot) {
-      const groupName = selectedGroup?.name || (isRtl ? 'المجموعة' : 'Group');
-      const firstDate = previewDates[0]?.dateStr || '';
-      const confirmMsg = isRtl
-        ? `سيتم إنشاء ${previewDates.length} حصة لـ ${groupName} في ${firstDate} الساعة ${sessionTime || '16:00'}. هل ترغب في المتابعة؟`
-        : `${previewDates.length} sessions for ${groupName} on ${firstDate} at ${sessionTime || '16:00'}. Continue?`;
-
-      if (!window.confirm(confirmMsg)) {
-        return;
-      }
-      allowSameSlot = true;
-    }
-
     setIsSubmitting(true);
     try {
-      const [h, m] = (sessionTime || '16:00').split(':').map(Number);
-      const endH = !isNaN(h) ? (h + 1) % 24 : 17;
-      const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
-
+      const selectedGroup = groups.find((g) => g.id === selectedGroupId);
       const newSessions: Session[] = previewDates.map((item, index) => {
-        const dateObj = parseLocalDateStr(item.dateStr);
-        const month = !isNaN(dateObj.getTime()) ? dateObj.getMonth() + 1 : new Date().getMonth() + 1;
-        const year = !isNaN(dateObj.getTime()) ? dateObj.getFullYear() : new Date().getFullYear();
         const title = topicPrefix.trim()
           ? `${topicPrefix.trim()} - ${isRtl ? `حصة ${index + 1}` : `Session ${index + 1}`}`
           : `${isRtl ? 'حصة' : 'Session'} ${index + 1} (${selectedGroup?.name || ''})`;
 
-        const deterministicId = `sess_${item.dateStr}_${selectedGroupId}_grp_${startMins}_${index}`;
-
         return {
-          id: deterministicId,
+          id: 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '_' + index,
           groupId: selectedGroupId,
           title,
           date: item.dateStr,
-          dayName: item.dayName,
-          month,
-          year,
           startTime: sessionTime || '16:00',
-          endTime,
-          location: location || selectedGroup?.roomOrLocation || '',
+          endTime: '',
+          location: location || selectedGroup?.location || '',
           topic: title,
           status: 'scheduled',
           pricePerStudent: selectedGroup?.defaultPrice || 0,
@@ -211,13 +115,10 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
         };
       });
 
-      newSessions.forEach((s) => db.saveSession(s, { allowSameSlotDuplicate: allowSameSlot }));
+      newSessions.forEach((s) => db.saveSession(s));
       setResult({ success: true, count: newSessions.length });
       if (onSessionsCreated) {
         onSessionsCreated(newSessions.length);
-      }
-      if (onSuccess) {
-        onSuccess();
       }
     } catch (err: any) {
       console.error('Failed to create sessions in bulk', err);
@@ -412,17 +313,6 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
           </div>
 
           {/* Preview count */}
-          {isOverLimit && (
-            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs flex items-center gap-2 font-medium">
-              <AppIcon name="warning" size={16} className="text-amber-600 shrink-0" />
-              <span>
-                {isRtl
-                  ? `الحد الأقصى لكل عملية إنشاء هو 10 حصص (تم تقليص ${rawPreviewDates.length} إلى 10).`
-                  : `Maximum 10 sessions allowed per submit (clamped ${rawPreviewDates.length} to 10).`}
-              </span>
-            </div>
-          )}
-
           <div className="p-4 rounded-2xl bg-mint-soft border border-line flex items-center justify-between">
             <div className="flex items-center gap-2 text-navy text-xs font-bold">
               <AppIcon name="sparkles" size={16} className="text-orange" />

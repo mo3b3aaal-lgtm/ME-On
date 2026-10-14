@@ -3,7 +3,6 @@ import React from 'react';
 export interface MintCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   clickable?: boolean;
-  variant?: 'default' | 'soft' | string;
 }
 
 /**

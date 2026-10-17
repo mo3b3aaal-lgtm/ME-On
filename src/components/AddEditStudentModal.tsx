@@ -522,6 +522,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             <AchievementFrameSelector
               selectedFrame={achievementFrame}
               onSelectFrame={(frame) => setAchievementFrame(frame)}
+              studentName={name}
+              profilePhoto={profilePhoto}
+              avatarColor={avatarColor}
             />
           </div>
         </div>

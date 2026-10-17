@@ -14,21 +14,25 @@ export type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay' | 'bank_transf
 export type MonthBillStatus = 'unpaid' | 'partially_paid' | 'fully_paid';
 export type BillStatus = 'paid' | 'partial' | 'unpaid';
 
-// Student Achievement Frame
 export type AchievementFrame =
   | 'none'
-  | 'gold'
-  | 'silver'
-  | 'platinum'
-  | 'crown'
-  | 'star'
-  | 'champion'
   | 'default'
+  | 'silver'
+  | 'gold'
+  | 'platinum'
+  | 'vip'
+  | 'story'
+  | 'challenge'
+  | 'nature'
+  | 'cosmic'
   | 'bronze_star'
   | 'silver_scholar'
   | 'gold_champion'
   | 'diamond_elite'
-  | 'emerald_honor';
+  | 'emerald_honor'
+  | 'crown'
+  | 'star'
+  | 'champion';
 
 // Behavior Logging Category & Predefined Tags
 export type BehaviorCategory = 'positive' | 'needs_improvement' | 'neutral';

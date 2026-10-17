@@ -5,7 +5,7 @@ import { useTranslation } from '../utils/i18n';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { StatusBadge } from './ui/StatusBadge';
 import { AppIcon } from './ui/AppIcon';
-import { Avatar } from './ui/Avatar';
+import { StudentAvatar } from './StudentAvatar';
 import { MintCard } from './ui/MintCard';
 import { EmptyBox } from './illustrations/EmptyBox';
 import { db } from '../utils/storage';
@@ -139,9 +139,12 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
           : false;
 
         // Group or student details for trailing avatars
-        const isPrivate = item.isPrivate || Boolean(item.studentId);
+        const effectiveStudentId = item.studentId || matchingSession?.studentId || '';
+        const isPrivate = item.isPrivate || Boolean(effectiveStudentId);
         const privateStudent = isPrivate
-          ? students.find((s) => s.id === item.studentId) || item.student
+          ? (effectiveStudentId
+              ? (students.find((s) => s.id === effectiveStudentId) || db.getStudentById(effectiveStudentId))
+              : null) || item.student
           : null;
 
         const groupStudents = !isPrivate && item.groupId
@@ -206,22 +209,30 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
 
                 {/* Trailing: Trailing Avatar(s) 36px & small StatusBadge */}
                 <div className="shrink-0 flex items-center gap-2">
-                  {/* Trailing Avatar(s) 36px */}
+                  {/* Trailing Avatar(s) with selected achievement frame */}
                   {isPrivate ? (
-                    <Avatar
-                      size={36}
-                      name={title}
+                    <StudentAvatar
+                      student={privateStudent}
+                      name={privateStudent?.name || item.studentName || title}
                       profilePhoto={privateStudent?.profilePhoto}
+                      achievementFrame={privateStudent?.achievementFrame}
+                      avatarColor={privateStudent?.avatarColor}
+                      size="sm"
+                      showFrame={true}
                       className="shadow-2xs"
                     />
                   ) : groupStudents.length > 0 ? (
                     <div className="flex items-center -space-x-2 rtl:space-x-reverse shrink-0">
                       {groupStudents.slice(0, 3).map((st) => (
-                        <Avatar
+                        <StudentAvatar
                           key={st.id}
-                          size={36}
+                          student={st}
                           name={st.name}
                           profilePhoto={st.profilePhoto}
+                          achievementFrame={st.achievementFrame}
+                          avatarColor={st.avatarColor}
+                          size="sm"
+                          showFrame={true}
                           className="shadow-2xs"
                         />
                       ))}

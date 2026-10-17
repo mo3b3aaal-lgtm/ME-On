@@ -5,6 +5,7 @@ import { ProgressRing } from './ui/ProgressRing';
 import { MintCard } from './ui/MintCard';
 import { SectionHeader } from './ui/SectionHeader';
 import { Avatar } from './ui/Avatar';
+import { StudentAvatar } from './StudentAvatar';
 import { SessionTimeline } from './SessionTimeline';
 import { TeacherBoard } from './illustrations/TeacherBoard';
 import { StudentReading } from './illustrations/StudentReading';
@@ -869,11 +870,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => onOpenStudentProfile(student)}
                 className="flex flex-col items-center gap-1.5 shrink-0 snap-start cursor-pointer group active:scale-95 transition-transform select-none w-16"
               >
-                <Avatar
-                  size={56}
+                <StudentAvatar
+                  student={student}
                   name={student.name}
                   profilePhoto={student.profilePhoto}
-                  className="group-hover:ring-2 group-hover:ring-orange transition-all shadow-xs"
+                  achievementFrame={student.achievementFrame}
+                  avatarColor={student.avatarColor}
+                  size="md"
+                  showFrame={true}
+                  className="group-hover:scale-105 transition-transform"
                 />
                 <span className="text-[12px] font-medium text-navy text-center truncate w-full group-hover:text-orange transition-colors">
                   {student.name}

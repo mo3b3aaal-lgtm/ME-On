@@ -1,0 +1,489 @@
+/**
+ * CLASSY — Premium Gaming-Inspired Student Achievement Frames CSS
+ *
+ * Distinct, high-quality, metallic-themed styles and SVG asset structures for:
+ * 1. Silver (فضي)       — Polished silver metal, steel-blue shadows, cool highlights
+ * 2. Gold (ذهبي)        — Rich metallic gold, warm reflections, radiant imperial aura
+ * 3. Platinum (بلاتينيوم) — Icy silver-blue metal, crystal facets, luminous radiance
+ * 4. VIP (VIP)          — Dark obsidian, luxurious gold & amber highlights
+ * 5. Story (ستوري)      — Electric purple, magenta, cyber cyan & gaming neon
+ * 6. Challenge (تحدي)   — Fiery red, molten-gold, aggressive angular armor
+ * 7. Nature (طبيعة)     — Emerald green, jade, and brushed-gold laurel accents
+ * 8. Cosmic (كوني)      — Deep space navy, violet, electric blue & orbital stars
+ */
+
+/* =========================================================================
+   1. KEYFRAME ANIMATIONS & GLOW CYCLES
+   ========================================================================= */
+
+@keyframes frame-shimmer {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes frame-pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px var(--frame-glow-color, rgba(245, 158, 11, 0.45)));
+    opacity: 0.95;
+  }
+  50% {
+    filter: drop-shadow(0 0 10px var(--frame-glow-color-bright, rgba(245, 158, 11, 0.75)));
+    opacity: 1;
+  }
+}
+
+@keyframes frame-sheen-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-25deg);
+  }
+  50%, 100% {
+    transform: translateX(180%) skewX(-25deg);
+  }
+}
+
+@keyframes frame-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes frame-ember-flicker {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5), inset 0 0 6px rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(249, 115, 22, 0.75), inset 0 0 10px rgba(239, 68, 68, 0.6);
+  }
+}
+
+/* =========================================================================
+   2. CORE GAMING FRAME CONTAINER & WRAPPER CLASSES
+   ========================================================================= */
+
+.gaming-frame-root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.gaming-frame-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gaming-frame-avatar-inner {
+  position: relative;
+  z-index: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Base Asset Overlay for Pure CSS Frame Rendering */
+.gaming-frame-asset {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gaming-frame-asset::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* =========================================================================
+   3. TIER 1: SILVER — فضي (Refined Polished Silver)
+   ========================================================================= */
+:root {
+  --svg-frame-silver: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='s_m' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23FFFFFF'/%3E%3Cstop offset='25%25' stop-color='%23E2E8F0'/%3E%3Cstop offset='50%25' stop-color='%2394A3B8'/%3E%3Cstop offset='75%25' stop-color='%23CBD5E1'/%3E%3Cstop offset='100%25' stop-color='%2364748B'/%3E%3C/linearGradient%3E%3Cfilter id='s_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='2' stdDeviation='2.5' flood-color='%231E293B' flood-opacity='0.45'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23s_sh)' fill='url(%23s_m)' stroke='%23475569' stroke-width='1.2'%3E%3Cpath d='M36 94 C20 86 16 68 24 52 C30 68 42 78 54 84 Z'/%3E%3Cpath d='M31 114 C16 110 12 94 20 78 C28 92 40 102 50 106 Z'/%3E%3Cpath d='M36 134 C22 136 18 152 26 166 C32 152 44 142 54 136 Z'/%3E%3Cpath d='M164 94 C180 86 184 68 176 52 C170 68 158 78 146 84 Z'/%3E%3Cpath d='M169 114 C184 110 188 94 180 78 C172 92 160 102 150 106 Z'/%3E%3Cpath d='M164 134 C178 136 182 152 174 166 C168 152 156 142 146 136 Z'/%3E%3C/g%3E%3Ccircle cx='100' cy='100' r='77' stroke='url(%23s_m)' stroke-width='6' filter='url(%23s_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='80' stroke='%23334155' stroke-width='1' fill='none'/%3E%3Ccircle cx='100' cy='100' r='74' stroke='%23334155' stroke-width='1' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23E2E8F0' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+}
+
+.frame-silver,
+.frame-tier-silver,
+.frame-silver_scholar {
+  --frame-theme: #94A3B8;
+  --frame-glow-color: rgba(148, 163, 184, 0.35);
+  --frame-glow-color-bright: rgba(226, 232, 240, 0.7);
+  --frame-metallic-gradient: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 25%, #94A3B8 50%, #CBD5E1 75%, #64748B 100%);
+  --frame-bevel-border: #CBD5E1;
+}
+
+.frame-silver .gaming-frame-avatar-inner,
+.frame-tier-silver .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2px #E2E8F0,
+    0 0 0 3.5px #64748B,
+    0 4px 12px rgba(100, 116, 139, 0.25);
+}
+
+.gaming-frame-asset-silver::before {
+  background-image: var(--svg-frame-silver);
+}
+
+.frame-silver-badge {
+  background: linear-gradient(135deg, #F1F5F9 0%, #94A3B8 50%, #475569 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(71, 85, 105, 0.35);
+}
+
+/* =========================================================================
+   4. TIER 2: GOLD — ذهبي (Rich Imperial Gold & Laurel Accents)
+   ========================================================================= */
+:root {
+  --svg-frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='g_m' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23FFFBEB'/%3E%3Cstop offset='20%25' stop-color='%23FDE68A'/%3E%3Cstop offset='45%25' stop-color='%23F59E0B'/%3E%3Cstop offset='75%25' stop-color='%23D97706'/%3E%3Cstop offset='100%25' stop-color='%2392400E'/%3E%3C/linearGradient%3E%3Cfilter id='g_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='2' stdDeviation='2.5' flood-color='%2378350F' flood-opacity='0.5'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23g_sh)' fill='url(%23g_m)' stroke='%23B45309' stroke-width='1.2'%3E%3Cpath d='M34 94 C18 86 14 68 22 52 C28 68 40 78 52 84 Z'/%3E%3Cpath d='M29 114 C14 110 10 94 18 78 C26 92 38 102 48 106 Z'/%3E%3Cpath d='M34 134 C20 136 16 152 24 166 C30 152 42 142 52 136 Z'/%3E%3Cpath d='M166 94 C182 86 186 68 178 52 C172 68 160 78 148 84 Z'/%3E%3Cpath d='M171 114 C186 110 190 94 182 78 C174 92 162 102 152 106 Z'/%3E%3Cpath d='M166 134 C180 136 184 152 176 166 C170 152 158 142 148 136 Z'/%3E%3C/g%3E%3Ccircle cx='100' cy='100' r='77' stroke='url(%23g_m)' stroke-width='7' filter='url(%23g_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='81' stroke='%2378350F' stroke-width='1' fill='none'/%3E%3Ccircle cx='100' cy='100' r='73.5' stroke='%2378350F' stroke-width='1' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23FDE68A' stroke-width='2' fill='none'/%3E%3Cpolygon points='100,20 103,26 109,27 104,31 106,37 100,34 94,37 96,31 91,27 97,26' fill='%23FDE68A' stroke='%23B45309' stroke-width='0.8'/%3E%3C/svg%3E");
+}
+
+.frame-gold,
+.frame-tier-gold,
+.frame-gold_champion,
+.frame-champion {
+  --frame-theme: #F59E0B;
+  --frame-glow-color: rgba(245, 158, 11, 0.45);
+  --frame-glow-color-bright: rgba(251, 191, 36, 0.85);
+  --frame-metallic-gradient: linear-gradient(135deg, #FFFBEB 0%, #FDE68A 20%, #F59E0B 45%, #D97706 75%, #92400E 100%);
+  --frame-bevel-border: #FBBF24;
+}
+
+.frame-gold .gaming-frame-avatar-inner,
+.frame-tier-gold .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2px #FDE68A,
+    0 0 0 4px #D97706,
+    0 4px 14px rgba(217, 119, 6, 0.35);
+}
+
+.gaming-frame-asset-gold::before {
+  background-image: var(--svg-frame-gold);
+}
+
+.frame-gold-badge {
+  background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 50%, #B45309 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(254, 240, 138, 0.9);
+  box-shadow: 0 3px 8px rgba(180, 83, 9, 0.45);
+}
+
+/* =========================================================================
+   5. TIER 3: PLATINUM — بلاتينيوم (Icy Silver-Blue Metal & Radiant Crystals)
+   ========================================================================= */
+:root {
+  --svg-frame-platinum: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='p_m' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23F0F9FF'/%3E%3Cstop offset='25%25' stop-color='%23BAE6FD'/%3E%3Cstop offset='50%25' stop-color='%2338BDF8'/%3E%3Cstop offset='80%25' stop-color='%230284C7'/%3E%3Cstop offset='100%25' stop-color='%230369A1'/%3E%3C/linearGradient%3E%3Cfilter id='p_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='2' stdDeviation='3' flood-color='%230C4A6E' flood-opacity='0.45'/%3E%3C/filter%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='77' stroke='url(%23p_m)' stroke-width='6.5' filter='url(%23p_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='80.5' stroke='%230369A1' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='73.5' stroke='%230369A1' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23E0F2FE' stroke-width='2' fill='none'/%3E%3Cpolygon points='100,16 110,24 100,32 90,24' fill='%23BAE6FD' stroke='%230284C7' stroke-width='1'/%3E%3Cpolygon points='100,168 110,176 100,184 90,176' fill='%23BAE6FD' stroke='%230284C7' stroke-width='1'/%3E%3Cpolygon points='16,100 24,90 32,100 24,110' fill='%23BAE6FD' stroke='%230284C7' stroke-width='1'/%3E%3Cpolygon points='168,100 176,90 184,100 176,110' fill='%23BAE6FD' stroke='%230284C7' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+.frame-platinum,
+.frame-tier-platinum,
+.frame-diamond_elite {
+  --frame-theme: #0284C7;
+  --frame-glow-color: rgba(56, 189, 248, 0.45);
+  --frame-glow-color-bright: rgba(186, 230, 253, 0.9);
+  --frame-metallic-gradient: linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 25%, #38BDF8 50%, #0284C7 80%, #0369A1 100%);
+  --frame-bevel-border: #7DD3FC;
+}
+
+.frame-platinum .gaming-frame-avatar-inner,
+.frame-tier-platinum .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2px #E0F2FE,
+    0 0 0 4px #0284C7,
+    0 4px 14px rgba(2, 132, 199, 0.35);
+}
+
+.gaming-frame-asset-platinum::before {
+  background-image: var(--svg-frame-platinum);
+}
+
+.frame-platinum-badge {
+  background: linear-gradient(135deg, #E0F2FE 0%, #38BDF8 50%, #0369A1 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.4);
+}
+
+/* =========================================================================
+   6. TIER 4: VIP — VIP (Obsidian Dark Luxury & Amber Gold)
+   ========================================================================= */
+:root {
+  --svg-frame-vip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='v_gold' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23FDE68A'/%3E%3Cstop offset='40%25' stop-color='%23F59E0B'/%3E%3Cstop offset='80%25' stop-color='%23D97706'/%3E%3Cstop offset='100%25' stop-color='%2378350F'/%3E%3C/linearGradient%3E%3Cfilter id='v_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='3' stdDeviation='3.5' flood-color='%23000000' flood-opacity='0.6'/%3E%3C/filter%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='78' stroke='%2318181B' stroke-width='8' filter='url(%23v_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='82.5' stroke='url(%23v_gold)' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='100' cy='100' r='73.5' stroke='url(%23v_gold)' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23FDE68A' stroke-width='2' fill='none'/%3E%3Cpath d='M86 28 L94 22 L100 26 L106 22 L114 28 L111 36 L89 36 Z' fill='url(%23v_gold)' stroke='%2378350F' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+.frame-vip,
+.frame-tier-vip,
+.frame-crown {
+  --frame-theme: #D97706;
+  --frame-glow-color: rgba(217, 119, 6, 0.4);
+  --frame-glow-color-bright: rgba(245, 158, 11, 0.85);
+  --frame-metallic-gradient: linear-gradient(135deg, #27272A 0%, #18181B 35%, #D97706 70%, #F59E0B 88%, #78350F 100%);
+  --frame-bevel-border: #F59E0B;
+}
+
+.frame-vip .gaming-frame-avatar-inner,
+.frame-tier-vip .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2.5px #18181B,
+    0 0 0 4.5px #F59E0B,
+    0 5px 16px rgba(15, 23, 42, 0.55);
+}
+
+.gaming-frame-asset-vip::before {
+  background-image: var(--svg-frame-vip);
+}
+
+.frame-vip-badge {
+  background: linear-gradient(135deg, #27272A 0%, #18181B 40%, #B45309 100%);
+  color: #FDE68A;
+  border: 1px solid rgba(245, 158, 11, 0.8);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* =========================================================================
+   7. TIER 5: STORY — ستوري (Cyber Electric Purple & Magenta Neon)
+   ========================================================================= */
+:root {
+  --svg-frame-story: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='st_m' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23FDF4FF'/%3E%3Cstop offset='25%25' stop-color='%23E879F9'/%3E%3Cstop offset='50%25' stop-color='%23A855F7'/%3E%3Cstop offset='75%25' stop-color='%237E22CE'/%3E%3Cstop offset='100%25' stop-color='%2306B6D4'/%3E%3C/linearGradient%3E%3Cfilter id='st_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='2' stdDeviation='3' flood-color='%23581C87' flood-opacity='0.55'/%3E%3C/filter%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='77' stroke='url(%23st_m)' stroke-width='6.5' filter='url(%23st_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='81' stroke='%237E22CE' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='73.5' stroke='%2306B6D4' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23F0ABFC' stroke-width='2' fill='none'/%3E%3Cpolygon points='100,18 106,26 100,34 94,26' fill='%2306B6D4' stroke='%237E22CE' stroke-width='1'/%3E%3Cpolygon points='100,166 106,174 100,182 94,174' fill='%2306B6D4' stroke='%237E22CE' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+.frame-story,
+.frame-tier-story,
+.frame-sapphire_merit {
+  --frame-theme: #A855F7;
+  --frame-glow-color: rgba(168, 85, 247, 0.45);
+  --frame-glow-color-bright: rgba(236, 72, 153, 0.85);
+  --frame-metallic-gradient: linear-gradient(135deg, #FDF4FF 0%, #E879F9 25%, #A855F7 50%, #7E22CE 75%, #06B6D4 100%);
+  --frame-bevel-border: #D8B4FE;
+}
+
+.frame-story .gaming-frame-avatar-inner,
+.frame-tier-story .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2px #F0ABFC,
+    0 0 0 4px #7E22CE,
+    0 4px 15px rgba(168, 85, 247, 0.4);
+}
+
+.gaming-frame-asset-story::before {
+  background-image: var(--svg-frame-story);
+}
+
+.frame-story-badge {
+  background: linear-gradient(135deg, #F0ABFC 0%, #A855F7 50%, #4C1D95 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 3px 9px rgba(126, 34, 206, 0.45);
+}
+
+/* =========================================================================
+   8. TIER 6: CHALLENGE — تحدي (Fiery Molten Crimson Armor)
+   ========================================================================= */
+:root {
+  --svg-frame-challenge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='c_m' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23FEF2F2'/%3E%3Cstop offset='25%25' stop-color='%23F87171'/%3E%3Cstop offset='50%25' stop-color='%23EF4444'/%3E%3Cstop offset='75%25' stop-color='%23B91C1C'/%3E%3Cstop offset='100%25' stop-color='%23F97316'/%3E%3C/linearGradient%3E%3Cfilter id='c_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='2' stdDeviation='3' flood-color='%237F1D1D' flood-opacity='0.6'/%3E%3C/filter%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='77' stroke='url(%23c_m)' stroke-width='7' filter='url(%23c_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='81' stroke='%237F1D1D' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='73' stroke='%237F1D1D' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23FECACA' stroke-width='2' fill='none'/%3E%3Cpolygon points='100,16 108,25 100,34 92,25' fill='%23F97316' stroke='%237F1D1D' stroke-width='1'/%3E%3Cpolygon points='100,166 108,175 100,184 92,175' fill='%23F97316' stroke='%237F1D1D' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+.frame-challenge,
+.frame-tier-challenge,
+.frame-ruby_master {
+  --frame-theme: #EF4444;
+  --frame-glow-color: rgba(239, 68, 68, 0.5);
+  --frame-glow-color-bright: rgba(249, 115, 22, 0.85);
+  --frame-metallic-gradient: linear-gradient(135deg, #FEF2F2 0%, #F87171 25%, #EF4444 50%, #B91C1C 75%, #F97316 100%);
+  --frame-bevel-border: #FCA5A5;
+}
+
+.frame-challenge .gaming-frame-avatar-inner,
+.frame-tier-challenge .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2px #FECACA,
+    0 0 0 4px #B91C1C,
+    0 4px 15px rgba(220, 38, 38, 0.4);
+}
+
+.gaming-frame-asset-challenge::before {
+  background-image: var(--svg-frame-challenge);
+}
+
+.frame-challenge-badge {
+  background: linear-gradient(135deg, #FCA5A5 0%, #EF4444 50%, #7F1D1D 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(254, 202, 202, 0.85);
+  box-shadow: 0 3px 9px rgba(185, 28, 28, 0.45);
+}
+
+/* =========================================================================
+   9. TIER 7: NATURE — طبيعة (Emerald Jade & Antique Gold Laurel)
+   ========================================================================= */
+:root {
+  --svg-frame-nature: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='n_m' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23ECFDF5'/%3E%3Cstop offset='25%25' stop-color='%236EE7B7'/%3E%3Cstop offset='50%25' stop-color='%2310B981'/%3E%3Cstop offset='75%25' stop-color='%23047857'/%3E%3Cstop offset='100%25' stop-color='%23D97706'/%3E%3C/linearGradient%3E%3Cfilter id='n_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='2' stdDeviation='2.8' flood-color='%23064E3B' flood-opacity='0.5'/%3E%3C/filter%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='77' stroke='url(%23n_m)' stroke-width='6.5' filter='url(%23n_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='81' stroke='%23064E3B' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='73.5' stroke='%23D97706' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23A7F3D0' stroke-width='2' fill='none'/%3E%3Cpolygon points='100,18 106,26 100,34 94,26' fill='%23F59E0B' stroke='%23064E3B' stroke-width='1'/%3E%3Cpolygon points='100,166 106,174 100,182 94,174' fill='%23F59E0B' stroke='%23064E3B' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+.frame-nature,
+.frame-tier-nature,
+.frame-emerald_honor {
+  --frame-theme: #10B981;
+  --frame-glow-color: rgba(16, 185, 129, 0.45);
+  --frame-glow-color-bright: rgba(217, 119, 6, 0.75);
+  --frame-metallic-gradient: linear-gradient(135deg, #ECFDF5 0%, #6EE7B7 25%, #10B981 50%, #047857 75%, #D97706 100%);
+  --frame-bevel-border: #6EE7B7;
+}
+
+.frame-nature .gaming-frame-avatar-inner,
+.frame-tier-nature .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2px #A7F3D0,
+    0 0 0 4px #047857,
+    0 4px 14px rgba(4, 120, 87, 0.35);
+}
+
+.gaming-frame-asset-nature::before {
+  background-image: var(--svg-frame-nature);
+}
+
+.frame-nature-badge {
+  background: linear-gradient(135deg, #6EE7B7 0%, #10B981 50%, #064E3B 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(167, 243, 208, 0.85);
+  box-shadow: 0 3px 8px rgba(4, 120, 87, 0.4);
+}
+
+/* =========================================================================
+   10. TIER 8: COSMIC — كوني (Deep Space Navy, Electric Blue & Nebula Starlight)
+   ========================================================================= */
+:root {
+  --svg-frame-cosmic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='cs_m' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23EEF2FF'/%3E%3Cstop offset='25%25' stop-color='%23818CF8'/%3E%3Cstop offset='50%25' stop-color='%236366F1'/%3E%3Cstop offset='75%25' stop-color='%23312E81'/%3E%3Cstop offset='100%25' stop-color='%2306B6D4'/%3E%3C/linearGradient%3E%3Cfilter id='cs_sh' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='2' stdDeviation='3.5' flood-color='%231E1B4B' flood-opacity='0.6'/%3E%3C/filter%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='77' stroke='url(%23cs_m)' stroke-width='6.5' filter='url(%23cs_sh)' fill='none'/%3E%3Ccircle cx='100' cy='100' r='81' stroke='%23312E81' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='73.5' stroke='%2306B6D4' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='100' cy='100' r='67' stroke='%23C7D2FE' stroke-width='2' fill='none'/%3E%3Cpolygon points='100,16 104,24 112,25 106,31 108,39 100,35 92,39 94,31 88,25 96,24' fill='%2338BDF8' stroke='%231E1B4B' stroke-width='0.8'/%3E%3C/svg%3E");
+}
+
+.frame-cosmic,
+.frame-tier-cosmic,
+.frame-star {
+  --frame-theme: #6366F1;
+  --frame-glow-color: rgba(99, 102, 241, 0.45);
+  --frame-glow-color-bright: rgba(6, 182, 212, 0.85);
+  --frame-metallic-gradient: linear-gradient(135deg, #EEF2FF 0%, #818CF8 25%, #6366F1 50%, #312E81 75%, #06B6D4 100%);
+  --frame-bevel-border: #A5B4FC;
+}
+
+.frame-cosmic .gaming-frame-avatar-inner,
+.frame-tier-cosmic .gaming-frame-avatar-inner {
+  box-shadow: 
+    0 0 0 2px #C7D2FE,
+    0 0 0 4px #3730A3,
+    0 5px 16px rgba(49, 46, 129, 0.45);
+}
+
+.gaming-frame-asset-cosmic::before {
+  background-image: var(--svg-frame-cosmic);
+}
+
+.frame-cosmic-badge {
+  background: linear-gradient(135deg, #A5B4FC 0%, #6366F1 50%, #1E1B4B 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(199, 210, 254, 0.85);
+  box-shadow: 0 3px 9px rgba(49, 46, 129, 0.45);
+}
+
+/* =========================================================================
+   11. POLISHED DROPDOWN & PREVIEW TIER STYLING
+   ========================================================================= */
+
+.frame-dropdown-option {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.frame-dropdown-option:hover {
+  transform: translateX(-2px);
+}
+
+[dir="ltr"] .frame-dropdown-option:hover {
+  transform: translateX(2px);
+}
+
+.frame-dropdown-option-active {
+  background: rgba(23, 55, 94, 0.05);
+  border-color: #17375E;
+}
+
+/* Tier Tag Pills */
+.frame-tier-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.frame-tier-pill-silver {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+
+.frame-tier-pill-gold {
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.frame-tier-pill-platinum {
+  background: #F0F9FF;
+  color: #0369A1;
+  border: 1px solid #BAE6FD;
+}
+
+.frame-tier-pill-vip {
+  background: #18181B;
+  color: #FBBF24;
+  border: 1px solid #78350F;
+}
+
+.frame-tier-pill-story {
+  background: #FDF4FF;
+  color: #7E22CE;
+  border: 1px solid #F0ABFC;
+}
+
+.frame-tier-pill-challenge {
+  background: #FEF2F2;
+  color: #B91C1C;
+  border: 1px solid #FECACA;
+}
+
+.frame-tier-pill-nature {
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.frame-tier-pill-cosmic {
+  background: #EEF2FF;
+  color: #3730A3;
+  border: 1px solid #C7D2FE;
+}

@@ -173,6 +173,8 @@ export interface Enrollment {
   status: EnrollmentStatus;
   joinedAt: string;
   notes?: string;
+  subject?: string; // المادة الدراسية (للدروس الخصوصية)
+  roomOrLocation?: string; // مكان الحصة (للدروس الخصوصية)
   createdAt?: string;
   updatedAt?: string;
 }

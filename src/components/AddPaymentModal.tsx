@@ -244,8 +244,12 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {studentEnrollments.map((enr) => {
-                  const grp = db.getGroupById(enr.groupId);
+                  const grp = enr.groupId ? db.getGroupById(enr.groupId) : undefined;
                   const isSelected = enr.id === selectedEnrollmentId;
+                  const displayName = enr.serviceType === 'private'
+                    ? (enr.subject ? (enr.subject.startsWith('درس خاص') ? enr.subject : `درس خاص - ${enr.subject}`) : 'درس خاص')
+                    : (grp?.name || 'مجموعة');
+                  const cardAccent = grp?.accentColor || (enr.serviceType === 'private' ? '#0F2A4A' : '#17375E');
                   return (
                     <button
                       key={enr.id}
@@ -258,12 +262,12 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-navy text-xs truncate">{grp?.name || 'مجموعة'}</span>
+                        <span className="font-bold text-navy text-xs truncate">{displayName}</span>
                         <span
                           className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                           style={{
-                            backgroundColor: `${grp?.accentColor || '#17375E'}18`,
-                            color: grp?.accentColor || '#17375E',
+                            backgroundColor: `${cardAccent}18`,
+                            color: cardAccent,
                           }}
                         >
                           {enr.serviceType === 'private' ? 'درس خاص' : 'مجموعة'}

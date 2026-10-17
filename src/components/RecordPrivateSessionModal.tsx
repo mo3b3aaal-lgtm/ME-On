@@ -249,18 +249,24 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     setIsSubmitting(true);
 
     try {
-      let targetGroupId = activeGroup?.id;
+      let targetGroupId = activeGroup?.id || '';
       let targetEnrollmentId = activeEnrollment?.id;
 
-      if (!targetGroupId || !targetEnrollmentId) {
-        const created = db.createPrivateLessonService(student.id, {
-          subject: isEn ? 'Private Subject' : 'مادة الدرس الخاص',
-          sessionPrice: 100,
-          billingType: 'prepaid',
-          billingMode: 'prepaid',
-        });
-        targetGroupId = created.group.id;
-        targetEnrollmentId = created.enrollment.id;
+      if (!targetEnrollmentId) {
+        const privEnrs = db.getStudentPrivateEnrollments(student.id);
+        if (privEnrs.length > 0) {
+          targetEnrollmentId = privEnrs[0].enrollment.id;
+          targetGroupId = privEnrs[0].group?.id || '';
+        } else {
+          const created = db.createPrivateLessonService(student.id, {
+            subject: isEn ? 'Private Subject' : 'مادة الدرس الخاص',
+            sessionPrice: 100,
+            billingType: 'prepaid',
+            billingMode: 'prepaid',
+          });
+          targetGroupId = created.group?.id || '';
+          targetEnrollmentId = created.enrollment.id;
+        }
       }
 
       const finalReason =

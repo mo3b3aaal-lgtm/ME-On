@@ -290,13 +290,8 @@ export default function App() {
   }, [sessions, handleTabChange]);
 
   const handleOpenAddPrivateSession = useCallback(() => {
-    const privGroup = groups.find((g) => g.type === 'private');
-    if (privGroup) {
-      handleOpenAddSession(privGroup.id);
-    } else {
-      handleOpenAddSession();
-    }
-  }, [groups, handleOpenAddSession]);
+    handleOpenAddSession();
+  }, [handleOpenAddSession]);
 
   return (
     <div className="min-h-screen bg-page md:bg-mint flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-navy" dir={isRTL ? 'rtl' : 'ltr'}>

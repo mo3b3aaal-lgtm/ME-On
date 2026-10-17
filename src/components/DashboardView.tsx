@@ -248,8 +248,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return sessions.find((s) => {
       if (s.date !== todayStr) return false;
       if (s.status === 'cancelled') return false;
-      if (s.groupId !== item.groupId) return false;
-      if (item.studentId && s.studentId && s.studentId !== item.studentId) return false;
+      if (item.isPrivate || item.studentId) {
+        if (s.studentId !== item.studentId) return false;
+        if (item.enrollmentId && s.enrollmentId && s.enrollmentId !== item.enrollmentId) return false;
+      } else {
+        if (s.groupId !== item.groupId) return false;
+      }
 
       // Match exact start time (parsed to minutes) to strictly isolate multiple sessions on same day
       const sMins = parseLocalTimeToStandard(s.startTime).sortMinutes;
@@ -263,7 +267,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const existing = findSessionForScheduleItem(item);
     if (existing) return existing;
 
-    const group = groups.find((g) => g.id === item.groupId);
+    const group = item.groupId ? groups.find((g) => g.id === item.groupId) : undefined;
     const timeInfo = parseLocalTimeToStandard(item.rawTime);
     const rawStartTime = timeInfo.normalizedTime;
     const [h, m] = rawStartTime.split(':').map(Number);
@@ -271,8 +275,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
 
     const newSession: Session = {
-      id: `sess_${todayStr}_${item.groupId}_${item.studentId || 'grp'}_${timeInfo.sortMinutes}_${Math.random().toString(36).substr(2, 5)}`,
-      groupId: item.groupId,
+      id: `sess_${todayStr}_${item.groupId || 'priv'}_${item.studentId || 'grp'}_${timeInfo.sortMinutes}_${Math.random().toString(36).substr(2, 5)}`,
+      groupId: item.groupId || '',
       studentId: item.studentId,
       enrollmentId: item.enrollmentId,
       title: item.isPrivate ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : item.groupName,

@@ -870,8 +870,57 @@ export function getScheduledClassesForDate(
     }
   }
 
-  // Also check active students with direct privateDays or scheduleDays not yet covered by a group
+  // Also check active private enrollments (which do not have a group)
   const coveredStudentIds = new Set(scheduledItems.filter((i) => i.isPrivate && i.studentId).map((i) => i.studentId));
+  const activePrivateEnrollments = enrollments.filter((e) => e.serviceType === 'private' && e.status !== 'stopped');
+
+  for (const enr of activePrivateEnrollments) {
+    if (coveredStudentIds.has(enr.studentId)) continue;
+    const stu = activeStudentsMap.get(enr.studentId);
+    if (!stu) continue;
+
+    const privDays = (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0)
+      ? enr.scheduleDays
+      : (stu.privateDays && Array.isArray(stu.privateDays) && stu.privateDays.length > 0 ? stu.privateDays : (stu.scheduleDays || []));
+
+    const normPD = normalizeScheduleDays(privDays);
+    if (normPD.includes(canonicalTodayKey)) {
+      const timesMap = enr.scheduleTimes || stu.privateTimes || stu.scheduleTimes;
+      const normPT = normalizeScheduleTimes(timesMap);
+      const effectiveTimes = normPT[canonicalTodayKey]?.length
+        ? normPT[canonicalTodayKey]
+        : [(enr.scheduleTime || stu.privateTime || stu.scheduleTime || '16:00')];
+
+      effectiveTimes.forEach((rawTime, timeIdx) => {
+        const sortMinutes = parseTimeToMinutes(rawTime);
+        const formattedTime = formatTimeDisplay(rawTime, isRTL);
+        const cleanTimeKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+        const loc = getLocalizedLocationName(enr.roomOrLocation || stu.privateLocation || (isRTL ? 'منزل الطالب' : "Student's Home"), isRTL);
+        const subj = getLocalizedSubjectName(enr.subject || stu.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
+
+        scheduledItems.push({
+          id: `sched_priv_enr_${enr.id}_${stu.id}_${targetDayIdx}_${timeIdx}_${cleanTimeKey}`,
+          studentId: stu.id,
+          studentName: stu.name,
+          student: stu,
+          groupId: '',
+          groupName: isRTL ? 'درس خاص' : 'Private Lesson',
+          enrollmentId: enr.id,
+          isPrivate: true,
+          subject: subj,
+          dayName: localizedDayName,
+          time: formattedTime,
+          rawTime,
+          sortMinutes,
+          location: loc,
+          accentColor: '#0F2A4A',
+        });
+      });
+      coveredStudentIds.add(stu.id);
+    }
+  }
+
+  // Also check active students with direct privateDays or scheduleDays not yet covered
   for (const stu of activeStudentsMap.values()) {
     if (coveredStudentIds.has(stu.id)) continue;
 
@@ -893,7 +942,7 @@ export function getScheduledClassesForDate(
             studentId: stu.id,
             studentName: stu.name,
             student: stu,
-            groupId: `direct_priv_${stu.id}`,
+            groupId: '',
             groupName: isRTL ? 'درس خاص' : 'Private Lesson',
             isPrivate: true,
             subject: subj,

@@ -107,7 +107,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       string,
       {
         studentGroups: { group: Group; enrollment: Enrollment }[];
-        privateEnrollments: { group: Group; enrollment: Enrollment }[];
+        privateEnrollments: { group?: Group; enrollment: Enrollment }[];
         enrollmentGroupIds: Set<string>;
         isPrivateOnly: boolean;
         isGroupAndPrivate: boolean;
@@ -118,20 +118,25 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     students.forEach((student) => {
       const sEnrs = allEnrs.filter((e) => e.studentId === student.id && e.status !== 'stopped');
       const sGroups: { group: Group; enrollment: Enrollment }[] = [];
-      const sPriv: { group: Group; enrollment: Enrollment }[] = [];
+      const sPriv: { group?: Group; enrollment: Enrollment }[] = [];
       const grpIds = new Set<string>();
 
       sEnrs.forEach((enr) => {
-        const g = groupsMap.get(enr.groupId);
-        if (g) {
-          grpIds.add(g.id);
-          if (g.type === 'private' || enr.serviceType === 'private') {
-            sPriv.push({ group: g, enrollment: enr });
-          } else {
+        if (enr.serviceType === 'private') {
+          const g = enr.groupId ? groupsMap.get(enr.groupId) : undefined;
+          sPriv.push({ group: g, enrollment: enr });
+        } else {
+          const g = enr.groupId ? groupsMap.get(enr.groupId) : undefined;
+          if (g && g.type !== 'private') {
+            grpIds.add(g.id);
             sGroups.push({ group: g, enrollment: enr });
           }
         }
       });
+
+      const hasDirectPrivate = (student.privateDays && student.privateDays.length > 0) || student.serviceType === 'private';
+      const hasPrivate = sPriv.length > 0 || hasDirectPrivate;
+      const hasGroup = sGroups.length > 0;
 
       const fin = db.calculateStudentFinancials(student.id);
 
@@ -139,8 +144,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         studentGroups: sGroups,
         privateEnrollments: sPriv,
         enrollmentGroupIds: grpIds,
-        isPrivateOnly: sGroups.length === 0 && sPriv.length > 0,
-        isGroupAndPrivate: sGroups.length > 0 && sPriv.length > 0,
+        isPrivateOnly: !hasGroup && hasPrivate,
+        isGroupAndPrivate: hasGroup && hasPrivate,
         balance: fin.balance,
       });
     });
@@ -705,12 +710,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   : (isEn ? 'Student' : 'طالب');
 
                 const primaryGroup = studentGroups[0]?.group || privateEnrollments[0]?.group;
-                const billingLabel = primaryGroup?.billingType
-                  ? primaryGroup.billingType === 'monthly'
+                const resolvedBillingType =
+                  primaryGroup?.billingType ||
+                  privateEnrollments[0]?.enrollment?.billingType ||
+                  privateEnrollments[0]?.enrollment?.billingMode;
+                const billingLabel = resolvedBillingType
+                  ? resolvedBillingType === 'monthly'
                     ? (isEn ? 'Monthly' : 'شهري')
-                    : primaryGroup.billingType === 'package'
+                    : resolvedBillingType === 'package'
                     ? (isEn ? 'Package' : 'باقة')
-                    : primaryGroup.billingType === 'hourly'
+                    : resolvedBillingType === 'hourly'
                     ? (isEn ? 'Hourly' : 'بالساعة')
                     : (isEn ? 'Per session' : 'بالحصة')
                   : null;

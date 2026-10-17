@@ -1994,10 +1994,12 @@ export const db = {
   },
 
   getGroupEnrollments: (groupId: string): Enrollment[] => {
+    if (!groupId) return [];
     return db.getEnrollments().filter((e) => e.groupId === groupId && e.status !== 'stopped');
   },
 
   getGroupStudents: (groupId: string): Student[] => {
+    if (!groupId) return [];
     const group = db.getGroupById(groupId);
     const enrollments = db.getGroupEnrollments(groupId).filter((e) => {
       if (group && group.type !== 'private') {
@@ -2015,6 +2017,7 @@ export const db = {
     const result: { group: Group; enrollment: Enrollment }[] = [];
 
     for (const enr of enrollments) {
+      if (!enr.groupId) continue;
       const g = groups.find((grp) => grp.id === enr.groupId);
       // ONLY REAL GROUPS: Not private pseudo-groups and not serviceType private
       if (g && g.type !== 'private' && enr.serviceType !== 'private') {
@@ -2030,7 +2033,7 @@ export const db = {
     const result: { group?: Group; enrollment: Enrollment }[] = [];
 
     for (const enr of enrollments) {
-      const g = groups.find((grp) => grp.id === enr.groupId);
+      const g = enr.groupId ? groups.find((grp) => grp.id === enr.groupId) : undefined;
       if (enr.serviceType === 'private' || g?.type === 'private') {
         result.push({ group: g, enrollment: enr });
       }
@@ -2046,11 +2049,11 @@ export const db = {
     let hasPrivate = false;
 
     for (const enr of enrollments) {
-      const g = groups.find((grp) => grp.id === enr.groupId);
+      const g = enr.groupId ? groups.find((grp) => grp.id === enr.groupId) : undefined;
       const sType = enr.serviceType || g?.type || 'group';
       if (sType === 'private' || g?.type === 'private') {
         hasPrivate = true;
-      } else {
+      } else if (g) {
         hasGroup = true;
       }
     }
@@ -2078,10 +2081,8 @@ export const db = {
       roomOrLocation?: string;
       notes?: string;
     }
-  ): { group: Group; enrollment: Enrollment } => {
+  ): { group?: Group; enrollment: Enrollment } => {
     const student = db.getStudentById(studentId);
-    const studentName = student ? student.name : 'طالب';
-    const grade = options.gradeLevel || student?.gradeLevel || 'الصف الأول الثانوي';
     const resolvedBilling: BillingType = options.billingType || (options.billingMode as any) || 'prepaid';
     const resolvedMode: BillingMode = options.billingMode || (options.billingType as any) || 'prepaid';
 
@@ -2092,29 +2093,48 @@ export const db = {
       ? divideMoney(packagePrice, packageSessions)
       : roundMoney(options.sessionPrice, 2);
 
-    const newGroup: Group = {
-      id: `grp_priv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      name: options.subject ? `درس خاص - ${options.subject}` : 'درس خاص',
-      subject: options.subject,
-      gradeLevel: grade,
-      type: 'private',
-      billingType: resolvedBilling,
-      billingMode: resolvedMode,
-      defaultPrice: isPackage && packagePrice ? roundMoney(packagePrice, 2) : roundMoney(options.sessionPrice, 2),
-      hourlyRate: options.hourlyRate ? roundMoney(options.hourlyRate, 2) : undefined,
-      packageSessionsCount: packageSessions,
-      scheduleDays: options.scheduleDays || ['السبت'],
-      scheduleTime: options.scheduleTime || '04:00 م',
-      scheduleTimes: options.scheduleTimes,
-      roomOrLocation: options.roomOrLocation || 'منزل الطالب / أونلاين',
-      accentColor: '#0F2A4A', // Navy accent for private lessons
-      notes: options.notes || '',
-      createdAt: new Date().toISOString(),
-    };
+    const activeUserId = getActiveUserId();
+    const existing = db.getEnrollments();
+    const found = existing.find((e) => e.studentId === studentId && e.serviceType === 'private');
 
-    db.saveGroup(newGroup);
+    if (found) {
+      found.billingType = resolvedBilling;
+      found.billingMode = resolvedMode;
+      found.customPrice = effectivePrice;
+      found.hourlyRate = options.hourlyRate;
+      found.packageSessionsCount = packageSessions;
+      found.packagePrice = packagePrice;
+      found.scheduleDays = options.scheduleDays;
+      found.scheduleTime = options.scheduleTime;
+      found.scheduleTimes = options.scheduleTimes;
+      found.subject = options.subject;
+      found.roomOrLocation = options.roomOrLocation;
+      found.notes = options.notes;
+      found.status = 'active';
+      found.updatedAt = new Date().toISOString();
+      db.updateEnrollment(found);
 
-    const enrollment = db.enrollStudent(studentId, newGroup.id, {
+      if (student) {
+        db.saveStudent({
+          ...student,
+          privateDays: options.scheduleDays,
+          privateTime: options.scheduleTime,
+          privateTimes: options.scheduleTimes,
+          privateLocation: options.roomOrLocation,
+          subject: options.subject || student.subject,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      return { enrollment: found };
+    }
+
+    // STRICT ISOLATION: A private lesson is NOT a group. Never create a group, assign a fake group ID, or create a group enrollment.
+    const newEnrollment: Enrollment = {
+      id: `enr_priv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      userId: activeUserId,
+      studentId,
+      groupId: '',
       serviceType: 'private',
       billingType: resolvedBilling,
       billingMode: resolvedMode,
@@ -2126,14 +2146,36 @@ export const db = {
       scheduleDays: options.scheduleDays,
       scheduleTime: options.scheduleTime,
       scheduleTimes: options.scheduleTimes,
+      subject: options.subject,
+      roomOrLocation: options.roomOrLocation,
       sessionCredit: 0,
       financialCredit: 0,
       discount: 0,
       status: 'active',
+      joinedAt: new Date().toISOString(),
       notes: options.notes,
-    });
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-    return { group: newGroup, enrollment };
+    removeDeletionTombstone('enrollment', newEnrollment.id, activeUserId);
+    const allEnrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
+    allEnrollments.unshift(newEnrollment);
+    saveList(STORAGE_KEYS.ENROLLMENTS, allEnrollments);
+
+    if (student) {
+      db.saveStudent({
+        ...student,
+        privateDays: options.scheduleDays,
+        privateTime: options.scheduleTime,
+        privateTimes: options.scheduleTimes,
+        privateLocation: options.roomOrLocation,
+        subject: options.subject || student.subject,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return { enrollment: newEnrollment };
   },
 
   enrollStudent: (
@@ -3617,14 +3659,20 @@ export const db = {
     const enrollment = db.getEnrollmentById(enrollmentId);
     if (!enrollment) return undefined;
 
-    const group = db.getGroupById(enrollment.groupId);
-    const groupName = group ? group.name : 'مجموعة محذوفة';
-    const groupType = group ? group.type : enrollment.serviceType;
-    const accentColor = group ? group.accentColor : '#17375E';
+    const isPrivateService = enrollment.serviceType === 'private';
+    const group = enrollment.groupId ? db.getGroupById(enrollment.groupId) : undefined;
+    const groupName = isPrivateService
+      ? (enrollment.subject ? (enrollment.subject.startsWith('درس خاص') ? enrollment.subject : `درس خاص - ${enrollment.subject}`) : 'درس خاص')
+      : (group ? group.name : 'مجموعة محذوفة');
+    const groupType = isPrivateService ? 'private' : (group ? group.type : enrollment.serviceType);
+    const accentColor = group ? group.accentColor : (isPrivateService ? '#0F2A4A' : '#17375E');
 
-    const allGroupSessions = db.getSessions().filter(
-      (s) => s.groupId === enrollment.groupId || (s.enrollmentId && s.enrollmentId === enrollment.id)
-    );
+    const allGroupSessions = db.getSessions().filter((s) => {
+      if (s.enrollmentId && s.enrollmentId === enrollment.id) return true;
+      if (enrollment.groupId && s.groupId === enrollment.groupId) return true;
+      if (isPrivateService && s.studentId === enrollment.studentId) return true;
+      return false;
+    });
     const sessions = allGroupSessions.filter((s) => s.status !== 'cancelled');
     const allGroupSessionIds = new Set(allGroupSessions.map((s) => s.id));
     const attendanceRecords = db.getStudentAttendance(enrollment.studentId);

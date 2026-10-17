@@ -105,19 +105,25 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       let hasPrivate = false;
 
       enrollments.forEach((enr) => {
-        const group = allGroups.find((g) => g.id === enr.groupId);
+        const group = enr.groupId ? allGroups.find((g) => g.id === enr.groupId) : undefined;
         if (enr.serviceType === 'private' || group?.type === 'private') {
           hasPrivate = true;
           if (enr.customPrice) setPrivatePrice(enr.customPrice);
           if (enr.hourlyRate) setPrivateHourlyRate(enr.hourlyRate);
           if (enr.billingMode) setPrivateBillingMode(enr.billingMode);
           if (enr.packageSessionsCount) setPrivatePackageSessions(enr.packageSessionsCount);
-          if (group?.subject) setPrivateSubject(group.subject);
-          if (group?.roomOrLocation) setPrivateLocation(group.roomOrLocation);
-        } else {
+          if (enr.subject || group?.subject) setPrivateSubject(enr.subject || group?.subject || '');
+          if (enr.roomOrLocation || group?.roomOrLocation) setPrivateLocation(enr.roomOrLocation || group?.roomOrLocation || '');
+        } else if (enr.groupId) {
           regularGroupIds.push(enr.groupId);
         }
       });
+
+      if (!hasPrivate && (editingStudent.serviceType === 'private' || (editingStudent.privateDays && editingStudent.privateDays.length > 0))) {
+        hasPrivate = true;
+        if (editingStudent.subject) setPrivateSubject(editingStudent.subject);
+        if (editingStudent.privateLocation) setPrivateLocation(editingStudent.privateLocation);
+      }
 
       setSelectedGroupIds(regularGroupIds);
 
@@ -371,20 +377,41 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         }
       });
 
-      // Sync private lesson group if student has private enrollment
+      // Sync private lesson enrollment if student has private enrollment or selected private mode
       const privEnr = updatedEnrollments.find((e) => e.serviceType === 'private');
-      if (privEnr) {
-        const privGroup = allGroups.find((g) => g.id === privEnr.groupId);
-        if (privGroup) {
-          db.saveGroup({
-            ...privGroup,
-            subject: privateSubject || privGroup.subject,
+      if (subscriptionMode === 'private' || subscriptionMode === 'both') {
+        if (privEnr) {
+          db.updateEnrollment({
+            ...privEnr,
+            subject: privateSubject || privEnr.subject,
             roomOrLocation: privateLocation,
-            scheduleDays: canonicalDays.length > 0 ? canonicalDays : privGroup.scheduleDays,
-            scheduleTimes: canonicalDays.length > 0 ? validTimesMap : privGroup.scheduleTimes,
+            customPrice: privateBillingMode === 'package' ? (privatePackagePrice || 800) : (privatePrice || 100),
+            hourlyRate: privateBillingMode === 'hourly' ? (privateHourlyRate || 150) : undefined,
+            billingType: privateBillingMode as BillingType,
+            billingMode: privateBillingMode,
+            packageSessionsCount: privateBillingMode === 'package' ? (privatePackageSessions || 8) : undefined,
+            packagePrice: privateBillingMode === 'package' ? (privatePackagePrice || 800) : undefined,
+            scheduleDays: canonicalDays.length > 0 ? canonicalDays : privEnr.scheduleDays,
+            scheduleTimes: canonicalDays.length > 0 ? validTimesMap : privEnr.scheduleTimes,
             updatedAt: new Date().toISOString(),
           });
+        } else {
+          db.createPrivateLessonService(studentData.id, {
+            subject: privateSubject.trim() || 'درس خاص',
+            sessionPrice: privateBillingMode === 'package' ? (privatePackagePrice || 800) : (privatePrice || 100),
+            hourlyRate: privateBillingMode === 'hourly' ? (privateHourlyRate || 150) : undefined,
+            billingType: privateBillingMode as BillingType,
+            billingMode: privateBillingMode,
+            packageSessionsCount: privateBillingMode === 'package' ? (privatePackageSessions || 8) : undefined,
+            packagePrice: privateBillingMode === 'package' ? (privatePackagePrice || 800) : undefined,
+            scheduleDays: canonicalDays.length > 0 ? canonicalDays : ['saturday'],
+            scheduleTime: primaryScheduleTime,
+            scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
+            roomOrLocation: privateLocation,
+          });
         }
+      } else if (subscriptionMode === 'group' && privEnr) {
+        db.removeEnrollment(privEnr.id);
       }
     }
 

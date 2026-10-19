@@ -44,6 +44,8 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
   findSessionForScheduleItem,
   onRecordAttendance,
   onOpenAttendanceModal,
+  onOpenStudentProfile,
+  onOpenGroupProfile,
   onOpenAddSession,
   className = '',
 }) => {
@@ -187,54 +189,58 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
                     onRecordAttendance(item);
                   }
                 }}
-                className="flex-1 p-3.5 flex items-center justify-between gap-3 min-w-0"
+                className="flex-1 p-3.5 flex items-center justify-between gap-3 min-w-0 group cursor-pointer"
               >
-                {/* Content: title .t-card & time range 13px */}
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: item.accentColor || 'var(--color-navy)' }}
-                    />
-                    <h4 className="t-card text-navy font-bold truncate">
-                      {title}
-                    </h4>
-                  </div>
-
-                  <p className="text-[13px] text-slate font-medium truncate">
-                    {timeRange}
-                    {item.location && <span> • {item.location}</span>}
-                  </p>
-                </div>
-
-                {/* Trailing: Trailing Avatar(s) 36px & small StatusBadge */}
-                <div className="shrink-0 flex items-center gap-2">
-                  {/* Trailing Avatar(s) with selected achievement frame */}
+                {/* Content: Student Avatar beside title & time range */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* Student Avatar with selected achievement frame (beside student name) */}
                   {isPrivate ? (
-                    <StudentAvatar
-                      student={privateStudent}
-                      name={privateStudent?.name || item.studentName || title}
-                      profilePhoto={privateStudent?.profilePhoto}
-                      achievementFrame={privateStudent?.achievementFrame}
-                      avatarColor={privateStudent?.avatarColor}
-                      size="sm"
-                      showFrame={true}
-                      className="shadow-2xs"
-                    />
+                    <div
+                      className="shrink-0 transition-transform duration-300 group-hover:scale-108 hover:scale-115 cursor-pointer gaming-frame-interactive"
+                      onClick={(e) => {
+                        if (privateStudent && onOpenStudentProfile) {
+                          e.stopPropagation();
+                          onOpenStudentProfile(privateStudent);
+                        }
+                      }}
+                      title={privateStudent?.name || title}
+                    >
+                      <StudentAvatar
+                        student={privateStudent}
+                        name={privateStudent?.name || item.studentName || title}
+                        profilePhoto={privateStudent?.profilePhoto}
+                        achievementFrame={privateStudent?.achievementFrame}
+                        avatarColor={privateStudent?.avatarColor}
+                        size="sm"
+                        showFrame={true}
+                        className="shadow-2xs"
+                      />
+                    </div>
                   ) : groupStudents.length > 0 ? (
                     <div className="flex items-center -space-x-2 rtl:space-x-reverse shrink-0">
                       {groupStudents.slice(0, 3).map((st) => (
-                        <StudentAvatar
+                        <div
                           key={st.id}
-                          student={st}
-                          name={st.name}
-                          profilePhoto={st.profilePhoto}
-                          achievementFrame={st.achievementFrame}
-                          avatarColor={st.avatarColor}
-                          size="sm"
-                          showFrame={true}
-                          className="shadow-2xs"
-                        />
+                          className="transition-transform duration-300 group-hover:scale-108 hover:scale-115 cursor-pointer gaming-frame-interactive"
+                          onClick={(e) => {
+                            if (onOpenStudentProfile) {
+                              e.stopPropagation();
+                              onOpenStudentProfile(st);
+                            }
+                          }}
+                          title={st.name}
+                        >
+                          <StudentAvatar
+                            student={st}
+                            name={st.name}
+                            profilePhoto={st.profilePhoto}
+                            achievementFrame={st.achievementFrame}
+                            avatarColor={st.avatarColor}
+                            size="sm"
+                            showFrame={true}
+                            className="shadow-2xs"
+                          />
+                        </div>
                       ))}
                       {groupStudents.length > 3 && (
                         <span className="w-7 h-7 rounded-full bg-page border border-line text-navy text-[11px] font-bold flex items-center justify-center shadow-xs">
@@ -244,7 +250,27 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
                     </div>
                   ) : null}
 
-                  {/* Small StatusBadge if attendance recorded or scheduled */}
+                  {/* Title & Time Range */}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: item.accentColor || 'var(--color-navy)' }}
+                      />
+                      <h4 className="t-card text-navy font-bold truncate">
+                        {title}
+                      </h4>
+                    </div>
+
+                    <p className="text-[13px] text-slate font-medium truncate">
+                      {timeRange}
+                      {item.location && <span> • {item.location}</span>}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Trailing: Small StatusBadge if attendance recorded or scheduled */}
+                <div className="shrink-0 flex items-center gap-2">
                   {(hasAttendance || isCompleted || isCancelled) && (
                     <StatusBadge
                       status={isCompleted ? 'completed' : isCancelled ? 'cancelled' : 'scheduled'}

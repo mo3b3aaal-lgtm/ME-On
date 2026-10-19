@@ -487,3 +487,87 @@
   color: #3730A3;
   border: 1px solid #C7D2FE;
 }
+
+/* =========================================================================
+   6. INTERACTIVE HOVER ANIMATIONS FOR DASHBOARD SESSION CARDS & PROFILES
+   ========================================================================= */
+
+.gaming-frame-interactive {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+  will-change: transform, filter;
+}
+
+.gaming-frame-interactive:hover,
+.group:hover .gaming-frame-interactive {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 8px var(--frame-glow-color, rgba(23, 55, 94, 0.35))) brightness(1.06);
+}
+
+.gaming-frame-interactive:active {
+  transform: scale(0.96);
+}
+
+/* Tier-specific glowing aura on hover */
+.frame-silver .gaming-frame-interactive,
+.frame-silver.gaming-frame-interactive,
+.frame-silver.gaming-frame-root:hover,
+.group:hover .frame-silver.gaming-frame-root,
+.group:hover .frame-silver {
+  --frame-glow-color: rgba(148, 163, 184, 0.65);
+}
+
+.frame-gold .gaming-frame-interactive,
+.frame-gold.gaming-frame-interactive,
+.frame-gold.gaming-frame-root:hover,
+.group:hover .frame-gold.gaming-frame-root,
+.group:hover .frame-gold {
+  --frame-glow-color: rgba(245, 158, 11, 0.7);
+}
+
+.frame-platinum .gaming-frame-interactive,
+.frame-platinum.gaming-frame-interactive,
+.frame-platinum.gaming-frame-root:hover,
+.group:hover .frame-platinum.gaming-frame-root,
+.group:hover .frame-platinum {
+  --frame-glow-color: rgba(56, 189, 248, 0.75);
+}
+
+.frame-vip .gaming-frame-interactive,
+.frame-vip.gaming-frame-interactive,
+.frame-vip.gaming-frame-root:hover,
+.group:hover .frame-vip.gaming-frame-root,
+.group:hover .frame-vip {
+  --frame-glow-color: rgba(245, 158, 11, 0.85);
+}
+
+.frame-story .gaming-frame-interactive,
+.frame-story.gaming-frame-interactive,
+.frame-story.gaming-frame-root:hover,
+.group:hover .frame-story.gaming-frame-root,
+.group:hover .frame-story {
+  --frame-glow-color: rgba(217, 70, 239, 0.75);
+}
+
+.frame-challenge .gaming-frame-interactive,
+.frame-challenge.gaming-frame-interactive,
+.frame-challenge.gaming-frame-root:hover,
+.group:hover .frame-challenge.gaming-frame-root,
+.group:hover .frame-challenge {
+  --frame-glow-color: rgba(239, 68, 68, 0.8);
+}
+
+.frame-nature .gaming-frame-interactive,
+.frame-nature.gaming-frame-interactive,
+.frame-nature.gaming-frame-root:hover,
+.group:hover .frame-nature.gaming-frame-root,
+.group:hover .frame-nature {
+  --frame-glow-color: rgba(16, 185, 129, 0.75);
+}
+
+.frame-cosmic .gaming-frame-interactive,
+.frame-cosmic.gaming-frame-interactive,
+.frame-cosmic.gaming-frame-root:hover,
+.group:hover .frame-cosmic.gaming-frame-root,
+.group:hover .frame-cosmic {
+  --frame-glow-color: rgba(139, 92, 246, 0.85);
+}

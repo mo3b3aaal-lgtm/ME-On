@@ -10,6 +10,7 @@ import { AppIcon } from './ui/AppIcon';
 import {
   getDetailedAgendaForDate,
   ScheduledClassItem,
+  parseTimeToMinutes,
 } from '../utils/schedule';
 
 interface SessionsViewProps {
@@ -149,24 +150,43 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
     const agendaItem = selectedDateAgenda.items.find((a) => a.id === item.id);
     if (agendaItem?.session) return agendaItem.session;
 
+    const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
     return sessions.find((s) => {
       if (s.date !== selectedDateStr || s.status === 'cancelled') return false;
-      if (s.groupId !== item.groupId) return false;
-      if (item.studentId && s.studentId && s.studentId !== item.studentId) return false;
-      return true;
+      if (item.isPrivate || item.studentId) {
+        if (s.studentId !== item.studentId) return false;
+      } else {
+        if (s.groupId !== item.groupId) return false;
+      }
+      const sMins = parseTimeToMinutes(s.startTime || '16:00');
+      return sMins === itemMins;
     });
   };
 
   // Start class / attendance for a recurring item that does not have an explicit session record yet
   const handleStartRecurringClass = (item: ScheduledClassItem) => {
-    const targetGroup = groups.find((g) => g.id === item.groupId);
+    const isPrivate = item.isPrivate || !!item.studentId;
+    const targetGroup = item.groupId ? groups.find((g) => g.id === item.groupId) : undefined;
+    const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time || '16:00');
+    const deterministicEntityKey = isPrivate
+      ? `stu_${item.studentId || 'priv'}`
+      : `grp_${item.groupId || 'academic'}`;
+    const deterministicId = `sess_${selectedDateStr}_${deterministicEntityKey}_${itemMins}`;
+
+    // Check if session already exists
+    const existing = sessions.find((s) => s.id === deterministicId) || findSessionForScheduleItem(item) || db.getSessionById(deterministicId);
+    if (existing) {
+      onOpenAttendanceModal(existing);
+      return;
+    }
+
     const now = new Date().toISOString();
     const newSession: Session = {
-      id: 'ses_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-      groupId: item.groupId,
-      title: item.studentName
-        ? (isEn ? `Class: ${item.studentName} (${targetGroup?.name || ''})` : `حصة ${item.studentName} (${targetGroup?.name || ''})`)
-        : (isEn ? `Class: ${targetGroup?.name || ''}` : `حصة ${targetGroup?.name || ''}`),
+      id: deterministicId,
+      groupId: item.groupId || '',
+      title: isPrivate
+        ? (item.studentName ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : (isEn ? 'Private Lesson' : 'درس خاص'))
+        : (targetGroup?.name || item.groupName || (isEn ? 'Class' : 'حصة')),
       date: selectedDateStr,
       dayName: item.dayName,
       startTime: item.rawTime || item.time?.split(' - ')[0] || '16:00',

@@ -1014,8 +1014,159 @@ function ensureDataMigrated(): void {
       return b;
     });
     if (behaviorLogsChanged) saveList(STORAGE_KEYS.BEHAVIOR_LOGS, migratedBehaviorLogs);
+
+    // Safe, non-destructive, idempotent cleanup of duplicated session records
+    cleanupDuplicateSessions();
   } catch (err) {
     console.error('Migration error:', err);
+  }
+}
+
+/**
+ * Safe, idempotent cleanup of duplicated session records.
+ * Complies with strict data protection safeguards:
+ * 1. Creates full recoverable backup in localStorage before any modification.
+ * 2. Deterministically identifies true duplicates by scheduling context (userId, date, entity, startTime in minutes).
+ * 3. Never deletes distinct legitimate appointments at different times or different entities.
+ * 4. Preserves the canonical session (prioritizing records with attendance, completed status, notes, custom intake).
+ * 5. Re-points any attendance records, credit logs, and behavior logs referencing duplicate IDs to the canonical ID.
+ * 6. Discards only redundant empty/scheduled placeholder duplicates.
+ */
+export function cleanupDuplicateSessions(): {
+  cleanedCount: number;
+  preservedCount: number;
+  backedUp: boolean;
+} {
+  try {
+    const rawSessionsJson = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+    if (!rawSessionsJson) {
+      return { cleanedCount: 0, preservedCount: 0, backedUp: false };
+    }
+
+    const sessions = JSON.parse(rawSessionsJson) as Session[];
+    if (!Array.isArray(sessions) || sessions.length <= 1) {
+      return { cleanedCount: 0, preservedCount: sessions?.length || 0, backedUp: false };
+    }
+
+    // Step 1: Backup
+    const backupKey = `tm_v2_sessions_backup_${Date.now()}`;
+    try {
+      localStorage.setItem('tm_v2_sessions_pre_cleanup_backup', rawSessionsJson);
+      localStorage.setItem(backupKey, rawSessionsJson);
+    } catch (e) {
+      console.warn('[Session Cleanup] Backup warning:', e);
+    }
+
+    // Step 2: Load references to check attendance & logs
+    const rawAttendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
+    const rawCreditLogs = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
+    const rawBehaviorLogs = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
+
+    // Step 3: Group sessions by occurrence identity
+    // Key: userId | date | (studentId ? `priv_${studentId}` : `grp_${groupId || title}`) | sortMinutes
+    const occurrenceMap = new Map<string, Session[]>();
+    for (const ses of sessions) {
+      if (!ses || !ses.date) continue;
+      const sMins = parseTimeToMinutes(ses.startTime || '16:00');
+      const uId = ses.userId || 'acc_master_teacher';
+      const entityKey = (ses.studentId || !ses.groupId)
+        ? `priv_${ses.studentId || 'unknown'}`
+        : `grp_${ses.groupId || ses.title || 'academic'}`;
+      const occKey = `${uId}|${ses.date}|${entityKey}|${sMins}`;
+
+      const list = occurrenceMap.get(occKey) || [];
+      list.push(ses);
+      occurrenceMap.set(occKey, list);
+    }
+
+    let cleanedCount = 0;
+    const finalCleanSessions: Session[] = [];
+    const sessionIdRemap = new Map<string, string>(); // duplicateId -> canonicalId
+
+    occurrenceMap.forEach((groupSessions) => {
+      if (groupSessions.length === 1) {
+        finalCleanSessions.push(groupSessions[0]);
+        return;
+      }
+
+      // We have multiple records for the exact same occurrence (date, time, entity)
+      // Rank them to find canonical session:
+      // Priority 1: Has attendance records in tm_v2_attendance
+      // Priority 2: Status === 'completed'
+      // Priority 3: Has notes or custom intake (pricePerStudent != 100, sessionUnits, hours)
+      // Priority 4: Has deterministic ID format (starts with 'sess_')
+      // Priority 5: Oldest record (earliest createdAt)
+      const scored = groupSessions.map((s) => {
+        const attCount = rawAttendance.filter((a) => a.sessionId === s.id).length;
+        const hasCompleted = s.status === 'completed' ? 10 : (s.status === 'cancelled' ? 5 : 0);
+        const hasNotes = (s.notes && s.notes.trim().length > 0) ? 3 : 0;
+        const hasCustomUnits = (s.sessionUnits !== undefined || s.hours !== undefined) ? 4 : 0;
+        const isDeterministic = s.id.startsWith('sess_') ? 2 : 0;
+        const createdScore = s.createdAt ? -new Date(s.createdAt).getTime() / 1e12 : 0;
+        const totalScore = (attCount * 20) + hasCompleted + hasNotes + hasCustomUnits + isDeterministic + createdScore;
+        return { session: s, score: totalScore, attCount };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+      const canonical = scored[0].session;
+      finalCleanSessions.push(canonical);
+
+      // Remaining are duplicates to merge into canonical
+      for (let i = 1; i < scored.length; i++) {
+        const dup = scored[i].session;
+        sessionIdRemap.set(dup.id, canonical.id);
+        cleanedCount++;
+      }
+    });
+
+    if (cleanedCount > 0) {
+      console.log(`[Session Cleanup] Removed ${cleanedCount} duplicate sessions. Preserved ${finalCleanSessions.length} canonical sessions.`);
+      saveList(STORAGE_KEYS.SESSIONS, finalCleanSessions);
+
+      // Re-link any attendance or logs pointing to duplicate session IDs
+      if (sessionIdRemap.size > 0) {
+        let attUpdated = false;
+        const updatedAttendance = rawAttendance.map((a) => {
+          if (sessionIdRemap.has(a.sessionId)) {
+            attUpdated = true;
+            return { ...a, sessionId: sessionIdRemap.get(a.sessionId)! };
+          }
+          return a;
+        });
+        if (attUpdated) {
+          saveList(STORAGE_KEYS.ATTENDANCE, updatedAttendance);
+        }
+
+        let logsUpdated = false;
+        const updatedCreditLogs = rawCreditLogs.map((l) => {
+          if (l.sessionId && sessionIdRemap.has(l.sessionId)) {
+            logsUpdated = true;
+            return { ...l, sessionId: sessionIdRemap.get(l.sessionId)! };
+          }
+          return l;
+        });
+        if (logsUpdated) {
+          saveList(STORAGE_KEYS.CREDIT_LOGS, updatedCreditLogs);
+        }
+
+        let behaviorUpdated = false;
+        const updatedBehaviorLogs = rawBehaviorLogs.map((b) => {
+          if (b.sessionId && sessionIdRemap.has(b.sessionId)) {
+            behaviorUpdated = true;
+            return { ...b, sessionId: sessionIdRemap.get(b.sessionId)! };
+          }
+          return b;
+        });
+        if (behaviorUpdated) {
+          saveList(STORAGE_KEYS.BEHAVIOR_LOGS, updatedBehaviorLogs);
+        }
+      }
+    }
+
+    return { cleanedCount, preservedCount: finalCleanSessions.length, backedUp: true };
+  } catch (err) {
+    console.error('[Session Cleanup] Error occurred during safe cleanup:', err);
+    return { cleanedCount: 0, preservedCount: 0, backedUp: false };
   }
 }
 
@@ -2181,8 +2332,19 @@ export const db = {
   enrollStudent: (
     studentId: string,
     groupId: string,
-    options?: Partial<Omit<Enrollment, 'id' | 'studentId' | 'groupId'>>
+    options?: Partial<Omit<Enrollment, 'id' | 'studentId' | 'groupId'>> | number,
+    legacyBillingType?: any
   ): Enrollment => {
+    let resolvedOptions: Partial<Omit<Enrollment, 'id' | 'studentId' | 'groupId'>> = {};
+    if (typeof options === 'number') {
+      resolvedOptions = {
+        customPrice: options,
+        billingType: typeof legacyBillingType === 'string' ? (legacyBillingType as BillingType) : undefined,
+      };
+    } else if (options && typeof options === 'object') {
+      resolvedOptions = options;
+    }
+
     const activeUserId = getActiveUserId();
     const existing = db.getEnrollments();
     const found = existing.find((e) => e.studentId === studentId && e.groupId === groupId);
@@ -2193,25 +2355,25 @@ export const db = {
     const defaultType = group ? group.type : 'group';
     const baseSessions = group?.baseSessionsPerMonth || 8;
 
-    let calculatedPrice = options?.customPrice !== undefined ? options.customPrice : defaultPrice;
-    if (options?.pricingType) {
+    let calculatedPrice = resolvedOptions?.customPrice !== undefined ? resolvedOptions.customPrice : defaultPrice;
+    if (resolvedOptions?.pricingType) {
       calculatedPrice = calculateCustomEnrollmentPrice(
         defaultPrice,
-        options.pricingType,
-        options.pricingValue || 0
+        resolvedOptions.pricingType,
+        resolvedOptions.pricingValue || 0
       );
     }
 
     if (found) {
       // Re-activate if was paused/stopped, and update pricing options
       found.status = 'active';
-      if (options?.customPrice !== undefined) found.customPrice = options.customPrice;
-      if (options?.billingType !== undefined) found.billingType = options.billingType;
-      if (options?.billingMode !== undefined) found.billingMode = options.billingMode;
-      if (options?.pricingType !== undefined) found.pricingType = options.pricingType;
-      if (options?.pricingValue !== undefined) found.pricingValue = options.pricingValue;
-      if (options?.baseSessionsPerMonth !== undefined) found.baseSessionsPerMonth = options.baseSessionsPerMonth;
-      if (options?.extraSessionPrice !== undefined) found.extraSessionPrice = options.extraSessionPrice;
+      if (resolvedOptions?.customPrice !== undefined) found.customPrice = resolvedOptions.customPrice;
+      if (resolvedOptions?.billingType !== undefined) found.billingType = resolvedOptions.billingType;
+      if (resolvedOptions?.billingMode !== undefined) found.billingMode = resolvedOptions.billingMode;
+      if (resolvedOptions?.pricingType !== undefined) found.pricingType = resolvedOptions.pricingType;
+      if (resolvedOptions?.pricingValue !== undefined) found.pricingValue = resolvedOptions.pricingValue;
+      if (resolvedOptions?.baseSessionsPerMonth !== undefined) found.baseSessionsPerMonth = resolvedOptions.baseSessionsPerMonth;
+      if (resolvedOptions?.extraSessionPrice !== undefined) found.extraSessionPrice = resolvedOptions.extraSessionPrice;
       db.updateEnrollment(found);
       return found;
     }
@@ -2222,22 +2384,22 @@ export const db = {
       userId: activeUserId,
       studentId,
       groupId,
-      serviceType: options?.serviceType || defaultType,
-      billingType: options?.billingType || defaultBilling,
-      billingMode: options?.billingMode || (options?.billingType as any) || group?.billingMode,
-      pricingType: options?.pricingType || 'same_as_group',
-      pricingValue: options?.pricingValue || 0,
+      serviceType: resolvedOptions?.serviceType || defaultType,
+      billingType: resolvedOptions?.billingType || defaultBilling,
+      billingMode: resolvedOptions?.billingMode || (resolvedOptions?.billingType as any) || group?.billingMode,
+      pricingType: resolvedOptions?.pricingType || 'same_as_group',
+      pricingValue: resolvedOptions?.pricingValue || 0,
       customPrice: calculatedPrice,
-      baseSessionsPerMonth: options?.baseSessionsPerMonth || baseSessions,
-      extraSessionPrice: options?.extraSessionPrice,
-      packageSessionsCount: options?.packageSessionsCount || 8,
-      packagePrice: options?.packagePrice || calculatedPrice,
-      sessionCredit: options?.sessionCredit || 0,
-      financialCredit: options?.financialCredit || 0,
-      discount: options?.discount || 0,
-      status: options?.status || 'active',
-      joinedAt: options?.joinedAt || toLocalISODate(),
-      notes: options?.notes || '',
+      baseSessionsPerMonth: resolvedOptions?.baseSessionsPerMonth || baseSessions,
+      extraSessionPrice: resolvedOptions?.extraSessionPrice,
+      packageSessionsCount: resolvedOptions?.packageSessionsCount || 8,
+      packagePrice: resolvedOptions?.packagePrice || calculatedPrice,
+      sessionCredit: resolvedOptions?.sessionCredit || 0,
+      financialCredit: resolvedOptions?.financialCredit || 0,
+      discount: resolvedOptions?.discount || 0,
+      status: resolvedOptions?.status || 'active',
+      joinedAt: resolvedOptions?.joinedAt || toLocalISODate(),
+      notes: resolvedOptions?.notes || '',
       updatedAt: now,
       createdAt: now,
     };

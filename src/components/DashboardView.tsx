@@ -245,23 +245,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return getSmartReminders(students, groups, sessions, enrollments, allAttendance);
   }, [students, groups, sessions, enrollments, allAttendance]);
 
-  const findSessionForScheduleItem = (item: ScheduledClassItem) => {
-    return sessions.find((s) => {
+  const findSessionForScheduleItem = (item: ScheduledClassItem): Session | undefined => {
+    const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
+    const candidates = sessions.filter((s) => {
       if (s.date !== todayStr) return false;
       if (s.status === 'cancelled') return false;
       if (item.isPrivate || item.studentId) {
         if (s.studentId !== item.studentId) return false;
-        if (item.enrollmentId && s.enrollmentId && s.enrollmentId !== item.enrollmentId) return false;
       } else {
         if (s.groupId !== item.groupId) return false;
       }
 
       // Match exact start time (parsed to minutes) to strictly isolate multiple sessions on same day
-      const sMins = parseLocalTimeToStandard(s.startTime).sortMinutes;
-      const itemMins = item.sortMinutes || parseLocalTimeToStandard(item.rawTime).sortMinutes;
-      if (sMins !== itemMins) return false;
-      return true;
+      const sMins = parseTimeToMinutes(s.startTime);
+      return sMins === itemMins;
     });
+
+    if (candidates.length === 0) return undefined;
+    if (candidates.length === 1) return candidates[0];
+
+    // Prioritize canonical session: attendance records, completed status, deterministic ID
+    const withAttendance = candidates.find((s) => allAttendance.some((a) => a.sessionId === s.id));
+    if (withAttendance) return withAttendance;
+
+    const completed = candidates.find((s) => s.status === 'completed');
+    if (completed) return completed;
+
+    const deterministic = candidates.find((s) => s.id.startsWith('sess_'));
+    if (deterministic) return deterministic;
+
+    return candidates[0];
+  };
+
+  // Pure virtual session builder - NO SIDE EFFECTS, NO DATABASE WRITES DURING RENDER
+  const buildVirtualSessionForSchedule = (item: ScheduledClassItem): Session => {
+    const group = item.groupId ? groups.find((g) => g.id === item.groupId) : undefined;
+    const timeInfo = parseLocalTimeToStandard(item.rawTime);
+    const rawStartTime = timeInfo.normalizedTime;
+    const [h, m] = rawStartTime.split(':').map(Number);
+    const endH = !isNaN(h) ? (h + 1) % 24 : 17;
+    const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
+    const deterministicEntityKey = item.isPrivate
+      ? `stu_${item.studentId || 'priv'}`
+      : `grp_${item.groupId || 'academic'}`;
+    const deterministicId = `sess_${todayStr}_${deterministicEntityKey}_${timeInfo.sortMinutes}`;
+
+    return {
+      id: deterministicId,
+      groupId: item.groupId || '',
+      studentId: item.studentId,
+      enrollmentId: item.enrollmentId,
+      title: item.isPrivate ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : item.groupName,
+      date: todayStr,
+      startTime: rawStartTime,
+      endTime,
+      dayName: item.dayName,
+      month: parts.month,
+      year: parts.year,
+      status: 'scheduled',
+      pricePerStudent: group?.defaultPrice || 100,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   };
 
   const getOrCreateSessionForSchedule = (item: ScheduledClassItem): Session => {
@@ -275,8 +320,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const endH = !isNaN(h) ? (h + 1) % 24 : 17;
     const endTime = `${String(endH).padStart(2, '0')}:${String(!isNaN(m) ? m : 0).padStart(2, '0')}`;
 
+    // Deterministic ID prevents creating multiple duplicate records for the same scheduled occurrence
+    const deterministicEntityKey = item.isPrivate
+      ? `stu_${item.studentId || 'priv'}`
+      : `grp_${item.groupId || 'academic'}`;
+    const deterministicId = `sess_${todayStr}_${deterministicEntityKey}_${timeInfo.sortMinutes}`;
+
+    const existingById = sessions.find((s) => s.id === deterministicId) || db.getSessionById(deterministicId);
+    if (existingById) return existingById;
+
     const newSession: Session = {
-      id: `sess_${todayStr}_${item.groupId || 'priv'}_${item.studentId || 'grp'}_${timeInfo.sortMinutes}_${Math.random().toString(36).substr(2, 5)}`,
+      id: deterministicId,
       groupId: item.groupId || '',
       studentId: item.studentId,
       enrollmentId: item.enrollmentId,
@@ -432,17 +486,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const allTodayDisplayItems = useMemo(() => {
     const list: ScheduledClassItem[] = [...scheduledToday];
 
-    todaySessions.forEach((s) => {
-      const alreadyRepresented = list.some((item) => {
-        const matching = findSessionForScheduleItem(item);
-        return matching?.id === s.id;
-      });
+    // Track unique occurrences using deterministic occurrence identity
+    // For private: priv_${studentId}_${sortMinutes}
+    // For group: grp_${groupId}_${sortMinutes}
+    const representedOccurrences = new Set<string>();
+    list.forEach((item) => {
+      const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
+      const occKey = (item.isPrivate || item.studentId)
+        ? `priv_${item.studentId || 'unknown'}_${itemMins}`
+        : `grp_${item.groupId || 'unknown'}_${itemMins}`;
+      representedOccurrences.add(occKey);
+    });
 
-      if (!alreadyRepresented) {
+    todaySessions.forEach((s) => {
+      if (s.status === 'cancelled') return;
+      const sMins = parseTimeToMinutes(s.startTime || '16:00');
+      const isPrivate = !s.groupId || !!s.studentId;
+      const occKey = isPrivate
+        ? `priv_${s.studentId || 'unknown'}_${sMins}`
+        : `grp_${s.groupId || 'unknown'}_${sMins}`;
+
+      if (!representedOccurrences.has(occKey)) {
+        representedOccurrences.add(occKey);
         const group = groups.find((g) => g.id === s.groupId);
-        const isPrivate = group?.type === 'private' || !!s.studentId;
         const student = s.studentId ? students.find((st) => st.id === s.studentId) : undefined;
-        const sortMinutes = parseTimeToMinutes(s.startTime);
         const formattedTime = formatTimeDisplay(s.startTime, isRTL);
 
         list.push({
@@ -459,7 +526,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           dayName: s.dayName || todayArabicDay,
           time: formattedTime,
           rawTime: s.startTime || '16:00',
-          sortMinutes,
+          sortMinutes: sMins,
           location: group?.roomOrLocation,
           accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
         });
@@ -468,7 +535,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     list.sort((a, b) => a.sortMinutes - b.sortMinutes);
     return list;
-  }, [scheduledToday, todaySessions, groups, students, isRTL, isEn, todayArabicDay, sessions]);
+  }, [scheduledToday, todaySessions, groups, students, isRTL, isEn, todayArabicDay]);
 
   // Today's Private Lessons Summary for students with private appointments today (Feature 1)
   const todayPrivateStudentsSummary = useMemo(() => {
@@ -551,7 +618,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const activeStudentsList = useMemo(() => students.filter((s) => s.status !== 'archived'), [students]);
 
-  // Next pending session for the "Start session" quick action
+  // Next pending session for the "Start session" quick action (PURE - ZERO DB SIDE EFFECTS DURING RENDER)
   const nextPendingSession = useMemo(() => {
     const scheduledExisting = todaySessions.find((s) => s.status === 'scheduled');
     if (scheduledExisting) return scheduledExisting;
@@ -561,7 +628,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       return !matching || matching.status === 'scheduled';
     });
     if (pendingItem) {
-      return getOrCreateSessionForSchedule(pendingItem);
+      const matching = findSessionForScheduleItem(pendingItem);
+      if (matching) return matching;
+      return buildVirtualSessionForSchedule(pendingItem);
     }
 
     return null;
@@ -569,7 +638,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const handleStartNextSession = () => {
     if (!nextPendingSession) return;
-    onOpenAttendanceModal(nextPendingSession);
+    const realSession = db.getSessionById(nextPendingSession.id) || db.saveSession(nextPendingSession);
+    if (onDataChanged) onDataChanged();
+    onOpenAttendanceModal(realSession);
   };
 
   const todayProgressPercent = totalTodayClassesCount > 0
@@ -588,6 +659,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const focusSession1 = pendingFocusSessions[0];
   const focusSession2 = pendingFocusSessions[1];
+
+  const focusStudent1 = useMemo(() => {
+    if (!focusSession1) return null;
+    const sId = focusSession1.studentId || (focusSession1.isPrivate ? focusSession1.student?.id : '');
+    if (sId) {
+      return students.find((s) => s.id === sId) || db.getStudentById(sId) || focusSession1.student || null;
+    }
+    return focusSession1.student || null;
+  }, [focusSession1, students]);
+
+  const focusStudent2 = useMemo(() => {
+    if (!focusSession2) return null;
+    const sId = focusSession2.studentId || (focusSession2.isPrivate ? focusSession2.student?.id : '');
+    if (sId) {
+      return students.find((s) => s.id === sId) || db.getStudentById(sId) || focusSession2.student || null;
+    }
+    return focusSession2.student || null;
+  }, [focusSession2, students]);
 
   // Unrecorded sessions today for Today's Focus Row 2
   const unrecordedTodaySessions = useMemo(() => {
@@ -694,14 +783,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const s = getOrCreateSessionForSchedule(focusSession1);
                 onOpenAttendanceModal(s);
               }}
-              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
+              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group"
             >
-              <div className="relative z-10 space-y-1">
-                <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
-                  {focusSession1.isPrivate
-                    ? (focusSession1.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
-                    : focusSession1.groupName}
-                </h3>
+              <div className="relative z-10 space-y-1.5">
+                <div className="flex items-center gap-2.5">
+                  {focusStudent1 && (
+                    <div className="shrink-0 gaming-frame-interactive transition-transform group-hover:scale-108 hover:scale-115">
+                      <StudentAvatar
+                        student={focusStudent1}
+                        name={focusStudent1.name}
+                        profilePhoto={focusStudent1.profilePhoto}
+                        achievementFrame={focusStudent1.achievementFrame}
+                        avatarColor={focusStudent1.avatarColor}
+                        size="sm"
+                        showFrame={true}
+                        className="shadow-2xs"
+                      />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                      {focusSession1.isPrivate
+                        ? (focusSession1.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                        : focusSession1.groupName}
+                    </h3>
+                  </div>
+                </div>
                 <p className="text-[13px] text-slate font-medium">
                   {focusSession1.time}
                 </p>
@@ -736,14 +843,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const s = getOrCreateSessionForSchedule(focusSession2);
                 onOpenAttendanceModal(s);
               }}
-              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
+              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group"
             >
-              <div className="relative z-10 space-y-1">
-                <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
-                  {focusSession2.isPrivate
-                    ? (focusSession2.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
-                    : focusSession2.groupName}
-                </h3>
+              <div className="relative z-10 space-y-1.5">
+                <div className="flex items-center gap-2.5">
+                  {focusStudent2 && (
+                    <div className="shrink-0 gaming-frame-interactive transition-transform group-hover:scale-108 hover:scale-115">
+                      <StudentAvatar
+                        student={focusStudent2}
+                        name={focusStudent2.name}
+                        profilePhoto={focusStudent2.profilePhoto}
+                        achievementFrame={focusStudent2.achievementFrame}
+                        avatarColor={focusStudent2.avatarColor}
+                        size="sm"
+                        showFrame={true}
+                        className="shadow-2xs"
+                      />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                      {focusSession2.isPrivate
+                        ? (focusSession2.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                        : focusSession2.groupName}
+                    </h3>
+                  </div>
+                </div>
                 <p className="text-[13px] text-slate font-medium">
                   {focusSession2.time}
                 </p>
@@ -870,16 +995,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => onOpenStudentProfile(student)}
                 className="flex flex-col items-center gap-1.5 shrink-0 snap-start cursor-pointer group active:scale-95 transition-transform select-none w-16"
               >
-                <StudentAvatar
-                  student={student}
-                  name={student.name}
-                  profilePhoto={student.profilePhoto}
-                  achievementFrame={student.achievementFrame}
-                  avatarColor={student.avatarColor}
-                  size="md"
-                  showFrame={true}
-                  className="group-hover:scale-105 transition-transform"
-                />
+                <div className="gaming-frame-interactive transition-transform group-hover:scale-108">
+                  <StudentAvatar
+                    student={student}
+                    name={student.name}
+                    profilePhoto={student.profilePhoto}
+                    achievementFrame={student.achievementFrame}
+                    avatarColor={student.avatarColor}
+                    size="md"
+                    showFrame={true}
+                  />
+                </div>
                 <span className="text-[12px] font-medium text-navy text-center truncate w-full group-hover:text-orange transition-colors">
                   {student.name}
                 </span>

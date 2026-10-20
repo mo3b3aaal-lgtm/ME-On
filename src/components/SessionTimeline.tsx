@@ -36,10 +36,11 @@ export interface SessionTimelineProps {
  * starting with a hollow 10px circle (2px orange border, white fill), updated every minute.
  * Empty day: EmptyBox illustration + one line + btn-soft "Add session".
  */
-export const SessionTimeline: React.FC<SessionTimelineProps> = ({
+const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
   items,
   students = [],
   groups = [],
+  allAttendance = [],
   selectedDateStr,
   isToday: controlledIsToday,
   findSessionForScheduleItem,
@@ -55,6 +56,13 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
   const { now, todayStr } = useCurrentLocalDate();
 
   const isToday = controlledIsToday !== undefined ? controlledIsToday : selectedDateStr === todayStr;
+
+  // Memoized student map for O(1) in-memory lookups without hitting synchronous storage repeatedly
+  const studentsMap = useMemo(() => {
+    const map = new Map<string, Student>();
+    students.forEach((s) => map.set(s.id, s));
+    return map;
+  }, [students]);
 
   // Current time in minutes for "Now" line positioning, updated every minute
   const [currentMinutes, setCurrentMinutes] = useState(() => {
@@ -138,7 +146,9 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
         const isCompleted = matchingSession?.status === 'completed';
         const isCancelled = matchingSession?.status === 'cancelled';
         const hasAttendance = matchingSession
-          ? db.getSessionAttendance(matchingSession.id).length > 0
+          ? (allAttendance && allAttendance.length > 0
+              ? allAttendance.some((a) => a.sessionId === matchingSession.id)
+              : db.getSessionAttendance(matchingSession.id).length > 0)
           : false;
 
         // Group or student details for trailing avatars
@@ -146,7 +156,7 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
         const isPrivate = item.isPrivate || Boolean(effectiveStudentId);
         const privateStudent = isPrivate
           ? (effectiveStudentId
-              ? (students.find((s) => s.id === effectiveStudentId) || db.getStudentById(effectiveStudentId))
+              ? (studentsMap.get(effectiveStudentId) || item.student || db.getStudentById(effectiveStudentId))
               : null) || item.student
           : null;
 
@@ -172,14 +182,13 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
 
         return (
           <React.Fragment key={item.id}>
-            {showNowBeforeThis && renderNowLine()}
+            {showNowBeforeThis && (
+              <div key={`now-${item.id}`} className="w-full">
+                {renderNowLine()}
+              </div>
+            )}
 
-            <div
-              style={{ animationDelay: staggerDelay }}
-              className={`relative flex items-center gap-3 select-none ${
-                isStaggerEnabled ? 'animate-tile-stagger' : ''
-              }`}
-            >
+            <div key={`row-${item.id}`} className="relative flex items-center gap-3 select-none">
               {/* Left column: start times (13px slate) */}
               <div className="w-12 shrink-0 text-center text-[13px] font-medium text-slate">
                 {startTime}
@@ -188,6 +197,7 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
               {/* Session card in MintCard style */}
               <MintCard
                 clickable
+                style={{ animationDelay: staggerDelay }}
                 onClick={() => {
                   if (matchingSession) {
                     onOpenAttendanceModal?.(matchingSession);
@@ -195,7 +205,9 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
                     onRecordAttendance(item);
                   }
                 }}
-                className={`flex-1 p-3.5 flex items-center justify-between gap-3 min-w-0 group cursor-pointer relative overflow-hidden transition-all duration-150 ${
+                className={`flex-1 min-h-[64px] p-3.5 flex items-center justify-between gap-3 min-w-0 group cursor-pointer relative overflow-hidden transition-all duration-150 ${
+                  isStaggerEnabled ? 'animate-tile-stagger' : ''
+                } ${
                   frameTheme
                     ? `${frameTheme.cardBgClass} ${frameTheme.cardBorderClass}`
                     : 'border border-transparent shadow-mint'
@@ -315,9 +327,14 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
       })}
 
       {/* If "Now" is after all sessions today */}
-      {isToday && nowIndicatorIndex === sortedItems.length && renderNowLine()}
+      {isToday && nowIndicatorIndex === sortedItems.length && (
+        <div key="now-line-end" className="w-full">
+          {renderNowLine()}
+        </div>
+      )}
     </div>
   );
 };
 
+export const SessionTimeline = React.memo(SessionTimelineComponent);
 export default SessionTimeline;

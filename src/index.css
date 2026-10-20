@@ -1436,7 +1436,10 @@ main,
 }
 
 .animate-tile-stagger {
-  animation: tile-stagger 280ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) backwards;
+  animation: tile-stagger 280ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-origin: center top;
 }
 
 @media (prefers-reduced-motion: reduce) {

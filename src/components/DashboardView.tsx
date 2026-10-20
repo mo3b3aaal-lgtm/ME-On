@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { ScreenHeader } from './ui/ScreenHeader';
 import { NavyCard } from './ui/NavyCard';
 import { ProgressRing } from './ui/ProgressRing';
@@ -246,7 +246,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return getSmartReminders(students, groups, sessions, enrollments, allAttendance);
   }, [students, groups, sessions, enrollments, allAttendance]);
 
-  const findSessionForScheduleItem = (item: ScheduledClassItem): Session | undefined => {
+  const findSessionForScheduleItem = useCallback((item: ScheduledClassItem): Session | undefined => {
     const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
     const candidates = sessions.filter((s) => {
       if (s.date !== todayStr) return false;
@@ -276,7 +276,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (deterministic) return deterministic;
 
     return candidates[0];
-  };
+  }, [sessions, todayStr, allAttendance]);
 
   // Pure virtual session builder - NO SIDE EFFECTS, NO DATABASE WRITES DURING RENDER
   const buildVirtualSessionForSchedule = (item: ScheduledClassItem): Session => {
@@ -853,7 +853,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const s = getOrCreateSessionForSchedule(focusSession1);
                 onOpenAttendanceModal(s);
               }}
-              className={`min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
+              style={{ animationDelay: '0ms' }}
+              className={`animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
                 focusFrameTheme1
                   ? `${focusFrameTheme1.cardBgClass} ${focusFrameTheme1.cardBorderClass}`
                   : ''
@@ -909,7 +910,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </MintCard>
           ) : (
-            <MintCard className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4">
+            <MintCard
+              style={{ animationDelay: '0ms' }}
+              className="animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
+            >
               <div className="relative z-10 space-y-1">
                 <h3 className="t-card text-navy font-bold leading-snug">
                   {isEn ? 'Clear schedule' : 'جدول هادئ'}
@@ -933,7 +937,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const s = getOrCreateSessionForSchedule(focusSession2);
                 onOpenAttendanceModal(s);
               }}
-              className={`min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
+              style={{ animationDelay: '40ms' }}
+              className={`animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
                 focusFrameTheme2
                   ? `${focusFrameTheme2.cardBgClass} ${focusFrameTheme2.cardBorderClass}`
                   : ''
@@ -989,7 +994,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </MintCard>
           ) : (
-            <MintCard className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4">
+            <MintCard
+              style={{ animationDelay: '40ms' }}
+              className="animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
+            >
               <div className="relative z-10 space-y-1">
                 <h3 className="t-card text-navy font-bold leading-snug">
                   {isEn ? 'All caught up' : 'يومك مكتمل'}
@@ -1009,7 +1017,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <MintCard
             clickable
             onClick={handlePaymentsDueClick}
-            className="min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
+            style={{ animationDelay: '80ms' }}
+            className="animate-tile-stagger min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
           >
             <div className="relative z-10 space-y-1">
               <span className="text-[13px] font-semibold text-slate block leading-tight">
@@ -1039,7 +1048,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <MintCard
             clickable
             onClick={handleAttendanceToRecordClick}
-            className="min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
+            style={{ animationDelay: '120ms' }}
+            className="animate-tile-stagger min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
           >
             <div className="relative z-10 space-y-1">
               <span className="text-[13px] font-semibold text-slate block leading-tight">
@@ -1099,12 +1109,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {todayDebtors.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-            {todayDebtors.map(({ student, remaining }) => (
+            {todayDebtors.map(({ student, remaining }, idx) => (
               <button
                 key={student.id}
                 type="button"
                 onClick={() => onOpenStudentProfile(student)}
-                className="p-3 rounded-2xl bg-mint-soft hover:bg-mint border border-line shadow-2xs flex flex-col justify-center items-start text-start cursor-pointer active:scale-95 transition-all select-none group min-h-[72px] w-full"
+                style={{ animationDelay: `${idx * 35}ms` }}
+                className="animate-tile-stagger p-3 rounded-2xl bg-mint-soft hover:bg-mint border border-line shadow-2xs flex flex-col justify-center items-start text-start cursor-pointer active:scale-95 transition-all select-none group min-h-[72px] w-full"
               >
                 <span className="text-[13px] font-black text-navy truncate w-full block group-hover:text-navy/80 transition-colors">
                   {student.name}

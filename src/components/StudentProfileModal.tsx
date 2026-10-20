@@ -521,17 +521,21 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       (e) => e.studentId === student.id && (e.groupId === session.groupId || e.id === session.enrollmentId)
     );
 
+    const finalStatus = result.attendanceStatus || 'present';
+    const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+
     const record: Attendance = {
       id: `att_${session.id}_${student.id}`,
       sessionId: session.id,
       studentId: student.id,
       enrollmentId: enrollment?.id || session.enrollmentId,
-      status: 'present',
-      isCharged: true,
+      status: finalStatus,
+      isCharged,
       sessionUnits: result.sessionUnits,
       hours: result.hours,
       isIncomplete: false,
       notes: result.notes || session.notes,
+      absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
       recordedAt: new Date().toISOString(),
     };
 

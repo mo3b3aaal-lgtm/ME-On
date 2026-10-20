@@ -345,21 +345,51 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             type="submit"
             form="record-private-session-form"
             disabled={isSubmitting}
-            className="btn-orange flex-1"
+            className={`flex-1 transition-all flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-black text-sm shadow-xs cursor-pointer active:scale-98 ${
+              attendanceType === 'absent_charged'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
+                : attendanceType === 'absent_free' || attendanceType === 'cancelled'
+                ? 'bg-slate-600 hover:bg-slate-700 text-white shadow-slate-200'
+                : 'btn-orange'
+            }`}
           >
-            <AppIcon name="check" size={16} weight="bold" />
+            <AppIcon
+              name={
+                attendanceType === 'present'
+                  ? 'check'
+                  : attendanceType === 'absent_charged'
+                  ? 'warning'
+                  : 'close'
+              }
+              size={16}
+              weight="bold"
+            />
             <span>
               {isSubmitting
                 ? (isEn ? 'Saving...' : 'جاري الحفظ...')
+                : attendanceType === 'present'
+                ? isEn
+                  ? `Save & Confirm (${formatSessionQuantityDisplay(
+                      isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
+                      isRTL
+                    )})`
+                  : `حفظ وتأكيد (${formatSessionQuantityDisplay(
+                      isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
+                      isRTL
+                    )})`
+                : attendanceType === 'absent_charged'
+                ? isEn
+                  ? `Confirm Absent Charged (${formatSessionQuantityDisplay(
+                      isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
+                      isRTL
+                    )})`
+                  : `تأكيد غياب محسوب (${formatSessionQuantityDisplay(
+                      isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
+                      isRTL
+                    )})`
                 : isEn
-                ? `Save & Confirm (${formatSessionQuantityDisplay(
-                    isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
-                    isRTL
-                  )})`
-                : `حفظ وتأكيد (${formatSessionQuantityDisplay(
-                    isHourly ? { hours, isHourly: true } : { sessionUnits: sessionCount, isHourly: false },
-                    isRTL
-                  )})`}
+                ? 'Confirm Absent (Not Charged)'
+                : 'تأكيد غياب غير محسوب'}
             </span>
           </button>
         </div>

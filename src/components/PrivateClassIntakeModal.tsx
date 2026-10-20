@@ -16,6 +16,8 @@ export interface PrivateClassIntakeResult {
   hours?: number;
   pricePerStudent?: number;
   notes?: string;
+  attendanceStatus?: 'present' | 'absent_free' | 'absent_charged';
+  isCharged?: boolean;
 }
 
 interface PrivateClassIntakeModalProps {
@@ -25,6 +27,7 @@ interface PrivateClassIntakeModalProps {
   enrollment?: Enrollment | null;
   group?: Group | null;
   session?: Session | null;
+  initialAttendanceStatus?: 'present' | 'absent_free' | 'absent_charged';
   onConfirm: (result: PrivateClassIntakeResult) => void;
 }
 
@@ -35,6 +38,7 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   enrollment,
   group,
   session,
+  initialAttendanceStatus,
   onConfirm,
 }) => {
   const { t, isRTL, language } = useTranslation();
@@ -134,6 +138,11 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   const [customUnitsInput, setCustomUnitsInput] = useState<string>(String(initialSessionUnits));
   const [customHoursInput, setCustomHoursInput] = useState<string>(String(initialHours));
   const [notes, setNotes] = useState<string>('');
+  const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent_free' | 'absent_charged'>(
+    initialAttendanceStatus || 'present'
+  );
+
+  const isFreeAbsence = attendanceStatus === 'absent_free';
 
   // Smart Memory: Remember last quantity per student and billing mode
   const memoryStorageKey = useMemo(() => {
@@ -162,6 +171,7 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   // Reset when modal opens or session changes
   useEffect(() => {
     if (isOpen) {
+      setAttendanceStatus(initialAttendanceStatus || 'present');
       const units = initialSessionUnits;
       const hrs = initialHours;
       setSelectedUnits(units);
@@ -171,7 +181,7 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
       setIsCustomMode(![0.5, 1, 1.5, 2, 2.5, 3].includes(isHourly ? hrs : units));
       setNotes(session?.notes || '');
     }
-  }, [isOpen, session, initialSessionUnits, initialHours, isHourly]);
+  }, [isOpen, session, initialSessionUnits, initialHours, isHourly, initialAttendanceStatus]);
 
   // Predefined Presets
   const SESSION_PRESETS = [0.5, 1, 1.5, 2, 2.5, 3];
@@ -202,6 +212,7 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
 
   // Live Calculations
   const calculatedSessionValue = useMemo(() => {
+    if (isFreeAbsence) return 0;
     if (isHourly) {
       return multiplyMoney(selectedHours, hourlyRate);
     }
@@ -209,7 +220,7 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
       return multiplyMoney(selectedUnits, unitRate);
     }
     return multiplyMoney(selectedUnits, baseSessionPrice);
-  }, [isHourly, isPackage, selectedUnits, selectedHours, hourlyRate, unitRate, baseSessionPrice]);
+  }, [isFreeAbsence, isHourly, isPackage, selectedUnits, selectedHours, hourlyRate, unitRate, baseSessionPrice]);
 
   // Outstanding balance & Enrollment financials before & after
   const currentFin = useMemo(() => {
@@ -223,17 +234,19 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
     const prevSessionUnits = session?.sessionUnits || 0;
     const baseUsed = Math.max(0, (currentFin?.attendedSessionsCount || 0) - prevSessionUnits);
     const beforeRemaining = Math.max(0, roundMoney(packageTotalSessions - baseUsed, 2));
-    const projectedUsed = roundMoney(baseUsed + selectedUnits, 2);
+    const effectiveUnitsToAdd = isFreeAbsence ? 0 : selectedUnits;
+    const projectedUsed = roundMoney(baseUsed + effectiveUnitsToAdd, 2);
     const afterRemaining = Math.max(0, roundMoney(packageTotalSessions - projectedUsed, 2));
     return {
       baseUsed,
       beforeRemaining,
-      thisSessionUnits: selectedUnits,
+      thisSessionUnits: effectiveUnitsToAdd,
       projectedUsed,
       afterRemaining,
       total: packageTotalSessions,
+      isFreeAbsence,
     };
-  }, [isPackage, activeEnrollment, selectedUnits, packageTotalSessions, session, currentFin]);
+  }, [isPackage, activeEnrollment, selectedUnits, packageTotalSessions, session, currentFin, isFreeAbsence]);
 
   // Stepper handlers
   const handleStepChange = (delta: number) => {
@@ -312,6 +325,8 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
       hours: finalHours,
       pricePerStudent: calculatedSessionValue,
       notes: notes.trim(),
+      attendanceStatus,
+      isCharged: attendanceStatus !== 'absent_free',
     });
     onClose();
   };
@@ -348,19 +363,49 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
           <button
             type="button"
             onClick={handleConfirm}
-            className="btn-orange flex-1"
+            className={`flex-1 transition-all flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-black text-sm shadow-xs cursor-pointer active:scale-98 ${
+              attendanceStatus === 'absent_charged'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
+                : attendanceStatus === 'absent_free'
+                ? 'bg-slate-600 hover:bg-slate-700 text-white shadow-slate-200'
+                : 'btn-orange'
+            }`}
           >
-            <AppIcon name="check" size={16} weight="bold" />
+            <AppIcon
+              name={
+                attendanceStatus === 'present'
+                  ? 'check'
+                  : attendanceStatus === 'absent_charged'
+                  ? 'warning'
+                  : 'close'
+              }
+              size={16}
+              weight="bold"
+            />
             <span>
-              {isEn
-                ? `Confirm (${formatSessionQuantityDisplay(
-                    isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
-                    isRTL
-                  )})`
-                : `تأكيد واعتماد (${formatSessionQuantityDisplay(
-                    isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
-                    isRTL
-                  )})`}
+              {attendanceStatus === 'present'
+                ? isEn
+                  ? `Confirm Present (${formatSessionQuantityDisplay(
+                      isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
+                      isRTL
+                    )})`
+                  : `تأكيد حضور (${formatSessionQuantityDisplay(
+                      isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
+                      isRTL
+                    )})`
+                : attendanceStatus === 'absent_charged'
+                ? isEn
+                  ? `Confirm Absent Charged (${formatSessionQuantityDisplay(
+                      isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
+                      isRTL
+                    )})`
+                  : `تأكيد غياب محسوب (${formatSessionQuantityDisplay(
+                      isHourly ? { hours: selectedHours, isHourly: true } : { sessionUnits: selectedUnits, isHourly: false },
+                      isRTL
+                    )})`
+                : isEn
+                ? 'Confirm Absent (Not Charged)'
+                : 'تأكيد غياب غير محسوب'}
             </span>
           </button>
         </div>
@@ -496,6 +541,119 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
           </div>
         </div>
 
+        {/* ATTENDANCE STATUS SELECTION */}
+        <div className="p-3.5 sm:p-4 rounded-3xl bg-page border border-line shadow-xs space-y-2.5 text-start">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-slate block uppercase tracking-wider">
+              {isEn ? 'Attendance Status' : 'حالة الحضور والاحتساب'}
+            </span>
+            <span
+              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border transition-colors ${
+                attendanceStatus === 'present'
+                  ? 'bg-navy/10 text-navy border-navy/20'
+                  : attendanceStatus === 'absent_charged'
+                  ? 'bg-rose-500/10 text-rose-700 border-rose-300'
+                  : 'bg-slate/10 text-slate border-slate/20'
+              }`}
+            >
+              {attendanceStatus === 'present'
+                ? (isEn ? 'Present • Consumes Credit' : 'حاضر • تستهلك رصيد')
+                : attendanceStatus === 'absent_charged'
+                ? (isEn ? 'Charged Absence • Due' : 'غياب محسوب • يخصم رصيد')
+                : (isEn ? 'Free Absence • No Charge' : 'غياب غير محسوب • بدون خصم')}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {/* 1. حضر */}
+            <button
+              type="button"
+              onClick={() => setAttendanceStatus('present')}
+              className={`p-2.5 sm:p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all text-center cursor-pointer border ${
+                attendanceStatus === 'present'
+                  ? 'bg-navy text-white border-navy shadow-sm ring-2 ring-navy/20'
+                  : 'bg-white hover:bg-mist text-navy border-line'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors ${
+                  attendanceStatus === 'present' ? 'bg-white/20 text-white' : 'bg-navy/5 text-navy'
+                }`}
+              >
+                <AppIcon name="check" size={15} weight="bold" />
+              </div>
+              <span className="text-xs font-black tracking-tight leading-tight">
+                {isEn ? 'Present' : 'حضر'}
+              </span>
+              <span
+                className={`text-[9px] font-bold ${
+                  attendanceStatus === 'present' ? 'text-white/80' : 'text-slate'
+                }`}
+              >
+                {isEn ? 'Attended' : 'حضور فعلي'}
+              </span>
+            </button>
+
+            {/* 2. غائب غير محسوب */}
+            <button
+              type="button"
+              onClick={() => setAttendanceStatus('absent_free')}
+              className={`p-2.5 sm:p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all text-center cursor-pointer border ${
+                attendanceStatus === 'absent_free'
+                  ? 'bg-slate-700 text-white border-slate-700 shadow-sm ring-2 ring-slate-700/20'
+                  : 'bg-white hover:bg-mist text-slate border-line'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors ${
+                  attendanceStatus === 'absent_free' ? 'bg-white/20 text-white' : 'bg-slate/10 text-slate'
+                }`}
+              >
+                <AppIcon name="close" size={14} weight="bold" />
+              </div>
+              <span className="text-xs font-black tracking-tight leading-tight">
+                {isEn ? 'Absent (Free)' : 'غائب غير محسوب'}
+              </span>
+              <span
+                className={`text-[9px] font-bold ${
+                  attendanceStatus === 'absent_free' ? 'text-white/80' : 'text-slate'
+                }`}
+              >
+                {isEn ? 'No charge' : 'معفى / بدون خصم'}
+              </span>
+            </button>
+
+            {/* 3. غائب محسوب */}
+            <button
+              type="button"
+              onClick={() => setAttendanceStatus('absent_charged')}
+              className={`p-2.5 sm:p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all text-center cursor-pointer border ${
+                attendanceStatus === 'absent_charged'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-sm ring-2 ring-rose-600/20'
+                  : 'bg-rose-50/50 hover:bg-rose-50 text-rose-700 border-rose-200/70'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors ${
+                  attendanceStatus === 'absent_charged' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
+                }`}
+              >
+                <AppIcon name="warning" size={14} weight="bold" />
+              </div>
+              <span className="text-xs font-black tracking-tight leading-tight">
+                {isEn ? 'Absent (Charged)' : 'غائب محسوب'}
+              </span>
+              <span
+                className={`text-[9px] font-bold ${
+                  attendanceStatus === 'absent_charged' ? 'text-white/80' : 'text-rose-600'
+                }`}
+              >
+                {isEn ? 'Charged' : 'يخصم رصيد'}
+              </span>
+            </button>
+          </div>
+        </div>
+
         {/* FINANCIAL SUMMARY */}
         <div className="p-4 rounded-3xl bg-page border border-line shadow-xs space-y-3 text-start">
           <div className="flex items-center justify-between border-b border-line pb-2">
@@ -506,7 +664,9 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
               </span>
             </div>
             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-mint-soft text-navy">
-              {isPrepaid
+              {isFreeAbsence
+                ? (isEn ? 'Exempt / Free Absence' : 'غياب غير محسوب (معفى)')
+                : isPrepaid
                 ? (isEn ? 'Prepaid (Auto-settled)' : 'مسبق (تسوية فورية)')
                 : isPackage
                 ? (isEn ? 'Package Consumption' : 'خصم من الباقة')
@@ -533,6 +693,11 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
               <strong className="text-sm font-black text-navy block">
                 {calculatedSessionValue} {t('currency')}
               </strong>
+              {isFreeAbsence && (
+                <span className="text-[9px] text-slate font-bold block">
+                  {isEn ? '(Not charged)' : '(معفى من الرسوم)'}
+                </span>
+              )}
             </div>
 
             <div className="col-span-2 sm:col-span-1 p-3 rounded-2xl bg-page border border-line space-y-0.5">
@@ -579,10 +744,10 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
                   {isEn ? 'This Session' : 'هذه الحصة'}
                 </span>
                 <strong className="text-xs font-black text-navy block">
-                  -{packageProjection.thisSessionUnits} {isEn ? 'lessons' : 'حصة'}
+                  {isFreeAbsence ? `0 ${isEn ? 'lessons' : 'حصة'}` : `-${packageProjection.thisSessionUnits} ${isEn ? 'lessons' : 'حصة'}`}
                 </strong>
                 <span className="text-[9px] text-slate block">
-                  {calculatedSessionValue} {t('currency')}
+                  {isFreeAbsence ? (isEn ? 'No deduction' : 'بدون خصم') : `${calculatedSessionValue} ${t('currency')}`}
                 </span>
               </div>
 

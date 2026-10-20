@@ -163,18 +163,20 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
     if (!privateIntakeStudent) return;
     const studentId = privateIntakeStudent.id;
+    const finalStatus = result.attendanceStatus || 'present';
+    const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
 
     setRecords((prev) => ({
       ...prev,
       [studentId]: {
         ...prev[studentId],
-        status: 'present',
-        isCharged: true,
+        status: finalStatus,
+        isCharged,
         sessionUnits: result.sessionUnits,
         hours: result.hours,
         pricePerStudent: result.pricePerStudent,
         notes: result.notes || prev[studentId]?.notes || '',
-        absenceReason: '',
+        absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : '',
       },
     }));
 

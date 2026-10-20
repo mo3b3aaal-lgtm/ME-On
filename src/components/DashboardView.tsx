@@ -6,6 +6,7 @@ import { MintCard } from './ui/MintCard';
 import { SectionHeader } from './ui/SectionHeader';
 import { Avatar } from './ui/Avatar';
 import { StudentAvatar } from './StudentAvatar';
+import { getStudentFrameCardTheme, FrameCornerWatermark } from '../utils/frameTheme';
 import { SessionTimeline } from './SessionTimeline';
 import { TeacherBoard } from './illustrations/TeacherBoard';
 import { StudentReading } from './illustrations/StudentReading';
@@ -444,16 +445,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       enr?.billingMode === 'hourly' ||
       enr?.billingType === 'hourly';
 
+    const finalStatus = result.attendanceStatus || 'present';
+    const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+
     const record: Attendance = {
       id: `att_${session.id}_${studentId}`,
       sessionId: session.id,
       studentId,
       enrollmentId: enr?.id || item.enrollmentId,
-      status: 'present',
-      isCharged: true,
+      status: finalStatus,
+      isCharged,
       sessionUnits: isHourly ? undefined : result.sessionUnits,
       hours: isHourly ? result.hours : undefined,
       notes: result.notes,
+      absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
       recordedAt: new Date().toISOString(),
     };
 
@@ -473,11 +478,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       isHourly,
     }, isRTL);
 
-    showQuickFeedback(
-      isEn
-        ? `Recorded ${qtyText} for ${item.studentName}`
-        : `تم تسجيل حضور ${qtyText} للطالب ${item.studentName}`
-    );
+    const feedbackMsg =
+      finalStatus === 'present'
+        ? (isEn ? `Recorded ${qtyText} for ${item.studentName}` : `تم تسجيل حضور ${qtyText} للطالب ${item.studentName}`)
+        : finalStatus === 'absent_charged'
+        ? (isEn ? `Recorded charged absence (${qtyText}) for ${item.studentName}` : `تم تسجيل غياب محسوب (${qtyText}) للطالب ${item.studentName}`)
+        : (isEn ? `Recorded uncharged absence for ${item.studentName}` : `تم تسجيل غياب غير محسوب للطالب ${item.studentName}`);
+
+    showQuickFeedback(feedbackMsg);
     setPrivateIntakeTarget(null);
     onDataChanged?.();
   };
@@ -678,6 +686,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return focusSession2.student || null;
   }, [focusSession2, students]);
 
+  const focusFrameTheme1 = useMemo(() => {
+    if (!focusSession1?.isPrivate || !focusStudent1) return null;
+    return getStudentFrameCardTheme(focusStudent1.achievementFrame);
+  }, [focusSession1, focusStudent1]);
+
+  const focusFrameTheme2 = useMemo(() => {
+    if (!focusSession2?.isPrivate || !focusStudent2) return null;
+    return getStudentFrameCardTheme(focusStudent2.achievementFrame);
+  }, [focusSession2, focusStudent2]);
+
   // Unrecorded sessions today for Today's Focus Row 2
   const unrecordedTodaySessions = useMemo(() => {
     return allTodayDisplayItems.filter((item) => {
@@ -701,9 +719,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     onNavigateToTab('reports');
   };
 
-  const recentStudentsList = useMemo(() => {
-    return students.filter((s) => s.status !== 'archived').slice(0, 12);
-  }, [students]);
+  // Today's students who owe money (مديونيات حصص اليوم)
+  const todayDebtors = useMemo(() => {
+    const studentIdsWithLessonsToday = new Set<string>();
+
+    allTodayDisplayItems.forEach((item) => {
+      if (item.isPrivate || item.studentId) {
+        if (item.studentId) {
+          studentIdsWithLessonsToday.add(item.studentId);
+        } else if (item.student?.id) {
+          studentIdsWithLessonsToday.add(item.student.id);
+        }
+      } else if (item.groupId) {
+        const groupStudents = db.getGroupStudents(item.groupId);
+        groupStudents.forEach((st) => {
+          if (st.status !== 'archived') {
+            studentIdsWithLessonsToday.add(st.id);
+          }
+        });
+      }
+    });
+
+    todaySessions.forEach((s) => {
+      if (s.status === 'cancelled') return;
+      if (s.studentId) {
+        studentIdsWithLessonsToday.add(s.studentId);
+      } else if (s.groupId) {
+        const groupStudents = db.getGroupStudents(s.groupId);
+        groupStudents.forEach((st) => {
+          if (st.status !== 'archived') {
+            studentIdsWithLessonsToday.add(st.id);
+          }
+        });
+      }
+    });
+
+    const results: { student: Student; remaining: number }[] = [];
+
+    studentIdsWithLessonsToday.forEach((studentId) => {
+      const student = students.find((s) => s.id === studentId) || db.getStudentById(studentId);
+      if (!student || student.status === 'archived') return;
+
+      const grandFinancials = db.calculateStudentGrandFinancials(studentId);
+      const remaining = grandFinancials ? grandFinancials.grandRemaining : 0;
+
+      if (remaining > 0) {
+        results.push({
+          student,
+          remaining,
+        });
+      }
+    });
+
+    results.sort((a, b) => b.remaining - a.remaining);
+    return results;
+  }, [allTodayDisplayItems, todaySessions, students, enrollments, payments, allAttendance]);
 
   return (
     <div
@@ -783,8 +853,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const s = getOrCreateSessionForSchedule(focusSession1);
                 onOpenAttendanceModal(s);
               }}
-              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group"
+              className={`min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
+                focusFrameTheme1
+                  ? `${focusFrameTheme1.cardBgClass} ${focusFrameTheme1.cardBorderClass}`
+                  : ''
+              }`}
             >
+              {/* Subtle frame corner watermark */}
+              {focusFrameTheme1 && (
+                <FrameCornerWatermark patternType={focusFrameTheme1.patternType} />
+              )}
+
               <div className="relative z-10 space-y-1.5">
                 <div className="flex items-center gap-2.5">
                   {focusStudent1 && (
@@ -801,12 +880,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       />
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
-                      {focusSession1.isPrivate
-                        ? (focusSession1.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
-                        : focusSession1.groupName}
-                    </h3>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                        {focusSession1.isPrivate
+                          ? (focusSession1.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                          : focusSession1.groupName}
+                      </h3>
+                      {focusFrameTheme1 && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${focusFrameTheme1.pillClass} shrink-0 select-none`}
+                          title={isEn ? focusFrameTheme1.nameEn : focusFrameTheme1.nameAr}
+                        >
+                          <span>{focusFrameTheme1.icon}</span>
+                          <span>{isEn ? focusFrameTheme1.tierEn : focusFrameTheme1.tierAr}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-[13px] text-slate font-medium">
@@ -843,8 +933,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 const s = getOrCreateSessionForSchedule(focusSession2);
                 onOpenAttendanceModal(s);
               }}
-              className="min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group"
+              className={`min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
+                focusFrameTheme2
+                  ? `${focusFrameTheme2.cardBgClass} ${focusFrameTheme2.cardBorderClass}`
+                  : ''
+              }`}
             >
+              {/* Subtle frame corner watermark */}
+              {focusFrameTheme2 && (
+                <FrameCornerWatermark patternType={focusFrameTheme2.patternType} />
+              )}
+
               <div className="relative z-10 space-y-1.5">
                 <div className="flex items-center gap-2.5">
                   {focusStudent2 && (
@@ -861,12 +960,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       />
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
-                      {focusSession2.isPrivate
-                        ? (focusSession2.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
-                        : focusSession2.groupName}
-                    </h3>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                        {focusSession2.isPrivate
+                          ? (focusSession2.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                          : focusSession2.groupName}
+                      </h3>
+                      {focusFrameTheme2 && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${focusFrameTheme2.pillClass} shrink-0 select-none`}
+                          title={isEn ? focusFrameTheme2.nameEn : focusFrameTheme2.nameAr}
+                        >
+                          <span>{focusFrameTheme2.icon}</span>
+                          <span>{isEn ? focusFrameTheme2.tierEn : focusFrameTheme2.tierAr}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-[13px] text-slate font-medium">
@@ -979,41 +1089,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </div>
 
-      {/* 4. Recent Students */}
-      {recentStudentsList.length > 0 && (
-        <div className="space-y-3 pt-1">
-          <SectionHeader
-            title={t('recentStudents') || (isEn ? 'Recent students' : 'الطلاب مؤخراً')}
-            seeAllLabel={t('navStudents') || (isEn ? 'All students' : 'جميع الطلاب')}
-            onSeeAll={() => onNavigateToTab('students')}
-          />
-          <div className="flex items-center gap-4 overflow-x-auto snap-x snap-mandatory py-2 px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {recentStudentsList.map((student) => (
+      {/* 4. Today's Students with Debt (مديونيات حصص اليوم) */}
+      <div className="space-y-3 pt-1">
+        <SectionHeader
+          title={isEn ? "Today's Session Debts" : "مديونيات حصص اليوم"}
+          seeAllLabel={todayDebtors.length > 0 ? (t('navStudents') || (isEn ? 'All students' : 'جميع الطلاب')) : undefined}
+          onSeeAll={todayDebtors.length > 0 ? () => onNavigateToTab('students') : undefined}
+        />
+
+        {todayDebtors.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+            {todayDebtors.map(({ student, remaining }) => (
               <button
                 key={student.id}
                 type="button"
                 onClick={() => onOpenStudentProfile(student)}
-                className="flex flex-col items-center gap-1.5 shrink-0 snap-start cursor-pointer group active:scale-95 transition-transform select-none w-16"
+                className="p-3 rounded-2xl bg-mint-soft hover:bg-mint border border-line shadow-2xs flex flex-col justify-center items-start text-start cursor-pointer active:scale-95 transition-all select-none group min-h-[72px] w-full"
               >
-                <div className="gaming-frame-interactive transition-transform group-hover:scale-108">
-                  <StudentAvatar
-                    student={student}
-                    name={student.name}
-                    profilePhoto={student.profilePhoto}
-                    achievementFrame={student.achievementFrame}
-                    avatarColor={student.avatarColor}
-                    size="md"
-                    showFrame={true}
-                  />
-                </div>
-                <span className="text-[12px] font-medium text-navy text-center truncate w-full group-hover:text-orange transition-colors">
+                <span className="text-[13px] font-black text-navy truncate w-full block group-hover:text-navy/80 transition-colors">
                   {student.name}
+                </span>
+                <span className="text-sm font-black text-navy mt-1 tracking-tight block">
+                  {remaining}{' '}
+                  <span className="text-[11px] font-bold text-slate">
+                    {t('currency') || 'ج.م'}
+                  </span>
                 </span>
               </button>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="p-3.5 rounded-2xl bg-mint-soft/40 border border-line text-center">
+            <p className="text-xs font-bold text-slate">
+              {isEn ? "No outstanding debts for today's students" : 'لا توجد مديونيات لطلبة لديهم حصص اليوم'}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Private Class Intake Modal */}
       {privateIntakeTarget && (

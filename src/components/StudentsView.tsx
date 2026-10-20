@@ -4,6 +4,8 @@ import { ScreenHeader } from './ui/ScreenHeader';
 import { Student, Group, Attendance, Session, Enrollment, ActiveTab, Payment } from '../types';
 import { db } from '../utils/storage';
 import { Avatar } from './ui/Avatar';
+import { StudentAvatar } from './StudentAvatar';
+import { getStudentFrameCardTheme, FrameCornerWatermark } from '../utils/frameTheme';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { AppIcon } from './ui/AppIcon';
@@ -690,9 +692,16 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 const isSelected = selectedStudentIds.has(student.id);
                 const isStudentArchived = student.status === 'archived';
 
+                // Frame theme derived directly from the student's existing achievement frame assignment
+                const frameTheme = getStudentFrameCardTheme(student.achievementFrame);
+                const hasAchievementFrame = Boolean(frameTheme);
+
                 // Featured / first card gets solid mint #B9DAD6, others get mint-soft
+                // When an achievement frame is assigned, derive subtle themed background & border
                 const isFeatured = index === 0 || isSelected;
-                const bgClass = isFeatured
+                const bgClass = hasAchievementFrame
+                  ? `${frameTheme.cardBgClass} ${frameTheme.cardBorderClass}`
+                  : isFeatured
                   ? 'bg-mint border-mint shadow-mint'
                   : 'bg-mint-soft border-line shadow-white';
 
@@ -760,13 +769,18 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         onOpenStudentProfile(student);
                       }
                     }}
-                    className={`rounded-[var(--radius-card)] p-4 border text-navy transition-all duration-150 cursor-pointer select-none active:scale-[0.97] ${
-                      isStaggerEnabled ? 'animate-fade-up' : ''
+                    className={`relative overflow-hidden rounded-[var(--radius-card)] p-4 border text-navy transition-all duration-150 cursor-pointer select-none active:scale-[0.97] ${
+                      isStaggerEnabled ? 'animate-tile-stagger' : ''
                     } ${bgClass} ${
                       isStudentArchived ? 'opacity-70' : ''
                     } ${isSelected ? 'ring-2 ring-navy' : ''}`}
                   >
-                    <div className="flex items-center justify-between gap-3">
+                    {/* Subtle frame corner watermark */}
+                    {frameTheme && (
+                      <FrameCornerWatermark patternType={frameTheme.patternType} />
+                    )}
+
+                    <div className="relative z-10 flex items-center justify-between gap-3">
                       {/* Start: Selection Checkbox (if in mode) + 48px Avatar + Name + Meta line */}
                       <div className="flex items-center gap-3 min-w-0">
                         {isSelectionMode && !isStudentArchived && (
@@ -783,19 +797,45 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           </button>
                         )}
 
-                        {/* Avatar 48px */}
-                        <Avatar
-                          size={48}
-                          name={student.name}
-                          profilePhoto={student.profilePhoto}
-                          className="shrink-0"
-                        />
+                        {/* Avatar with Achievement Frame if present, or standard 48px Avatar */}
+                        {hasAchievementFrame ? (
+                          <div className="shrink-0 gaming-frame-interactive transition-transform hover:scale-105">
+                            <StudentAvatar
+                              student={student}
+                              name={student.name}
+                              profilePhoto={student.profilePhoto}
+                              avatarColor={student.avatarColor}
+                              achievementFrame={student.achievementFrame}
+                              size="md"
+                              showFrame={true}
+                              className="shrink-0"
+                            />
+                          </div>
+                        ) : (
+                          <Avatar
+                            size={48}
+                            name={student.name}
+                            profilePhoto={student.profilePhoto}
+                            className="shrink-0"
+                          />
+                        )}
 
-                        {/* Name .t-card + Meta line 13px */}
+                        {/* Name .t-card + Optional Tier Badge + Meta line 13px */}
                         <div className="min-w-0 space-y-0.5">
-                          <h3 className="t-card text-navy truncate font-semibold">
-                            {student.name}
-                          </h3>
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <h3 className="t-card text-navy truncate font-semibold">
+                              {student.name}
+                            </h3>
+                            {frameTheme && (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${frameTheme.pillClass} shrink-0 select-none`}
+                                title={isEn ? frameTheme.nameEn : frameTheme.nameAr}
+                              >
+                                <span>{frameTheme.icon}</span>
+                                <span>{isEn ? frameTheme.tierEn : frameTheme.tierAr}</span>
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[13px] text-slate truncate font-normal">
                             {metaText}
                           </p>
@@ -829,7 +869,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                     {/* Secondary Row: groups pills & quick contact buttons */}
                     {(studentGroups.length > 0 || student.phone || student.parentPhone) && (
-                      <div className="mt-3 pt-2.5 border-t border-navy/10 flex items-center justify-between gap-2 flex-wrap text-xs">
+                      <div className="relative z-10 mt-3 pt-2.5 border-t border-navy/10 flex items-center justify-between gap-2 flex-wrap text-xs">
                         {/* Group chips */}
                         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                           {studentGroups.map(({ group }) => (

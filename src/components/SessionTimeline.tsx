@@ -9,6 +9,7 @@ import { StudentAvatar } from './StudentAvatar';
 import { MintCard } from './ui/MintCard';
 import { EmptyBox } from './illustrations/EmptyBox';
 import { db } from '../utils/storage';
+import { getStudentFrameCardTheme, FrameCornerWatermark } from '../utils/frameTheme';
 
 export interface SessionTimelineProps {
   items: ScheduledClassItem[];
@@ -149,6 +150,11 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
               : null) || item.student
           : null;
 
+        // Subtle frame-inspired card theme derived from student's actual achievement frame
+        const frameTheme = isPrivate && privateStudent
+          ? getStudentFrameCardTheme(privateStudent.achievementFrame)
+          : null;
+
         const groupStudents = !isPrivate && item.groupId
           ? db.getGroupStudents(item.groupId)
           : [];
@@ -171,7 +177,7 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
             <div
               style={{ animationDelay: staggerDelay }}
               className={`relative flex items-center gap-3 select-none ${
-                isStaggerEnabled ? 'animate-fade-up' : ''
+                isStaggerEnabled ? 'animate-tile-stagger' : ''
               }`}
             >
               {/* Left column: start times (13px slate) */}
@@ -189,10 +195,19 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
                     onRecordAttendance(item);
                   }
                 }}
-                className="flex-1 p-3.5 flex items-center justify-between gap-3 min-w-0 group cursor-pointer"
+                className={`flex-1 p-3.5 flex items-center justify-between gap-3 min-w-0 group cursor-pointer relative overflow-hidden transition-all duration-150 ${
+                  frameTheme
+                    ? `${frameTheme.cardBgClass} ${frameTheme.cardBorderClass}`
+                    : 'border border-transparent shadow-mint'
+                }`}
               >
+                {/* Subtle frame corner watermark */}
+                {frameTheme && (
+                  <FrameCornerWatermark patternType={frameTheme.patternType} />
+                )}
+
                 {/* Content: Student Avatar beside title & time range */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="relative z-10 flex items-center gap-3 min-w-0 flex-1">
                   {/* Student Avatar with selected achievement frame (beside student name) */}
                   {isPrivate ? (
                     <div
@@ -252,7 +267,7 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
 
                   {/* Title & Time Range */}
                   <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                       <span
                         className="w-2 h-2 rounded-full shrink-0"
                         style={{ backgroundColor: item.accentColor || 'var(--color-navy)' }}
@@ -260,6 +275,15 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
                       <h4 className="t-card text-navy font-bold truncate">
                         {title}
                       </h4>
+                      {frameTheme && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${frameTheme.pillClass} shrink-0 select-none`}
+                          title={isEn ? frameTheme.nameEn : frameTheme.nameAr}
+                        >
+                          <span>{frameTheme.icon}</span>
+                          <span>{isEn ? frameTheme.tierEn : frameTheme.tierAr}</span>
+                        </span>
+                      )}
                     </div>
 
                     <p className="text-[13px] text-slate font-medium truncate">
@@ -270,7 +294,7 @@ export const SessionTimeline: React.FC<SessionTimelineProps> = ({
                 </div>
 
                 {/* Trailing: Small StatusBadge if attendance recorded or scheduled */}
-                <div className="shrink-0 flex items-center gap-2">
+                <div className="relative z-10 shrink-0 flex items-center gap-2">
                   {(hasAttendance || isCompleted || isCancelled) && (
                     <StatusBadge
                       status={isCompleted ? 'completed' : isCancelled ? 'cancelled' : 'scheduled'}

@@ -21,6 +21,9 @@ export const MintCard: React.FC<MintCardProps> = ({
     ? 'cursor-pointer active:scale-[0.97] transition-transform duration-150 select-none'
     : '';
 
+  const hasExplicitBg = className.includes('bg-');
+  const defaultBgClasses = hasExplicitBg ? '' : 'bg-mint shadow-mint';
+
   return (
     <div
       onClick={onClick}
@@ -33,7 +36,7 @@ export const MintCard: React.FC<MintCardProps> = ({
         }
         rest.onKeyDown?.(e);
       }}
-      className={`bg-mint text-navy rounded-[var(--radius-card)] p-4 shadow-mint ${interactiveClasses} ${className}`.trim()}
+      className={`${defaultBgClasses} text-navy rounded-[var(--radius-card)] p-4 ${interactiveClasses} ${className}`.trim()}
       {...rest}
     >
       {children}

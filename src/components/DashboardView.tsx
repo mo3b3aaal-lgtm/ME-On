@@ -98,9 +98,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setTimeout(() => setQuickSuccessMsg(null), 3000);
   };
 
-  // Filter today's sessions
+  // Filter and order today's sessions chronologically by time (earliest to latest) within the day
   const todaySessions = useMemo(() => {
-    return sessions.filter((s) => s.date === todayStr && s.status !== 'cancelled');
+    return sessions
+      .filter((s) => s.date === todayStr && s.status !== 'cancelled')
+      .sort((a, b) => {
+        const timeA = parseTimeToMinutes(a.startTime);
+        const timeB = parseTimeToMinutes(b.startTime);
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.createdAt || '').localeCompare(b.createdAt || '');
+      });
   }, [sessions, todayStr]);
 
   const enrollments = useMemo(() => db.getEnrollments(), [students, groups]);
@@ -186,7 +193,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const tPayments = payments.filter((p) => p.date === todayStr);
     let tRev = tPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
 
-    const todayCompletedSessions = sessions.filter((s) => s.date === todayStr && s.status === 'completed');
+    const todayCompletedSessions = todaySessions.filter((s) => s.status === 'completed');
     todayCompletedSessions.forEach((s) => {
       const atts = db.getSessionAttendance(s.id);
       const grp = groups.find((g) => g.id === s.groupId);
@@ -215,7 +222,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
 
     return { totalMonthRevenue: mRev, totalTodayRevenue: tRev };
-  }, [payments, sessions, groups, enrollments, currentMonth, currentYear, todayStr]);
+  }, [payments, sessions, groups, enrollments, currentMonth, currentYear, todayStr, todaySessions]);
 
   // Outstanding balances
   const { totalOutstandingDues, overdueStudentsCount } = useMemo(() => {
@@ -353,15 +360,114 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   const [privateIntakeTarget, setPrivateIntakeTarget] = useState<{
-    item: ScheduledClassItem;
+    item?: ScheduledClassItem;
+    session?: Session;
     studentId: string;
   } | null>(null);
 
-  const handleMarkAllPresent = (item: ScheduledClassItem) => {
+  // Canonical classification helper to determine whether an appointment belongs to a private lesson or group session
+  const isAppointmentPrivate = useCallback((itemOrSession: ScheduledClassItem | Session): boolean => {
+    // 1. Explicit boolean flag on ScheduledClassItem
+    if ('isPrivate' in itemOrSession && itemOrSession.isPrivate === true) {
+      return true;
+    }
+
+    // 2. Individual student assigned
+    const studentId = itemOrSession.studentId;
+    if (studentId) {
+      const enrId = itemOrSession.enrollmentId;
+      if (enrId) {
+        const enr = enrollments.find((e) => e.id === enrId) || db.getEnrollmentById(enrId);
+        if (enr && (enr.serviceType === 'private' || !enr.groupId)) {
+          return true;
+        }
+      }
+      const grpId = itemOrSession.groupId;
+      if (grpId) {
+        const grp = groups.find((g) => g.id === grpId) || db.getGroupById(grpId);
+        if (grp?.type === 'private') {
+          return true;
+        }
+        if (grp && grp.type !== 'private') {
+          if ('isPrivate' in itemOrSession && itemOrSession.isPrivate === false) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // 3. Enrollment serviceType check
+    if (itemOrSession.enrollmentId) {
+      const enr = enrollments.find((e) => e.id === itemOrSession.enrollmentId) || db.getEnrollmentById(itemOrSession.enrollmentId);
+      if (enr && (enr.serviceType === 'private' || !enr.groupId)) {
+        return true;
+      }
+    }
+
+    // 4. Group type check
+    if (itemOrSession.groupId) {
+      const grp = groups.find((g) => g.id === itemOrSession.groupId) || db.getGroupById(itemOrSession.groupId);
+      if (grp?.type === 'private') {
+        return true;
+      }
+      if (grp && grp.type !== 'private') {
+        return false;
+      }
+    }
+
+    return false;
+  }, [enrollments, groups]);
+
+  // Centralized session tap router:
+  // - Private lessons ALWAYS route to PrivateClassIntakeModal without saving uncommitted sessions to DB
+  // - Genuine group sessions route to group attendance modal (RecordAttendanceModal)
+  const handleSessionCardClick = useCallback((
+    itemOrSession: ScheduledClassItem | Session,
+    persistedSession?: Session
+  ) => {
+    const isPrivate = isAppointmentPrivate(itemOrSession);
+
+    if (isPrivate) {
+      const studentId =
+        itemOrSession.studentId ||
+        ('student' in itemOrSession && itemOrSession.student?.id) ||
+        ('studentName' in itemOrSession && itemOrSession.studentName ? students.find((s) => s.name === itemOrSession.studentName)?.id : '') ||
+        '';
+
+      if (!studentId) return;
+
+      const scheduleItem: ScheduledClassItem | undefined = 'isPrivate' in itemOrSession ? itemOrSession : undefined;
+      const existingSession: Session | undefined =
+        persistedSession ||
+        ('status' in itemOrSession && !('isPrivate' in itemOrSession) ? itemOrSession : undefined) ||
+        (scheduleItem ? findSessionForScheduleItem(scheduleItem) : undefined);
+
+      setPrivateIntakeTarget({
+        item: scheduleItem,
+        session: existingSession,
+        studentId,
+      });
+    } else {
+      const scheduleItem: ScheduledClassItem | undefined = 'isPrivate' in itemOrSession ? itemOrSession : undefined;
+      const existingSession: Session | undefined =
+        persistedSession ||
+        ('status' in itemOrSession && !('isPrivate' in itemOrSession) ? itemOrSession : undefined) ||
+        (scheduleItem ? findSessionForScheduleItem(scheduleItem) : undefined);
+
+      if (existingSession) {
+        onOpenAttendanceModal(existingSession);
+      } else if (scheduleItem) {
+        const session = getOrCreateSessionForSchedule(scheduleItem);
+        onOpenAttendanceModal(session);
+      }
+    }
+  }, [isAppointmentPrivate, students, findSessionForScheduleItem, onOpenAttendanceModal, getOrCreateSessionForSchedule]);
+
+  const handleMarkAllPresent = useCallback((item: ScheduledClassItem) => {
     // If it is a private lesson, open PrivateClassIntakeModal to ask the teacher what the intake was
-    if (item.isPrivate || item.studentId) {
-      const studentId = item.studentId || (students.find((s) => s.name === item.studentName)?.id || '');
-      setPrivateIntakeTarget({ item, studentId });
+    if (isAppointmentPrivate(item)) {
+      handleSessionCardClick(item);
       return;
     }
 
@@ -394,7 +500,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         : `تم رصد حضور جميع طلاب ${item.groupName} بنجاح`
     );
     onDataChanged?.();
-  };
+  }, [isAppointmentPrivate, handleSessionCardClick, getOrCreateSessionForSchedule, enrollments, isEn, onDataChanged]);
 
   const handleQuickStudentAttendance = (
     item: ScheduledClassItem,
@@ -403,8 +509,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     isCharged: boolean = true
   ) => {
     // If it is a private lesson and marked present, ask for intake
-    if ((item.isPrivate || item.studentId) && status === 'present') {
-      setPrivateIntakeTarget({ item, studentId });
+    if (isAppointmentPrivate(item) && status === 'present') {
+      handleSessionCardClick(item);
       return;
     }
 
@@ -433,15 +539,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
     if (!privateIntakeTarget) return;
-    const { item, studentId } = privateIntakeTarget;
-    const session = getOrCreateSessionForSchedule(item);
-    const enr = enrollments.find(
-      (e) => e.studentId === studentId && (e.groupId === item.groupId || e.id === item.enrollmentId)
-    );
+    const { item, session: targetSession, studentId } = privateIntakeTarget;
+    const session = targetSession || (item ? getOrCreateSessionForSchedule(item) : null);
+    if (!session) return;
+    const enr =
+      enrollments.find(
+        (e) =>
+          e.studentId === studentId &&
+          ((item && (e.groupId === item.groupId || e.id === item.enrollmentId)) ||
+           (session && (e.groupId === session.groupId || e.id === session.enrollmentId)))
+      ) ||
+      enrollments.find((e) => e.studentId === studentId && (e.serviceType === 'private' || !e.groupId)) ||
+      enrollments.find((e) => e.studentId === studentId);
 
     const isHourly =
-      item.group?.billingMode === 'hourly' ||
-      item.group?.billingType === 'hourly' ||
+      (item && (item.group?.billingMode === 'hourly' || item.group?.billingType === 'hourly')) ||
+      session.isHourly ||
       enr?.billingMode === 'hourly' ||
       enr?.billingType === 'hourly';
 
@@ -452,7 +565,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       id: `att_${session.id}_${studentId}`,
       sessionId: session.id,
       studentId,
-      enrollmentId: enr?.id || item.enrollmentId,
+      enrollmentId: enr?.id || item?.enrollmentId || session.enrollmentId,
       status: finalStatus,
       isCharged,
       sessionUnits: isHourly ? undefined : result.sessionUnits,
@@ -478,12 +591,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       isHourly,
     }, isRTL);
 
+    const studentObj = students.find((s) => s.id === studentId) || db.getStudentById(studentId);
+    const displayName = item?.studentName || studentObj?.name || session.title || '';
     const feedbackMsg =
       finalStatus === 'present'
-        ? (isEn ? `Recorded ${qtyText} for ${item.studentName}` : `تم تسجيل حضور ${qtyText} للطالب ${item.studentName}`)
+        ? (isEn ? `Recorded ${qtyText} for ${displayName}` : `تم تسجيل حضور ${qtyText} للطالب ${displayName}`)
         : finalStatus === 'absent_charged'
-        ? (isEn ? `Recorded charged absence (${qtyText}) for ${item.studentName}` : `تم تسجيل غياب محسوب (${qtyText}) للطالب ${item.studentName}`)
-        : (isEn ? `Recorded uncharged absence for ${item.studentName}` : `تم تسجيل غياب غير محسوب للطالب ${item.studentName}`);
+        ? (isEn ? `Recorded charged absence (${qtyText}) for ${displayName}` : `تم تسجيل غياب محسوب (${qtyText}) للطالب ${displayName}`)
+        : (isEn ? `Recorded uncharged absence for ${displayName}` : `تم تسجيل غياب غير محسوب للطالب ${displayName}`);
 
     showQuickFeedback(feedbackMsg);
     setPrivateIntakeTarget(null);
@@ -646,9 +761,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const handleStartNextSession = () => {
     if (!nextPendingSession) return;
-    const realSession = db.getSessionById(nextPendingSession.id) || db.saveSession(nextPendingSession);
-    if (onDataChanged) onDataChanged();
-    onOpenAttendanceModal(realSession);
+    handleSessionCardClick(nextPendingSession);
   };
 
   const todayProgressPercent = totalTodayClassesCount > 0
@@ -708,8 +821,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const handleAttendanceToRecordClick = () => {
     if (unrecordedTodaySessions.length > 0) {
-      const s = getOrCreateSessionForSchedule(unrecordedTodaySessions[0]);
-      onOpenAttendanceModal(s);
+      handleSessionCardClick(unrecordedTodaySessions[0]);
     } else {
       onNavigateToTab('sessions');
     }
@@ -848,10 +960,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Row 1, Card 1: First pending/next session */}
           {focusSession1 ? (
             <MintCard
+              key={focusSession1.id || 'focus-1'}
               clickable
               onClick={() => {
-                const s = getOrCreateSessionForSchedule(focusSession1);
-                onOpenAttendanceModal(s);
+                handleSessionCardClick(focusSession1);
               }}
               style={{ animationDelay: '0ms' }}
               className={`animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
@@ -911,6 +1023,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </MintCard>
           ) : (
             <MintCard
+              key="focus-empty-1"
               style={{ animationDelay: '0ms' }}
               className="animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
             >
@@ -932,10 +1045,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Row 1, Card 2: Second pending/next session */}
           {focusSession2 ? (
             <MintCard
+              key={focusSession2.id || 'focus-2'}
               clickable
               onClick={() => {
-                const s = getOrCreateSessionForSchedule(focusSession2);
-                onOpenAttendanceModal(s);
+                handleSessionCardClick(focusSession2);
               }}
               style={{ animationDelay: '40ms' }}
               className={`animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
@@ -995,6 +1108,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </MintCard>
           ) : (
             <MintCard
+              key="focus-empty-2"
               style={{ animationDelay: '40ms' }}
               className="animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
             >
@@ -1015,6 +1129,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Row 2, Card 1: Payments due */}
           <MintCard
+            key="payments-due"
             clickable
             onClick={handlePaymentsDueClick}
             style={{ animationDelay: '80ms' }}
@@ -1046,6 +1161,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Row 2, Card 2: Attendance to record */}
           <MintCard
+            key="attendance-to-record"
             clickable
             onClick={handleAttendanceToRecordClick}
             style={{ animationDelay: '120ms' }}
@@ -1093,6 +1209,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           findSessionForScheduleItem={findSessionForScheduleItem}
           onRecordAttendance={handleMarkAllPresent}
           onOpenAttendanceModal={onOpenAttendanceModal}
+          onTapSession={handleSessionCardClick}
           onOpenStudentProfile={onOpenStudentProfile}
           onOpenGroupProfile={onOpenGroupProfile}
           onOpenAddSession={onOpenAddSession}
@@ -1143,9 +1260,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <PrivateClassIntakeModal
           isOpen={!!privateIntakeTarget}
           onClose={() => setPrivateIntakeTarget(null)}
-          student={students.find((s) => s.id === privateIntakeTarget.studentId) || null}
-          enrollment={enrollments.find((e) => e.studentId === privateIntakeTarget.studentId && (e.groupId === privateIntakeTarget.item.groupId || e.id === privateIntakeTarget.item.enrollmentId)) || null}
-          session={findSessionForScheduleItem(privateIntakeTarget.item)}
+          student={students.find((s) => s.id === privateIntakeTarget.studentId) || db.getStudentById(privateIntakeTarget.studentId) || null}
+          enrollment={
+            enrollments.find(
+              (e) =>
+                e.studentId === privateIntakeTarget.studentId &&
+                ((privateIntakeTarget.item && (e.groupId === privateIntakeTarget.item.groupId || e.id === privateIntakeTarget.item.enrollmentId)) ||
+                 (privateIntakeTarget.session && (e.groupId === privateIntakeTarget.session.groupId || e.id === privateIntakeTarget.session.enrollmentId)))
+            ) ||
+            enrollments.find((e) => e.studentId === privateIntakeTarget.studentId && (e.serviceType === 'private' || !e.groupId)) ||
+            null
+          }
+          session={privateIntakeTarget.session || (privateIntakeTarget.item ? findSessionForScheduleItem(privateIntakeTarget.item) : null)}
           onConfirm={handleConfirmPrivateIntake}
         />
       )}

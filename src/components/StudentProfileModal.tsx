@@ -8,6 +8,7 @@ import {
   Payment,
   Attendance,
   Session,
+  SessionStatus,
   AttendanceStatus,
   BillingMode,
   StudentGrandFinancialSummary,
@@ -34,6 +35,7 @@ import {
   getUpcomingClassesForStudent,
   UpcomingStudentClass,
   formatTimeDisplay,
+  parseTimeToMinutes,
   getStudentEffectiveSchedule,
 } from '../utils/schedule';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
@@ -50,6 +52,72 @@ import { MintCard } from './ui/MintCard';
 import { ProgressRing } from './ui/ProgressRing';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
+
+/**
+ * Normalizes date and time strings into a reliable Unix epoch timestamp (ms).
+ * Handles YYYY-MM-DD, YYYY/MM/DD, ISO timestamps, and 12/24-hour time formats.
+ * Safely returns 0 for invalid/missing dates to ensure stable sorting without crashing.
+ */
+function getChronologicalTimestamp(
+  dateStr?: string | null,
+  timeStr?: string | null,
+  fallbackIso?: string | null
+): number {
+  let year = 0;
+  let month = 0;
+  let day = 0;
+  let hasValidDate = false;
+
+  if (dateStr && typeof dateStr === 'string' && dateStr.trim()) {
+    const trimmed = dateStr.trim();
+    const dateMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (dateMatch) {
+      year = parseInt(dateMatch[1], 10);
+      month = parseInt(dateMatch[2], 10) - 1;
+      day = parseInt(dateMatch[3], 10);
+      hasValidDate = true;
+    } else {
+      const d = new Date(trimmed);
+      if (!isNaN(d.getTime())) {
+        year = d.getFullYear();
+        month = d.getMonth();
+        day = d.getDate();
+        hasValidDate = true;
+      }
+    }
+  }
+
+  if (!hasValidDate && fallbackIso && typeof fallbackIso === 'string' && fallbackIso.trim()) {
+    const d = new Date(fallbackIso.trim());
+    if (!isNaN(d.getTime())) {
+      year = d.getFullYear();
+      month = d.getMonth();
+      day = d.getDate();
+      hasValidDate = true;
+    }
+  }
+
+  if (!hasValidDate) {
+    return 0;
+  }
+
+  let timeMinutes = 0;
+  if (timeStr && typeof timeStr === 'string' && timeStr.trim()) {
+    const parsedMins = parseTimeToMinutes(timeStr);
+    if (parsedMins !== 99999) {
+      timeMinutes = parsedMins;
+    }
+  } else if (fallbackIso && typeof fallbackIso === 'string' && fallbackIso.includes('T')) {
+    const d = new Date(fallbackIso.trim());
+    if (!isNaN(d.getTime())) {
+      timeMinutes = d.getHours() * 60 + d.getMinutes();
+    }
+  }
+
+  const dateObj = new Date(year, month, day, Math.floor(timeMinutes / 60), timeMinutes % 60, 0, 0);
+  const ts = dateObj.getTime();
+  return isNaN(ts) ? 0 : ts;
+}
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -182,6 +250,112 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const allPayments = grandFinancials.allPayments;
   const attendanceList = useMemo(() => (studentId ? db.getStudentAttendance(studentId) : []), [studentId]);
   const allSessions = useMemo(() => (studentId ? db.getSessions() : []), [studentId]);
+
+  interface StudentSessionHistoryItem {
+    id: string;
+    attendance?: Attendance;
+    session?: Session;
+    dateStr: string;
+    timeDisplay: string;
+    isPrivate: boolean;
+    status: AttendanceStatus | SessionStatus;
+    isAbsentCharged: boolean;
+    isAbsentFree: boolean;
+    isExcused: boolean;
+    isPresent: boolean;
+    isLate: boolean;
+    isUnpaid: boolean;
+    title: string;
+    sortTimestamp: number;
+  }
+
+  // Complete session history sorted strictly chronologically (newest to oldest)
+  const sortedSessionHistory = useMemo((): StudentSessionHistoryItem[] => {
+    if (!studentId) return [];
+
+    const entries: StudentSessionHistoryItem[] = [];
+    const representedSessionIds = new Set<string>();
+
+    attendanceList.forEach((att) => {
+      const session = allSessions.find((s) => s.id === att.sessionId);
+      if (session) {
+        representedSessionIds.add(session.id);
+      }
+
+      const rawDate = session?.date || (att.recordedAt ? att.recordedAt.split('T')[0] : '');
+      const rawTime = session?.startTime || '';
+      const sortTimestamp = getChronologicalTimestamp(rawDate, rawTime, att.recordedAt || session?.createdAt);
+
+      const isPrivate = !!session?.studentId || (session ? !session.groupId : false);
+      const isAbsentCharged = att.status === 'absent_charged' || (att.status === 'absent' && att.isCharged !== false);
+      const isAbsentFree = att.status === 'absent_free' || (att.status === 'absent' && att.isCharged === false);
+      const isExcused = att.status === 'excused';
+      const isPresent = att.status === 'present';
+      const isLate = att.status === 'late';
+      const isUnpaid = att.paymentStatus === 'unpaid' || att.paymentOverride === 'unpaid' || att.isPaid === false;
+      const title = session?.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Group Class' : 'حصة مجموعة'));
+      const timeDisplay = rawTime ? formatTimeDisplay(rawTime, isRTL) : '';
+
+      entries.push({
+        id: att.id,
+        attendance: att,
+        session,
+        dateStr: rawDate,
+        timeDisplay,
+        isPrivate,
+        status: att.status,
+        isAbsentCharged,
+        isAbsentFree,
+        isExcused,
+        isPresent,
+        isLate,
+        isUnpaid,
+        title,
+        sortTimestamp,
+      });
+    });
+
+    // Also include any private sessions directly assigned to this student without an attendance record yet
+    allSessions.forEach((s) => {
+      if (s.studentId === studentId && !representedSessionIds.has(s.id)) {
+        representedSessionIds.add(s.id);
+        const rawDate = s.date || '';
+        const rawTime = s.startTime || '';
+        const sortTimestamp = getChronologicalTimestamp(rawDate, rawTime, s.createdAt);
+
+        entries.push({
+          id: `ses_${s.id}`,
+          session: s,
+          dateStr: rawDate,
+          timeDisplay: rawTime ? formatTimeDisplay(rawTime, isRTL) : '',
+          isPrivate: true,
+          status: s.status,
+          isAbsentCharged: false,
+          isAbsentFree: false,
+          isExcused: false,
+          isPresent: s.status === 'completed',
+          isLate: false,
+          isUnpaid: true,
+          title: s.title || (isEn ? 'Private Lesson' : 'درس خاص'),
+          sortTimestamp,
+        });
+      }
+    });
+
+    // Stable, non-mutating sort: Newest to oldest (descending)
+    // Same-date sessions are sorted by their actual time (latest first).
+    return entries.sort((a, b) => {
+      if (b.sortTimestamp !== a.sortTimestamp) {
+        return b.sortTimestamp - a.sortTimestamp;
+      }
+      const secondaryA = a.attendance?.recordedAt || a.session?.createdAt || '';
+      const secondaryB = b.attendance?.recordedAt || b.session?.createdAt || '';
+      if (secondaryB !== secondaryA) {
+        return secondaryB.localeCompare(secondaryA);
+      }
+      return b.id.localeCompare(a.id);
+    });
+  }, [studentId, attendanceList, allSessions, isEn, isRTL]);
   const allCreditLogs = useMemo(() => (studentId ? db.getCreditLogs().filter((l) => l.studentId === studentId) : []), [studentId]);
   const studentBehaviorLogs = useMemo(() => (studentId ? db.getStudentBehaviorLogs(studentId) : []), [studentId]);
   const behaviorStats = useMemo(() => calculateStudentBehaviorStats(studentBehaviorLogs), [studentBehaviorLogs]);
@@ -790,7 +964,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               className={`chip ${activeSubTab === 'attendance' ? 'chip-active' : ''}`}
             >
               <AppIcon name="calendarCheck" size={13} />
-              <span>{t('attendance')} ({attendanceList.length})</span>
+              <span>{t('attendance')} ({sortedSessionHistory.length})</span>
             </button>
 
             <button
@@ -2168,14 +2342,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-[#0F2A4A]">
-                    {isEn ? `Attendance History (${attendanceList.length})` : `سجل الحصص المنفذة والحضور (${attendanceList.length})`}
+                    {isEn ? `Attendance History (${sortedSessionHistory.length})` : `سجل الحصص المنفذة والحضور (${sortedSessionHistory.length})`}
                   </span>
                   <span className="text-xs font-black text-[#0F2A4A] bg-[#E1EBEC]/65 px-2.5 py-1 rounded-xl border border-[#17375E]/50">
                     {isEn ? `Rate: ${attendanceRate}%` : `معدل الالتزام: ${attendanceRate}%`}
                   </span>
                 </div>
 
-                {attendanceList.length === 0 ? (
+                {sortedSessionHistory.length === 0 ? (
                   <div className="classy-card p-8 text-center space-y-3 bg-[#FFFFFF]">
                     <AppIcon name="calendarCheck" className="w-8 h-8 text-[#5F7083] mx-auto opacity-40" />
                     <p className="text-xs font-bold text-[#5F7083]">
@@ -2184,28 +2358,43 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-2.5">
-                    {attendanceList.map((att) => {
-                      const session = allSessions.find((s) => s.id === att.sessionId);
-                      const isPrivate = !!session?.studentId;
-                      const isUnpaid =
-                        att.paymentStatus === 'unpaid' ||
-                        att.paymentOverride === 'unpaid' ||
-                        att.isPaid === false;
+                    {sortedSessionHistory.map((item) => {
+                      const att = item.attendance;
+                      const session = item.session;
+                      const isPrivate = item.isPrivate;
+                      const isUnpaid = item.isUnpaid;
 
                       return (
                         <div
-                          key={att.id}
-                          className="classy-card p-3.5 bg-[#FFFFFF] border-[#E1EBEC] hover:border-[#17375E]/40 transition-all space-y-2 text-xs"
+                          key={item.id}
+                          className={`classy-card p-3.5 transition-all space-y-2 text-xs ${
+                            item.isAbsentCharged
+                              ? 'bg-[#FFF5F5] border-[#FF647C]/40 hover:border-[#E53935]/60 shadow-2xs'
+                              : item.isAbsentFree
+                              ? 'bg-[#FFF8F8] border-[#FF647C]/30 hover:border-[#FF647C]/50 shadow-2xs'
+                              : 'bg-[#FFFFFF] border-[#E1EBEC] hover:border-[#17375E]/40'
+                          }`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
+                              {/* Dot indicator: distinct Red for absence */}
                               <span
-                                className={`w-2.5 h-2.5 rounded-full ${
-                                  isPrivate ? 'bg-[#0F2A4A]' : 'bg-[#17375E]'
+                                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                  item.isAbsentCharged
+                                    ? 'bg-[#E53935] ring-2 ring-[#E53935]/25'
+                                    : item.isAbsentFree
+                                    ? 'bg-[#FF647C] ring-2 ring-[#FF647C]/25'
+                                    : item.isLate
+                                    ? 'bg-[#D97706]'
+                                    : item.isExcused
+                                    ? 'bg-[#64748B]'
+                                    : isPrivate
+                                    ? 'bg-[#0F2A4A]'
+                                    : 'bg-[#17375E]'
                                 }`}
                               />
                               <strong className="font-black text-[#0F2A4A]">
-                                {session?.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'Group Class' : 'حصة مجموعة'))}
+                                {item.title}
                               </strong>
                               <span
                                 className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${
@@ -2216,62 +2405,99 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               >
                                 {isPrivate ? (isEn ? 'Private' : 'خاص') : (isEn ? 'Group' : 'مجموعة')}
                               </span>
+
+                              {/* Distinct red pill indicator for absences */}
+                              {item.isAbsentCharged && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#E53935]/10 text-[#E53935] border border-[#E53935]/20 shrink-0">
+                                  {isEn ? 'Charged' : 'محسوب'}
+                                </span>
+                              )}
+                              {item.isAbsentFree && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#FF647C]/10 text-[#FF647C] border border-[#FF647C]/20 shrink-0">
+                                  {isEn ? 'Uncharged' : 'غير محسوب'}
+                                </span>
+                              )}
                             </div>
 
                             {/* Status Badge */}
                             <StatusBadge
-                              status={att.status}
+                              status={
+                                item.isAbsentCharged
+                                  ? 'absent_charged'
+                                  : item.isAbsentFree
+                                  ? 'absent_free'
+                                  : (item.status as string)
+                              }
+                              variant={
+                                item.isAbsentCharged || item.isAbsentFree
+                                  ? 'danger'
+                                  : undefined
+                              }
                               label={
-                                att.status === 'present'
+                                item.isAbsentCharged
+                                  ? (isEn ? 'Absent (Charged)' : 'غائب محسوب')
+                                  : item.isAbsentFree
+                                  ? (isEn ? 'Absent (Not Charged)' : 'غائب غير محسوب')
+                                  : item.status === 'present'
                                   ? t('present')
-                                  : att.status === 'late'
+                                  : item.status === 'late'
                                   ? t('late')
-                                  : att.status === 'absent_charged'
-                                  ? t('absentCharged')
-                                  : t('absentExcused')
+                                  : item.status === 'excused'
+                                  ? (isEn ? 'Excused' : 'معذور')
+                                  : item.status === 'cancelled'
+                                  ? (isEn ? 'Cancelled' : 'ملغاة')
+                                  : (isEn ? 'Scheduled' : 'مجدول')
                               }
                             />
                           </div>
 
-                          <div className="flex items-center justify-between text-[11px] text-[#5F7083] pt-1 border-t border-[#E1EBEC] flex-wrap gap-2">
+                          <div className={`flex items-center justify-between text-[11px] text-[#5F7083] pt-1 border-t flex-wrap gap-2 ${
+                            item.isAbsentCharged || item.isAbsentFree ? 'border-[#FF647C]/20' : 'border-[#E1EBEC]'
+                          }`}>
                             <div className="flex items-center gap-2 flex-wrap">
                               <span>
-                                {session?.date || att.recordedAt?.split('T')[0]}{' '}
-                                {session?.startTime
-                                  ? `• ${formatTimeDisplay(session.startTime, true)}`
-                                  : ''}
+                                {item.dateStr}{' '}
+                                {item.timeDisplay ? `• ${item.timeDisplay}` : ''}
                               </span>
+
+                              {att?.absenceReason && (
+                                <span className="text-[10px] text-[#E53935] font-semibold">
+                                  ({att.absenceReason})
+                                </span>
+                              )}
 
                               {isPrivate && (
                                 <span className="font-black text-[10px] px-2 py-0.5 rounded-lg bg-[#E1EBEC]/15 text-[#0F2A4A] border border-[#E1EBEC] inline-flex items-center gap-1">
                                   <span>
                                     {formatSessionQuantityDisplay(
-                                      att.hours || session?.hours
-                                        ? { hours: att.hours || session?.hours, isHourly: true }
+                                      att?.hours || session?.hours
+                                        ? { hours: att?.hours || session?.hours, isHourly: true }
                                         : { sessionUnits: getSessionLessonQuantity(session, att), isHourly: false },
                                       isRTL
                                     )}
                                   </span>
-                                  {(att.sessionPriceSnapshot || session?.pricePerStudent) && (
-                                    <span>• {att.sessionPriceSnapshot || session?.pricePerStudent} {t('currency')}</span>
+                                  {(att?.sessionPriceSnapshot || session?.pricePerStudent) && (
+                                    <span>• {att?.sessionPriceSnapshot || session?.pricePerStudent} {t('currency')}</span>
                                   )}
                                 </span>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleSessionPaymentOverride(att.sessionId)}
-                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] border transition-colors cursor-pointer ${
-                                  isUnpaid
-                                    ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC]'
-                                    : 'bg-[#E1EBEC]/65 text-[#0F2A4A] border-[#17375E]/50'
-                                }`}
-                              >
-                                {isUnpaid ? (isEn ? 'Unpaid' : 'غير مسدد (مستحق)') : (isEn ? 'Paid' : 'مسدد (خالص)')}
-                              </button>
-                            </div>
+                            {att && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleSessionPaymentOverride(att.sessionId)}
+                                  className={`px-2 py-0.5 rounded-md font-bold text-[10px] border transition-colors cursor-pointer ${
+                                    isUnpaid
+                                      ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC]'
+                                      : 'bg-[#E1EBEC]/65 text-[#0F2A4A] border-[#17375E]/50'
+                                  }`}
+                                >
+                                  {isUnpaid ? (isEn ? 'Unpaid' : 'غير مسدد (مستحق)') : (isEn ? 'Paid' : 'مسدد (خالص)')}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

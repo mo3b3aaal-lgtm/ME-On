@@ -382,7 +382,64 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     threshold: 45,
   });
 
+  const handleDirectPrivateConfirm = (result: PrivateClassIntakeResult) => {
+    if (!session || !privateStudent) return;
+    const studentId = privateStudent.id;
+    const finalStatus = result.attendanceStatus || 'present';
+    const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+
+    const enr = allEnrollments.find((e) => e.studentId === studentId);
+    const isHourly =
+      group?.billingMode === 'hourly' ||
+      group?.billingType === 'hourly' ||
+      enr?.billingMode === 'hourly' ||
+      enr?.billingType === 'hourly';
+
+    const record: Attendance = {
+      id: `att_${session.id}_${studentId}`,
+      sessionId: session.id,
+      studentId,
+      enrollmentId: enr?.id || session.enrollmentId,
+      status: finalStatus,
+      isCharged,
+      sessionUnits: isHourly ? undefined : result.sessionUnits,
+      hours: isHourly ? result.hours : undefined,
+      notes: result.notes,
+      absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
+      recordedAt: new Date().toISOString(),
+    };
+
+    db.saveAttendanceBatch(session.id, [record]);
+    db.saveSession({
+      ...session,
+      status: 'completed',
+      sessionUnits: isHourly ? undefined : result.sessionUnits,
+      hours: isHourly ? result.hours : undefined,
+      pricePerStudent: result.pricePerStudent,
+      notes: result.notes || session.notes,
+    });
+
+    onSaveComplete();
+    onClose();
+  };
+
   if (!isOpen || !session) return null;
+
+  // CRITICAL RULE: A private lesson must NEVER open the group attendance modal
+  // that contains bulk actions like "Mark All Present" or "Mark All Absent".
+  // If a private session is routed here, immediately render PrivateClassIntakeModal directly.
+  if (isPrivateSession && privateStudent) {
+    return (
+      <PrivateClassIntakeModal
+        isOpen={isOpen}
+        onClose={onClose}
+        student={privateStudent}
+        session={session}
+        group={group}
+        onConfirm={handleDirectPrivateConfirm}
+      />
+    );
+  }
 
   return (
     <>

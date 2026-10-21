@@ -21,6 +21,7 @@ export interface SessionTimelineProps {
   isToday?: boolean;
   onRecordAttendance?: (item: ScheduledClassItem) => void;
   onOpenAttendanceModal?: (session: Session) => void;
+  onTapSession?: (item: ScheduledClassItem, matchingSession?: Session) => void;
   onOpenStudentProfile?: (student: Student) => void;
   onOpenGroupProfile?: (group: Group) => void;
   onOpenAddSession?: (defaultGroupId?: string, defaultDate?: string) => void;
@@ -46,6 +47,7 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
   findSessionForScheduleItem,
   onRecordAttendance,
   onOpenAttendanceModal,
+  onTapSession,
   onOpenStudentProfile,
   onOpenGroupProfile,
   onOpenAddSession,
@@ -63,6 +65,15 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
     students.forEach((s) => map.set(s.id, s));
     return map;
   }, [students]);
+
+  // Memoized group students map for fast in-memory lookups
+  const groupStudentsMap = useMemo(() => {
+    const map = new Map<string, Student[]>();
+    groups.forEach((g) => {
+      map.set(g.id, db.getGroupStudents(g.id));
+    });
+    return map;
+  }, [groups, students]);
 
   // Current time in minutes for "Now" line positioning, updated every minute
   const [currentMinutes, setCurrentMinutes] = useState(() => {
@@ -166,7 +177,7 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
           : null;
 
         const groupStudents = !isPrivate && item.groupId
-          ? db.getGroupStudents(item.groupId)
+          ? (groupStudentsMap.get(item.groupId) || db.getGroupStudents(item.groupId))
           : [];
 
         const title = isPrivate
@@ -196,10 +207,15 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
 
               {/* Session card in MintCard style */}
               <MintCard
+                key={item.id}
                 clickable
                 style={{ animationDelay: staggerDelay }}
                 onClick={() => {
-                  if (matchingSession) {
+                  if (onTapSession) {
+                    onTapSession(item, matchingSession);
+                  } else if (isPrivate) {
+                    onRecordAttendance?.(item);
+                  } else if (matchingSession) {
                     onOpenAttendanceModal?.(matchingSession);
                   } else if (onRecordAttendance) {
                     onRecordAttendance(item);

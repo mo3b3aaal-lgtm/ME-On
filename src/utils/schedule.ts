@@ -956,7 +956,8 @@ export function getUpcomingClassesForStudent(
   groups: Group[],
   enrollments: Enrollment[],
   limit: number = 5,
-  isRTLOrLang?: boolean | string
+  isRTLOrLang?: boolean | string,
+  sessionsParam?: Session[]
 ): UpcomingStudentClass[] {
   if (!studentId) return [];
 
@@ -965,12 +966,69 @@ export function getUpcomingClassesForStudent(
   const studentEnrollments = enrollments.filter(
     (e) => e.studentId === studentId && e.status !== 'stopped'
   );
-  if (studentEnrollments.length === 0) return [];
 
   const groupsMap = new Map<string, Group>();
   groups.forEach((g) => groupsMap.set(g.id, g));
 
   const upcoming: UpcomingStudentClass[] = [];
+  const coveredDateSlotKeys = new Set<string>();
+
+  // 1. Explicit scheduled Session records for this student on or after today
+  let allSessionsList: Session[] = [];
+  if (sessionsParam && Array.isArray(sessionsParam)) {
+    allSessionsList = sessionsParam;
+  } else if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const raw = localStorage.getItem('tm_v2_sessions');
+      if (raw) allSessionsList = JSON.parse(raw);
+    } catch {}
+  }
+
+  const todayStr = toLocalISODate(new Date());
+
+  const explicitScheduled = allSessionsList.filter(
+    (s) => s.studentId === studentId && s.status === 'scheduled' && s.date >= todayStr
+  );
+
+  for (const s of explicitScheduled) {
+    const rawTime = s.startTime || '16:00';
+    const slotKey = `${s.date}_${rawTime}`;
+    coveredDateSlotKeys.add(slotKey);
+
+    const sDate = parseLocalDateStr(s.date);
+    const dayIdx = sDate.getDay();
+    const canonKey = DAY_INDEX_TO_CANONICAL[dayIdx] || 'saturday';
+    const localizedDayName = getLocalizedWeekdayName(canonKey, isRTL);
+
+    const todayDateObj = parseLocalDateStr(todayStr);
+    const diffDays = Math.round((sDate.getTime() - todayDateObj.getTime()) / (1000 * 60 * 60 * 24));
+    const dayRelative =
+      diffDays === 0
+        ? (isRTL ? 'اليوم' : 'Today')
+        : diffDays === 1
+        ? (isRTL ? 'غداً' : 'Tomorrow')
+        : localizedDayName;
+
+    const group = s.groupId ? groupsMap.get(s.groupId) : undefined;
+    const isPrivate = !s.groupId || !!s.studentId;
+
+    upcoming.push({
+      id: `up_ses_${s.id}`,
+      dateStr: s.date,
+      dayName: localizedDayName,
+      dayRelative,
+      time: formatTimeDisplay(rawTime, isRTL),
+      rawTime,
+      groupId: s.groupId || '',
+      groupName: isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (group?.name || s.title || ''),
+      isPrivate,
+      subject: s.title || (isPrivate ? (isRTL ? 'درس خاص' : 'Private Lesson') : (group?.subject || '')),
+      location: getLocalizedLocationName(group?.roomOrLocation || '', isRTL),
+      accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
+    });
+  }
+
+  // 2. Recurring schedule slots for the next 14 days
   const today = new Date();
 
   for (let offset = 0; offset < 14; offset++) {
@@ -1029,6 +1087,10 @@ export function getUpcomingClassesForStudent(
 
       for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
         const rawTime = effectiveTimes[tIdx];
+        const slotKey = `${dateStr}_${rawTime}`;
+        if (coveredDateSlotKeys.has(slotKey)) continue;
+        coveredDateSlotKeys.add(slotKey);
+
         const formattedTime = formatTimeDisplay(rawTime, isRTL);
         const cleanKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
 
@@ -1051,6 +1113,16 @@ export function getUpcomingClassesForStudent(
 
     if (upcoming.length >= limit * 2) break;
   }
+
+  // Sort chronologically by date and time
+  upcoming.sort((a, b) => {
+    if (a.dateStr !== b.dateStr) {
+      return a.dateStr.localeCompare(b.dateStr);
+    }
+    const timeA = parseTimeToMinutes(a.rawTime);
+    const timeB = parseTimeToMinutes(b.rawTime);
+    return timeA - timeB;
+  });
 
   return upcoming.slice(0, limit);
 }

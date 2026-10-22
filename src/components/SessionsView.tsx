@@ -12,6 +12,8 @@ import {
   ScheduledClassItem,
   parseTimeToMinutes,
 } from '../utils/schedule';
+import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
+import { Attendance } from '../types';
 
 interface SessionsViewProps {
   sessions: Session[];
@@ -209,6 +211,124 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
     onOpenAttendanceModal(newSession);
   };
 
+  const [privateIntakeTarget, setPrivateIntakeTarget] = useState<{
+    item?: ScheduledClassItem;
+    session?: Session;
+    studentId: string;
+  } | null>(null);
+
+  // Router for session taps: opens PrivateClassIntakeModal for private lessons, group modal for groups
+  const handleSessionCardClick = (
+    item: ScheduledClassItem,
+    matchingSession?: Session
+  ) => {
+    const isPrivate =
+      item.isPrivate ||
+      !!item.studentId ||
+      (matchingSession ? !matchingSession.groupId || !!matchingSession.studentId : false);
+
+    const existing = matchingSession || findSessionForScheduleItem(item);
+
+    if (isPrivate) {
+      const studentId =
+        item.studentId ||
+        matchingSession?.studentId ||
+        (item.studentName ? students.find((s) => s.name === item.studentName)?.id : '') ||
+        '';
+
+      if (studentId) {
+        setPrivateIntakeTarget({
+          item,
+          session: existing,
+          studentId,
+        });
+        return;
+      }
+    }
+
+    if (existing) {
+      onOpenAttendanceModal(existing);
+    } else {
+      handleStartRecurringClass(item);
+    }
+  };
+
+  const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
+    if (!privateIntakeTarget) return;
+    const { item, session: targetSession, studentId } = privateIntakeTarget;
+
+    let session = targetSession;
+    if (!session && item) {
+      const now = new Date().toISOString();
+      const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time || '16:00');
+      const deterministicId = `sess_${selectedDateStr}_stu_${studentId}_${itemMins}`;
+      session = {
+        id: deterministicId,
+        groupId: '',
+        title: item.studentName
+          ? (isEn ? `Private Lesson - ${item.studentName}` : `درس خاص - ${item.studentName}`)
+          : (isEn ? 'Private Lesson' : 'درس خاص'),
+        date: selectedDateStr,
+        dayName: item.dayName,
+        startTime: item.rawTime || item.time?.split(' - ')[0] || '16:00',
+        endTime: item.time?.split(' - ')[1] || '',
+        sessionNumber: 1,
+        hours: result.hours || 1.5,
+        hourlyRate: result.pricePerStudent || 100,
+        pricePerStudent: result.pricePerStudent || 100,
+        status: 'scheduled',
+        studentId,
+        year: parseInt(selectedDateStr.split('-')[0], 10),
+        month: parseInt(selectedDateStr.split('-')[1], 10),
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
+    if (!session) return;
+
+    const enr = enrollments.find(
+      (e) => e.studentId === studentId && (e.serviceType === 'private' || !e.groupId)
+    );
+    const isHourly = session.isHourly || enr?.billingMode === 'hourly' || enr?.billingType === 'hourly';
+    const finalStatus = result.attendanceStatus || 'present';
+    const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+
+    const record: Attendance = {
+      id: `att_${session.id}_${studentId}`,
+      sessionId: session.id,
+      studentId,
+      enrollmentId: enr?.id || session.enrollmentId,
+      status: finalStatus,
+      isCharged,
+      sessionUnits: isHourly ? undefined : result.sessionUnits,
+      hours: isHourly ? result.hours : undefined,
+      notes: result.notes,
+      absenceReason:
+        finalStatus === 'absent_free'
+          ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب'))
+          : undefined,
+      recordedAt: new Date().toISOString(),
+    };
+
+    db.saveAttendanceBatch(session.id, [record]);
+    db.saveSession({
+      ...session,
+      status: 'completed',
+      sessionUnits: isHourly ? undefined : result.sessionUnits,
+      hours: isHourly ? result.hours : undefined,
+      pricePerStudent: result.pricePerStudent,
+      notes: result.notes || session.notes,
+    });
+
+    setPrivateIntakeTarget(null);
+    if (onDataChanged) onDataChanged();
+  };
+
+  const privateIntakeStudent = useMemo(() => {
+    if (!privateIntakeTarget) return null;
+    return students.find((s) => s.id === privateIntakeTarget.studentId) || null;
+  }, [privateIntakeTarget, students]);
+
   return (
     <div
       className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar px-5 py-4 space-y-4 text-ink pb-32 bg-page relative"
@@ -298,6 +418,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           selectedDateStr={selectedDateStr}
           isToday={selectedDateStr === todayStr}
           findSessionForScheduleItem={findSessionForScheduleItem}
+          onTapSession={handleSessionCardClick}
           onRecordAttendance={handleStartRecurringClass}
           onOpenAttendanceModal={onOpenAttendanceModal}
           onOpenStudentProfile={onOpenStudentProfile}
@@ -305,6 +426,17 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           onOpenAddSession={onOpenAddSession}
         />
       </div>
+
+      {/* Private Class Intake Modal */}
+      {privateIntakeTarget && (
+        <PrivateClassIntakeModal
+          isOpen={!!privateIntakeTarget}
+          onClose={() => setPrivateIntakeTarget(null)}
+          student={privateIntakeStudent}
+          session={privateIntakeTarget.session}
+          onConfirm={handleConfirmPrivateIntake}
+        />
+      )}
     </div>
   );
 };

@@ -66,8 +66,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   }, [sessionStudentId, group?.type, groupId]);
 
   const enrolledStudents = useMemo(() => {
-    if (!sessionId || !groupId) return [];
+    if (!sessionId) return [];
     if (privateStudent) return [privateStudent];
+    if (!groupId) return [];
     return db.getGroupStudents(groupId);
   }, [sessionId, groupId, privateStudent]);
 
@@ -77,10 +78,11 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   );
 
   const allEnrollments = useMemo(() => {
-    if (!sessionId || !groupId) return [];
+    if (!sessionId) return [];
     if (isPrivateSession && privateStudent) {
       return db.getStudentPrivateEnrollments(privateStudent.id).map((p) => p.enrollment);
     }
+    if (!groupId) return [];
     return db.getGroupEnrollments(groupId);
   }, [sessionId, groupId, isPrivateSession, privateStudent]);
 

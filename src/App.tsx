@@ -112,6 +112,7 @@ export default function App() {
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [sessionDefaultGroupId, setSessionDefaultGroupId] = useState<string | undefined>(undefined);
   const [sessionDefaultDate, setSessionDefaultDate] = useState<string | undefined>(undefined);
+  const [sessionDefaultStudentId, setSessionDefaultStudentId] = useState<string | undefined>(undefined);
 
   const [isBulkAddSessionOpen, setIsBulkAddSessionOpen] = useState(false);
   const [bulkAddStudents, setBulkAddStudents] = useState<Student[]>([]);
@@ -228,10 +229,11 @@ export default function App() {
     setIsAddGroupOpen(true);
   };
 
-  const handleOpenAddSession = (defaultGroupId?: string, defaultDate?: string) => {
+  const handleOpenAddSession = (defaultGroupId?: string, defaultDate?: string, defaultStudentId?: string) => {
     setEditingSession(null);
     setSessionDefaultGroupId(defaultGroupId || groups[0]?.id);
     setSessionDefaultDate(defaultDate);
+    setSessionDefaultStudentId(defaultStudentId);
     setIsAddSessionOpen(true);
   };
 
@@ -245,6 +247,7 @@ export default function App() {
     setEditingSession(session);
     setSessionDefaultGroupId(session.groupId);
     setSessionDefaultDate(session.date);
+    setSessionDefaultStudentId(session.studentId);
     setIsAddSessionOpen(true);
   };
 
@@ -448,11 +451,16 @@ export default function App() {
         {isAddSessionOpen && (
           <AddEditSessionModal
             isOpen={isAddSessionOpen}
-            onClose={() => setIsAddSessionOpen(false)}
+            onClose={() => {
+              setIsAddSessionOpen(false);
+              setSessionDefaultStudentId(undefined);
+            }}
             editingSession={editingSession}
             defaultGroupId={sessionDefaultGroupId}
             defaultDate={sessionDefaultDate}
+            defaultStudentId={sessionDefaultStudentId}
             allGroups={groups}
+            allStudents={students}
             onSaveComplete={() => {
               refreshData();
             }}

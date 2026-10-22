@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Session, Group } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Session, Group, Student } from '../types';
 import { db, getEffectiveSessionPrice, multiplyMoney } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { StudentAvatar } from './StudentAvatar';
 
 interface AddEditSessionModalProps {
   isOpen: boolean;
@@ -12,8 +13,10 @@ interface AddEditSessionModalProps {
   editingSession?: Session | null;
   defaultGroupId?: string;
   defaultDate?: string;
+  defaultStudentId?: string;
   isExtraSessionDefault?: boolean;
   allGroups: Group[];
+  allStudents?: Student[];
   onSaveComplete: (savedSession: Session) => void;
 }
 
@@ -25,13 +28,28 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   editingSession,
   defaultGroupId,
   defaultDate,
+  defaultStudentId,
   isExtraSessionDefault = false,
   allGroups,
+  allStudents = [],
   onSaveComplete,
 }) => {
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
   const todayStr = toLocalISODate();
+
+  const [sessionType, setSessionType] = useState<'group' | 'private'>(() => {
+    if (editingSession) {
+      return editingSession.studentId || !editingSession.groupId ? 'private' : 'group';
+    }
+    if (defaultStudentId) return 'private';
+    return 'group';
+  });
+
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(() => {
+    return editingSession?.studentId || defaultStudentId || '';
+  });
+  const [studentSearch, setStudentSearch] = useState('');
 
   const [groupId, setGroupId] = useState(defaultGroupId || allGroups[0]?.id || '');
   const [title, setTitle] = useState(isEn ? 'Lesson Review & Explanation' : 'حصة مراجعة وشرح درس جديد');
@@ -46,8 +64,59 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   const [isExtraSession, setIsExtraSession] = useState<boolean>(isExtraSessionDefault);
   const [notes, setNotes] = useState('');
 
+  const enrollments = useMemo(() => (isOpen ? db.getEnrollments() : []), [isOpen]);
+
+  // Filter & prioritize students with active private lessons first, with search
+  const privateStudentCandidates = useMemo(() => {
+    const activeStudents = allStudents.filter((s) => s.status !== 'archived');
+    const privateStudentIds = new Set<string>();
+
+    enrollments.forEach((e) => {
+      if ((e.serviceType === 'private' || !e.groupId) && e.status !== 'stopped') {
+        privateStudentIds.add(e.studentId);
+      }
+    });
+
+    activeStudents.forEach((s) => {
+      if (s.serviceType === 'private' || (s.privateDays && s.privateDays.length > 0)) {
+        privateStudentIds.add(s.id);
+      }
+    });
+
+    // Sort: students with private lessons first, then alphabetically
+    const sorted = [...activeStudents].sort((a, b) => {
+      const aIsPriv = privateStudentIds.has(a.id) ? 1 : 0;
+      const bIsPriv = privateStudentIds.has(b.id) ? 1 : 0;
+      if (bIsPriv !== aIsPriv) return bIsPriv - aIsPriv;
+      return a.name.localeCompare(b.name);
+    });
+
+    if (!studentSearch.trim()) return sorted;
+    const q = studentSearch.trim().toLowerCase();
+    return sorted.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      (s.phone && s.phone.includes(q)) ||
+      (s.parentPhone && s.parentPhone.includes(q)) ||
+      (s.gradeLevel && s.gradeLevel.toLowerCase().includes(q))
+    );
+  }, [allStudents, enrollments, studentSearch, isOpen]);
+
+  const selectedStudent = useMemo(() => {
+    if (!selectedStudentId) return null;
+    return allStudents.find((s) => s.id === selectedStudentId) || null;
+  }, [selectedStudentId, allStudents]);
+
+  const selectedPrivateEnr = useMemo(() => {
+    if (!selectedStudentId) return null;
+    return enrollments.find(
+      (e) => e.studentId === selectedStudentId && (e.serviceType === 'private' || !e.groupId)
+    ) || null;
+  }, [selectedStudentId, enrollments]);
+
   const selectedGroup = allGroups.find((g) => g.id === groupId);
-  const isHourly = selectedGroup?.billingMode === 'hourly' || selectedGroup?.billingType === 'hourly';
+  const isHourly = sessionType === 'private'
+    ? (selectedPrivateEnr?.billingMode === 'hourly' || selectedPrivateEnr?.billingType === 'hourly')
+    : (selectedGroup?.billingMode === 'hourly' || selectedGroup?.billingType === 'hourly');
 
   // Helper to calculate hours between times
   const calculateHoursFromTimes = (start: string, end: string): number => {
@@ -67,7 +136,10 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
 
   useEffect(() => {
     if (editingSession) {
-      setGroupId(editingSession.groupId);
+      const isPriv = !!editingSession.studentId || !editingSession.groupId;
+      setSessionType(isPriv ? 'private' : 'group');
+      setSelectedStudentId(editingSession.studentId || '');
+      setGroupId(editingSession.groupId || allGroups[0]?.id || '');
       setTitle(editingSession.title);
       setDate(editingSession.date);
       setStartTime(editingSession.startTime);
@@ -81,29 +153,46 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       setIsExtraSession(editingSession.isExtraSession || false);
       setNotes(editingSession.notes || '');
     } else {
+      const isPriv = Boolean(defaultStudentId);
+      setSessionType(isPriv ? 'private' : 'group');
+      setSelectedStudentId(defaultStudentId || '');
       const gId = defaultGroupId || allGroups[0]?.id || '';
       setGroupId(gId);
       const grp = allGroups.find((g) => g.id === gId);
-      setTitle(isExtraSessionDefault ? (isEn ? 'Extra Session' : 'حصة إضافية') : (isEn ? 'Lesson & Application' : 'حصة شرح وتطبيق'));
+
       setDate(defaultDate || todayStr);
       setStartTime('16:00');
       setEndTime('17:30');
       setSessionNumber(1);
       const durHours = 1.5;
       setHours(durHours);
-      const rate = grp?.hourlyRate || grp?.defaultPrice || 100;
-      setHourlyRate(rate);
-      const calculatedPrice = (grp?.billingMode === 'hourly' || grp?.billingType === 'hourly')
-        ? durHours * rate
-        : getEffectiveSessionPrice(null, grp);
-      setPricePerStudent(calculatedPrice);
-      setStatus('scheduled');
       setIsExtraSession(isExtraSessionDefault);
+      setStatus('scheduled');
       setNotes('');
-    }
-  }, [editingSession, defaultGroupId, defaultDate, isExtraSessionDefault, isOpen]);
+      setStudentSearch('');
 
-  // Update hours and price when times or group change
+      if (isPriv && defaultStudentId) {
+        const st = allStudents.find((s) => s.id === defaultStudentId);
+        setTitle(isEn ? `Private Lesson - ${st?.name || ''}` : `درس خاص - ${st?.name || ''}`);
+        const privEnr = enrollments.find(
+          (e) => e.studentId === defaultStudentId && (e.serviceType === 'private' || !e.groupId)
+        );
+        const rate = privEnr?.hourlyRate || privEnr?.customPrice || 100;
+        setHourlyRate(rate);
+        setPricePerStudent(rate);
+      } else {
+        setTitle(isExtraSessionDefault ? (isEn ? 'Extra Session' : 'حصة إضافية') : (isEn ? 'Lesson & Application' : 'حصة شرح وتطبيق'));
+        const rate = grp?.hourlyRate || grp?.defaultPrice || 100;
+        setHourlyRate(rate);
+        const calculatedPrice = (grp?.billingMode === 'hourly' || grp?.billingType === 'hourly')
+          ? durHours * rate
+          : getEffectiveSessionPrice(null, grp);
+        setPricePerStudent(calculatedPrice);
+      }
+    }
+  }, [editingSession, defaultGroupId, defaultDate, defaultStudentId, isExtraSessionDefault, isOpen]);
+
+  // Update hours and price when times change
   const handleTimeChange = (newStart: string, newEnd: string) => {
     setStartTime(newStart);
     setEndTime(newEnd);
@@ -114,24 +203,46 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     }
   };
 
+  const handleSelectStudent = (st: Student) => {
+    setSelectedStudentId(st.id);
+    const privEnr = enrollments.find(
+      (e) => e.studentId === st.id && (e.serviceType === 'private' || !e.groupId)
+    );
+    const privIsHourly = privEnr?.billingMode === 'hourly' || privEnr?.billingType === 'hourly';
+    const rate = privEnr?.hourlyRate || privEnr?.customPrice || 100;
+    setHourlyRate(rate);
+
+    if (privIsHourly) {
+      setPricePerStudent(multiplyMoney(hours, rate));
+    } else {
+      setPricePerStudent(rate);
+    }
+
+    if (!editingSession) {
+      setTitle(isEn ? `Private Lesson - ${st.name}` : `درس خاص - ${st.name}`);
+    }
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!groupId || !date) return;
+    if (sessionType === 'group' && !groupId) return;
+    if (sessionType === 'private' && !selectedStudentId) return;
+    if (!date) return;
 
     const parsedDate = parseLocalDateStr(date);
     const dayName = ARABIC_DAYS[parsedDate.getDay()] || 'السبت';
     const month = parsedDate.getMonth() + 1;
     const year = parsedDate.getFullYear();
 
-    const grp = allGroups.find((g) => g.id === groupId);
-    const isPackage = grp?.billingMode === 'package' || grp?.billingType === 'package';
-    const isGrpHourly = grp?.billingMode === 'hourly' || grp?.billingType === 'hourly';
+    const grp = sessionType === 'group' ? allGroups.find((g) => g.id === groupId) : undefined;
+    const isPackage = sessionType === 'group' && (grp?.billingMode === 'package' || grp?.billingType === 'package');
+    const isHourlyBilling = isHourly;
     const packageSessionsCount = isPackage ? (grp?.packageSessionsCount || 8) : undefined;
     const packageTotalPrice = isPackage ? grp?.defaultPrice : undefined;
 
-    const finalHours = isGrpHourly ? (Number(hours) || calculateHoursFromTimes(startTime, endTime)) : undefined;
-    const finalHourlyRate = isGrpHourly ? (Number(hourlyRate) || grp?.hourlyRate || 100) : undefined;
-    const effectiveSessionPrice = isGrpHourly
+    const finalHours = isHourlyBilling ? (Number(hours) || calculateHoursFromTimes(startTime, endTime)) : undefined;
+    const finalHourlyRate = isHourlyBilling ? (Number(hourlyRate) || 100) : undefined;
+    const effectiveSessionPrice = isHourlyBilling
       ? (finalHours! * finalHourlyRate!)
       : (Number(pricePerStudent) || (grp ? getEffectiveSessionPrice(null, grp) : 100));
 
@@ -141,8 +252,14 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
 
     const savedSession: Session = {
       id: sessionId,
-      groupId,
-      title: title.trim() || (isEn ? 'Class Session' : 'حصة دراسية'),
+      groupId: sessionType === 'group' ? groupId : '',
+      studentId: sessionType === 'private' ? selectedStudentId : undefined,
+      enrollmentId: sessionType === 'private' ? (selectedPrivateEnr?.id || undefined) : undefined,
+      title: title.trim() || (
+        sessionType === 'private'
+          ? (isEn ? `Private Lesson - ${selectedStudent?.name || ''}` : `درس خاص - ${selectedStudent?.name || ''}`)
+          : (isEn ? 'Class Session' : 'حصة دراسية')
+      ),
       date,
       dayName,
       month,
@@ -159,9 +276,11 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       packageTotalPrice,
       packageSessionsCount,
       status,
+      isHourly: isHourlyBilling,
       isExtraSession: isExtraSession || false,
       notes: notes.trim(),
       createdAt: editingSession ? editingSession.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     db.saveSession(savedSession);
@@ -176,15 +295,23 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       id="add-edit-session"
       isOpen={isOpen}
       onClose={onClose}
-      title={editingSession ? (isEn ? 'Edit Session' : 'تعديل بيانات الحصة') : (isEn ? 'Schedule New Session' : 'جدولة حصة دراسية جديدة')}
+      title={
+        editingSession
+          ? isEn ? 'Edit Session' : 'تعديل بيانات الحصة'
+          : sessionType === 'private'
+          ? isEn ? 'Schedule Private Session' : 'جدولة درس خاص'
+          : isEn ? 'Schedule Group Session' : 'جدولة حصة مجموعة'
+      }
       subtitle={
-        isEn
-          ? 'Supports multiple sessions on same day, linked to financials'
-          : 'تدعم أكثر من حصة في نفس اليوم ومرتبطة بالسجل المحاسبي'
+        sessionType === 'private'
+          ? isEn ? 'Advance scheduling for an individual private student' : 'جدولة موعد مسبق لطالب فردي في تاريخ وساعة محددة'
+          : isEn ? 'Supports multiple sessions on same day, linked to financials' : 'تدعم أكثر من حصة في نفس اليوم ومرتبطة بالسجل المحاسبي'
       }
       headerLeading={
-        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
-          <AppIcon name="calendarCheck" size={20} weight="duotone" />
+        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border border-line ${
+          sessionType === 'private' ? 'bg-[#0F2A4A]/10 text-[#0F2A4A]' : 'bg-mint-soft text-navy'
+        }`}>
+          <AppIcon name={sessionType === 'private' ? 'sparkles' : 'calendarCheck'} size={20} weight="duotone" />
         </div>
       }
       headerTrailing={
@@ -207,12 +334,14 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
           <button
             type="submit"
             form="add-session-form"
-            className="btn-orange flex-1"
+            className="btn-orange flex-1 cursor-pointer"
           >
             <AppIcon name="check" size={16} weight="bold" />
             <span>
               {editingSession
                 ? isEn ? 'Save Changes' : 'حفظ تعديلات الحصة'
+                : sessionType === 'private'
+                ? isEn ? '+ Schedule Private Session' : '+ جدولة الدرس الخاص'
                 : isEn ? '+ Schedule Session' : '+ جدولة الحصة'}
             </span>
           </button>
@@ -220,29 +349,228 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       }
     >
       <form id="add-session-form" onSubmit={handleSubmit} className="space-y-3.5 text-xs text-navy text-start">
-        {/* Select Group */}
-        <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
-          <label className="field-label flex items-center gap-1.5">
-            <AppIcon name="book" size={14} className="text-navy" />
-            <span>{isEn ? 'Target Group *' : 'المجموعة المستهدفة *'}</span>
-          </label>
-          <select
-            value={groupId}
-            onChange={(e) => {
-              const gId = e.target.value;
-              setGroupId(gId);
-              const grp = allGroups.find((g) => g.id === gId);
-              if (grp) setPricePerStudent(getEffectiveSessionPrice(null, grp));
+        {/* Session Type Selector: Radio Cards with Icon Badges */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              setSessionType('group');
+              if (!editingSession && title.startsWith('درس خاص') || title.startsWith('Private Lesson')) {
+                const grp = allGroups.find((g) => g.id === groupId);
+                setTitle(grp?.name || (isEn ? 'Lesson & Application' : 'حصة شرح وتطبيق'));
+              }
             }}
-            className="classy-select"
+            className={`p-3 rounded-2xl border text-start transition-all cursor-pointer flex items-center gap-2.5 ${
+              sessionType === 'group'
+                ? 'bg-[#17375E]/8 border-[#17375E] ring-1 ring-[#17375E]/30 shadow-2xs'
+                : 'bg-page border-line hover:border-[#17375E]/40 text-slate'
+            }`}
           >
-            {allGroups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name} ({g.subject} - {g.gradeLevel})
-              </option>
-            ))}
-          </select>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+              sessionType === 'group' ? 'bg-[#17375E] text-white shadow-xs' : 'bg-line/40 text-slate'
+            }`}>
+              <AppIcon name="users" size={16} weight="bold" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className={`block text-xs font-black truncate ${
+                sessionType === 'group' ? 'text-navy' : 'text-slate'
+              }`}>
+                {isEn ? 'Group Session' : 'حصة مجموعة'}
+              </span>
+              <span className="block text-[10px] text-slate font-medium truncate">
+                {isEn ? 'Class batch' : 'مجموعة دراسية'}
+              </span>
+            </div>
+            <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+              sessionType === 'group' ? 'border-[#17375E]' : 'border-line'
+            }`}>
+              {sessionType === 'group' && <div className="w-2 h-2 rounded-full bg-[#17375E]" />}
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSessionType('private');
+              if (!editingSession && selectedStudent) {
+                setTitle(isEn ? `Private Lesson - ${selectedStudent.name}` : `درس خاص - ${selectedStudent.name}`);
+              } else if (!editingSession) {
+                setTitle(isEn ? 'Private Lesson' : 'درس خاص');
+              }
+            }}
+            className={`p-3 rounded-2xl border text-start transition-all cursor-pointer flex items-center gap-2.5 ${
+              sessionType === 'private'
+                ? 'bg-[#0F2A4A]/8 border-[#0F2A4A] ring-1 ring-[#0F2A4A]/30 shadow-2xs'
+                : 'bg-page border-line hover:border-[#0F2A4A]/40 text-slate'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+              sessionType === 'private' ? 'bg-[#0F2A4A] text-white shadow-xs' : 'bg-line/40 text-slate'
+            }`}>
+              <AppIcon name="sparkles" size={16} weight="bold" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className={`block text-xs font-black truncate ${
+                sessionType === 'private' ? 'text-navy' : 'text-slate'
+              }`}>
+                {isEn ? 'Private Session' : 'درس خاص'}
+              </span>
+              <span className="block text-[10px] text-slate font-medium truncate">
+                {isEn ? 'Individual student' : 'طالب فردي مستقل'}
+              </span>
+            </div>
+            <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+              sessionType === 'private' ? 'border-[#0F2A4A]' : 'border-line'
+            }`}>
+              {sessionType === 'private' && <div className="w-2 h-2 rounded-full bg-[#0F2A4A]" />}
+            </div>
+          </button>
         </div>
+
+        {/* Group Selector Mode */}
+        {sessionType === 'group' && (
+          <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">
+            <label className="field-label flex items-center gap-1.5">
+              <AppIcon name="book" size={14} className="text-navy" />
+              <span>{isEn ? 'Target Group *' : 'المجموعة المستهدفة *'}</span>
+            </label>
+            <select
+              value={groupId}
+              onChange={(e) => {
+                const gId = e.target.value;
+                setGroupId(gId);
+                const grp = allGroups.find((g) => g.id === gId);
+                if (grp) setPricePerStudent(getEffectiveSessionPrice(null, grp));
+              }}
+              className="classy-select"
+            >
+              {allGroups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} ({g.subject} - {g.gradeLevel})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Private Student Selector Mode */}
+        {sessionType === 'private' && (
+          <div className="space-y-2">
+            {selectedStudent ? (
+              <div className="p-3.5 rounded-2xl bg-page border border-[#0F2A4A]/30 flex items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <StudentAvatar
+                    student={selectedStudent}
+                    name={selectedStudent.name}
+                    profilePhoto={selectedStudent.profilePhoto}
+                    achievementFrame={selectedStudent.achievementFrame}
+                    avatarColor={selectedStudent.avatarColor}
+                    size="md"
+                    showFrame={true}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <strong className="text-xs font-black text-navy truncate">
+                        {selectedStudent.name}
+                      </strong>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#0F2A4A]/10 text-[#0F2A4A] border border-[#0F2A4A]/20">
+                        {isEn ? 'Private Student' : 'طالب درس خاص'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate truncate mt-0.5">
+                      {[selectedStudent.gradeLevel, selectedStudent.phone].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudentId('')}
+                  className="px-2.5 py-1 rounded-xl bg-line/40 hover:bg-line text-navy text-[11px] font-bold transition-colors cursor-pointer shrink-0"
+                >
+                  {isEn ? 'Change' : 'تغيير الطالب'}
+                </button>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-page border border-line space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <label className="field-label flex items-center gap-1.5">
+                    <AppIcon name="user" size={14} className="text-navy" />
+                    <span>{isEn ? 'Select Private Student *' : 'اختر الطالب للدرس الخاص *'}</span>
+                  </label>
+                  <span className="text-[10px] text-slate font-medium">
+                    {isEn ? `${privateStudentCandidates.length} students` : `${privateStudentCandidates.length} طالب`}
+                  </span>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={isEn ? 'Search student by name or phone...' : 'ابحث عن الطالب بالاسم أو رقم الهاتف...'}
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="classy-input text-xs ps-8"
+                  />
+                  <div className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate pointer-events-none">
+                    <AppIcon name="search" size={13} />
+                  </div>
+                </div>
+
+                {/* Students List */}
+                <div className="max-h-52 overflow-y-auto space-y-1.5 pr-0.5">
+                  {privateStudentCandidates.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate">
+                      {isEn ? 'No students found.' : 'لم يتم العثور على طلاب مطابقين.'}
+                    </div>
+                  ) : (
+                    privateStudentCandidates.map((st) => {
+                      const hasPriv = enrollments.some(
+                        (e) => e.studentId === st.id && (e.serviceType === 'private' || !e.groupId) && e.status !== 'stopped'
+                      ) || st.serviceType === 'private' || (st.privateDays && st.privateDays.length > 0);
+
+                      return (
+                        <div
+                          key={st.id}
+                          onClick={() => handleSelectStudent(st)}
+                          className="p-2 rounded-xl border border-line hover:border-[#0F2A4A]/50 bg-white hover:bg-[#0F2A4A]/5 transition-all cursor-pointer flex items-center justify-between gap-2.5"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <StudentAvatar
+                              student={st}
+                              name={st.name}
+                              profilePhoto={st.profilePhoto}
+                              achievementFrame={st.achievementFrame}
+                              avatarColor={st.avatarColor}
+                              size="sm"
+                              showFrame={true}
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold text-navy truncate">{st.name}</span>
+                                {hasPriv && (
+                                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-[#0F2A4A]/10 text-[#0F2A4A]">
+                                    {isEn ? 'Private' : 'درس خاص'}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-slate block truncate">
+                                {[st.gradeLevel, st.phone].filter(Boolean).join(' · ')}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-black text-[#0F2A4A] shrink-0">
+                            {isEn ? 'Select' : 'اختيار'}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Title / Topic */}
         <div className="p-3.5 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">

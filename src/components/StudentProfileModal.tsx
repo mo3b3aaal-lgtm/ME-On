@@ -382,8 +382,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   // Upcoming scheduled classes for student
   const upcomingClasses = useMemo(() => {
-    return studentId ? getUpcomingClassesForStudent(studentId, allGroups, enrollments, 5, isRTL) : [];
-  }, [studentId, allGroups, enrollments, isRTL]);
+    return studentId ? getUpcomingClassesForStudent(studentId, allGroups, enrollments, 5, isRTL, allSessions) : [];
+  }, [studentId, allGroups, enrollments, isRTL, allSessions]);
 
   const nextClass = upcomingClasses[0] || null;
 

@@ -13,9 +13,10 @@ import {
 } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
-import { SegmentedControl } from './ui/SegmentedControl';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { SegmentedControl } from './ui/SegmentedControl';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
 interface AddPaymentModalProps {
   isOpen: boolean;
@@ -166,6 +167,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       referenceNumber: referenceNumber.trim(),
     });
 
+    triggerSuccessHaptic();
     onPaymentSaved();
     onClose();
   };
@@ -198,8 +200,9 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           <button
             type="submit"
             form="add-payment-form"
+            onClick={() => triggerLightHaptic()}
             disabled={!studentId || !activeEnrollment || customAmountInput <= 0}
-            className="btn-orange flex-1"
+            className="btn-orange flex-1 cursor-pointer"
           >
             <AppIcon name="check" size={16} weight="bold" />
             <span>تأكيد تسجيل الدفعة</span>

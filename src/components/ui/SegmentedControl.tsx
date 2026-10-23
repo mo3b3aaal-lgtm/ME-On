@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from '../../utils/i18n';
+import { triggerSelectionHaptic } from '../../utils/haptics';
 
 export interface SegmentedOption<T extends string = string> {
   value: T;
@@ -62,7 +63,12 @@ export function SegmentedControl<T extends string = string>({
             disabled={opt.disabled}
             title={opt.title}
             onClick={() => {
-              if (!opt.disabled) onChange(opt.value);
+              if (!opt.disabled) {
+                if (!isActive) {
+                  triggerSelectionHaptic();
+                }
+                onChange(opt.value);
+              }
             }}
             className={`segmented-item ${isActive ? 'segmented-item-active' : 'segmented-item-inactive'} ${itemClassName}`}
           >

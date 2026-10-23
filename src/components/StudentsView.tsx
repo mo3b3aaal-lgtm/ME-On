@@ -368,7 +368,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* When Groups segment is selected, render GroupsView content */}
       {selectedSegment === 'groups' ? (
-        <div className="pt-1">
+        <div key="groups-segment" className="pt-1 motion-groups-enter">
           <GroupsView
             groups={groups}
             allStudents={students}
@@ -389,7 +389,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           />
         </div>
       ) : (
-        <>
+        <div key="students-segment" className="space-y-4 motion-students-enter">
           {/* Quick Feedback Toast */}
           <Toast
             isOpen={Boolean(feedbackToast)}
@@ -705,9 +705,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   ? 'bg-mint border-mint shadow-mint'
                   : 'bg-mint-soft border-line shadow-white';
 
-                // Stagger delay for top 8 items: 220ms fade-up staggered 35ms, disabled for lists over 50
+                // Stagger delay for top 8 items: 120Hz-ready fade-up staggered 18ms, disabled for lists over 50
                 const isStaggerEnabled = filteredStudents.length <= 50;
-                const staggerDelay = isStaggerEnabled && index < 8 ? `${index * 35}ms` : undefined;
+                const staggerDelay = isStaggerEnabled && index < 8 ? `${index * 18}ms` : undefined;
 
                 // Meta line: group/private, billing type
                 const serviceLabel = data?.isPrivateOnly
@@ -769,7 +769,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                         onOpenStudentProfile(student);
                       }
                     }}
-                    className={`relative overflow-hidden rounded-[var(--radius-card)] p-4 border text-navy transition-all duration-150 cursor-pointer select-none active:scale-[0.97] ${
+                    className={`relative overflow-hidden rounded-[var(--radius-card)] p-4 border text-navy transition-transform duration-120 ease-out cursor-pointer select-none active:scale-[0.985] will-change-transform ${
                       isStaggerEnabled ? 'animate-tile-stagger' : ''
                     } ${bgClass} ${
                       isStudentArchived ? 'opacity-70' : ''
@@ -956,7 +956,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

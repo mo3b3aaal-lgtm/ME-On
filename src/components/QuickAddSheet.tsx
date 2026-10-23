@@ -3,6 +3,7 @@ import { MintCard } from './ui/MintCard';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
 import { useTranslation } from '../utils/i18n';
 import { useModalLayer } from '../contexts/ModalContext';
+import { triggerLightHaptic } from '../utils/haptics';
 
 export interface QuickAddSheetProps {
   isOpen: boolean;
@@ -135,6 +136,7 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
               key={action.id}
               clickable
               onClick={() => {
+                triggerLightHaptic();
                 onClose();
                 action.onClick();
               }}

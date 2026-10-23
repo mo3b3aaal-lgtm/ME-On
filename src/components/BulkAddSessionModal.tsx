@@ -5,6 +5,7 @@ import { useTranslation } from '../utils/i18n';
 import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
 interface BulkAddSessionModalProps {
   isOpen: boolean;
@@ -117,6 +118,7 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
 
       newSessions.forEach((s) => db.saveSession(s));
       setResult({ success: true, count: newSessions.length });
+      triggerSuccessHaptic();
       if (onSessionsCreated) {
         onSessionsCreated(newSessions.length);
       }
@@ -154,8 +156,11 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
         result?.success ? (
           <button
             type="button"
-            onClick={onClose}
-            className="btn-orange w-full"
+            onClick={() => {
+              triggerLightHaptic();
+              onClose();
+            }}
+            className="btn-orange w-full cursor-pointer"
           >
             {t('confirm')}
           </button>
@@ -171,8 +176,9 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
             <button
               type="submit"
               form="bulk-add-session-form"
+              onClick={() => triggerLightHaptic()}
               disabled={isSubmitting || previewDates.length === 0}
-              className="btn-orange flex-1"
+              className="btn-orange flex-1 cursor-pointer"
             >
               {isSubmitting ? (
                 <span>{t('loading')}</span>

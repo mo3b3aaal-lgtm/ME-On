@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActiveTab } from '../types';
 import { useTranslation } from '../utils/i18n';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
+import { triggerLightHaptic } from '../utils/haptics';
 
 interface BottomNavBarProps {
   activeTab: ActiveTab;
@@ -69,6 +70,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       : -1;
 
   const handleTabClick = (tabId: ActiveTab) => {
+    triggerLightHaptic();
     setPoppingTab(tabId);
     setTimeout(() => {
       setPoppingTab(null);
@@ -116,7 +118,10 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       <div className="w-[72px] flex items-center justify-center shrink-0 relative">
         <button
           type="button"
-          onClick={onOpenQuickAdd}
+          onClick={() => {
+            triggerLightHaptic();
+            onOpenQuickAdd();
+          }}
           aria-label={language.startsWith('en') ? 'Quick Actions' : 'إجراء سريع'}
           title={language.startsWith('en') ? 'Quick Actions' : 'إجراء سريع'}
           className="w-14 h-14 -mt-[14px] rounded-full bg-page border-[3px] border-navy flex items-center justify-center shadow-[0_8px_20px_rgba(23,55,94,0.25)] active:scale-[0.92] transition-transform duration-150 cursor-pointer z-10"

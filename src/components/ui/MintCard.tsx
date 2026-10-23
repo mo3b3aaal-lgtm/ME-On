@@ -18,7 +18,7 @@ export const MintCard: React.FC<MintCardProps> = ({
 }) => {
   const isInteractive = clickable || Boolean(onClick);
   const interactiveClasses = isInteractive
-    ? 'cursor-pointer active:scale-[0.97] transition-transform duration-150 select-none'
+    ? 'cursor-pointer active:scale-[0.985] transition-transform duration-120 ease-out select-none will-change-transform'
     : '';
 
   const hasExplicitBg = className.includes('bg-');

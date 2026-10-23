@@ -9,6 +9,7 @@ import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClas
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -362,6 +363,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
     db.saveAttendanceBatch(session.id, listToSave);
     setIsSavedSuccess(true);
+    triggerSuccessHaptic();
     
     setTimeout(() => {
       onSaveComplete();
@@ -421,6 +423,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       notes: result.notes || session.notes,
     });
 
+    triggerSuccessHaptic();
     onSaveComplete();
     onClose();
   };
@@ -488,9 +491,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => {
+                triggerLightHaptic();
+                handleSave();
+              }}
               disabled={isSavedSuccess}
-              className="btn-orange flex-1"
+              className="btn-orange flex-1 cursor-pointer"
             >
               {isSavedSuccess ? (
                 <>

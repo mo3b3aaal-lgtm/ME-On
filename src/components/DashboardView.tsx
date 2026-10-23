@@ -1050,7 +1050,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onClick={() => {
                 handleSessionCardClick(focusSession2);
               }}
-              style={{ animationDelay: '40ms' }}
+              style={{ animationDelay: '18ms' }}
               className={`animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4 group transition-all duration-150 ${
                 focusFrameTheme2
                   ? `${focusFrameTheme2.cardBgClass} ${focusFrameTheme2.cardBorderClass}`
@@ -1109,7 +1109,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ) : (
             <MintCard
               key="focus-empty-2"
-              style={{ animationDelay: '40ms' }}
+              style={{ animationDelay: '18ms' }}
               className="animate-tile-stagger min-h-[168px] relative overflow-hidden flex flex-col justify-between p-4"
             >
               <div className="relative z-10 space-y-1">
@@ -1132,7 +1132,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             key="payments-due"
             clickable
             onClick={handlePaymentsDueClick}
-            style={{ animationDelay: '80ms' }}
+            style={{ animationDelay: '36ms' }}
             className="animate-tile-stagger min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
           >
             <div className="relative z-10 space-y-1">
@@ -1164,7 +1164,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             key="attendance-to-record"
             clickable
             onClick={handleAttendanceToRecordClick}
-            style={{ animationDelay: '120ms' }}
+            style={{ animationDelay: '54ms' }}
             className="animate-tile-stagger min-h-[104px] relative overflow-hidden flex flex-col justify-between p-3.5"
           >
             <div className="relative z-10 space-y-1">
@@ -1231,8 +1231,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 key={student.id}
                 type="button"
                 onClick={() => onOpenStudentProfile(student)}
-                style={{ animationDelay: `${idx * 35}ms` }}
-                className="animate-tile-stagger p-3 rounded-2xl bg-mint-soft hover:bg-mint border border-line shadow-2xs flex flex-col justify-center items-start text-start cursor-pointer active:scale-95 transition-all select-none group min-h-[72px] w-full"
+                style={{ animationDelay: `${Math.min(idx, 6) * 18}ms` }}
+                className="animate-tile-stagger p-3 rounded-2xl bg-mint-soft hover:bg-mint border border-line shadow-2xs flex flex-col justify-center items-start text-start cursor-pointer active:scale-[0.985] transition-transform duration-120 select-none group min-h-[72px] w-full will-change-transform"
               >
                 <span className="text-[13px] font-black text-navy truncate w-full block group-hover:text-navy/80 transition-colors">
                   {student.name}

@@ -6,6 +6,7 @@ import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
 import { StudentAvatar } from './StudentAvatar';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
 interface AddEditSessionModalProps {
   isOpen: boolean;
@@ -284,6 +285,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     };
 
     db.saveSession(savedSession);
+    triggerSuccessHaptic();
     onSaveComplete(savedSession);
     onClose();
   };
@@ -334,6 +336,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
           <button
             type="submit"
             form="add-session-form"
+            onClick={() => triggerLightHaptic()}
             className="btn-orange flex-1 cursor-pointer"
           >
             <AppIcon name="check" size={16} weight="bold" />

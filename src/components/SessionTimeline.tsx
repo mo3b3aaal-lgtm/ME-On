@@ -189,7 +189,7 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
 
         const showNowBeforeThis = isToday && nowIndicatorIndex === index;
         const isStaggerEnabled = sortedItems.length <= 50;
-        const staggerDelay = isStaggerEnabled && index < 8 ? `${index * 35}ms` : undefined;
+        const staggerDelay = isStaggerEnabled && index < 8 ? `${index * 18}ms` : undefined;
 
         return (
           <React.Fragment key={item.id}>

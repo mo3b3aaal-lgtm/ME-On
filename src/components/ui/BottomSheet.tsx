@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { AppIcon } from './AppIcon';
 import { useModalLayer, ModalPortal } from '../../contexts/ModalContext';
 import { useTranslation } from '../../utils/i18n';
+import { triggerLightHaptic } from '../../utils/haptics';
 
 export interface BottomSheetAction {
   label: string;
@@ -170,7 +171,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                   {primaryAction && (
                     <button
                       type={primaryAction.type || 'button'}
-                      onClick={primaryAction.onClick}
+                      onClick={(e) => {
+                        triggerLightHaptic();
+                        primaryAction.onClick?.();
+                      }}
                       disabled={primaryAction.disabled || primaryAction.loading}
                       className={`btn-orange ${secondaryAction ? 'flex-1' : 'w-full'} ${primaryAction.className || ''}`}
                     >

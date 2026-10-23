@@ -11,6 +11,7 @@ import { useTranslation } from '../utils/i18n';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
 import { StudentAvatar } from './StudentAvatar';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
 export interface PrivateClassIntakeResult {
   sessionUnits?: number;
@@ -321,6 +322,7 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
       }
     }
 
+    triggerSuccessHaptic();
     onConfirm({
       sessionUnits: finalUnits,
       hours: finalHours,
@@ -378,7 +380,10 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
           </button>
           <button
             type="button"
-            onClick={handleConfirm}
+            onClick={() => {
+              triggerLightHaptic();
+              handleConfirm();
+            }}
             className={`flex-1 transition-all flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-black text-sm shadow-xs cursor-pointer active:scale-98 ${
               attendanceStatus === 'absent_charged'
                 ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'

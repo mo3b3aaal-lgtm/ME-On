@@ -5,6 +5,7 @@ import { ALL_GRADE_LEVELS, STAGES_HIERARCHY, getLocalizedStageName } from '../ut
 import { useTranslation } from '../utils/i18n';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 import {
   CanonicalWeekday,
   normalizeScheduleDays,
@@ -207,6 +208,7 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
     };
 
     db.saveGroup(groupToSave);
+    triggerSuccessHaptic();
     onSaveComplete(groupToSave);
     onClose();
   };
@@ -251,7 +253,8 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
           <button
             type="submit"
             form="add-group-form"
-            className="btn-orange flex-1"
+            onClick={() => triggerLightHaptic()}
+            className="btn-orange flex-1 cursor-pointer"
           >
             <AppIcon name="check" size={16} weight="bold" />
             <span>

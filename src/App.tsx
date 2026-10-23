@@ -316,7 +316,24 @@ export default function App() {
           {!currentUser ? (
             <AuthView onLoginSuccess={handleLoginSuccess} />
           ) : (
-            <div key={activeTab === 'groups' ? 'students' : activeTab} className="flex-1 flex flex-col overflow-hidden animate-screen-enter">
+            <div
+              key={activeTab === 'groups' ? 'students' : activeTab}
+              className={`flex-1 flex flex-col overflow-hidden ${
+                activeTab === 'dashboard'
+                  ? 'motion-dashboard-enter'
+                  : activeTab === 'students'
+                  ? 'motion-students-enter'
+                  : activeTab === 'groups'
+                  ? 'motion-groups-enter'
+                  : activeTab === 'sessions'
+                  ? 'motion-sessions-enter'
+                  : activeTab === 'reports'
+                  ? 'motion-reports-enter'
+                  : activeTab === 'settings'
+                  ? 'motion-settings-enter'
+                  : 'animate-screen-enter'
+              }`}
+            >
               {activeTab === 'dashboard' && (
                 <DashboardView
                   students={students}

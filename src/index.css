@@ -908,7 +908,8 @@ input[type="radio"] {
   cursor: pointer;
   border: none;
   flex-shrink: 0;
-  transition: background-color 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: background-color;
 }
 
 .classy-toggle-on,
@@ -922,19 +923,20 @@ input[type="radio"] {
   border-radius: var(--radius-pill, 9999px);
   background-color: var(--color-page);
   box-shadow: 0 2px 6px rgba(15, 42, 74, 0.2);
-  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  transform: translateX(0);
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
   pointer-events: none;
 }
 
 .classy-toggle-on .classy-toggle-knob,
 .classy-toggle[aria-checked="true"] .classy-toggle-knob {
-  transform: translateX(20px);
+  transform: translate3d(20px, 0, 0);
 }
 
 [dir="rtl"] .classy-toggle-on .classy-toggle-knob,
 [dir="rtl"] .classy-toggle[aria-checked="true"] .classy-toggle-knob {
-  transform: translateX(-20px);
+  transform: translate3d(-20px, 0, 0);
 }
 
 /* ==========================================================================
@@ -1313,14 +1315,15 @@ button.h-4 {
   min-width: unset;
 }
 
-/* Press feedback: every tappable card/tile/chip/button: active scale .97 (150ms) */
+/* Press feedback: every tappable card/tile/chip/button: active scale .985 (120ms) */
 .press-feedback,
 .touch-feedback,
 .chip,
 .classy-card-hover,
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]) {
-  transition: transform 150ms var(--ease-out, cubic-bezier(.22, .61, .36, 1));
+  transition: transform 120ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: transform;
 }
 
 .press-feedback:active,
@@ -1328,7 +1331,7 @@ button:not(:disabled),
 .chip:active,
 button:not(:disabled):active,
 [role="button"]:not([aria-disabled="true"]):active {
-  transform: scale(0.97);
+  transform: scale3d(0.985, 0.985, 1);
 }
 
 .modal-drag-handle {
@@ -1453,91 +1456,242 @@ main,
 }
 
 /* ==========================================================================
-   SCREEN / TAB TRANSITION (TASK 18)
+   CLASSY 120Hz-READY MOTION SYSTEM
+   High frame-rate composited transitions:
+   - GPU-promoted (transform: translate3d, opacity)
+   - Zero geometry layout thrashing (no width/height/top/left animations)
+   - Fine-tuned latency: 120ms micro, 140-180ms section, 190ms sheets
+   - 18ms micro-staggers capped at top 6-8 items
+   - Full prefers-reduced-motion fallback
    ========================================================================== */
-@keyframes screen-tab-enter {
+
+/* Section Personalities */
+
+/* 1. Dashboard (الرئيسية): subtle fast fade-and-rise */
+@keyframes motionDashboardEnter {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate3d(0, 8px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
+.motion-dashboard-enter {
+  animation: motionDashboardEnter 180ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
 
+/* 2. Students (الطلاب): subtle staggered fade-and-rise */
+@keyframes motionStudentsEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.motion-students-enter {
+  animation: motionStudentsEnter 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* 3. Groups (المجموعات): short fade-and-slide */
+@keyframes motionGroupsEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(6px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes motionGroupsEnterRtl {
+  from {
+    opacity: 0;
+    transform: translate3d(-6px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.motion-groups-enter {
+  animation: motionGroupsEnter 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+[dir="rtl"] .motion-groups-enter {
+  animation-name: motionGroupsEnterRtl;
+}
+
+/* 4. Sessions (الحصص): quick clean transition */
+@keyframes motionSessionsEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.motion-sessions-enter {
+  animation: motionSessionsEnter 150ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* 5. Reports (التقارير): restrained pure fade (no chart geometry thrashing) */
+@keyframes motionReportsEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.motion-reports-enter {
+  animation: motionReportsEnter 170ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: opacity;
+}
+
+/* 6. Settings (الإعدادات): short crisp fade */
+@keyframes motionSettingsEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.motion-settings-enter {
+  animation: motionSettingsEnter 140ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Backward-compatible screen tab enter */
+@keyframes screen-tab-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
 .animate-screen-enter {
-  animation: screen-tab-enter 260ms var(--ease-out, cubic-bezier(.22, .61, .36, 1)) both;
+  animation: screen-tab-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 /* ==========================================================================
-   CALENDAR ANIMATIONS (TASK 12 & TASK 18)
+   CALENDAR ANIMATIONS (120Hz-TUNED)
    ========================================================================== */
 @keyframes day-pop {
-  0% { transform: scale(0.65); opacity: 0.8; }
-  60% { transform: scale(1.14); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% { transform: scale3d(0.85, 0.85, 1); opacity: 0.85; }
+  65% { transform: scale3d(1.06, 1.06, 1); opacity: 1; }
+  100% { transform: scale3d(1, 1, 1); opacity: 1; }
 }
 
 .animate-day-pop {
-  animation: day-pop 300ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  animation: day-pop 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
 }
 
 @keyframes slide-month-left {
-  from { transform: translateX(24px); opacity: 0.6; }
-  to { transform: translateX(0); opacity: 1; }
+  from { transform: translate3d(14px, 0, 0); opacity: 0.7; }
+  to { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
 @keyframes slide-month-right {
-  from { transform: translateX(-24px); opacity: 0.6; }
-  to { transform: translateX(0); opacity: 1; }
+  from { transform: translate3d(-14px, 0, 0); opacity: 0.7; }
+  to { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
 .animate-slide-month-left {
-  animation: slide-month-left 250ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1));
+  animation: slide-month-left 160ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: transform, opacity;
 }
 
 .animate-slide-month-right {
-  animation: slide-month-right 250ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1));
+  animation: slide-month-right 160ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: transform, opacity;
 }
 
 /* ==========================================================================
-   LIST ANIMATIONS & STAGGER (TASK 13 & TASK 18)
+   LIST ANIMATIONS & 18ms MICRO-STAGGER
    ========================================================================== */
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translate3d(0, 8px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-fade-up {
-  animation: fade-up 220ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
+  animation: fade-up 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
-.stagger-1 { animation-delay: 35ms; }
-.stagger-2 { animation-delay: 70ms; }
-.stagger-3 { animation-delay: 105ms; }
-.stagger-4 { animation-delay: 140ms; }
-.stagger-5 { animation-delay: 175ms; }
-.stagger-6 { animation-delay: 210ms; }
-.stagger-7 { animation-delay: 245ms; }
-.stagger-8 { animation-delay: 280ms; }
+@keyframes tile-stagger {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-tile-stagger {
+  animation: tile-stagger 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.stagger-1, .motion-stagger-1 { animation-delay: 18ms; }
+.stagger-2, .motion-stagger-2 { animation-delay: 36ms; }
+.stagger-3, .motion-stagger-3 { animation-delay: 54ms; }
+.stagger-4, .motion-stagger-4 { animation-delay: 72ms; }
+.stagger-5, .motion-stagger-5 { animation-delay: 90ms; }
+.stagger-6, .motion-stagger-6 { animation-delay: 108ms; }
+.stagger-7, .motion-stagger-7 { animation-delay: 126ms; }
+.stagger-8, .motion-stagger-8 { animation-delay: 144ms; }
 
 /* ==========================================================================
-   BOTTOM SHEET & DIALOG ANIMATIONS (TASK 15, 16, 17, 18)
+   BOTTOM SHEET & MODAL ANIMATIONS (120Hz-TUNED)
    ========================================================================== */
 @keyframes sheet-slide-up {
   from {
-    transform: translateY(100%);
+    transform: translate3d(0, 100%, 0);
   }
   to {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
+}
+
+.animate-sheet-slide-up {
+  animation: sheet-slide-up 190ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 @keyframes backdrop-fade {
@@ -1549,15 +1703,25 @@ main,
   }
 }
 
+.animate-backdrop-fade {
+  animation: backdrop-fade 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: opacity;
+}
+
 @keyframes pop-in {
   0% {
-    transform: scale(0.6);
+    transform: scale3d(0.85, 0.85, 1);
     opacity: 0;
   }
   100% {
-    transform: scale(1);
+    transform: scale3d(1, 1, 1);
     opacity: 1;
   }
+}
+
+.animate-pop-in {
+  animation: pop-in 150ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
 }
 
 @keyframes skeleton-shimmer {
@@ -1582,34 +1746,22 @@ main,
 
 @keyframes toast-slide-up {
   from {
-    transform: translateY(100%);
+    transform: translate3d(0, 100%, 0);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
     opacity: 1;
   }
 }
 
 .animate-toast-slide-up {
-  animation: toast-slide-up 250ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
-}
-
-.animate-sheet-slide-up {
-  animation: sheet-slide-up 300ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
-}
-
-.animate-backdrop-fade {
-  animation: backdrop-fade 200ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
-}
-
-.animate-pop-in {
-  animation: pop-in 180ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+  animation: toast-slide-up 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  will-change: transform, opacity;
 }
 
 /* ==========================================================================
-   PREFERS-REDUCED-MOTION (TASK 18)
-   Remove translate / scale, keep cross-fade only or instant
+   PREFERS-REDUCED-MOTION (FULL ACCESSIBILITY COMPLIANCE)
    ========================================================================== */
 @keyframes screen-fade-reduced {
   from { opacity: 0; transform: none; }
@@ -1626,12 +1778,19 @@ main,
     scroll-behavior: auto !important;
   }
 
-  .animate-screen-enter {
-    animation: screen-fade-reduced 260ms ease-out both !important;
+  .animate-screen-enter,
+  .motion-dashboard-enter,
+  .motion-students-enter,
+  .motion-groups-enter,
+  .motion-sessions-enter,
+  .motion-reports-enter,
+  .motion-settings-enter {
+    animation: screen-fade-reduced 120ms ease-out both !important;
     transform: none !important;
   }
 
-  .animate-fade-up {
+  .animate-fade-up,
+  .animate-tile-stagger {
     animation: none !important;
     transform: none !important;
     opacity: 1 !important;
@@ -1642,7 +1801,6 @@ main,
   .animate-day-pop,
   .animate-icon-pop,
   .animate-pop-in,
-  .animate-tile-stagger,
   .animate-slide-month-left,
   .animate-slide-month-right,
   .press-feedback,

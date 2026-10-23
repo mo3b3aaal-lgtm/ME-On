@@ -395,7 +395,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
 
             // Stagger animation up to 8 items, disabled for lists over 50
             const isStaggerEnabled = filteredGroups.length <= 50;
-            const staggerDelay = isStaggerEnabled && index < 8 ? `${index * 35}ms` : undefined;
+            const staggerDelay = isStaggerEnabled && index < 8 ? `${index * 18}ms` : undefined;
 
             const displayTitle = isPrivate
               ? privateStudent
@@ -423,7 +423,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 key={group.id}
                 style={{ animationDelay: staggerDelay }}
                 onClick={() => onOpenGroupProfile(group)}
-                className={`rounded-[var(--radius-card)] p-4 border text-navy transition-all duration-150 cursor-pointer select-none active:scale-[0.97] ${
+                className={`rounded-[var(--radius-card)] p-4 border text-navy transition-transform duration-120 ease-out cursor-pointer select-none active:scale-[0.985] will-change-transform ${
                   isStaggerEnabled ? 'animate-fade-up' : ''
                 } ${bgClass}`}
               >

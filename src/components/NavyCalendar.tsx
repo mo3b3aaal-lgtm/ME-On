@@ -261,7 +261,7 @@ export const NavyCalendar: React.FC<NavyCalendarProps> = ({
                       key={cIdx}
                       type="button"
                       onClick={() => handleSelectCell(cell)}
-                      className="relative w-9 h-9 mx-auto flex items-center justify-center cursor-pointer active:scale-95 transition-transform after:content-[''] after:absolute after:inset-[-4px]"
+                      className="relative w-9 h-9 mx-auto flex items-center justify-center cursor-pointer active:scale-[0.95] transition-transform duration-120 ease-out will-change-transform after:content-[''] after:absolute after:inset-[-4px]"
                     >
                       {isSelected ? (
                         // Selected day: 36px ORANGE circle with navy bold number (pop-in spring animation)

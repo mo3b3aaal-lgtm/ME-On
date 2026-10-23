@@ -9,6 +9,7 @@ import { useTranslation } from '../utils/i18n';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 import {
   CANONICAL_WEEKDAY_KEYS,
   normalizeWeekdayKey,
@@ -415,6 +416,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       }
     }
 
+    triggerSuccessHaptic();
     onSaveComplete(studentData);
     onClose();
   };
@@ -450,7 +452,8 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           <button
             type="submit"
             form="add-student-form"
-            className="btn-orange flex-1"
+            onClick={() => triggerLightHaptic()}
+            className="btn-orange flex-1 cursor-pointer"
           >
             <AppIcon name="check" size={16} weight="bold" />
             <span>{editingStudent ? t('saveChanges') : t('save')}</span>

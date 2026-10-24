@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ActiveTab } from '../types';
 import { useTranslation } from '../utils/i18n';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
@@ -26,6 +26,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 }) => {
   const { t, isRTL, language } = useTranslation();
   const [poppingTab, setPoppingTab] = useState<ActiveTab | null>(null);
+  const popTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (popTimerRef.current !== null) {
+        window.clearTimeout(popTimerRef.current);
+      }
+    };
+  }, []);
 
   const leftTabs: NavTabItem[] = [
     {
@@ -71,10 +80,14 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
   const handleTabClick = (tabId: ActiveTab) => {
     triggerLightHaptic();
+    if (popTimerRef.current !== null) {
+      window.clearTimeout(popTimerRef.current);
+    }
     setPoppingTab(tabId);
-    setTimeout(() => {
+    popTimerRef.current = window.setTimeout(() => {
       setPoppingTab(null);
-    }, 300);
+      popTimerRef.current = null;
+    }, 240);
     onTabChange(tabId);
   };
 
@@ -93,7 +106,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         className="flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer select-none group"
       >
         <span
-          className={`flex items-center justify-center transition-colors duration-200 ${
+          className={`flex items-center justify-center transition-colors duration-150 ${
             isActive ? 'text-navy' : 'text-fog group-hover:text-slate'
           } ${poppingTab === tab.id ? 'animate-icon-pop' : ''}`}
         >
@@ -127,7 +140,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
           className="w-14 h-14 -mt-[14px] rounded-full bg-page border-[3px] border-navy flex items-center justify-center shadow-[0_8px_20px_rgba(23,55,94,0.25)] active:scale-[0.92] transition-transform duration-150 cursor-pointer z-10"
         >
           <span
-            className={`transition-transform duration-300 text-navy flex items-center justify-center ${
+            className={`transition-transform duration-150 text-navy flex items-center justify-center ${
               isQuickAddOpen ? 'rotate-45' : 'rotate-0'
             }`}
           >
@@ -147,17 +160,17 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
         className="absolute bottom-2.5 inset-x-2 h-1.5 pointer-events-none flex"
       >
         <div
-          className="h-full flex items-center justify-center transition-all duration-350 ease-out motion-reduce:transition-none"
+          className="h-full flex items-center justify-center transition-[transform,opacity] duration-150 motion-reduce:transition-none"
           style={{
             width: '20%',
             transform:
               activeSlot >= 0
                 ? isRTL
-                  ? `translateX(-${activeSlot * 100}%)`
-                  : `translateX(${activeSlot * 100}%)`
+                  ? `translate3d(-${activeSlot * 100}%, 0, 0)`
+                  : `translate3d(${activeSlot * 100}%, 0, 0)`
                 : 'none',
             opacity: activeSlot >= 0 ? 1 : 0,
-            transitionTimingFunction: 'var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
+            transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
           }}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-navy block" />

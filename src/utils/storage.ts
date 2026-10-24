@@ -15,6 +15,8 @@ import {
   Session,
   Attendance,
   AttendanceStatus,
+  BehaviorRating,
+  HomeworkRating,
   Payment,
   SessionCreditLog,
   BillingType,
@@ -584,11 +586,26 @@ ${assignment.launchUrl}
 // Base Generic Storage Helper
 // ==========================================
 
+const listCache = new Map<string, { raw: string; parsed: unknown[] }>();
+let activeUserCache: { raw: string | null; userId: string } | null = null;
+
 function getList<T>(key: string, fallback: T[] = []): T[] {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T[];
+    if (!raw) {
+      listCache.delete(key);
+      return fallback;
+    }
+    const cached = listCache.get(key);
+    if (cached && cached.raw === raw) {
+      return (cached.parsed as T[]).slice();
+    }
+    const parsed = JSON.parse(raw) as T[];
+    if (Array.isArray(parsed)) {
+      listCache.set(key, { raw, parsed });
+      return parsed.slice();
+    }
+    return parsed;
   } catch (err) {
     console.error(`Error reading key ${key} from storage:`, err);
     return fallback;
@@ -597,7 +614,9 @@ function getList<T>(key: string, fallback: T[] = []): T[] {
 
 function saveList<T>(key: string, data: T[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    const serialized = JSON.stringify(data);
+    localStorage.setItem(key, serialized);
+    listCache.delete(key);
   } catch (err) {
     console.error(`Error saving key ${key} to storage:`, err);
   }
@@ -607,10 +626,18 @@ function saveList<T>(key: string, data: T[]): void {
 export function getActiveUserId(): string {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
+    if (activeUserCache && activeUserCache.raw === raw) {
+      return activeUserCache.userId;
+    }
+    let resolved = 'acc_master_teacher';
     if (raw) {
       const user = JSON.parse(raw);
-      if (user && user.id) return user.id;
+      if (user && user.id) {
+        resolved = user.id;
+      }
     }
+    activeUserCache = { raw, userId: resolved };
+    return resolved;
   } catch {}
   return 'acc_master_teacher';
 }
@@ -2531,6 +2558,8 @@ export const db = {
     isCharged?: boolean;
     absenceReason?: string;
     sessionStatus?: 'completed' | 'cancelled' | 'scheduled';
+    behaviorRating?: BehaviorRating;
+    homeworkRating?: HomeworkRating;
   }): Session[] => {
     const activeUserId = getActiveUserId();
     const count = Math.max(0.25, Number(params.sessionUnits ?? params.sessionCount) || 1);
@@ -2675,6 +2704,8 @@ export const db = {
       hours: isHourly ? hours : undefined,
       hourlyRate: isHourly ? hourlyRate : undefined,
       absenceReason: params.absenceReason || (isCancelled ? 'حصة ملغاة' : undefined),
+      behaviorRating: params.behaviorRating,
+      homeworkRating: params.homeworkRating,
       recordedAt: new Date().toISOString(),
       notes: params.notes || (params.absenceReason ? `سبب الغياب: ${params.absenceReason}` : undefined),
     };

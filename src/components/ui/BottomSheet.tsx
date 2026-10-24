@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppIcon } from './AppIcon';
 import { useModalLayer, ModalPortal } from '../../contexts/ModalContext';
 import { useTranslation } from '../../utils/i18n';
@@ -29,11 +29,19 @@ export interface BottomSheetProps {
   secondaryAction?: BottomSheetAction;
   maxWidthClass?: string;
   size?: 'default' | 'full';
+  transitionVariant?: 'sheet' | 'detail';
   zIndex?: number;
   className?: string;
   bodyClassName?: string;
   ariaLabel?: string;
 }
+
+const DETAIL_SHEET_IDS = new Set([
+  'student-profile',
+  'group-profile',
+  'record-attendance',
+  'private-class-intake',
+]);
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
   id = 'bottom-sheet',
@@ -51,6 +59,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   secondaryAction,
   maxWidthClass = 'sm:max-w-lg',
   size = 'default',
+  transitionVariant,
   zIndex,
   className = '',
   bodyClassName = 'p-5',
@@ -61,47 +70,79 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const effectiveZIndex = zIndex ?? modalLayer.zIndex;
   const sheetRef = useRef<HTMLDivElement>(null);
 
+  const resolvedVariant: 'sheet' | 'detail' =
+    transitionVariant ?? (DETAIL_SHEET_IDS.has(id) ? 'detail' : 'sheet');
+
+  const [isExiting, setIsExiting] = useState(false);
+  const wasOpenRef = useRef(isOpen);
+
   useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
+    if (isOpen) {
+      wasOpenRef.current = true;
+      setIsExiting(false);
+      return;
+    }
+
+    if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      const reducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (reducedMotion) {
+        setIsExiting(false);
+        return;
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+      setIsExiting(true);
+      const exitMs = 150;
+      const timer = window.setTimeout(() => {
+        setIsExiting(false);
+      }, exitMs);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isOpen, resolvedVariant]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !isExiting) return null;
 
+  const isClosingNow = !isOpen && isExiting;
   const hasHeader = Boolean(title || subtitle || headerLeading || headerTrailing || showClose);
   const hasActions = Boolean(primaryAction || secondaryAction || footer);
+
+  const cardMotionClass = isClosingNow
+    ? resolvedVariant === 'detail'
+      ? 'animate-detail-exit'
+      : 'animate-sheet-exit'
+    : resolvedVariant === 'detail'
+    ? 'animate-detail-enter'
+    : 'animate-sheet-slide-up';
+
+  const backdropMotionClass = isClosingNow ? 'animate-backdrop-exit' : 'animate-backdrop-fade';
 
   return (
     <ModalPortal>
       <div
-        role="dialog"
-        aria-modal="true"
+        role={isClosingNow ? 'presentation' : 'dialog'}
+        aria-modal={isClosingNow ? undefined : 'true'}
+        aria-hidden={isClosingNow ? 'true' : undefined}
         aria-label={typeof title === 'string' ? title : ariaLabel}
         style={{ zIndex: effectiveZIndex }}
-        className="fixed inset-0 flex flex-col justify-end sm:justify-center sm:p-4 select-none-touch"
+        className={`fixed inset-0 flex flex-col justify-end sm:justify-center sm:p-4 select-none-touch ${
+          isClosingNow ? 'pointer-events-none' : ''
+        }`}
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        {/* Backdrop: navy-deep/40 with light blur */}
+        {/* Backdrop: solid translucent navy-deep/40 without GPU-heavy backdrop-blur */}
         <div
-          className="fixed inset-0 bg-navy-deep/40 backdrop-blur-xs animate-backdrop-fade"
-          onClick={onClose}
+          className={`fixed inset-0 bg-navy-deep/40 ${backdropMotionClass}`}
+          onClick={isClosingNow ? undefined : onClose}
           aria-hidden="true"
         />
 
-        {/* Bottom Sheet Card:
-            slides up from bottom, bg white, top radius 32px, max-height 92vh with internal scroll.
-            On wide screens: centered, max-w-lg, radius 32px */}
+        {/* Sheet / Detail Card */}
         <div
           ref={sheetRef}
           className={`relative z-10 w-full ${maxWidthClass} mx-auto bg-page rounded-t-[32px] sm:rounded-[32px] ${
             size === 'full' ? 'h-[92vh] max-h-[92vh]' : 'max-h-[92vh]'
-          } flex flex-col shadow-2xl border border-line overflow-hidden animate-sheet-slide-up pb-[env(safe-area-inset-bottom,0px)] ${className}`}
+          } flex flex-col shadow-2xl border border-line overflow-hidden ${cardMotionClass} pb-[env(safe-area-inset-bottom,0px)] ${className}`}
         >
           {/* Drag handle: 40x4 mint */}
           {showHandle && (

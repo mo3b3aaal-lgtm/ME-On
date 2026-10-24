@@ -1,5 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Student, Enrollment, Group, Session } from '../types';
+import {
+  Student,
+  Enrollment,
+  Group,
+  Session,
+  BehaviorRating,
+  HomeworkRating,
+  getBehaviorRatingLabel,
+  getHomeworkRatingLabel,
+} from '../types';
 import {
   db,
   roundMoney,
@@ -9,9 +18,9 @@ import {
 } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
 import { BottomSheet } from './ui/BottomSheet';
-import { AppIcon } from './ui/AppIcon';
+import { AppIcon, AppIconName } from './ui/AppIcon';
 import { StudentAvatar } from './StudentAvatar';
-import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
+import { triggerLightHaptic, triggerSuccessHaptic, triggerSelectionHaptic } from '../utils/haptics';
 
 export interface PrivateClassIntakeResult {
   sessionUnits?: number;
@@ -20,7 +29,93 @@ export interface PrivateClassIntakeResult {
   notes?: string;
   attendanceStatus?: 'present' | 'absent_free' | 'absent_charged';
   isCharged?: boolean;
+  behaviorRating?: BehaviorRating;
+  homeworkRating?: HomeworkRating;
 }
+
+const BEHAVIOR_OPTIONS: {
+  value: BehaviorRating;
+  labelAr: string;
+  labelEn: string;
+  icon: AppIconName;
+  activeClass: string;
+  idleIconClass: string;
+}[] = [
+  {
+    value: 'excellent',
+    labelAr: 'ممتاز',
+    labelEn: 'Excellent',
+    icon: 'star',
+    activeClass: 'bg-navy text-white border-navy shadow-sm ring-2 ring-navy/20',
+    idleIconClass: 'bg-mint-soft text-navy',
+  },
+  {
+    value: 'very_good',
+    labelAr: 'جيد جدًا',
+    labelEn: 'Very Good',
+    icon: 'medal',
+    activeClass: 'bg-teal text-white border-teal shadow-sm ring-2 ring-teal/20',
+    idleIconClass: 'bg-teal/10 text-teal',
+  },
+  {
+    value: 'good',
+    labelAr: 'جيد',
+    labelEn: 'Good',
+    icon: 'checkCircle',
+    activeClass: 'bg-navy-soft text-white border-navy-soft shadow-sm ring-2 ring-navy-soft/20',
+    idleIconClass: 'bg-navy/5 text-navy',
+  },
+  {
+    value: 'needs_improvement',
+    labelAr: 'يحتاج إلى تحسين',
+    labelEn: 'Needs Improvement',
+    icon: 'info',
+    activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-600/20',
+    idleIconClass: 'bg-amber-500/15 text-amber-700',
+  },
+];
+
+const HOMEWORK_OPTIONS: {
+  value: HomeworkRating;
+  labelAr: string;
+  labelEn: string;
+  icon: AppIconName;
+  activeClass: string;
+  idleIconClass: string;
+}[] = [
+  {
+    value: 'completed',
+    labelAr: 'مكتمل',
+    labelEn: 'Completed',
+    icon: 'checkCircle',
+    activeClass: 'bg-navy text-white border-navy shadow-sm ring-2 ring-navy/20',
+    idleIconClass: 'bg-mint-soft text-navy',
+  },
+  {
+    value: 'partially_completed',
+    labelAr: 'مكتمل جزئيًا',
+    labelEn: 'Partially Completed',
+    icon: 'clock',
+    activeClass: 'bg-teal text-white border-teal shadow-sm ring-2 ring-teal/20',
+    idleIconClass: 'bg-teal/10 text-teal',
+  },
+  {
+    value: 'incomplete',
+    labelAr: 'غير مكتمل',
+    labelEn: 'Incomplete',
+    icon: 'warning',
+    activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-600/20',
+    idleIconClass: 'bg-amber-500/15 text-amber-700',
+  },
+  {
+    value: 'not_submitted',
+    labelAr: 'لم يُسلَّم',
+    labelEn: 'Not Submitted',
+    icon: 'close',
+    activeClass: 'bg-rose-600 text-white border-rose-600 shadow-sm ring-2 ring-rose-600/20',
+    idleIconClass: 'bg-rose-100 text-rose-700',
+  },
+];
 
 interface PrivateClassIntakeModalProps {
   isOpen: boolean;
@@ -143,6 +238,8 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent_free' | 'absent_charged'>(
     initialAttendanceStatus || 'present'
   );
+  const [behaviorRating, setBehaviorRating] = useState<BehaviorRating | undefined>(undefined);
+  const [homeworkRating, setHomeworkRating] = useState<HomeworkRating | undefined>(undefined);
 
   const isFreeAbsence = attendanceStatus === 'absent_free';
 
@@ -162,7 +259,11 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
           const parsed = parseFloat(saved);
           if (!isNaN(parsed) && parsed > 0) {
             setRememberedQuantity(parsed);
+          } else {
+            setRememberedQuantity(null);
           }
+        } else {
+          setRememberedQuantity(null);
         }
       } catch (e) {
         // ignore
@@ -170,20 +271,48 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
     }
   }, [memoryStorageKey, isOpen]);
 
-  // Reset when modal opens or session changes
+  // Reset / restore exact student + session record when modal opens or session/student changes
   useEffect(() => {
     if (isOpen) {
-      setAttendanceStatus(initialAttendanceStatus || 'present');
-      const units = initialSessionUnits;
-      const hrs = initialHours;
+      const existingAtt =
+        session?.id && student?.id
+          ? db.getSessionAttendance(session.id).find((a) => a.studentId === student.id)
+          : undefined;
+
+      const restoredStatus: 'present' | 'absent_free' | 'absent_charged' = initialAttendanceStatus
+        ? initialAttendanceStatus
+        : existingAtt
+        ? existingAtt.status === 'absent_free' ||
+          existingAtt.status === 'excused' ||
+          (existingAtt.status === 'absent' && existingAtt.isCharged === false)
+          ? 'absent_free'
+          : existingAtt.status === 'absent_charged' ||
+            (existingAtt.status === 'absent' && existingAtt.isCharged !== false)
+          ? 'absent_charged'
+          : 'present'
+        : 'present';
+
+      setAttendanceStatus(restoredStatus);
+
+      const units =
+        existingAtt?.sessionUnits !== undefined && Number(existingAtt.sessionUnits) > 0
+          ? Number(existingAtt.sessionUnits)
+          : initialSessionUnits;
+      const hrs =
+        existingAtt?.hours !== undefined && Number(existingAtt.hours) > 0
+          ? Number(existingAtt.hours)
+          : initialHours;
+
       setSelectedUnits(units);
       setSelectedHours(hrs);
       setCustomUnitsInput(String(units));
       setCustomHoursInput(String(hrs));
       setIsCustomMode(![0.5, 1, 1.5, 2, 2.5, 3].includes(isHourly ? hrs : units));
-      setNotes(session?.notes || '');
+      setNotes(existingAtt?.notes !== undefined ? existingAtt.notes : (session?.notes || ''));
+      setBehaviorRating(existingAtt?.behaviorRating ?? undefined);
+      setHomeworkRating(existingAtt?.homeworkRating ?? undefined);
     }
-  }, [isOpen, session, initialSessionUnits, initialHours, isHourly, initialAttendanceStatus]);
+  }, [isOpen, session?.id, student?.id, initialSessionUnits, initialHours, isHourly, initialAttendanceStatus]);
 
   // Predefined Presets
   const SESSION_PRESETS = [0.5, 1, 1.5, 2, 2.5, 3];
@@ -330,15 +459,18 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
       notes: notes.trim(),
       attendanceStatus,
       isCharged: attendanceStatus !== 'absent_free',
+      behaviorRating,
+      homeworkRating,
     });
     onClose();
   };
 
-  if (!isOpen || !student) return null;
+  if (!student) return null;
 
   return (
     <BottomSheet
       id="private-class-intake"
+      transitionVariant="detail"
       isOpen={isOpen}
       onClose={onClose}
       title={isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
@@ -672,6 +804,124 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
                 {isEn ? 'Charged' : 'يخصم رصيد'}
               </span>
             </button>
+          </div>
+        </div>
+
+        {/* BEHAVIOR RATING (تقييم السلوك) */}
+        <div className="p-3.5 sm:p-4 rounded-3xl bg-page border border-line shadow-xs space-y-2.5 text-start">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-slate block uppercase tracking-wider">
+              {isEn ? 'Behavior Rating' : 'تقييم السلوك'}
+            </span>
+            {behaviorRating ? (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerSelectionHaptic();
+                  setBehaviorRating(undefined);
+                }}
+                className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-navy/10 text-navy border border-navy/20 hover:bg-navy/15 transition-colors cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>{getBehaviorRatingLabel(behaviorRating, isEn)}</span>
+                <AppIcon name="close" size={10} weight="regular" />
+              </button>
+            ) : (
+              <span className="text-[10px] font-bold text-slate px-2 py-0.5 rounded-full bg-mist border border-line">
+                {isEn ? 'Unset' : 'غير محدد'}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {BEHAVIOR_OPTIONS.map((opt) => {
+              const isSelected = behaviorRating === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    triggerSelectionHaptic();
+                    setBehaviorRating((prev) => (prev === opt.value ? undefined : opt.value));
+                  }}
+                  className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 transition-all text-start cursor-pointer border active:scale-98 ${
+                    isSelected
+                      ? opt.activeClass
+                      : 'bg-white hover:bg-mist text-navy border-line'
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      isSelected ? 'bg-white/20 text-white' : opt.idleIconClass
+                    }`}
+                  >
+                    <AppIcon name={opt.icon} size={13} weight="fill" />
+                  </div>
+                  <span className="text-xs font-black tracking-tight leading-tight truncate">
+                    {isEn ? opt.labelEn : opt.labelAr}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* HOMEWORK RATING (تقييم الواجب) */}
+        <div className="p-3.5 sm:p-4 rounded-3xl bg-page border border-line shadow-xs space-y-2.5 text-start">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-slate block uppercase tracking-wider">
+              {isEn ? 'Homework Rating' : 'تقييم الواجب'}
+            </span>
+            {homeworkRating ? (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerSelectionHaptic();
+                  setHomeworkRating(undefined);
+                }}
+                className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-navy/10 text-navy border border-navy/20 hover:bg-navy/15 transition-colors cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>{getHomeworkRatingLabel(homeworkRating, isEn)}</span>
+                <AppIcon name="close" size={10} weight="regular" />
+              </button>
+            ) : (
+              <span className="text-[10px] font-bold text-slate px-2 py-0.5 rounded-full bg-mist border border-line">
+                {isEn ? 'Unset' : 'غير محدد'}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {HOMEWORK_OPTIONS.map((opt) => {
+              const isSelected = homeworkRating === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    triggerSelectionHaptic();
+                    setHomeworkRating((prev) => (prev === opt.value ? undefined : opt.value));
+                  }}
+                  className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 transition-all text-start cursor-pointer border active:scale-98 ${
+                    isSelected
+                      ? opt.activeClass
+                      : 'bg-white hover:bg-mist text-navy border-line'
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      isSelected ? 'bg-white/20 text-white' : opt.idleIconClass
+                    }`}
+                  >
+                    <AppIcon name={opt.icon} size={13} weight="fill" />
+                  </div>
+                  <span className="text-xs font-black tracking-tight leading-tight truncate">
+                    {isEn ? opt.labelEn : opt.labelAr}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

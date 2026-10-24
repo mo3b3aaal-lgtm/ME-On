@@ -41,6 +41,7 @@ interface SettingsViewProps {
   onDataReset: () => void;
   onLogout: () => void;
   onNavigateToTab?: (tab: ActiveTab) => void;
+  onBack?: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -50,6 +51,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onDataReset,
   onLogout,
   onNavigateToTab,
+  onBack,
 }) => {
   const { language, setLanguage, isRTL, t } = useTranslation();
   const isEn = language.startsWith('en');
@@ -76,22 +78,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [passMessage, setPassMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    setLastSyncTime(db.getLastSyncTime(currentUser?.id));
-    setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
+    setName(teacherProfile.name);
+    setSubject(teacherProfile.subject);
+    setPhone(teacherProfile.phone || '');
+    setCenterOrSchool(teacherProfile.centerOrSchool || '');
+  }, [
+    teacherProfile.name,
+    teacherProfile.subject,
+    teacherProfile.phone,
+    teacherProfile.centerOrSchool,
+  ]);
 
-    const unsubscribeSync = db.subscribeToSyncUpdates(() => {
-      setLastSyncTime(db.getLastSyncTime(currentUser?.id));
-      setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
-    });
+  useEffect(() => {
+    const syncSnapshot = () => {
+      const nextTime = db.getLastSyncTime(currentUser?.id);
+      const nextCfg = db.getAutoSyncConfig(currentUser?.id);
+      setLastSyncTime((prev) => (prev === nextTime ? prev : nextTime));
+      setAutoSyncConfig((prev) =>
+        JSON.stringify(prev) === JSON.stringify(nextCfg) ? prev : nextCfg
+      );
+    };
+
+    syncSnapshot();
+
+    const unsubscribeSync = db.subscribeToSyncUpdates(syncSnapshot);
 
     const unsubscribeNet = subscribeToNetworkStatus((status) => {
-      setNetworkStatus(status);
+      setNetworkStatus((prev) =>
+        prev.isOnline === status.isOnline && prev.statusReason === status.statusReason
+          ? prev
+          : status
+      );
     });
 
-    const interval = setInterval(() => {
-      setLastSyncTime(db.getLastSyncTime(currentUser?.id));
-      setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
-    }, 10000);
+    const interval = setInterval(syncSnapshot, 10000);
 
     return () => {
       unsubscribeSync();
@@ -394,7 +414,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => (onNavigateToTab ? onNavigateToTab('dashboard') : undefined)}
+            onClick={() => (onBack ? onBack() : onNavigateToTab ? onNavigateToTab('dashboard') : undefined)}
             aria-label={t('back') || (isEn ? 'Back' : 'رجوع')}
             title={t('back') || (isEn ? 'Back' : 'رجوع')}
             className="text-navy hover:text-navy/80 active:scale-95 transition-transform cursor-pointer p-0.5 flex items-center justify-center"

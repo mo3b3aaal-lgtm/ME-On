@@ -259,6 +259,34 @@ export interface Session {
   hoursSnapshot?: number;
 }
 
+// Lesson Studio Evaluation Types (تقييم السلوك وتقييم الواجب داخل الحصة)
+export type BehaviorRating = 'excellent' | 'very_good' | 'good' | 'needs_improvement';
+export type HomeworkRating = 'completed' | 'partially_completed' | 'incomplete' | 'not_submitted';
+
+export const BEHAVIOR_RATING_LABELS: Record<BehaviorRating, { ar: string; en: string }> = {
+  excellent: { ar: 'ممتاز', en: 'Excellent' },
+  very_good: { ar: 'جيد جدًا', en: 'Very Good' },
+  good: { ar: 'جيد', en: 'Good' },
+  needs_improvement: { ar: 'يحتاج إلى تحسين', en: 'Needs Improvement' },
+};
+
+export const HOMEWORK_RATING_LABELS: Record<HomeworkRating, { ar: string; en: 'Completed' | 'Partially Completed' | 'Incomplete' | 'Not Submitted' }> = {
+  completed: { ar: 'مكتمل', en: 'Completed' },
+  partially_completed: { ar: 'مكتمل جزئيًا', en: 'Partially Completed' },
+  incomplete: { ar: 'غير مكتمل', en: 'Incomplete' },
+  not_submitted: { ar: 'لم يُسلَّم', en: 'Not Submitted' },
+};
+
+export function getBehaviorRatingLabel(rating?: BehaviorRating, isEn = false): string {
+  if (!rating || !BEHAVIOR_RATING_LABELS[rating]) return '';
+  return isEn ? BEHAVIOR_RATING_LABELS[rating].en : BEHAVIOR_RATING_LABELS[rating].ar;
+}
+
+export function getHomeworkRatingLabel(rating?: HomeworkRating, isEn = false): string {
+  if (!rating || !HOMEWORK_RATING_LABELS[rating]) return '';
+  return isEn ? HOMEWORK_RATING_LABELS[rating].en : HOMEWORK_RATING_LABELS[rating].ar;
+}
+
 // 6. Attendance Entity (سجل الحضور والغياب)
 export interface Attendance {
   id: string;
@@ -278,6 +306,8 @@ export interface Attendance {
   absenceReason?: string; // سبب عدم احتساب الغياب (الطالب ألغى | المدرس ألغى | مرض | ظرف طارئ | سبب آخر | مخصص)
   notes?: string;
   homeworkDone?: boolean; // حل الواجب
+  behaviorRating?: BehaviorRating; // تقييم السلوك للحصة
+  homeworkRating?: HomeworkRating; // تقييم الواجب للحصة
   quizScore?: number; // درجة الكويز إن وجد
   recordedAt: string;
   updatedAt?: string;

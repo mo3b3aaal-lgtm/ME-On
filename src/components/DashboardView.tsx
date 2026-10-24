@@ -519,14 +519,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       (e) => e.studentId === studentId && (e.groupId === item.groupId || e.id === item.enrollmentId)
     );
 
+    const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
     const record: Attendance = {
-      id: `att_${session.id}_${studentId}`,
+      ...existingAtt,
+      id: existingAtt?.id || `att_${session.id}_${studentId}`,
       sessionId: session.id,
       studentId,
       enrollmentId: enr?.id || item.enrollmentId,
       status,
       isCharged,
-      recordedAt: new Date().toISOString(),
+      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
     };
 
     db.saveAttendanceBatch(session.id, [record]);
@@ -560,9 +562,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     const finalStatus = result.attendanceStatus || 'present';
     const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+    const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
 
     const record: Attendance = {
-      id: `att_${session.id}_${studentId}`,
+      ...existingAtt,
+      id: existingAtt?.id || `att_${session.id}_${studentId}`,
       sessionId: session.id,
       studentId,
       enrollmentId: enr?.id || item?.enrollmentId || session.enrollmentId,
@@ -571,19 +575,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       sessionUnits: isHourly ? undefined : result.sessionUnits,
       hours: isHourly ? result.hours : undefined,
       notes: result.notes,
+      behaviorRating: result.behaviorRating,
+      homeworkRating: result.homeworkRating,
       absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
-      recordedAt: new Date().toISOString(),
+      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
     };
 
-    db.saveAttendanceBatch(session.id, [record]);
     db.saveSession({
       ...session,
       status: 'completed',
       sessionUnits: isHourly ? undefined : result.sessionUnits,
       hours: isHourly ? result.hours : undefined,
       pricePerStudent: result.pricePerStudent,
-      notes: result.notes || session.notes,
+      notes: result.notes !== undefined ? result.notes : session.notes,
     });
+    db.saveAttendanceBatch(session.id, [record]);
 
     const qtyText = formatSessionQuantityDisplay({
       sessionUnits: result.sessionUnits,

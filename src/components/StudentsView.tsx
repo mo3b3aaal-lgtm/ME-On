@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { StatusBadge } from './ui/StatusBadge';
 import { ScreenHeader } from './ui/ScreenHeader';
 import { Student, Group, Attendance, Session, Enrollment, ActiveTab, Payment } from '../types';
@@ -62,15 +62,54 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const { t, language, isRTL } = useTranslation();
   const isEn = language.startsWith('en');
 
+  const rootScrollRef = useRef<HTMLDivElement | null>(null);
+  const segmentScrollRef = useRef<{ students: number; groups: number }>({
+    students: 0,
+    groups: 0,
+  });
+
   // Segmented control state between 'students' and 'groups'
   const [selectedSegment, setSelectedSegment] = useState<'students' | 'groups'>(activeSegment);
+  const [segmentMotionClass, setSegmentMotionClass] = useState<
+    '' | 'motion-groups-enter' | 'motion-students-enter'
+  >('');
+  const prevSegmentRef = useRef<'students' | 'groups'>(activeSegment);
 
   useEffect(() => {
-    setSelectedSegment(activeSegment);
+    if (activeSegment !== prevSegmentRef.current) {
+      if (rootScrollRef.current) {
+        segmentScrollRef.current[prevSegmentRef.current] = rootScrollRef.current.scrollTop;
+      }
+      const isPanelVisible = !rootScrollRef.current?.closest('.tab-panel-inactive');
+      prevSegmentRef.current = activeSegment;
+      setSelectedSegment(activeSegment);
+      setSegmentMotionClass(
+        isPanelVisible
+          ? activeSegment === 'groups'
+            ? 'motion-groups-enter'
+            : 'motion-students-enter'
+          : ''
+      );
+    }
   }, [activeSegment]);
 
+  useEffect(() => {
+    if (rootScrollRef.current) {
+      const targetTop = segmentScrollRef.current[selectedSegment] ?? 0;
+      if (Math.abs(rootScrollRef.current.scrollTop - targetTop) > 0.5) {
+        rootScrollRef.current.scrollTop = targetTop;
+      }
+    }
+  }, [selectedSegment]);
+
   const handleSegmentChange = (seg: 'students' | 'groups') => {
+    if (seg === selectedSegment) return;
+    if (rootScrollRef.current) {
+      segmentScrollRef.current[selectedSegment] = rootScrollRef.current.scrollTop;
+    }
+    prevSegmentRef.current = seg;
     setSelectedSegment(seg);
+    setSegmentMotionClass(seg === 'groups' ? 'motion-groups-enter' : 'motion-students-enter');
     onSegmentChange?.(seg);
   };
 
@@ -310,6 +349,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   return (
     <div
+      ref={rootScrollRef}
       className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar px-5 py-4 space-y-4 text-ink pb-32 bg-page relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
@@ -368,7 +408,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* When Groups segment is selected, render GroupsView content */}
       {selectedSegment === 'groups' ? (
-        <div key="groups-segment" className="pt-1 motion-groups-enter">
+        <div key="groups-segment" className={`pt-1 ${segmentMotionClass}`}>
           <GroupsView
             groups={groups}
             allStudents={students}
@@ -389,7 +429,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           />
         </div>
       ) : (
-        <div key="students-segment" className="space-y-4 motion-students-enter">
+        <div key="students-segment" className={`space-y-4 ${segmentMotionClass}`}>
           {/* Quick Feedback Toast */}
           <Toast
             isOpen={Boolean(feedbackToast)}

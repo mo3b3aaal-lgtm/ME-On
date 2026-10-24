@@ -102,7 +102,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
     };
   }, [group, enrollments, groupSessions, isOpen]);
 
-  if (!isOpen || !group) return null;
+  if (!group) return null;
 
   const isPrivate = group.type === 'private';
   const billingLabel = getBillingModeLabel(group.billingType, group.billingMode);
@@ -138,6 +138,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   return (
     <BottomSheet
       id="group-profile"
+      transitionVariant="detail"
       isOpen={isOpen}
       onClose={onClose}
       showHandle={true}

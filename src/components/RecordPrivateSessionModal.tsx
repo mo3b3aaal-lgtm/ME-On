@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, Enrollment, Group } from '../types';
+import {
+  Student,
+  Enrollment,
+  Group,
+  BehaviorRating,
+  HomeworkRating,
+  getBehaviorRatingLabel,
+  getHomeworkRatingLabel,
+} from '../types';
 import {
   db,
   roundMoney,
@@ -12,7 +20,92 @@ import { useTranslation } from '../utils/i18n';
 import { toLocalISODate } from '../utils/localDate';
 import { BottomSheet } from './ui/BottomSheet';
 import { AttendanceChoiceTiles } from './ui/AttendanceChoiceTiles';
-import { AppIcon } from './ui/AppIcon';
+import { AppIcon, AppIconName } from './ui/AppIcon';
+import { triggerSelectionHaptic } from '../utils/haptics';
+
+const STUDIO_BEHAVIOR_OPTIONS: {
+  value: BehaviorRating;
+  labelAr: string;
+  labelEn: string;
+  icon: AppIconName;
+  activeClass: string;
+  idleIconClass: string;
+}[] = [
+  {
+    value: 'excellent',
+    labelAr: 'ممتاز',
+    labelEn: 'Excellent',
+    icon: 'star',
+    activeClass: 'bg-navy text-white border-navy shadow-sm ring-2 ring-navy/20',
+    idleIconClass: 'bg-mint-soft text-navy',
+  },
+  {
+    value: 'very_good',
+    labelAr: 'جيد جدًا',
+    labelEn: 'Very Good',
+    icon: 'medal',
+    activeClass: 'bg-teal text-white border-teal shadow-sm ring-2 ring-teal/20',
+    idleIconClass: 'bg-teal/10 text-teal',
+  },
+  {
+    value: 'good',
+    labelAr: 'جيد',
+    labelEn: 'Good',
+    icon: 'checkCircle',
+    activeClass: 'bg-navy-soft text-white border-navy-soft shadow-sm ring-2 ring-navy-soft/20',
+    idleIconClass: 'bg-navy/5 text-navy',
+  },
+  {
+    value: 'needs_improvement',
+    labelAr: 'يحتاج إلى تحسين',
+    labelEn: 'Needs Improvement',
+    icon: 'info',
+    activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-600/20',
+    idleIconClass: 'bg-amber-500/15 text-amber-700',
+  },
+];
+
+const STUDIO_HOMEWORK_OPTIONS: {
+  value: HomeworkRating;
+  labelAr: string;
+  labelEn: string;
+  icon: AppIconName;
+  activeClass: string;
+  idleIconClass: string;
+}[] = [
+  {
+    value: 'completed',
+    labelAr: 'مكتمل',
+    labelEn: 'Completed',
+    icon: 'checkCircle',
+    activeClass: 'bg-navy text-white border-navy shadow-sm ring-2 ring-navy/20',
+    idleIconClass: 'bg-mint-soft text-navy',
+  },
+  {
+    value: 'partially_completed',
+    labelAr: 'مكتمل جزئيًا',
+    labelEn: 'Partially Completed',
+    icon: 'clock',
+    activeClass: 'bg-teal text-white border-teal shadow-sm ring-2 ring-teal/20',
+    idleIconClass: 'bg-teal/10 text-teal',
+  },
+  {
+    value: 'incomplete',
+    labelAr: 'غير مكتمل',
+    labelEn: 'Incomplete',
+    icon: 'warning',
+    activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-600/20',
+    idleIconClass: 'bg-amber-500/15 text-amber-700',
+  },
+  {
+    value: 'not_submitted',
+    labelAr: 'لم يُسلَّم',
+    labelEn: 'Not Submitted',
+    icon: 'close',
+    activeClass: 'bg-rose-600 text-white border-rose-600 shadow-sm ring-2 ring-rose-600/20',
+    idleIconClass: 'bg-rose-100 text-rose-700',
+  },
+];
 
 interface RecordPrivateSessionModalProps {
   isOpen: boolean;
@@ -68,6 +161,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const [customReason, setCustomReason] = useState<string>('');
   const [title, setTitle] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [behaviorRating, setBehaviorRating] = useState<BehaviorRating | undefined>(undefined);
+  const [homeworkRating, setHomeworkRating] = useState<HomeworkRating | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Active private enrollment info
@@ -165,6 +260,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
       setCustomInput('1');
       setIsCustomMode(false);
       setNotes('');
+      setBehaviorRating(undefined);
+      setHomeworkRating(undefined);
     }
   }, [isOpen, student?.id]);
 
@@ -299,6 +396,8 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
         sessionStatus: attendanceType === 'cancelled' ? 'cancelled' : 'completed',
         title: title.trim() || undefined,
         notes: notes.trim() || undefined,
+        behaviorRating,
+        homeworkRating,
       });
 
       if (typeof onSaveComplete === 'function') {
@@ -600,6 +699,124 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
             }}
             options={['present', 'absent_charged', 'absent_free', 'cancelled']}
           />
+        </div>
+
+        {/* BEHAVIOR RATING (تقييم السلوك) */}
+        <div className="p-3.5 sm:p-4 rounded-3xl bg-page border border-line shadow-xs space-y-2.5 text-start">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-slate block uppercase tracking-wider">
+              {isEn ? 'Behavior Rating' : 'تقييم السلوك'}
+            </span>
+            {behaviorRating ? (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerSelectionHaptic();
+                  setBehaviorRating(undefined);
+                }}
+                className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-navy/10 text-navy border border-navy/20 hover:bg-navy/15 transition-colors cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>{getBehaviorRatingLabel(behaviorRating, isEn)}</span>
+                <AppIcon name="close" size={10} weight="regular" />
+              </button>
+            ) : (
+              <span className="text-[10px] font-bold text-slate px-2 py-0.5 rounded-full bg-mist border border-line">
+                {isEn ? 'Unset' : 'غير محدد'}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {STUDIO_BEHAVIOR_OPTIONS.map((opt) => {
+              const isSelected = behaviorRating === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    triggerSelectionHaptic();
+                    setBehaviorRating((prev) => (prev === opt.value ? undefined : opt.value));
+                  }}
+                  className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 transition-all text-start cursor-pointer border active:scale-98 ${
+                    isSelected
+                      ? opt.activeClass
+                      : 'bg-white hover:bg-mist text-navy border-line'
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      isSelected ? 'bg-white/20 text-white' : opt.idleIconClass
+                    }`}
+                  >
+                    <AppIcon name={opt.icon} size={13} weight="fill" />
+                  </div>
+                  <span className="text-xs font-black tracking-tight leading-tight truncate">
+                    {isEn ? opt.labelEn : opt.labelAr}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* HOMEWORK RATING (تقييم الواجب) */}
+        <div className="p-3.5 sm:p-4 rounded-3xl bg-page border border-line shadow-xs space-y-2.5 text-start">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-slate block uppercase tracking-wider">
+              {isEn ? 'Homework Rating' : 'تقييم الواجب'}
+            </span>
+            {homeworkRating ? (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerSelectionHaptic();
+                  setHomeworkRating(undefined);
+                }}
+                className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-navy/10 text-navy border border-navy/20 hover:bg-navy/15 transition-colors cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>{getHomeworkRatingLabel(homeworkRating, isEn)}</span>
+                <AppIcon name="close" size={10} weight="regular" />
+              </button>
+            ) : (
+              <span className="text-[10px] font-bold text-slate px-2 py-0.5 rounded-full bg-mist border border-line">
+                {isEn ? 'Unset' : 'غير محدد'}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {STUDIO_HOMEWORK_OPTIONS.map((opt) => {
+              const isSelected = homeworkRating === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    triggerSelectionHaptic();
+                    setHomeworkRating((prev) => (prev === opt.value ? undefined : opt.value));
+                  }}
+                  className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 transition-all text-start cursor-pointer border active:scale-98 ${
+                    isSelected
+                      ? opt.activeClass
+                      : 'bg-white hover:bg-mist text-navy border-line'
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      isSelected ? 'bg-white/20 text-white' : opt.idleIconClass
+                    }`}
+                  >
+                    <AppIcon name={opt.icon} size={13} weight="fill" />
+                  </div>
+                  <span className="text-xs font-black tracking-tight leading-tight truncate">
+                    {isEn ? opt.labelEn : opt.labelAr}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* B. LIVE FINANCIAL IMPACT PANEL */}

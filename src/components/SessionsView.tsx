@@ -262,7 +262,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       const now = new Date().toISOString();
       const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time || '16:00');
       const deterministicId = `sess_${selectedDateStr}_stu_${studentId}_${itemMins}`;
-      session = {
+      session = db.getSessionById(deterministicId) || {
         id: deterministicId,
         groupId: '',
         title: item.studentName
@@ -292,9 +292,11 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
     const isHourly = session.isHourly || enr?.billingMode === 'hourly' || enr?.billingType === 'hourly';
     const finalStatus = result.attendanceStatus || 'present';
     const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+    const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
 
     const record: Attendance = {
-      id: `att_${session.id}_${studentId}`,
+      ...existingAtt,
+      id: existingAtt?.id || `att_${session.id}_${studentId}`,
       sessionId: session.id,
       studentId,
       enrollmentId: enr?.id || session.enrollmentId,
@@ -303,22 +305,24 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       sessionUnits: isHourly ? undefined : result.sessionUnits,
       hours: isHourly ? result.hours : undefined,
       notes: result.notes,
+      behaviorRating: result.behaviorRating,
+      homeworkRating: result.homeworkRating,
       absenceReason:
         finalStatus === 'absent_free'
           ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب'))
           : undefined,
-      recordedAt: new Date().toISOString(),
+      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
     };
 
-    db.saveAttendanceBatch(session.id, [record]);
     db.saveSession({
       ...session,
       status: 'completed',
       sessionUnits: isHourly ? undefined : result.sessionUnits,
       hours: isHourly ? result.hours : undefined,
       pricePerStudent: result.pricePerStudent,
-      notes: result.notes || session.notes,
+      notes: result.notes !== undefined ? result.notes : session.notes,
     });
+    db.saveAttendanceBatch(session.id, [record]);
 
     setPrivateIntakeTarget(null);
     if (onDataChanged) onDataChanged();

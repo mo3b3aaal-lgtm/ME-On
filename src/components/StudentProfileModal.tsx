@@ -14,6 +14,8 @@ import {
   StudentGrandFinancialSummary,
   StudentBehaviorLog,
   BehaviorCategory,
+  getBehaviorRatingLabel,
+  getHomeworkRatingLabel,
 } from '../types';
 import {
   db,
@@ -206,8 +208,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   // Load relations and calculated financials (Memoized to guarantee instant tab switches & zero lag)
   const studentId = student?.id;
-  const studentGroups = useMemo(() => (studentId ? db.getStudentGroups(studentId) : []), [studentId]);
-  const enrollments = useMemo(() => (studentId ? db.getEnrollments() : []), [studentId]);
+  const [profileDataVersion, setProfileDataVersion] = useState(0);
+  const studentGroups = useMemo(() => (studentId ? db.getStudentGroups(studentId) : []), [studentId, isOpen, profileDataVersion]);
+  const enrollments = useMemo(() => (studentId ? db.getEnrollments() : []), [studentId, isOpen, profileDataVersion]);
   
   const grandFinancials: StudentGrandFinancialSummary = useMemo(() => {
     if (!studentId) {
@@ -245,11 +248,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       };
     }
     return db.calculateStudentGrandFinancials(studentId);
-  }, [studentId]);
+  }, [studentId, isOpen, profileDataVersion]);
 
   const allPayments = grandFinancials.allPayments;
-  const attendanceList = useMemo(() => (studentId ? db.getStudentAttendance(studentId) : []), [studentId]);
-  const allSessions = useMemo(() => (studentId ? db.getSessions() : []), [studentId]);
+  const attendanceList = useMemo(() => (studentId ? db.getStudentAttendance(studentId) : []), [studentId, isOpen, profileDataVersion]);
+  const allSessions = useMemo(() => (studentId ? db.getSessions() : []), [studentId, isOpen, profileDataVersion]);
 
   interface StudentSessionHistoryItem {
     id: string;
@@ -646,6 +649,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     const nextPaymentStatus = currentUnpaid ? 'paid' : 'unpaid';
 
     const rec: Attendance = {
+      ...existingAtt,
       id: existingAtt?.id || `att_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       sessionId,
       studentId: student.id,
@@ -659,6 +663,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       updatedAt: new Date().toISOString(),
     };
     db.saveAttendanceBatch(sessionId, [rec]);
+    setProfileDataVersion((v) => v + 1);
     onDataChanged();
   };
 
@@ -697,9 +702,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
     const finalStatus = result.attendanceStatus || 'present';
     const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+    const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === student.id);
 
     const record: Attendance = {
-      id: `att_${session.id}_${student.id}`,
+      ...existingAtt,
+      id: existingAtt?.id || `att_${session.id}_${student.id}`,
       sessionId: session.id,
       studentId: student.id,
       enrollmentId: enrollment?.id || session.enrollmentId,
@@ -708,12 +715,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       sessionUnits: result.sessionUnits,
       hours: result.hours,
       isIncomplete: false,
-      notes: result.notes || session.notes,
+      notes: result.notes !== undefined ? result.notes : session.notes,
+      behaviorRating: result.behaviorRating,
+      homeworkRating: result.homeworkRating,
       absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
-      recordedAt: new Date().toISOString(),
+      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
     };
 
-    db.saveAttendanceBatch(session.id, [record]);
     db.saveSession({
       ...session,
       status: 'completed',
@@ -721,16 +729,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       hours: result.hours,
       pricePerStudent: result.pricePerStudent,
       isIncomplete: false,
-      notes: result.notes || session.notes,
+      notes: result.notes !== undefined ? result.notes : session.notes,
       updatedAt: new Date().toISOString(),
     });
+    db.saveAttendanceBatch(session.id, [record]);
 
     setSelectedPrivateIntakeSession(null);
+    setProfileDataVersion((v) => v + 1);
     onDataChanged();
   };
 
   const [isSafeDeleteModalOpen, setIsSafeDeleteModalOpen] = useState(false);
-  const modalLayer = useModalLayer('student-profile', isOpen && !!student, onClose);
 
   const subTabs: StudentProfileSubTab[] = ['overview', 'groups', 'private', 'finances', 'attendance', 'behavior', 'history', 'credit_logs'];
 
@@ -761,7 +770,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     threshold: 45,
   });
 
-  if (!isOpen || !student) return null;
+  if (!student) return null;
 
   const isArchived = student.status === 'archived';
 
@@ -769,6 +778,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     <>
       <BottomSheet
         id="student-profile"
+        transitionVariant="detail"
         isOpen={isOpen && !!student}
         onClose={onClose}
         size="full"
@@ -1047,6 +1057,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                       {todayPrivateSummary.sessions.map((sesItem) => {
                         const isPres = sesItem.status === 'present' || sesItem.status === 'late';
                         const isHourly = sesItem.billingMode === 'hourly';
+                        const sesAtt = sesItem.sessionId
+                          ? attendanceList.find((a) => a.sessionId === sesItem.sessionId)
+                          : undefined;
 
                         return (
                           <div
@@ -1079,6 +1092,22 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                     </span>
                                   )}
                                 </span>
+                                {(sesAtt?.behaviorRating || sesAtt?.homeworkRating) && (
+                                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                    {sesAtt.behaviorRating && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#DCEDEB]/70 text-[#0F2A4A] border border-[#E1EBEC]">
+                                        <AppIcon name="star" size={10} weight="fill" className="text-[#F5A04A]" />
+                                        <span>{isEn ? 'Behavior:' : 'السلوك:'} {getBehaviorRatingLabel(sesAtt.behaviorRating, isEn)}</span>
+                                      </span>
+                                    )}
+                                    {sesAtt.homeworkRating && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#DCEDEB]/70 text-[#0F2A4A] border border-[#E1EBEC]">
+                                        <AppIcon name="book" size={10} weight="fill" className="text-[#17375E]" />
+                                        <span>{isEn ? 'Homework:' : 'الواجب:'} {getHomeworkRatingLabel(sesAtt.homeworkRating, isEn)}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -1097,11 +1126,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                   <span>⚠️</span>
                                   <span>{isEn ? 'Complete Session' : 'استكمال تفاصيل الحصة'}</span>
                                 </button>
-                              ) : isPres ? (
+                              ) : sesItem.status !== 'unrecorded' && sesItem.sessionId ? (
                                 <div className="text-right">
-                                  <span className="text-xs font-black text-[#0F2A4A] block">
-                                    {sesItem.price} {t('currency')}
-                                  </span>
+                                  {isPres && (
+                                    <span className="text-xs font-black text-[#0F2A4A] block">
+                                      {sesItem.price} {t('currency')}
+                                    </span>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1861,6 +1892,28 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                     </span>
                                   )}
                                 </span>
+                                {(() => {
+                                  const sesAtt = sesItem.sessionId
+                                    ? attendanceList.find((a) => a.sessionId === sesItem.sessionId)
+                                    : undefined;
+                                  if (!sesAtt?.behaviorRating && !sesAtt?.homeworkRating) return null;
+                                  return (
+                                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                      {sesAtt.behaviorRating && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#DCEDEB]/70 text-[#0F2A4A] border border-[#E1EBEC]">
+                                          <AppIcon name="star" size={10} weight="fill" className="text-[#F5A04A]" />
+                                          <span>{isEn ? 'Behavior:' : 'السلوك:'} {getBehaviorRatingLabel(sesAtt.behaviorRating, isEn)}</span>
+                                        </span>
+                                      )}
+                                      {sesAtt.homeworkRating && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#DCEDEB]/70 text-[#0F2A4A] border border-[#E1EBEC]">
+                                          <AppIcon name="book" size={10} weight="fill" className="text-[#17375E]" />
+                                          <span>{isEn ? 'Homework:' : 'الواجب:'} {getHomeworkRatingLabel(sesAtt.homeworkRating, isEn)}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
 
@@ -1879,11 +1932,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                   <span>⚠️</span>
                                   <span>{isEn ? 'Complete Session' : 'استكمال تفاصيل الحصة'}</span>
                                 </button>
-                              ) : isPres ? (
+                              ) : sesItem.status !== 'unrecorded' && sesItem.sessionId ? (
                                 <div className="text-right">
-                                  <span className="text-xs font-black text-[#0F2A4A] block">
-                                    {sesItem.price} {t('currency')}
-                                  </span>
+                                  {isPres && (
+                                    <span className="text-xs font-black text-[#0F2A4A] block">
+                                      {sesItem.price} {t('currency')}
+                                    </span>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -2451,6 +2506,27 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             />
                           </div>
 
+                          {(att?.behaviorRating || att?.homeworkRating) && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                              {att.behaviorRating && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#DCEDEB]/70 text-[#0F2A4A] border border-[#E1EBEC]">
+                                  <AppIcon name="star" size={11} weight="fill" className="text-[#F5A04A]" />
+                                  <span>
+                                    {isEn ? 'Behavior:' : 'السلوك:'} {getBehaviorRatingLabel(att.behaviorRating, isEn)}
+                                  </span>
+                                </span>
+                              )}
+                              {att.homeworkRating && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#DCEDEB]/70 text-[#0F2A4A] border border-[#E1EBEC]">
+                                  <AppIcon name="book" size={11} weight="fill" className="text-[#17375E]" />
+                                  <span>
+                                    {isEn ? 'Homework:' : 'الواجب:'} {getHomeworkRatingLabel(att.homeworkRating, isEn)}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                           <div className={`flex items-center justify-between text-[11px] text-[#5F7083] pt-1 border-t flex-wrap gap-2 ${
                             item.isAbsentCharged || item.isAbsentFree ? 'border-[#FF647C]/20' : 'border-[#E1EBEC]'
                           }`}>
@@ -2483,11 +2559,24 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               )}
                             </div>
 
-                            {att && (
-                              <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
+                              {isPrivate && session && (
                                 <button
                                   type="button"
-                                  onClick={() => handleToggleSessionPaymentOverride(att.sessionId)}
+                                  onClick={() => setSelectedPrivateIntakeSession({ session, item })}
+                                  className="px-2 py-0.5 rounded-md font-bold text-[10px] border bg-[#FFFFFF] text-[#17375E] border-[#E1EBEC] hover:bg-[#DCEDEB]/50 transition-colors cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <AppIcon name="edit" size={10} />
+                                  <span>{isEn ? 'Edit' : 'تعديل'}</span>
+                                </button>
+                              )}
+                              {att && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleToggleSessionPaymentOverride(att.sessionId);
+                                    setProfileDataVersion((v) => v + 1);
+                                  }}
                                   className={`px-2 py-0.5 rounded-md font-bold text-[10px] border transition-colors cursor-pointer ${
                                     isUnpaid
                                       ? 'bg-[#E1EBEC]/15 text-[#0F2A4A] border-[#E1EBEC]'
@@ -2496,8 +2585,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 >
                                   {isUnpaid ? (isEn ? 'Unpaid' : 'غير مسدد (مستحق)') : (isEn ? 'Paid' : 'مسدد (خالص)')}
                                 </button>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -2686,6 +2775,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           student={student}
           onSaveComplete={() => {
             setIsRecordPrivateModalOpen(false);
+            setProfileDataVersion((v) => v + 1);
             onDataChanged();
           }}
         />

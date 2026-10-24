@@ -488,7 +488,7 @@
   border: 1px solid var(--color-line, #E1EBEC);
   border-radius: var(--radius-card, 22px);
   box-shadow: var(--shadow-white);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), border-color 160ms ease, background-color 160ms ease;
 }
 
 .classy-card-hover:hover {
@@ -1144,7 +1144,7 @@ input[type="radio"] {
   align-items: center;
   justify-content: center;
   box-shadow: 0 12px 28px -4px rgba(23, 55, 94, 0.42), 0 4px 10px rgba(15, 42, 74, 0.25);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), opacity 160ms ease;
   cursor: pointer;
 }
 
@@ -1165,7 +1165,7 @@ input[type="radio"] {
   border-radius: 20px;
   box-shadow: 0 6px 18px rgba(23, 55, 94, 0.07);
   border: 1px solid #E1EBEC;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), border-color 160ms ease, background-color 160ms ease;
 }
 
 .neu-card-hover:hover, .royal-card-hover:hover, .bento-stat-card:hover {
@@ -1315,7 +1315,7 @@ button.h-4 {
   min-width: unset;
 }
 
-/* Press feedback: every tappable card/tile/chip/button: active scale .985 (120ms) */
+/* Press feedback: every tappable card/tile/chip/button: active scale .985 (120ms) without permanent GPU layer promotion */
 .press-feedback,
 .touch-feedback,
 .chip,
@@ -1323,7 +1323,6 @@ button.h-4 {
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]) {
   transition: transform 120ms cubic-bezier(0.2, 0, 0, 1);
-  will-change: transform;
 }
 
 .press-feedback:active,
@@ -1439,8 +1438,7 @@ main,
 }
 
 .animate-tile-stagger {
-  animation: tile-stagger 280ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
-  will-change: transform, opacity;
+  animation: tile-stagger 220ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
   backface-visibility: hidden;
   transform-origin: center top;
 }
@@ -1456,178 +1454,279 @@ main,
 }
 
 /* ==========================================================================
-   CLASSY 120Hz-READY MOTION SYSTEM
-   High frame-rate composited transitions:
-   - GPU-promoted (transform: translate3d, opacity)
-   - Zero geometry layout thrashing (no width/height/top/left animations)
-   - Fine-tuned latency: 120ms micro, 140-180ms section, 190ms sheets
-   - 18ms micro-staggers capped at top 6-8 items
-   - Full prefers-reduced-motion fallback
+   CLASSY UNIFORM 150ms COMPOSITED PAGE NAVIGATION & MOTION SYSTEM
+   - Pure compositor animations (translate3d + opacity only; zero layout reflows)
+   - Non-blocking CSS animations (pointer input remains active immediately)
+   - Zero retained transform after settle on active pages (fill-mode: none)
+   - Uniform 150ms horizontal slide + fade for all forward & backward navigation
    ========================================================================== */
 
-/* Section Personalities */
+:root {
+  --nav-transition-duration: 150ms;
+  --nav-transition-ease: cubic-bezier(0.2, 0, 0, 1);
+}
 
-/* 1. Dashboard (الرئيسية): subtle fast fade-and-rise */
-@keyframes motionDashboardEnter {
+/* Stacked Tab Stage: avoids display:none layout reflows & preserves scroll boxes */
+.tab-stage {
+  position: relative;
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.tab-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-panel-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.tab-panel-inactive {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media print {
+  .tab-panel-inactive {
+    display: none !important;
+  }
+  .tab-panel-active {
+    position: static !important;
+    overflow: visible !important;
+  }
+}
+
+@keyframes navSlideFadeFromRight {
   from {
     opacity: 0;
-    transform: translate3d(0, 8px, 0);
+    transform: translate3d(16px, 0, 0);
   }
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
   }
 }
-.motion-dashboard-enter {
-  animation: motionDashboardEnter 180ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+
+@keyframes navSlideFadeFromRightAlt {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes navSlideFadeFromLeft {
+  from {
+    opacity: 0;
+    transform: translate3d(-16px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes navSlideFadeFromLeftAlt {
+  from {
+    opacity: 0;
+    transform: translate3d(-16px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes navSlideFadeOutToRight {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(16px, 0, 0);
+  }
+}
+
+@keyframes navSlideFadeOutToLeft {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-16px, 0, 0);
+  }
+}
+
+/* Main Tab & Nested Forward Navigation (150ms horizontal slide + fade, RTL-aware) */
+.nav-page-forward,
+.nav-tab-enter-forward,
+.nav-nested-enter {
+  animation: navSlideFadeFromRight var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1));
   backface-visibility: hidden;
 }
 
-/* 2. Students (الطلاب): subtle staggered fade-and-rise */
-@keyframes motionStudentsEnter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 6px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+.nav-page-forward.nav-anim-alt,
+.nav-tab-enter-forward.nav-anim-alt,
+.nav-nested-enter.nav-anim-alt {
+  animation-name: navSlideFadeFromRightAlt;
 }
-.motion-students-enter {
-  animation: motionStudentsEnter 160ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+
+[dir="rtl"] .nav-page-forward,
+[dir="rtl"] .nav-tab-enter-forward,
+[dir="rtl"] .nav-nested-enter {
+  animation-name: navSlideFadeFromLeft;
+}
+
+[dir="rtl"] .nav-page-forward.nav-anim-alt,
+[dir="rtl"] .nav-tab-enter-forward.nav-anim-alt,
+[dir="rtl"] .nav-nested-enter.nav-anim-alt {
+  animation-name: navSlideFadeFromLeftAlt;
+}
+
+/* Main Tab & Nested Backward Navigation (150ms opposite horizontal slide + fade, RTL-aware) */
+.nav-page-backward,
+.nav-tab-enter-backward,
+.nav-nested-return {
+  animation: navSlideFadeFromLeft var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1));
   backface-visibility: hidden;
 }
 
-/* 3. Groups (المجموعات): short fade-and-slide */
-@keyframes motionGroupsEnter {
-  from {
-    opacity: 0;
-    transform: translate3d(6px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+.nav-page-backward.nav-anim-alt,
+.nav-tab-enter-backward.nav-anim-alt,
+.nav-nested-return.nav-anim-alt {
+  animation-name: navSlideFadeFromLeftAlt;
 }
-@keyframes motionGroupsEnterRtl {
-  from {
-    opacity: 0;
-    transform: translate3d(-6px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+
+[dir="rtl"] .nav-page-backward,
+[dir="rtl"] .nav-tab-enter-backward,
+[dir="rtl"] .nav-nested-return {
+  animation-name: navSlideFadeFromRight;
 }
-.motion-groups-enter {
-  animation: motionGroupsEnter 160ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+
+[dir="rtl"] .nav-page-backward.nav-anim-alt,
+[dir="rtl"] .nav-tab-enter-backward.nav-anim-alt,
+[dir="rtl"] .nav-nested-return.nav-anim-alt {
+  animation-name: navSlideFadeFromRightAlt;
+}
+
+/* Physical Swipe-Committed Navigation (150ms horizontal slide + fade continuing thumb momentum) */
+.nav-swipe-enter-left {
+  animation: navSlideFadeFromRight var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1));
   backface-visibility: hidden;
 }
-[dir="rtl"] .motion-groups-enter {
-  animation-name: motionGroupsEnterRtl;
+.nav-swipe-enter-left.nav-anim-alt {
+  animation-name: navSlideFadeFromRightAlt;
 }
 
-/* 4. Sessions (الحصص): quick clean transition */
-@keyframes motionSessionsEnter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 4px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-.motion-sessions-enter {
-  animation: motionSessionsEnter 150ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+.nav-swipe-enter-right {
+  animation: navSlideFadeFromLeft var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1));
   backface-visibility: hidden;
 }
-
-/* 5. Reports (التقارير): restrained pure fade (no chart geometry thrashing) */
-@keyframes motionReportsEnter {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.motion-reports-enter {
-  animation: motionReportsEnter 170ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: opacity;
+.nav-swipe-enter-right.nav-anim-alt {
+  animation-name: navSlideFadeFromLeftAlt;
 }
 
-/* 6. Settings (الإعدادات): short crisp fade */
-@keyframes motionSettingsEnter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 4px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-.motion-settings-enter {
-  animation: motionSettingsEnter 140ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+/* Detail Overlay / Profile / Studio Forward (150ms) & Backward Return (150ms) */
+.animate-detail-enter {
+  animation: navSlideFadeFromRight var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1));
   backface-visibility: hidden;
 }
-
-/* Backward-compatible screen tab enter */
-@keyframes screen-tab-enter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+[dir="rtl"] .animate-detail-enter,
+[dir="rtl"].animate-detail-enter {
+  animation-name: navSlideFadeFromLeft;
 }
+
+.animate-detail-exit {
+  animation: navSlideFadeOutToRight var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1)) forwards;
+  backface-visibility: hidden;
+}
+[dir="rtl"] .animate-detail-exit,
+[dir="rtl"].animate-detail-exit {
+  animation-name: navSlideFadeOutToLeft;
+}
+
+/* Segment & Section Navigation Helpers (uniform 150ms horizontal slide + fade, no retained transform) */
+.motion-groups-enter,
+.motion-dashboard-enter,
+.motion-sessions-enter,
+.motion-reports-enter,
+.motion-settings-enter,
 .animate-screen-enter {
-  animation: screen-tab-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+  animation: navSlideFadeFromRight var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1));
   backface-visibility: hidden;
+}
+
+[dir="rtl"] .motion-groups-enter,
+[dir="rtl"] .motion-dashboard-enter,
+[dir="rtl"] .motion-sessions-enter,
+[dir="rtl"] .motion-reports-enter,
+[dir="rtl"] .motion-settings-enter,
+[dir="rtl"] .animate-screen-enter {
+  animation-name: navSlideFadeFromLeft;
+}
+
+.motion-students-enter {
+  animation: navSlideFadeFromLeft var(--nav-transition-duration, 150ms)
+    var(--nav-transition-ease, cubic-bezier(0.2, 0, 0, 1));
+  backface-visibility: hidden;
+}
+[dir="rtl"] .motion-students-enter {
+  animation-name: navSlideFadeFromRight;
 }
 
 /* ==========================================================================
-   CALENDAR ANIMATIONS (120Hz-TUNED)
+   CALENDAR ANIMATIONS
    ========================================================================== */
 @keyframes day-pop {
-  0% { transform: scale3d(0.85, 0.85, 1); opacity: 0.85; }
-  65% { transform: scale3d(1.06, 1.06, 1); opacity: 1; }
+  0% { transform: scale3d(0.92, 0.92, 1); opacity: 0.9; }
+  65% { transform: scale3d(1.04, 1.04, 1); opacity: 1; }
   100% { transform: scale3d(1, 1, 1); opacity: 1; }
 }
 
 .animate-day-pop {
-  animation: day-pop 160ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+  animation: day-pop 150ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 @keyframes slide-month-left {
-  from { transform: translate3d(14px, 0, 0); opacity: 0.7; }
+  from { transform: translate3d(14px, 0, 0); opacity: 0.78; }
   to { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
 @keyframes slide-month-right {
-  from { transform: translate3d(-14px, 0, 0); opacity: 0.7; }
+  from { transform: translate3d(-14px, 0, 0); opacity: 0.78; }
   to { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
 .animate-slide-month-left {
-  animation: slide-month-left 160ms cubic-bezier(0.2, 0, 0, 1);
-  will-change: transform, opacity;
+  animation: slide-month-left 150ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .animate-slide-month-right {
-  animation: slide-month-right 160ms cubic-bezier(0.2, 0, 0, 1);
-  will-change: transform, opacity;
+  animation: slide-month-right 150ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* ==========================================================================
@@ -1645,15 +1744,14 @@ main,
 }
 
 .animate-fade-up {
-  animation: fade-up 160ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+  animation: fade-up 150ms cubic-bezier(0.2, 0, 0, 1) both;
   backface-visibility: hidden;
 }
 
 @keyframes tile-stagger {
   from {
     opacity: 0;
-    transform: translate3d(0, 8px, 0);
+    transform: translate3d(0, 6px, 0);
   }
   to {
     opacity: 1;
@@ -1662,8 +1760,7 @@ main,
 }
 
 .animate-tile-stagger {
-  animation: tile-stagger 160ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+  animation: tile-stagger 150ms cubic-bezier(0.2, 0, 0, 1) both;
   backface-visibility: hidden;
 }
 
@@ -1677,20 +1774,37 @@ main,
 .stagger-8, .motion-stagger-8 { animation-delay: 144ms; }
 
 /* ==========================================================================
-   BOTTOM SHEET & MODAL ANIMATIONS (120Hz-TUNED)
+   BOTTOM SHEET & MODAL ANIMATIONS
    ========================================================================== */
 @keyframes sheet-slide-up {
   from {
-    transform: translate3d(0, 100%, 0);
+    opacity: 0.92;
+    transform: translate3d(0, 24px, 0);
   }
   to {
+    opacity: 1;
     transform: translate3d(0, 0, 0);
   }
 }
 
+@keyframes sheet-slide-down {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+}
+
 .animate-sheet-slide-up {
-  animation: sheet-slide-up 190ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform;
+  animation: sheet-slide-up 150ms cubic-bezier(0.2, 0, 0, 1);
+  backface-visibility: hidden;
+}
+
+.animate-sheet-exit {
+  animation: sheet-slide-down 150ms cubic-bezier(0.2, 0, 0, 1) forwards;
   backface-visibility: hidden;
 }
 
@@ -1703,14 +1817,26 @@ main,
   }
 }
 
+@keyframes backdrop-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .animate-backdrop-fade {
-  animation: backdrop-fade 160ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: opacity;
+  animation: backdrop-fade 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.animate-backdrop-exit {
+  animation: backdrop-fade-out 150ms cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
 @keyframes pop-in {
   0% {
-    transform: scale3d(0.85, 0.85, 1);
+    transform: scale3d(0.88, 0.88, 1);
     opacity: 0;
   }
   100% {
@@ -1721,7 +1847,6 @@ main,
 
 .animate-pop-in {
   animation: pop-in 150ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
 }
 
 @keyframes skeleton-shimmer {
@@ -1756,8 +1881,7 @@ main,
 }
 
 .animate-toast-slide-up {
-  animation: toast-slide-up 200ms cubic-bezier(0.2, 0, 0, 1) both;
-  will-change: transform, opacity;
+  animation: toast-slide-up 150ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 /* ==========================================================================
@@ -1779,13 +1903,25 @@ main,
   }
 
   .animate-screen-enter,
+  .nav-page-forward,
+  .nav-page-backward,
+  .nav-tab-enter-forward,
+  .nav-tab-enter-backward,
+  .nav-nested-enter,
+  .nav-nested-return,
+  .nav-swipe-enter-left,
+  .nav-swipe-enter-right,
+  .animate-detail-enter,
+  .animate-detail-exit,
+  .animate-sheet-exit,
+  .animate-backdrop-exit,
   .motion-dashboard-enter,
   .motion-students-enter,
   .motion-groups-enter,
   .motion-sessions-enter,
   .motion-reports-enter,
   .motion-settings-enter {
-    animation: screen-fade-reduced 120ms ease-out both !important;
+    animation: none !important;
     transform: none !important;
   }
 
@@ -1839,4 +1975,3 @@ main,
     animation: none !important;
   }
 }
-

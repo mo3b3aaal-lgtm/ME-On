@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { MintCard } from './ui/MintCard';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
 import { useTranslation } from '../utils/i18n';
@@ -37,17 +37,6 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
   const isEn = language.startsWith('en');
 
   useModalLayer('quick-add-sheet', isOpen, onClose);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -100,12 +89,12 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-navy/35 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-navy/35 animate-backdrop-fade"
         onClick={onClose}
       />
 
       {/* Bottom Sheet Card */}
-      <div className="relative z-10 w-full max-w-[440px] mx-auto bg-page border-t border-line rounded-t-[32px] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom-8 duration-280">
+      <div className="relative z-10 w-full max-w-[440px] mx-auto bg-page border-t border-line rounded-t-[32px] p-5 pb-8 shadow-2xl animate-sheet-slide-up">
         {/* Drag handle */}
         <div className="w-10 h-1 bg-line rounded-full mx-auto mb-4" />
 

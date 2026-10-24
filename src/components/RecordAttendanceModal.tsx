@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Session, Group, Student, Attendance, AttendanceStatus } from '../types';
+import { Session, Group, Student, Attendance, AttendanceStatus, BehaviorRating, HomeworkRating } from '../types';
 import { db } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
@@ -26,6 +26,8 @@ interface StudentAttendanceRecord {
   pricePerStudent?: number;
   absenceReason: string;
   homeworkDone: boolean;
+  behaviorRating?: BehaviorRating;
+  homeworkRating?: HomeworkRating;
   notes: string;
 }
 
@@ -74,8 +76,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   }, [sessionId, groupId, privateStudent]);
 
   const existingAttendance = useMemo(
-    () => (sessionId ? db.getSessionAttendance(sessionId) : []),
-    [sessionId]
+    () => (sessionId && isOpen ? db.getSessionAttendance(sessionId) : []),
+    [sessionId, isOpen]
   );
 
   const allEnrollments = useMemo(() => {
@@ -122,6 +124,8 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
           hours: found.hours ?? session?.hours ?? 1.5,
           absenceReason: found.absenceReason || found.notes || '',
           homeworkDone: found.homeworkDone ?? true,
+          behaviorRating: found.behaviorRating,
+          homeworkRating: found.homeworkRating,
           notes: found.notes || '',
         };
       } else {
@@ -178,7 +182,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         sessionUnits: result.sessionUnits,
         hours: result.hours,
         pricePerStudent: result.pricePerStudent,
-        notes: result.notes || prev[studentId]?.notes || '',
+        behaviorRating: result.behaviorRating,
+        homeworkRating: result.homeworkRating,
+        notes: result.notes !== undefined ? result.notes : (prev[studentId]?.notes || ''),
         absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : '',
       },
     }));
@@ -333,11 +339,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
     Object.entries(records).forEach(([studentId, item]: [string, StudentAttendanceRecord]) => {
       const enr = allEnrollments.find((e) => e.studentId === studentId);
+      const prevAtt = existingAttendance.find((a) => a.studentId === studentId);
       listToSave.push({
-        id: `att_${session.id}_${studentId}`,
+        ...prevAtt,
+        id: prevAtt?.id || `att_${session.id}_${studentId}`,
         sessionId: session.id,
         studentId,
-        enrollmentId: enr?.id,
+        enrollmentId: enr?.id || prevAtt?.enrollmentId,
         status: item.status,
         isCharged: item.isCharged,
         sessionUnits: item.sessionUnits,
@@ -345,8 +353,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         hourlyRate: session.hourlyRate || enr?.hourlyRate || group?.hourlyRate,
         absenceReason: item.absenceReason,
         homeworkDone: item.homeworkDone,
+        behaviorRating: item.behaviorRating,
+        homeworkRating: item.homeworkRating,
         notes: item.notes || item.absenceReason,
-        recordedAt: new Date().toISOString(),
+        recordedAt: prevAtt?.recordedAt || new Date().toISOString(),
       });
     });
 
@@ -399,8 +409,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       enr?.billingMode === 'hourly' ||
       enr?.billingType === 'hourly';
 
+    const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
     const record: Attendance = {
-      id: `att_${session.id}_${studentId}`,
+      ...existingAtt,
+      id: existingAtt?.id || `att_${session.id}_${studentId}`,
       sessionId: session.id,
       studentId,
       enrollmentId: enr?.id || session.enrollmentId,
@@ -409,26 +421,28 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       sessionUnits: isHourly ? undefined : result.sessionUnits,
       hours: isHourly ? result.hours : undefined,
       notes: result.notes,
+      behaviorRating: result.behaviorRating,
+      homeworkRating: result.homeworkRating,
       absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
-      recordedAt: new Date().toISOString(),
+      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
     };
 
-    db.saveAttendanceBatch(session.id, [record]);
     db.saveSession({
       ...session,
       status: 'completed',
       sessionUnits: isHourly ? undefined : result.sessionUnits,
       hours: isHourly ? result.hours : undefined,
       pricePerStudent: result.pricePerStudent,
-      notes: result.notes || session.notes,
+      notes: result.notes !== undefined ? result.notes : session.notes,
     });
+    db.saveAttendanceBatch(session.id, [record]);
 
     triggerSuccessHaptic();
     onSaveComplete();
     onClose();
   };
 
-  if (!isOpen || !session) return null;
+  if (!session) return null;
 
   // CRITICAL RULE: A private lesson must NEVER open the group attendance modal
   // that contains bulk actions like "Mark All Present" or "Mark All Absent".
@@ -450,6 +464,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     <>
       <BottomSheet
         id="record-attendance"
+        transitionVariant="detail"
         isOpen={isOpen && !!session}
         onClose={onClose}
         title={

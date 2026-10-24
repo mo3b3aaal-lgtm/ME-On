@@ -14,29 +14,32 @@ export function sanitizeProgressValue(value: number | undefined | null): number 
  * Counts a number up from 0 (on mount) or previous value to `target` in `duration` ms (ease-out).
  * Respects prefers-reduced-motion. Does not repeat on ordinary re-renders, only on mount or value change.
  */
-export function useCountUp(target: number, duration = 800): number {
+export function useCountUp(target: number, duration = 420): number {
   const safeTarget =
     typeof target === 'number' && Number.isFinite(target) && !Number.isNaN(target)
       ? target
       : 0;
   const isFirstMount = useRef(true);
-  const [current, setCurrent] = useState<number>(() => {
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      return Math.round(safeTarget);
-    }
-    return 0;
-  });
-
+  const initialVal =
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      ? Math.round(safeTarget)
+      : 0;
+  const [current, setCurrent] = useState<number>(initialVal);
+  const lastRenderedRef = useRef<number>(initialVal);
   const previousRef = useRef<number>(0);
 
   useEffect(() => {
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const roundedTarget = Math.round(safeTarget);
 
     if (prefersReducedMotion || duration <= 0) {
       previousRef.current = safeTarget;
-      setCurrent(Math.round(safeTarget));
+      if (lastRenderedRef.current !== roundedTarget) {
+        lastRenderedRef.current = roundedTarget;
+        setCurrent(roundedTarget);
+      }
       return;
     }
 
@@ -45,7 +48,10 @@ export function useCountUp(target: number, duration = 800): number {
     const delta = safeTarget - startValue;
 
     if (delta === 0) {
-      setCurrent(Math.round(safeTarget));
+      if (lastRenderedRef.current !== roundedTarget) {
+        lastRenderedRef.current = roundedTarget;
+        setCurrent(roundedTarget);
+      }
       return;
     }
 
@@ -57,14 +63,21 @@ export function useCountUp(target: number, duration = 800): number {
       const t = Math.min(1, Math.max(0, elapsed / duration));
       // Cubic ease-out
       const eased = 1 - Math.pow(1 - t, 3);
-      const nextVal = startValue + delta * eased;
-      setCurrent(Math.round(nextVal));
+      const roundedNext = Math.round(startValue + delta * eased);
+
+      if (roundedNext !== lastRenderedRef.current) {
+        lastRenderedRef.current = roundedNext;
+        setCurrent(roundedNext);
+      }
 
       if (t < 1) {
         rafId = requestAnimationFrame(tick);
       } else {
         previousRef.current = safeTarget;
-        setCurrent(Math.round(safeTarget));
+        if (lastRenderedRef.current !== roundedTarget) {
+          lastRenderedRef.current = roundedTarget;
+          setCurrent(roundedTarget);
+        }
       }
     };
 

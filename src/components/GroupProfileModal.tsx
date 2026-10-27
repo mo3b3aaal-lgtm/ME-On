@@ -21,6 +21,7 @@ interface GroupProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   group: Group | null;
+  domainRevision?: number;
   onEditGroup: (group: Group) => void;
   onAddExistingStudent: (group: Group) => void;
   onAddNewStudentToGroup: (group: Group) => void;
@@ -31,10 +32,22 @@ interface GroupProfileModalProps {
   onDataChanged: () => void;
 }
 
+const STAGGER_DELAY_CLASSES = [
+  'stagger-0',
+  'stagger-1',
+  'stagger-2',
+  'stagger-3',
+  'stagger-4',
+  'stagger-5',
+  'stagger-6',
+  'stagger-7',
+] as const;
+
 export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   isOpen,
   onClose,
   group,
+  domainRevision = 0,
   onEditGroup,
   onAddExistingStudent,
   onAddNewStudentToGroup,
@@ -48,29 +61,30 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
   const isEn = language.startsWith('en');
 
   const [activeSubTab, setActiveSubTab] = useState<'students' | 'sessions' | 'stats'>('students');
+  const [groupDataVersion, setGroupDataVersion] = useState(0);
 
   // Load group enrollments and active students
   const enrollments: Enrollment[] = useMemo(() => {
-    if (!group) return [];
+    if (!group || !isOpen) return [];
     return db.getGroupEnrollments(group.id);
-  }, [group, isOpen]);
+  }, [group, isOpen, domainRevision, groupDataVersion]);
 
   const enrolledStudents: Student[] = useMemo(() => {
-    if (!group) return [];
+    if (!group || !isOpen) return [];
     const allStudents = db.getStudents();
-    const enrolledIds = enrollments.map((e) => e.studentId);
-    return allStudents.filter((s) => enrolledIds.includes(s.id) && s.status !== 'archived');
-  }, [enrollments, group, isOpen]);
+    const enrolledIdSet = new Set(enrollments.map((e) => e.studentId));
+    return allStudents.filter((s) => enrolledIdSet.has(s.id) && s.status !== 'archived');
+  }, [enrollments, group, isOpen, domainRevision, groupDataVersion]);
 
   // Load group sessions
   const groupSessions: Session[] = useMemo(() => {
-    if (!group) return [];
+    if (!group || !isOpen) return [];
     return db.getSessions().filter((s) => s.groupId === group.id).sort((a, b) => b.date.localeCompare(a.date));
-  }, [group, isOpen]);
+  }, [group, isOpen, domainRevision, groupDataVersion]);
 
   // Financial summary & Attendance stats
   const stats = useMemo(() => {
-    if (!group) {
+    if (!group || !isOpen) {
       return { totalRevenue: 0, completedSessions: 0, attendanceRate: 100, totalDue: 0 };
     }
 
@@ -84,14 +98,20 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
       }
     });
 
-    const completed = groupSessions.filter((s) => s.status === 'completed').length;
+    let completed = 0;
+    let presentCount = 0;
+    let totalRecords = 0;
 
-    // Calculate attendance percentage across all sessions
-    const allAtt = db.getAttendance();
-    const groupSessionIds = new Set(groupSessions.map((s) => s.id));
-    const groupAtt = allAtt.filter((a) => groupSessionIds.has(a.sessionId));
-    const presentCount = groupAtt.filter((a) => a.status === 'present' || a.status === 'late').length;
-    const totalRecords = groupAtt.length;
+    groupSessions.forEach((s) => {
+      if (s.status === 'completed') completed++;
+      const sessionAtt = db.getSessionAttendance(s.id);
+      totalRecords += sessionAtt.length;
+      for (let i = 0; i < sessionAtt.length; i++) {
+        const st = sessionAtt[i].status;
+        if (st === 'present' || st === 'late') presentCount++;
+      }
+    });
+
     const rate = totalRecords > 0 ? Math.round((presentCount / totalRecords) * 100) : 100;
 
     return {
@@ -100,7 +120,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
       completedSessions: completed,
       attendanceRate: rate,
     };
-  }, [group, enrollments, groupSessions, isOpen]);
+  }, [group, enrollments, groupSessions, isOpen, domainRevision, groupDataVersion]);
 
   if (!group) return null;
 
@@ -117,6 +137,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
       const enr = enrollments.find((e) => e.studentId === studentId);
       if (enr) {
         db.removeEnrollment(enr.id);
+        setGroupDataVersion((v) => v + 1);
         onDataChanged();
       }
     }
@@ -282,12 +303,16 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
               </WhiteCard>
             ) : (
               <div className="space-y-2">
-                {enrolledStudents.map((st) => {
+                {enrolledStudents.map((st, index) => {
                   const enr = enrollments.find((e) => e.studentId === st.id);
+                  const isStaggerEnabled = enrolledStudents.length <= 50;
+                  const staggerClass = isStaggerEnabled
+                    ? `animate-tile-stagger ${index < STAGGER_DELAY_CLASSES.length ? STAGGER_DELAY_CLASSES[index] : ''}`
+                    : '';
                   return (
                     <MintCard
                       key={st.id}
-                      className="p-3 flex items-center justify-between gap-2"
+                      className={`p-3 flex items-center justify-between gap-2 ${staggerClass}`}
                     >
                       <div
                         onClick={() => onOpenStudentProfile(st)}

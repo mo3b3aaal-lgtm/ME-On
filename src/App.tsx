@@ -1,9 +1,29 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import React, {
+  Suspense,
+  lazy,
+  startTransition,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
-import { ActiveTab, Student, Group, Session, Payment, TeacherProfile, UserAccount } from './types';
+import {
+  ActiveTab,
+  Student,
+  Group,
+  Enrollment,
+  Session,
+  Attendance,
+  Payment,
+  SmartReminderItem,
+  TeacherProfile,
+  UserAccount,
+} from './types';
 import { db } from './utils/storage';
 import { useTranslation } from './utils/i18n';
-import { useModalContext } from './contexts/ModalContext';
+import { useModalActions, useHasOpenModals } from './contexts/ModalContext';
 import {
   TOP_LEVEL_NAV_ORDER,
   TopLevelNavTab,
@@ -11,32 +31,90 @@ import {
   usePageSwipeNavigation,
 } from './utils/useSwipeGesture';
 
-// Mobile UI components
+// Core Shell & Primary View (eager for instant initial paint)
 import { BottomNavBar } from './components/BottomNavBar';
 import { QuickAddSheet } from './components/QuickAddSheet';
 import { AuthView } from './components/AuthView';
 import { SplashScreen } from './components/SplashScreen';
-
-// Main Views
 import { DashboardView } from './components/DashboardView';
-import { StudentsView } from './components/StudentsView';
-import { SessionsView } from './components/SessionsView';
-import { ReportsView } from './components/ReportsView';
-import { SettingsView } from './components/SettingsView';
-
-// Modals
-import { AddEditStudentModal } from './components/AddEditStudentModal';
-import { AddEditGroupModal } from './components/AddEditGroupModal';
-import { AddEditSessionModal } from './components/AddEditSessionModal';
-import { BulkAddSessionModal } from './components/BulkAddSessionModal';
-import { EnrollExistingStudentModal } from './components/EnrollExistingStudentModal';
-import { StudentProfileModal } from './components/StudentProfileModal';
-import { GroupProfileModal } from './components/GroupProfileModal';
-import { RecordAttendanceModal } from './components/RecordAttendanceModal';
-import { AddPaymentModal } from './components/AddPaymentModal';
-import { NotificationsModal } from './components/NotificationsModal';
+import { DelayedFallback } from './components/ui/Skeleton';
+import {
+  SessionsScreenSkeleton,
+  ReportsScreenSkeleton,
+  StudentsScreenSkeleton,
+  SettingsAsyncFallback,
+  LessonStudioSheetSkeleton,
+  ProfileSheetSkeleton,
+} from './components/skeletons/ClassySkeletons';
 import { initLocalNotifications, scheduleDailyAttendanceReminder } from './utils/localNotifications';
-import { toLocalISODate } from './utils/localDate';
+import {
+  getNotificationRevision,
+  getUnreadNotificationsCount,
+  requestPlatformNotificationPermission,
+  resetPermissionAlertDismissal,
+  subscribeToNotifications,
+} from './utils/notificationCenter';
+import { parseTimeToMinutes, getLocalizedWeekdayName, DAY_INDEX_TO_CANONICAL } from './utils/schedule';
+import { parseLocalDateStr, toLocalISODate } from './utils/localDate';
+import { Toast, type ToastType } from './components/ui/Toast';
+import type { PrivateClassIntakeResult } from './components/PrivateClassIntakeModal';
+
+// Lazy-loaded Views & Modals (pre-warmed in idle slices during the 2.2s splash window)
+const loadStudentsView = () => import('./components/StudentsView');
+const loadSessionsView = () => import('./components/SessionsView');
+const loadReportsView = () => import('./components/ReportsView');
+const loadSettingsView = () => import('./components/SettingsView');
+
+const loadAddEditStudentModal = () => import('./components/AddEditStudentModal');
+const loadAddEditGroupModal = () => import('./components/AddEditGroupModal');
+const loadAddEditSessionModal = () => import('./components/AddEditSessionModal');
+const loadBulkAddSessionModal = () => import('./components/BulkAddSessionModal');
+const loadEnrollExistingStudentModal = () => import('./components/EnrollExistingStudentModal');
+const loadStudentProfileModal = () => import('./components/StudentProfileModal');
+const loadGroupProfileModal = () => import('./components/GroupProfileModal');
+const loadRecordAttendanceModal = () => import('./components/RecordAttendanceModal');
+const loadAddPaymentModal = () => import('./components/AddPaymentModal');
+const loadNotificationsModal = () => import('./components/NotificationsModal');
+const loadPrivateClassIntakeModal = () => import('./components/PrivateClassIntakeModal');
+
+const StudentsView = lazy(() => loadStudentsView().then((m) => ({ default: m.StudentsView })));
+const SessionsView = lazy(() => loadSessionsView().then((m) => ({ default: m.SessionsView })));
+const ReportsView = lazy(() => loadReportsView().then((m) => ({ default: m.ReportsView })));
+const SettingsView = lazy(() => loadSettingsView().then((m) => ({ default: m.SettingsView })));
+
+const AddEditStudentModal = lazy(() =>
+  loadAddEditStudentModal().then((m) => ({ default: m.AddEditStudentModal }))
+);
+const AddEditGroupModal = lazy(() =>
+  loadAddEditGroupModal().then((m) => ({ default: m.AddEditGroupModal }))
+);
+const AddEditSessionModal = lazy(() =>
+  loadAddEditSessionModal().then((m) => ({ default: m.AddEditSessionModal }))
+);
+const BulkAddSessionModal = lazy(() =>
+  loadBulkAddSessionModal().then((m) => ({ default: m.BulkAddSessionModal }))
+);
+const EnrollExistingStudentModal = lazy(() =>
+  loadEnrollExistingStudentModal().then((m) => ({ default: m.EnrollExistingStudentModal }))
+);
+const StudentProfileModal = lazy(() =>
+  loadStudentProfileModal().then((m) => ({ default: m.StudentProfileModal }))
+);
+const GroupProfileModal = lazy(() =>
+  loadGroupProfileModal().then((m) => ({ default: m.GroupProfileModal }))
+);
+const RecordAttendanceModal = lazy(() =>
+  loadRecordAttendanceModal().then((m) => ({ default: m.RecordAttendanceModal }))
+);
+const AddPaymentModal = lazy(() =>
+  loadAddPaymentModal().then((m) => ({ default: m.AddPaymentModal }))
+);
+const NotificationsModal = lazy(() =>
+  loadNotificationsModal().then((m) => ({ default: m.NotificationsModal }))
+);
+const PrivateClassIntakeModal = lazy(() =>
+  loadPrivateClassIntakeModal().then((m) => ({ default: m.PrivateClassIntakeModal }))
+);
 
 function useDetailModalState<T>(exitDurationMs = 150) {
   const [item, setItem] = useState<T | null>(null);
@@ -101,11 +179,20 @@ const INITIAL_VISITED_PANELS: Record<PanelKey, boolean> = {
 };
 
 function preserveArrayIfUnchanged<T>(prev: T[], next: T[]): T[] {
+  if (prev === next) return prev;
   if (prev.length !== next.length) return next;
   for (let i = 0; i < prev.length; i++) {
     if (prev[i] !== next[i]) return next;
   }
   return prev;
+}
+
+function usePanelLatchedValue<T>(shouldUpdate: boolean, value: T): T {
+  const latchedRef = useRef<T>(value);
+  if (shouldUpdate) {
+    latchedRef.current = value;
+  }
+  return latchedRef.current;
 }
 
 const MemoDashboardView = React.memo(DashboardView);
@@ -124,73 +211,68 @@ interface TabPanelProps {
   children: React.ReactNode;
 }
 
-const TabPanel: React.FC<TabPanelProps> = ({
-  panelKey,
-  isActive,
-  isMounted,
-  motionClass,
-  scrollPositionsRef,
-  children,
-}) => {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const scrollElRef = useRef<HTMLElement | null>(null);
-  const isActiveRef = useRef(isActive);
-  isActiveRef.current = isActive;
+const TabPanel: React.FC<TabPanelProps> = React.memo(
+  ({ panelKey, isActive, isMounted, motionClass, scrollPositionsRef, children }) => {
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    const scrollElRef = useRef<HTMLElement | null>(null);
+    const isActiveRef = useRef(isActive);
+    isActiveRef.current = isActive;
 
-  const handleScrollCapture = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      if (!isActiveRef.current) return;
-      const target = e.target;
-      if (!(target instanceof HTMLElement)) return;
-      if (
-        target.parentElement === panelRef.current ||
-        target.classList.contains('android-scrollbar')
-      ) {
-        scrollElRef.current = target;
-        scrollPositionsRef.current[panelKey] = target.scrollTop;
+    const handleScrollCapture = useCallback(
+      (e: React.UIEvent<HTMLDivElement>) => {
+        if (!isActiveRef.current) return;
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (
+          target.parentElement === panelRef.current ||
+          target.classList.contains('android-scrollbar')
+        ) {
+          scrollElRef.current = target;
+          scrollPositionsRef.current[panelKey] = target.scrollTop;
+        }
+      },
+      [panelKey, scrollPositionsRef]
+    );
+
+    useLayoutEffect(() => {
+      if (!isActive) return;
+      const savedTop = scrollPositionsRef.current[panelKey];
+      if (typeof savedTop !== 'number') return;
+
+      const el =
+        scrollElRef.current && scrollElRef.current.isConnected
+          ? scrollElRef.current
+          : panelRef.current?.querySelector<HTMLElement>('.android-scrollbar, .overflow-y-auto') ??
+            null;
+
+      if (el) {
+        scrollElRef.current = el;
+        if (Math.abs(el.scrollTop - savedTop) > 0.5) {
+          el.scrollTop = savedTop;
+        }
       }
-    },
-    [panelKey, scrollPositionsRef]
-  );
+    }, [isActive, panelKey, scrollPositionsRef]);
 
-  useLayoutEffect(() => {
-    if (!isActive) return;
-    const savedTop = scrollPositionsRef.current[panelKey];
-    if (typeof savedTop !== 'number') return;
+    if (!isMounted && !isActive) return null;
 
-    const el =
-      scrollElRef.current && scrollElRef.current.isConnected
-        ? scrollElRef.current
-        : panelRef.current?.querySelector<HTMLElement>('.android-scrollbar, .overflow-y-auto') ??
-          null;
-
-    if (el) {
-      scrollElRef.current = el;
-      if (Math.abs(el.scrollTop - savedTop) > 0.5) {
-        el.scrollTop = savedTop;
-      }
-    }
-  }, [isActive, panelKey, scrollPositionsRef]);
-
-  if (!isMounted && !isActive) return null;
-
-  return (
-    <div
-      ref={panelRef}
-      data-tab-panel={panelKey}
-      aria-hidden={!isActive}
-      inert={!isActive || undefined}
-      onScrollCapture={handleScrollCapture}
-      className={
-        isActive
-          ? `tab-panel tab-panel-active ${motionClass}`.trim()
-          : 'tab-panel tab-panel-inactive'
-      }
-    >
-      {children}
-    </div>
-  );
-};
+    return (
+      <div
+        ref={panelRef}
+        data-tab-panel={panelKey}
+        aria-hidden={!isActive}
+        inert={!isActive || undefined}
+        onScrollCapture={handleScrollCapture}
+        className={
+          isActive
+            ? `tab-panel tab-panel-active ${motionClass}`.trim()
+            : 'tab-panel tab-panel-inactive'
+        }
+      >
+        {children}
+      </div>
+    );
+  }
+);
 
 export default function App() {
   const { t, language, isRTL } = useTranslation();
@@ -198,7 +280,8 @@ export default function App() {
   const isEnRef = useRef(isEn);
   isEnRef.current = isEn;
 
-  const { popTopModal, modalStack } = useModalContext();
+  const { popTopModal } = useModalActions();
+  const hasOpenModals = useHasOpenModals();
 
   // Animated Splash Screen
   const [showSplash, setShowSplash] = useState(true);
@@ -214,6 +297,7 @@ export default function App() {
 
   const [visitedPanels, setVisitedPanels] =
     useState<Record<PanelKey, boolean>>(INITIAL_VISITED_PANELS);
+  const [peekingTab, setPeekingTab] = useState<TopLevelNavTab | null>(null);
   const [navMotion, setNavMotion] = useState<{ cls: NavMotionClass; parity: 0 | 1 }>({
     cls: '',
     parity: 0,
@@ -223,6 +307,9 @@ export default function App() {
   const tabScrollPositionsRef = useRef<Partial<Record<PanelKey, number>>>({});
 
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+  }, []);
 
   // Authentication State
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => db.getCurrentSession());
@@ -230,21 +317,57 @@ export default function App() {
   // Database Data States
   const [students, setStudents] = useState<Student[]>(() => db.getStudents());
   const [groups, setGroups] = useState<Group[]>(() => db.getGroups());
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(() => db.getEnrollments());
   const [sessions, setSessions] = useState<Session[]>(() => db.getSessions());
+  const [attendance, setAttendance] = useState<Attendance[]>(() => db.getAttendance());
   const [payments, setPayments] = useState<Payment[]>(() => db.getPayments());
+  const [domainRevision, setDomainRevision] = useState<number>(() => db.getDomainRevision());
+  const [notifRevision, setNotifRevision] = useState<number>(() => getNotificationRevision());
   const [teacherProfile, setTeacherProfile] = useState<TeacherProfile>(() => db.getTeacherProfile());
+  const [navToast, setNavToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [appPrivateIntakeTarget, setAppPrivateIntakeTarget] = useState<{
+    student: Student;
+    enrollment?: Enrollment | null;
+    session?: Session | null;
+    dateStr: string;
+    rawTime?: string;
+  } | null>(null);
 
+  const studentsRef = useRef(students);
+  studentsRef.current = students;
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
+  const enrollmentsRef = useRef(enrollments);
+  enrollmentsRef.current = enrollments;
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
+  const domainRevisionRef = useRef(domainRevision);
+  domainRevisionRef.current = domainRevision;
+
+  const hasLocalData =
+    students.length > 0 ||
+    groups.length > 0 ||
+    enrollments.length > 0 ||
+    sessions.length > 0 ||
+    attendance.length > 0 ||
+    payments.length > 0;
+  const hasLocalDataRef = useRef(hasLocalData);
+  hasLocalDataRef.current = hasLocalData;
 
   // Refresh state from database while preserving unchanged array/object references
   const refreshData = useCallback(() => {
+    setPeekingTab((prev) => (prev === null ? prev : null));
     setStudents((prev) => preserveArrayIfUnchanged(prev, db.getStudents()));
     setGroups((prev) => preserveArrayIfUnchanged(prev, db.getGroups()));
+    setEnrollments((prev) => preserveArrayIfUnchanged(prev, db.getEnrollments()));
     setSessions((prev) => preserveArrayIfUnchanged(prev, db.getSessions()));
+    setAttendance((prev) => preserveArrayIfUnchanged(prev, db.getAttendance()));
     setPayments((prev) => preserveArrayIfUnchanged(prev, db.getPayments()));
+    setDomainRevision((prev) => {
+      const next = db.getDomainRevision();
+      domainRevisionRef.current = next;
+      return prev === next ? prev : next;
+    });
     setTeacherProfile((prev) => {
       const next = db.getTeacherProfile();
       return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
@@ -252,14 +375,58 @@ export default function App() {
     scheduleDailyAttendanceReminder({ isEn: isEnRef.current }).catch(() => {});
   }, []);
 
+  // Track genuine cloud hydration ONLY when the local store is empty (zero re-renders when data is already in memory)
+  const [isCloudHydratingEmpty, setIsCloudHydratingEmpty] = useState<boolean>(() => {
+    if (!currentUser) return false;
+    return !hasLocalData && db.getAutoSyncConfig(currentUser.id).status === 'syncing';
+  });
+
+  useEffect(() => {
+    if (!currentUser) {
+      setIsCloudHydratingEmpty(false);
+      return;
+    }
+    const syncListener = () => {
+      const syncing = db.getAutoSyncConfig(currentUser.id).status === 'syncing';
+      setIsCloudHydratingEmpty((prev) => {
+        const next = syncing && !hasLocalDataRef.current;
+        return prev === next ? prev : next;
+      });
+      if (!syncing && db.getDomainRevision() !== domainRevisionRef.current) {
+        refreshData();
+      }
+    };
+    syncListener();
+    const unsubSync = db.subscribeToSyncUpdates(syncListener);
+    const handleStorageEvent = () => {
+      if (db.getDomainRevision() !== domainRevisionRef.current) {
+        refreshData();
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
+    return () => {
+      unsubSync();
+      window.removeEventListener('storage', handleStorageEvent);
+    };
+  }, [currentUser?.id, refreshData]);
+
+  const isHydratingEmptyStore = Boolean(currentUser) && isCloudHydratingEmpty && !hasLocalData;
+
   // Referentially stable navigation dispatcher (never causes inactive tabs to re-render)
   const navigateWithMotion = useCallback(
     (
       nextTab: ActiveTab,
-      explicitDirection?: 'forward' | 'backward' | 'nested-return' | 'swipe-left' | 'swipe-right'
+      explicitDirection?:
+        | 'forward'
+        | 'backward'
+        | 'nested-return'
+        | 'swipe-left'
+        | 'swipe-right'
+        | 'swipe-settled'
     ) => {
       const currentTab = activeTabRef.current;
 
+      setPeekingTab((prev) => (prev === null ? prev : null));
       if (nextTab === 'settings') {
         if (currentTab === 'settings') return;
         const currentMain = normalizeTopLevelTab(currentTab);
@@ -324,7 +491,9 @@ export default function App() {
       setVisitedPanels((prev) => (prev[targetMain] ? prev : { ...prev, [targetMain]: true }));
 
       let resolvedClass: NavMotionClass;
-      if (explicitDirection === 'swipe-left') {
+      if (explicitDirection === 'swipe-settled') {
+        resolvedClass = '';
+      } else if (explicitDirection === 'swipe-left') {
         resolvedClass = 'nav-swipe-enter-left';
       } else if (explicitDirection === 'swipe-right') {
         resolvedClass = 'nav-swipe-enter-right';
@@ -362,14 +531,313 @@ export default function App() {
     navigateWithMotion(returnTarget, 'nested-return');
   }, [navigateWithMotion]);
 
+  // Subscribe to notification revision updates for accurate unread badge counts
+  useEffect(() => {
+    return subscribeToNotifications(() => {
+      setNotifRevision(getNotificationRevision());
+    });
+  }, []);
+
+  const unreadNotificationsCount = React.useMemo(() => {
+    if (!currentUser) return 0;
+    return getUnreadNotificationsCount(currentUser.id);
+  }, [currentUser?.id, domainRevision, notifRevision, language]);
+
+  // Centralized Notification Tap Router (handles both in-app Notification Center & OS/Web notification taps)
+  const handleNotificationTargetNavigation = useCallback(
+    (payload: Partial<SmartReminderItem> & Record<string, any>) => {
+      if (!payload || typeof payload !== 'object') return;
+
+      const activeSessionUser = db.getCurrentSession();
+      if (payload.userId && activeSessionUser && payload.userId !== activeSessionUser.id) {
+        setNavToast({
+          message: isEnRef.current
+            ? 'This alert belongs to another account.'
+            : 'هذا الإشعار مرتبط بحساب مستخدم آخر.',
+          type: 'info',
+        });
+        return;
+      }
+
+      const action = payload.actionType as string | undefined;
+
+      // 1. OS Permissions / Settings routing
+      if (action === 'open_permissions') {
+        navigateWithMotion('settings');
+        requestPlatformNotificationPermission()
+          .then((res) => {
+            if (res === 'granted') {
+              resetPermissionAlertDismissal(activeSessionUser?.id);
+            }
+          })
+          .catch(() => {});
+        return;
+      }
+
+      if (action === 'open_settings' || payload.targetTab === 'settings') {
+        navigateWithMotion('settings');
+        return;
+      }
+
+      const rawType = payload.type as string | undefined;
+      if (action === 'open_session' || rawType === 'daily_attendance_reminder') {
+        navigateWithMotion('sessions');
+        return;
+      }
+
+      const latestStudents = db.getStudents();
+      const latestGroups = db.getGroups();
+      const latestEnrollments = db.getEnrollments();
+      const latestSessions = db.getSessions();
+
+      // 2. Payment routing
+      if (action === 'add_payment') {
+        const stu = payload.studentId
+          ? latestStudents.find((s) => s.id === payload.studentId && s.status !== 'archived')
+          : undefined;
+        if (!stu) {
+          setNavToast({
+            message: tRef.current('notifTargetUnavailable'),
+            type: 'info',
+          });
+          return;
+        }
+        setTargetStudentForPayment(stu);
+        setTargetEnrollmentIdForPayment(payload.enrollmentId);
+        setIsAddPaymentOpen(true);
+        return;
+      }
+
+      // 3. Private Lesson routing (STRICT RULE: NEVER open bulk group attendance modal for private lessons)
+      const matchedSession = payload.sessionId
+        ? latestSessions.find((s) => s.id === payload.sessionId)
+        : undefined;
+      const matchedGroup = payload.groupId
+        ? latestGroups.find((g) => g.id === payload.groupId)
+        : matchedSession?.groupId
+        ? latestGroups.find((g) => g.id === matchedSession.groupId)
+        : undefined;
+      const isPrivateTarget =
+        action === 'open_private_session' ||
+        payload.isPrivate === true ||
+        Boolean(matchedSession?.studentId) ||
+        matchedGroup?.type === 'private';
+
+      if (isPrivateTarget && (action === 'open_private_session' || action === 'record_attendance')) {
+        const studentId = payload.studentId || matchedSession?.studentId;
+        const stu = studentId
+          ? latestStudents.find((s) => s.id === studentId && s.status !== 'archived')
+          : undefined;
+
+        if (!stu) {
+          setNavToast({
+            message: tRef.current('notifTargetUnavailable'),
+            type: 'info',
+          });
+          return;
+        }
+
+        const enr =
+          (payload.enrollmentId
+            ? latestEnrollments.find((e) => e.id === payload.enrollmentId)
+            : undefined) ||
+          latestEnrollments.find(
+            (e) => e.studentId === stu.id && (e.serviceType === 'private' || !e.groupId)
+          ) ||
+          null;
+
+        setAppPrivateIntakeTarget({
+          student: stu,
+          enrollment: enr,
+          session: matchedSession || null,
+          dateStr: payload.date || matchedSession?.date || toLocalISODate(),
+          rawTime: payload.rawTime || matchedSession?.startTime || '16:00',
+        });
+        return;
+      }
+
+      // 4. Group Attendance routing
+      if (action === 'record_attendance') {
+        if (matchedSession) {
+          attendanceModal.open(matchedSession);
+          return;
+        }
+        if (matchedGroup) {
+          const dateStr = payload.date || toLocalISODate();
+          const existingToday = latestSessions.find(
+            (s) => s.groupId === matchedGroup.id && s.date === dateStr && !s.studentId
+          );
+          if (existingToday) {
+            attendanceModal.open(existingToday);
+            return;
+          }
+          // Create concrete scheduled group session for that date so teacher can record attendance immediately
+          const dObj = parseLocalDateStr(dateStr);
+          const validDate = !isNaN(dObj.getTime()) ? dObj : new Date();
+          const canonDay = DAY_INDEX_TO_CANONICAL[validDate.getDay()] || 'saturday';
+          const nowIso = new Date().toISOString();
+          const startTime = payload.rawTime || matchedGroup.scheduleTime || '16:00';
+          const newGroupSession: Session = {
+            id: `ses_notif_${matchedGroup.id}_${dateStr}_${parseTimeToMinutes(startTime)}`,
+            groupId: matchedGroup.id,
+            title: matchedGroup.name,
+            date: dateStr,
+            dayName: getLocalizedWeekdayName(canonDay, true),
+            month: validDate.getMonth() + 1,
+            year: validDate.getFullYear(),
+            startTime,
+            status: 'scheduled',
+            pricePerStudent: matchedGroup.defaultPrice || 100,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          };
+          db.saveSession(newGroupSession);
+          refreshData();
+          attendanceModal.open(newGroupSession);
+          return;
+        }
+
+        setNavToast({
+          message: tRef.current('notifTargetUnavailable'),
+          type: 'info',
+        });
+        return;
+      }
+
+      // 5. Student or Group Dossier routing
+      if (action === 'open_student' || payload.studentId) {
+        const stu = payload.studentId
+          ? latestStudents.find((s) => s.id === payload.studentId)
+          : undefined;
+        if (!stu) {
+          setNavToast({
+            message: tRef.current('notifTargetUnavailable'),
+            type: 'info',
+          });
+          return;
+        }
+        studentProfileModal.open(stu);
+        return;
+      }
+
+      if (action === 'open_group' || payload.groupId) {
+        if (!matchedGroup) {
+          setNavToast({
+            message: tRef.current('notifTargetUnavailable'),
+            type: 'info',
+          });
+          return;
+        }
+        groupProfileModal.open(matchedGroup);
+        return;
+      }
+
+      navigateWithMotion('dashboard');
+    },
+    [navigateWithMotion, refreshData]
+  );
+
+  const handleConfirmAppPrivateIntake = useCallback(
+    (result: PrivateClassIntakeResult) => {
+      if (!appPrivateIntakeTarget) return;
+      const { student, enrollment, session: existingSession, dateStr, rawTime } = appPrivateIntakeTarget;
+
+      let session = existingSession;
+      if (!session) {
+        const nowIso = new Date().toISOString();
+        const mins = parseTimeToMinutes(rawTime || '16:00');
+        const safeMins = mins === 99999 ? 960 : mins;
+        const deterministicId = `sess_${dateStr}_stu_${student.id}_${safeMins}`;
+        const dObj = parseLocalDateStr(dateStr);
+        const validDate = !isNaN(dObj.getTime()) ? dObj : new Date();
+        const canonDay = DAY_INDEX_TO_CANONICAL[validDate.getDay()] || 'saturday';
+
+        session = db.getSessionById(deterministicId) || {
+          id: deterministicId,
+          groupId: '',
+          enrollmentId: enrollment?.id,
+          studentId: student.id,
+          title: isEnRef.current
+            ? `Private Lesson - ${student.name}`
+            : `درس خاص - ${student.name}`,
+          date: dateStr,
+          dayName: getLocalizedWeekdayName(canonDay, true),
+          startTime: rawTime || '16:00',
+          hours: result.hours || 1.5,
+          hourlyRate: result.pricePerStudent || enrollment?.hourlyRate || 100,
+          pricePerStudent: result.pricePerStudent || enrollment?.customPrice || 100,
+          status: 'scheduled',
+          month: validDate.getMonth() + 1,
+          year: validDate.getFullYear(),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+      }
+
+      const isHourly =
+        session.isHourly ||
+        enrollment?.billingMode === 'hourly' ||
+        enrollment?.billingType === 'hourly';
+      const finalStatus = result.attendanceStatus || 'present';
+      const isCharged =
+        result.isCharged !== undefined ? result.isCharged : finalStatus !== 'absent_free';
+      const existingAtt = db
+        .getSessionAttendance(session.id)
+        .find((a) => a.studentId === student.id);
+
+      const record: Attendance = {
+        ...existingAtt,
+        id: existingAtt?.id || `att_${session.id}_${student.id}`,
+        sessionId: session.id,
+        studentId: student.id,
+        enrollmentId: enrollment?.id || session.enrollmentId,
+        status: finalStatus,
+        isCharged,
+        sessionUnits: isHourly ? undefined : result.sessionUnits,
+        hours: isHourly ? result.hours : undefined,
+        notes: result.notes,
+        behaviorRating: result.behaviorRating,
+        homeworkRating: result.homeworkRating,
+        absenceReason:
+          finalStatus === 'absent_free'
+            ? result.notes || (isEnRef.current ? 'Uncharged Absence' : 'غياب غير محسوب')
+            : undefined,
+        recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
+      };
+
+      db.saveSession({
+        ...session,
+        status: 'completed',
+        sessionUnits: isHourly ? undefined : result.sessionUnits,
+        hours: isHourly ? result.hours : undefined,
+        pricePerStudent: result.pricePerStudent,
+        notes: result.notes !== undefined ? result.notes : session.notes,
+      });
+      db.saveAttendanceBatch(session.id, [record]);
+
+      setAppPrivateIntakeTarget(null);
+      refreshData();
+    },
+    [appPrivateIntakeTarget, refreshData]
+  );
+
   // Initialize Local Notifications and Tap Action Listener
   useEffect(() => {
-    initLocalNotifications(() => {
-      navigateWithMotion('sessions');
+    initLocalNotifications((extra) => {
+      if (extra && typeof extra === 'object') {
+        handleNotificationTargetNavigation(extra);
+      } else {
+        navigateWithMotion('sessions');
+      }
     });
 
-    const handleReminderEvent = () => {
-      navigateWithMotion('sessions');
+    const handleReminderEvent = (ev: Event) => {
+      const detail = (ev as CustomEvent)?.detail;
+      if (detail && typeof detail === 'object') {
+        handleNotificationTargetNavigation(detail);
+      } else {
+        navigateWithMotion('sessions');
+      }
     };
     window.addEventListener('classy_open_attendance_reminder', handleReminderEvent);
 
@@ -378,18 +846,89 @@ export default function App() {
     return () => {
       window.removeEventListener('classy_open_attendance_reminder', handleReminderEvent);
     };
-  }, [isEn, navigateWithMotion]);
+  }, [isEn, navigateWithMotion, handleNotificationTargetNavigation]);
 
   // Process any pending resets on startup or network recovery
   useEffect(() => {
     db.processPendingResets().catch(() => {});
   }, []);
 
+  // Turn the 2.2s splash window into a staggered idle pre-warmer for lazy chunks, caches & neighbor tabs
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const runIdle = (fn: () => void, delayMs: number): number => {
+      return window.setTimeout(() => {
+        const win = window as any;
+        if (typeof win.requestIdleCallback === 'function') {
+          win.requestIdleCallback(fn, { timeout: 300 });
+        } else {
+          fn();
+        }
+      }, delayMs);
+    };
+
+    const t1 = runIdle(() => {
+      Promise.all([
+        loadSessionsView(),
+        loadStudentsView(),
+        loadReportsView(),
+        loadSettingsView(),
+        loadStudentProfileModal(),
+        loadGroupProfileModal(),
+        loadRecordAttendanceModal(),
+        loadAddPaymentModal(),
+      ]).catch(() => {});
+    }, 80);
+
+    const t2 = runIdle(() => {
+      Promise.all([
+        loadAddEditStudentModal(),
+        loadAddEditGroupModal(),
+        loadAddEditSessionModal(),
+        loadBulkAddSessionModal(),
+        loadEnrollExistingStudentModal(),
+        loadNotificationsModal(),
+        loadPrivateClassIntakeModal(),
+      ]).catch(() => {});
+      try {
+        db.warmCaches(currentUser.id);
+      } catch {}
+    }, 280);
+
+    const t3 = runIdle(() => {
+      startTransition(() => {
+        setVisitedPanels((prev) => (prev.sessions ? prev : { ...prev, sessions: true }));
+      });
+    }, 480);
+
+    const t4 = runIdle(() => {
+      startTransition(() => {
+        setVisitedPanels((prev) => (prev.students ? prev : { ...prev, students: true }));
+      });
+    }, 760);
+
+    const t5 = runIdle(() => {
+      startTransition(() => {
+        setVisitedPanels((prev) => (prev.reports ? prev : { ...prev, reports: true }));
+      });
+    }, 1060);
+
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      window.clearTimeout(t4);
+      window.clearTimeout(t5);
+    };
+  }, [currentUser?.id]);
+
   // Auth Handlers
   const handleLoginSuccess = useCallback(
     (user: UserAccount) => {
       setCurrentUser(user);
       setVisitedPanels(INITIAL_VISITED_PANELS);
+      setPeekingTab(null);
       tabScrollPositionsRef.current = {};
       previousMainTabRef.current = 'dashboard';
       studentsSegmentRef.current = 'students';
@@ -406,6 +945,7 @@ export default function App() {
     db.logout();
     setCurrentUser(null);
     setVisitedPanels(INITIAL_VISITED_PANELS);
+    setPeekingTab(null);
     tabScrollPositionsRef.current = {};
     previousMainTabRef.current = 'dashboard';
     studentsSegmentRef.current = 'students';
@@ -413,7 +953,8 @@ export default function App() {
     setNavMotion({ cls: '', parity: 0 });
     activeTabRef.current = 'dashboard';
     setActiveTab('dashboard');
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
   // Modals state
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
@@ -662,9 +1203,22 @@ export default function App() {
     handleOpenAddSession();
   }, [handleOpenAddSession]);
 
+  const handleEnsureTabMounted = useCallback((targetTab: TopLevelNavTab) => {
+    setVisitedPanels((prev) => (prev[targetTab] ? prev : { ...prev, [targetTab]: true }));
+    setPeekingTab((prev) => (prev === targetTab ? prev : targetTab));
+  }, []);
+
   const handleSwipeNavigate = useCallback(
-    (targetTab: TopLevelNavTab, direction: 'forward' | 'backward') => {
-      navigateWithMotion(targetTab, direction === 'forward' ? 'swipe-left' : 'swipe-right');
+    (
+      targetTab: TopLevelNavTab,
+      direction: 'forward' | 'backward',
+      settledByDrag?: boolean
+    ) => {
+      if (settledByDrag) {
+        navigateWithMotion(targetTab, 'swipe-settled');
+      } else {
+        navigateWithMotion(targetTab, direction === 'forward' ? 'swipe-left' : 'swipe-right');
+      }
     },
     [navigateWithMotion]
   );
@@ -674,7 +1228,7 @@ export default function App() {
     !currentUser ||
     activeTab === 'settings' ||
     isQuickAddOpen ||
-    modalStack.length > 0 ||
+    hasOpenModals ||
     studentProfileModal.isOpen ||
     groupProfileModal.isOpen ||
     attendanceModal.isOpen ||
@@ -684,12 +1238,14 @@ export default function App() {
     isBulkAddSessionOpen ||
     isAddPaymentOpen ||
     isEnrollModalOpen ||
-    isNotificationsModalOpen;
+    isNotificationsModalOpen ||
+    Boolean(appPrivateIntakeTarget);
 
   const { stageRef, swipeBind } = usePageSwipeNavigation({
     activeTab,
     disabled: isSwipeDisabled,
     onSwipeNavigate: handleSwipeNavigate,
+    onEnsureTabMounted: handleEnsureTabMounted,
   });
 
   const isDashboardActive = activeTab === 'dashboard';
@@ -702,6 +1258,75 @@ export default function App() {
     : '';
   const resolvedStudentsSegment = activeTab === 'groups' ? 'groups' : studentsSegment;
 
+  // Latch domain props for mounted inactive panels so background mutations do not re-render hidden heavy views,
+  // while synchronously delivering the latest domain state on the exact render a tab becomes active or swipe-peeked.
+  const shouldUpdateDashboard =
+    isDashboardActive || peekingTab === 'dashboard' || !visitedPanels.dashboard;
+  const shouldUpdateSessions =
+    isSessionsActive || peekingTab === 'sessions' || !visitedPanels.sessions;
+  const shouldUpdateReports =
+    isReportsActive || peekingTab === 'reports' || !visitedPanels.reports;
+  const shouldUpdateStudents =
+    isStudentsActive || peekingTab === 'students' || !visitedPanels.students;
+  const shouldUpdateSettings = isSettingsActive || !visitedPanels.settings;
+
+  const dashboardStudents = usePanelLatchedValue(shouldUpdateDashboard, students);
+  const dashboardGroups = usePanelLatchedValue(shouldUpdateDashboard, groups);
+  const dashboardEnrollments = usePanelLatchedValue(shouldUpdateDashboard, enrollments);
+  const dashboardSessions = usePanelLatchedValue(shouldUpdateDashboard, sessions);
+  const dashboardAttendance = usePanelLatchedValue(shouldUpdateDashboard, attendance);
+  const dashboardPayments = usePanelLatchedValue(shouldUpdateDashboard, payments);
+  const dashboardTeacherProfile = usePanelLatchedValue(shouldUpdateDashboard, teacherProfile);
+  const dashboardIsLoading = usePanelLatchedValue(shouldUpdateDashboard, isHydratingEmptyStore);
+
+  const sessionsList = usePanelLatchedValue(shouldUpdateSessions, sessions);
+  const sessionsGroups = usePanelLatchedValue(shouldUpdateSessions, groups);
+  const sessionsStudents = usePanelLatchedValue(shouldUpdateSessions, students);
+  const sessionsEnrollments = usePanelLatchedValue(shouldUpdateSessions, enrollments);
+  const sessionsAttendance = usePanelLatchedValue(shouldUpdateSessions, attendance);
+  const sessionsPayments = usePanelLatchedValue(shouldUpdateSessions, payments);
+  const sessionsIsLoading = usePanelLatchedValue(shouldUpdateSessions, isHydratingEmptyStore);
+
+  const reportsStudents = usePanelLatchedValue(shouldUpdateReports, students);
+  const reportsGroups = usePanelLatchedValue(shouldUpdateReports, groups);
+  const reportsEnrollments = usePanelLatchedValue(shouldUpdateReports, enrollments);
+  const reportsSessions = usePanelLatchedValue(shouldUpdateReports, sessions);
+  const reportsAttendance = usePanelLatchedValue(shouldUpdateReports, attendance);
+  const reportsPayments = usePanelLatchedValue(shouldUpdateReports, payments);
+  const reportsIsLoading = usePanelLatchedValue(shouldUpdateReports, isHydratingEmptyStore);
+
+  const studentsList = usePanelLatchedValue(shouldUpdateStudents, students);
+  const studentsGroups = usePanelLatchedValue(shouldUpdateStudents, groups);
+  const studentsEnrollments = usePanelLatchedValue(shouldUpdateStudents, enrollments);
+  const studentsSessions = usePanelLatchedValue(shouldUpdateStudents, sessions);
+  const studentsAttendance = usePanelLatchedValue(shouldUpdateStudents, attendance);
+  const studentsPayments = usePanelLatchedValue(shouldUpdateStudents, payments);
+  const studentsIsLoading = usePanelLatchedValue(shouldUpdateStudents, isHydratingEmptyStore);
+  const studentsLatchedSegment = usePanelLatchedValue(
+    shouldUpdateStudents,
+    resolvedStudentsSegment
+  );
+
+  const settingsTeacherProfile = usePanelLatchedValue(shouldUpdateSettings, teacherProfile);
+  const settingsCurrentUser = usePanelLatchedValue(shouldUpdateSettings, currentUser);
+
+  const dashboardUnreadCount = usePanelLatchedValue(
+    shouldUpdateDashboard,
+    unreadNotificationsCount
+  );
+  const sessionsUnreadCount = usePanelLatchedValue(
+    shouldUpdateSessions,
+    unreadNotificationsCount
+  );
+  const reportsUnreadCount = usePanelLatchedValue(
+    shouldUpdateReports,
+    unreadNotificationsCount
+  );
+  const studentsUnreadCount = usePanelLatchedValue(
+    shouldUpdateStudents,
+    unreadNotificationsCount
+  );
+
   return (
     <div
       className="min-h-screen bg-page md:bg-mint flex items-center justify-center p-0 md:p-4 lg:p-6 select-none font-sans text-navy"
@@ -709,7 +1334,7 @@ export default function App() {
     >
       {/* Animated Splash Screen Experience */}
       {showSplash && (
-        <SplashScreen onComplete={() => setShowSplash(false)} autoDismissMs={2200} />
+        <SplashScreen onComplete={handleSplashComplete} autoDismissMs={2200} />
       )}
 
       {/* Modern Mobile Frame */}
@@ -727,15 +1352,18 @@ export default function App() {
                 panelKey="dashboard"
                 isActive={isDashboardActive}
                 isMounted={visitedPanels.dashboard}
-                motionClass={activeMotionClass}
+                motionClass={isDashboardActive ? activeMotionClass : ''}
                 scrollPositionsRef={tabScrollPositionsRef}
               >
                 <MemoDashboardView
-                  students={students}
-                  groups={groups}
-                  sessions={sessions}
-                  payments={payments}
-                  teacherProfile={teacherProfile}
+                  students={dashboardStudents}
+                  groups={dashboardGroups}
+                  enrollments={dashboardEnrollments}
+                  sessions={dashboardSessions}
+                  allAttendance={dashboardAttendance}
+                  payments={dashboardPayments}
+                  teacherProfile={dashboardTeacherProfile}
+                  isLoading={dashboardIsLoading}
                   onOpenAddStudent={handleOpenAddStudent}
                   onOpenAddGroup={handleOpenAddGroup}
                   onOpenAddSession={handleOpenAddSession}
@@ -744,6 +1372,7 @@ export default function App() {
                   onOpenGroupProfile={groupProfileModal.open}
                   onOpenAttendanceModal={attendanceModal.open}
                   onOpenNotificationsModal={handleOpenNotificationsModal}
+                  unreadNotificationsCount={dashboardUnreadCount}
                   onNavigateToTab={handleTabChange}
                   onDataChanged={refreshData}
                 />
@@ -753,91 +1382,136 @@ export default function App() {
                 panelKey="sessions"
                 isActive={isSessionsActive}
                 isMounted={visitedPanels.sessions}
-                motionClass={activeMotionClass}
+                motionClass={isSessionsActive ? activeMotionClass : ''}
                 scrollPositionsRef={tabScrollPositionsRef}
               >
-                <MemoSessionsView
-                  sessions={sessions}
-                  groups={groups}
-                  students={students}
-                  payments={payments}
-                  onOpenAddSession={handleOpenAddSession}
-                  onEditSession={handleOpenEditSession}
-                  onOpenAttendanceModal={attendanceModal.open}
-                  onOpenStudentProfile={studentProfileModal.open}
-                  onOpenGroupProfile={groupProfileModal.open}
-                  onSessionDeleted={refreshData}
-                  onDataChanged={refreshData}
-                  onNavigateToTab={handleTabChange}
-                  onOpenNotificationsModal={handleOpenNotificationsModal}
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={95}>
+                      <SessionsScreenSkeleton />
+                    </DelayedFallback>
+                  }
+                >
+                  <MemoSessionsView
+                    sessions={sessionsList}
+                    groups={sessionsGroups}
+                    students={sessionsStudents}
+                    enrollments={sessionsEnrollments}
+                    allAttendance={sessionsAttendance}
+                    payments={sessionsPayments}
+                    isLoading={sessionsIsLoading}
+                    onOpenAddSession={handleOpenAddSession}
+                    onEditSession={handleOpenEditSession}
+                    onOpenAttendanceModal={attendanceModal.open}
+                    onOpenStudentProfile={studentProfileModal.open}
+                    onOpenGroupProfile={groupProfileModal.open}
+                    onSessionDeleted={refreshData}
+                    onDataChanged={refreshData}
+                    onNavigateToTab={handleTabChange}
+                    onOpenNotificationsModal={handleOpenNotificationsModal}
+                    unreadNotificationsCount={sessionsUnreadCount}
+                  />
+                </Suspense>
               </TabPanel>
 
               <TabPanel
                 panelKey="reports"
                 isActive={isReportsActive}
                 isMounted={visitedPanels.reports}
-                motionClass={activeMotionClass}
+                motionClass={isReportsActive ? activeMotionClass : ''}
                 scrollPositionsRef={tabScrollPositionsRef}
               >
-                <MemoReportsView
-                  students={students}
-                  groups={groups}
-                  sessions={sessions}
-                  payments={payments}
-                  onOpenAddPayment={handleOpenAddPayment}
-                  onOpenStudentProfile={studentProfileModal.open}
-                  onNavigateToTab={handleTabChange}
-                  onOpenNotificationsModal={handleOpenNotificationsModal}
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={95}>
+                      <ReportsScreenSkeleton />
+                    </DelayedFallback>
+                  }
+                >
+                  <MemoReportsView
+                    students={reportsStudents}
+                    groups={reportsGroups}
+                    enrollments={reportsEnrollments}
+                    sessions={reportsSessions}
+                    allAttendance={reportsAttendance}
+                    payments={reportsPayments}
+                    isLoading={reportsIsLoading}
+                    onOpenAddPayment={handleOpenAddPayment}
+                    onOpenStudentProfile={studentProfileModal.open}
+                    onNavigateToTab={handleTabChange}
+                    onOpenNotificationsModal={handleOpenNotificationsModal}
+                    unreadNotificationsCount={reportsUnreadCount}
+                  />
+                </Suspense>
               </TabPanel>
 
               <TabPanel
                 panelKey="students"
                 isActive={isStudentsActive}
                 isMounted={visitedPanels.students}
-                motionClass={activeMotionClass}
+                motionClass={isStudentsActive ? activeMotionClass : ''}
                 scrollPositionsRef={tabScrollPositionsRef}
               >
-                <MemoStudentsView
-                  students={students}
-                  groups={groups}
-                  sessions={sessions}
-                  payments={payments}
-                  activeSegment={resolvedStudentsSegment}
-                  onSegmentChange={setStudentsSegment}
-                  onOpenAddStudent={handleOpenAddStudent}
-                  onOpenStudentProfile={studentProfileModal.open}
-                  onOpenEditStudent={handleOpenEditStudent}
-                  onOpenAddPayment={handleOpenAddPayment}
-                  onOpenAddSession={handleStudentsAddSession}
-                  onOpenAttendanceModal={attendanceModal.open}
-                  onOpenBulkAddSession={handleStudentsBulkAddSession}
-                  onOpenAddGroup={handleOpenAddGroup}
-                  onEditGroup={handleOpenEditGroup}
-                  onOpenGroupProfile={groupProfileModal.open}
-                  onDataChanged={refreshData}
-                  onNavigateToTab={handleTabChange}
-                  onOpenNotificationsModal={handleOpenNotificationsModal}
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={95}>
+                      <StudentsScreenSkeleton segment={studentsLatchedSegment} />
+                    </DelayedFallback>
+                  }
+                >
+                  <MemoStudentsView
+                    students={studentsList}
+                    groups={studentsGroups}
+                    enrollments={studentsEnrollments}
+                    sessions={studentsSessions}
+                    allAttendance={studentsAttendance}
+                    payments={studentsPayments}
+                    isLoading={studentsIsLoading}
+                    activeSegment={studentsLatchedSegment}
+                    onSegmentChange={setStudentsSegment}
+                    onOpenAddStudent={handleOpenAddStudent}
+                    onOpenStudentProfile={studentProfileModal.open}
+                    onOpenEditStudent={handleOpenEditStudent}
+                    onOpenAddPayment={handleOpenAddPayment}
+                    onOpenAddSession={handleStudentsAddSession}
+                    onOpenAttendanceModal={attendanceModal.open}
+                    onOpenBulkAddSession={handleStudentsBulkAddSession}
+                    onOpenAddGroup={handleOpenAddGroup}
+                    onEditGroup={handleOpenEditGroup}
+                    onOpenGroupProfile={groupProfileModal.open}
+                    onDataChanged={refreshData}
+                    onNavigateToTab={handleTabChange}
+                    onOpenNotificationsModal={handleOpenNotificationsModal}
+                    unreadNotificationsCount={studentsUnreadCount}
+                  />
+                </Suspense>
               </TabPanel>
 
               <TabPanel
                 panelKey="settings"
                 isActive={isSettingsActive}
                 isMounted={visitedPanels.settings}
-                motionClass={activeMotionClass}
+                motionClass={isSettingsActive ? activeMotionClass : ''}
                 scrollPositionsRef={tabScrollPositionsRef}
               >
-                <MemoSettingsView
-                  teacherProfile={teacherProfile}
-                  currentUser={currentUser}
-                  onProfileUpdated={handleProfileUpdated}
-                  onDataReset={refreshData}
-                  onLogout={handleLogout}
-                  onNavigateToTab={handleTabChange}
-                  onBack={handleBackFromSettings}
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={110}>
+                      <SettingsAsyncFallback />
+                    </DelayedFallback>
+                  }
+                >
+                  <MemoSettingsView
+                    teacherProfile={settingsTeacherProfile}
+                    currentUser={settingsCurrentUser}
+                    isActive={isSettingsActive}
+                    onProfileUpdated={handleProfileUpdated}
+                    onDataReset={refreshData}
+                    onLogout={handleLogout}
+                    onNavigateToTab={handleTabChange}
+                    onBack={handleBackFromSettings}
+                  />
+                </Suspense>
               </TabPanel>
             </div>
           )}
@@ -854,159 +1528,215 @@ export default function App() {
         )}
 
         {/* --- MODALS --- */}
+        <Suspense fallback={null}>
+          {/* Add/Edit Student Modal */}
+          {isAddStudentOpen && (
+            <AddEditStudentModal
+              isOpen={isAddStudentOpen}
+              onClose={() => setIsAddStudentOpen(false)}
+              editingStudent={editingStudent}
+              allGroups={groups}
+              onSaveComplete={() => {
+                refreshData();
+              }}
+            />
+          )}
 
-        {/* Add/Edit Student Modal */}
-        {isAddStudentOpen && (
-          <AddEditStudentModal
-            isOpen={isAddStudentOpen}
-            onClose={() => setIsAddStudentOpen(false)}
-            editingStudent={editingStudent}
-            allGroups={groups}
-            onSaveComplete={() => {
-              refreshData();
-            }}
-          />
-        )}
+          {/* Add/Edit Group Modal */}
+          {isAddGroupOpen && (
+            <AddEditGroupModal
+              isOpen={isAddGroupOpen}
+              onClose={() => setIsAddGroupOpen(false)}
+              editingGroup={editingGroup}
+              onSaveComplete={() => {
+                refreshData();
+              }}
+            />
+          )}
 
-        {/* Add/Edit Group Modal */}
-        {isAddGroupOpen && (
-          <AddEditGroupModal
-            isOpen={isAddGroupOpen}
-            onClose={() => setIsAddGroupOpen(false)}
-            editingGroup={editingGroup}
-            onSaveComplete={() => {
-              refreshData();
-            }}
-          />
-        )}
+          {/* Add/Edit Session Modal */}
+          {isAddSessionOpen && (
+            <AddEditSessionModal
+              isOpen={isAddSessionOpen}
+              onClose={() => {
+                setIsAddSessionOpen(false);
+                setSessionDefaultStudentId(undefined);
+              }}
+              editingSession={editingSession}
+              defaultGroupId={sessionDefaultGroupId}
+              defaultDate={sessionDefaultDate}
+              defaultStudentId={sessionDefaultStudentId}
+              allGroups={groups}
+              allStudents={students}
+              onSaveComplete={() => {
+                refreshData();
+              }}
+            />
+          )}
 
-        {/* Add/Edit Session Modal */}
-        {isAddSessionOpen && (
-          <AddEditSessionModal
-            isOpen={isAddSessionOpen}
-            onClose={() => {
-              setIsAddSessionOpen(false);
-              setSessionDefaultStudentId(undefined);
-            }}
-            editingSession={editingSession}
-            defaultGroupId={sessionDefaultGroupId}
-            defaultDate={sessionDefaultDate}
-            defaultStudentId={sessionDefaultStudentId}
-            allGroups={groups}
-            allStudents={students}
-            onSaveComplete={() => {
-              refreshData();
-            }}
-          />
-        )}
+          {/* Enroll Existing Student into Group Modal */}
+          {isEnrollModalOpen && (
+            <EnrollExistingStudentModal
+              isOpen={isEnrollModalOpen}
+              onClose={() => setIsEnrollModalOpen(false)}
+              targetStudent={enrollTargetStudent}
+              targetGroup={enrollTargetGroup}
+              allStudents={students}
+              allGroups={groups}
+              onEnrollmentComplete={() => {
+                refreshData();
+              }}
+            />
+          )}
 
-        {/* Enroll Existing Student into Group Modal */}
-        {isEnrollModalOpen && (
-          <EnrollExistingStudentModal
-            isOpen={isEnrollModalOpen}
-            onClose={() => setIsEnrollModalOpen(false)}
-            targetStudent={enrollTargetStudent}
-            targetGroup={enrollTargetGroup}
-            allStudents={students}
-            allGroups={groups}
-            onEnrollmentComplete={() => {
-              refreshData();
-            }}
-          />
-        )}
+          {/* Student Dossier / Profile Modal */}
+          {studentProfileModal.item && (
+            <Suspense
+              fallback={
+                studentProfileModal.isOpen ? (
+                  <DelayedFallback delayMs={95}>
+                    <ProfileSheetSkeleton />
+                  </DelayedFallback>
+                ) : null
+              }
+            >
+              <StudentProfileModal
+                isOpen={studentProfileModal.isOpen}
+                onClose={studentProfileModal.close}
+                student={studentProfileModal.item}
+                allGroups={groups}
+                domainRevision={domainRevision}
+                onEditStudent={(st) => handleOpenEditStudent(st)}
+                onOpenEnrollModal={(st) => handleOpenEnrollForStudent(st)}
+                onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+                onDataChanged={refreshData}
+              />
+            </Suspense>
+          )}
 
-        {/* Student Dossier / Profile Modal */}
-        {studentProfileModal.item && (
-          <StudentProfileModal
-            isOpen={studentProfileModal.isOpen}
-            onClose={studentProfileModal.close}
-            student={studentProfileModal.item}
-            allGroups={groups}
-            onEditStudent={(st) => handleOpenEditStudent(st)}
-            onOpenEnrollModal={(st) => handleOpenEnrollForStudent(st)}
-            onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
-            onDataChanged={refreshData}
-          />
-        )}
+          {/* Group Dossier / Profile Modal */}
+          {groupProfileModal.item && (
+            <Suspense
+              fallback={
+                groupProfileModal.isOpen ? (
+                  <DelayedFallback delayMs={95}>
+                    <ProfileSheetSkeleton />
+                  </DelayedFallback>
+                ) : null
+              }
+            >
+              <GroupProfileModal
+                isOpen={groupProfileModal.isOpen}
+                onClose={groupProfileModal.close}
+                group={groupProfileModal.item}
+                domainRevision={domainRevision}
+                onEditGroup={(grp) => handleOpenEditGroup(grp)}
+                onAddExistingStudent={(grp) => handleOpenEnrollForGroup(grp)}
+                onAddNewStudentToGroup={() => {
+                  handleOpenAddStudent();
+                }}
+                onAddSessionForGroup={(grp) => handleOpenAddSession(grp.id)}
+                onOpenAttendanceModal={(ses) => attendanceModal.open(ses)}
+                onOpenStudentProfile={(st) => studentProfileModal.open(st)}
+                onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
+                onDataChanged={refreshData}
+              />
+            </Suspense>
+          )}
 
-        {/* Group Dossier / Profile Modal */}
-        {groupProfileModal.item && (
-          <GroupProfileModal
-            isOpen={groupProfileModal.isOpen}
-            onClose={groupProfileModal.close}
-            group={groupProfileModal.item}
-            onEditGroup={(grp) => handleOpenEditGroup(grp)}
-            onAddExistingStudent={(grp) => handleOpenEnrollForGroup(grp)}
-            onAddNewStudentToGroup={() => {
-              handleOpenAddStudent();
-            }}
-            onAddSessionForGroup={(grp) => handleOpenAddSession(grp.id)}
-            onOpenAttendanceModal={(ses) => attendanceModal.open(ses)}
-            onOpenStudentProfile={(st) => studentProfileModal.open(st)}
-            onOpenBulkAddSession={(stList, grpId) => handleOpenBulkAddSession(stList, grpId)}
-            onDataChanged={refreshData}
-          />
-        )}
+          {/* Bulk Add Sessions for Multiple Students Modal */}
+          {isBulkAddSessionOpen && (
+            <BulkAddSessionModal
+              isOpen={isBulkAddSessionOpen}
+              onClose={() => {
+                setIsBulkAddSessionOpen(false);
+                setBulkAddStudents([]);
+                setBulkAddGroupId(undefined);
+              }}
+              selectedStudents={bulkAddStudents}
+              preselectedGroupId={bulkAddGroupId}
+              allGroups={groups}
+              onSuccess={() => {
+                refreshData();
+              }}
+            />
+          )}
 
-        {/* Bulk Add Sessions for Multiple Students Modal */}
-        {isBulkAddSessionOpen && (
-          <BulkAddSessionModal
-            isOpen={isBulkAddSessionOpen}
-            onClose={() => {
-              setIsBulkAddSessionOpen(false);
-              setBulkAddStudents([]);
-              setBulkAddGroupId(undefined);
-            }}
-            selectedStudents={bulkAddStudents}
-            preselectedGroupId={bulkAddGroupId}
-            allGroups={groups}
-            onSuccess={() => {
-              refreshData();
-            }}
-          />
-        )}
+          {/* Record Attendance Modal (Lesson Studio) */}
+          {attendanceModal.item && (
+            <Suspense
+              fallback={
+                attendanceModal.isOpen ? (
+                  <DelayedFallback delayMs={95}>
+                    <LessonStudioSheetSkeleton />
+                  </DelayedFallback>
+                ) : null
+              }
+            >
+              <RecordAttendanceModal
+                isOpen={attendanceModal.isOpen}
+                onClose={attendanceModal.close}
+                session={attendanceModal.item}
+                isLoading={isHydratingEmptyStore}
+                onSaveComplete={refreshData}
+              />
+            </Suspense>
+          )}
 
-        {/* Record Attendance Modal */}
-        {attendanceModal.item && (
-          <RecordAttendanceModal
-            isOpen={attendanceModal.isOpen}
-            onClose={attendanceModal.close}
-            session={attendanceModal.item}
-            onSaveComplete={refreshData}
-          />
-        )}
+          {/* Add Payment Modal */}
+          {isAddPaymentOpen && (
+            <AddPaymentModal
+              isOpen={isAddPaymentOpen}
+              onClose={() => {
+                setIsAddPaymentOpen(false);
+                setTargetStudentForPayment(null);
+                setTargetEnrollmentIdForPayment(undefined);
+              }}
+              targetStudent={targetStudentForPayment}
+              targetEnrollmentId={targetEnrollmentIdForPayment}
+              allStudents={students}
+              onPaymentSaved={refreshData}
+            />
+          )}
 
-        {/* Add Payment Modal */}
-        {isAddPaymentOpen && (
-          <AddPaymentModal
-            isOpen={isAddPaymentOpen}
-            onClose={() => {
-              setIsAddPaymentOpen(false);
-              setTargetStudentForPayment(null);
-              setTargetEnrollmentIdForPayment(undefined);
-            }}
-            targetStudent={targetStudentForPayment}
-            targetEnrollmentId={targetEnrollmentIdForPayment}
-            allStudents={students}
-            onPaymentSaved={refreshData}
-          />
-        )}
+          {/* Notifications & Smart Alerts Modal */}
+          {isNotificationsModalOpen && (
+            <NotificationsModal
+              isOpen={isNotificationsModalOpen}
+              onClose={() => setIsNotificationsModalOpen(false)}
+              students={students}
+              groups={groups}
+              sessions={sessions}
+              enrollments={enrollments}
+              allAttendance={attendance}
+              onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
+              onOpenStudentProfile={(st) => studentProfileModal.open(st)}
+              onOpenAttendanceModal={(ses) => attendanceModal.open(ses)}
+              onOpenNotificationTarget={handleNotificationTargetNavigation}
+              onOpenNotificationSettings={() => navigateWithMotion('settings')}
+              onDataChanged={refreshData}
+            />
+          )}
 
-        {/* Notifications & Smart Alerts Modal */}
-        {isNotificationsModalOpen && (
-          <NotificationsModal
-            isOpen={isNotificationsModalOpen}
-            onClose={() => setIsNotificationsModalOpen(false)}
-            students={students}
-            groups={groups}
-            sessions={sessions}
-            enrollments={db.getEnrollments()}
-            onOpenAddPayment={(st, enrId) => handleOpenAddPayment(st, enrId)}
-            onOpenStudentProfile={(st) => studentProfileModal.open(st)}
-            onOpenAttendanceModal={(ses) => attendanceModal.open(ses)}
-            onDataChanged={refreshData}
-          />
-        )}
+          {/* Private Lesson Intake Modal (opened directly from Private Lesson notifications) */}
+          {appPrivateIntakeTarget && (
+            <PrivateClassIntakeModal
+              isOpen={Boolean(appPrivateIntakeTarget)}
+              onClose={() => setAppPrivateIntakeTarget(null)}
+              student={appPrivateIntakeTarget.student}
+              enrollment={appPrivateIntakeTarget.enrollment}
+              session={appPrivateIntakeTarget.session}
+              onConfirm={handleConfirmAppPrivateIntake}
+            />
+          )}
+        </Suspense>
+
+        <Toast
+          isOpen={Boolean(navToast)}
+          message={navToast?.message || ''}
+          type={navToast?.type || 'info'}
+          onClose={() => setNavToast(null)}
+        />
 
         {/* Quick Add Bottom Sheet (Center FAB Action) */}
         <QuickAddSheet

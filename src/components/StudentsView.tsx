@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import { StatusBadge } from './ui/StatusBadge';
 import { ScreenHeader } from './ui/ScreenHeader';
 import { Student, Group, Attendance, Session, Enrollment, ActiveTab, Payment } from '../types';
@@ -13,13 +13,17 @@ import { SegmentedControl } from './ui/SegmentedControl';
 import { GroupsView } from './GroupsView';
 import { StudentsTrio, EmptyBox } from './illustrations';
 import { Toast } from './ui/Toast';
+import { useDelayedLoading } from './ui/Skeleton';
+import { StudentCardsSkeleton } from './skeletons/ClassySkeletons';
 
 interface StudentsViewProps {
   students: Student[];
   groups: Group[];
+  enrollments?: Enrollment[];
   allAttendance?: Attendance[];
   sessions?: Session[];
   payments?: Payment[];
+  isLoading?: boolean;
   activeSegment?: 'students' | 'groups';
   onSegmentChange?: (segment: 'students' | 'groups') => void;
   onOpenAddStudent: () => void;
@@ -35,14 +39,31 @@ interface StudentsViewProps {
   onDataChanged?: () => void;
   onNavigateToTab?: (tab: ActiveTab) => void;
   onOpenNotificationsModal?: () => void;
+  unreadNotificationsCount?: number;
 }
+
+const EMPTY_ATTENDANCE: Attendance[] = [];
+const EMPTY_SESSIONS: Session[] = [];
+const EMPTY_PAYMENTS: Payment[] = [];
+const STAGGER_DELAY_CLASSES = [
+  'stagger-0',
+  'stagger-1',
+  'stagger-2',
+  'stagger-3',
+  'stagger-4',
+  'stagger-5',
+  'stagger-6',
+  'stagger-7',
+] as const;
 
 export const StudentsView: React.FC<StudentsViewProps> = ({
   students,
   groups,
-  allAttendance = [],
-  sessions = [],
-  payments = [],
+  enrollments,
+  allAttendance = EMPTY_ATTENDANCE,
+  sessions = EMPTY_SESSIONS,
+  payments = EMPTY_PAYMENTS,
+  isLoading = false,
   activeSegment = 'students',
   onSegmentChange,
   onOpenAddStudent,
@@ -58,9 +79,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onDataChanged,
   onNavigateToTab,
   onOpenNotificationsModal,
+  unreadNotificationsCount,
 }) => {
   const { t, language, isRTL } = useTranslation();
   const isEn = language.startsWith('en');
+  const showStudentsSkeleton = useDelayedLoading(Boolean(isLoading) && students.length === 0, 90);
 
   const rootScrollRef = useRef<HTMLDivElement | null>(null);
   const segmentScrollRef = useRef<{ students: number; groups: number }>({
@@ -122,16 +145,33 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('all');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
   const [quickFilter, setQuickFilter] = useState<'all' | 'debtors' | 'private_only'>('all');
 
   // Quick feedback toast
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current !== null) {
+        clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const showToast = (msg: string) => {
+    if (feedbackTimerRef.current !== null) {
+      clearTimeout(feedbackTimerRef.current);
+    }
     setFeedbackToast(msg);
-    setTimeout(() => setFeedbackToast(null), 3000);
+    feedbackTimerRef.current = setTimeout(() => {
+      feedbackTimerRef.current = null;
+      setFeedbackToast(null);
+    }, 3000);
   };
 
   // Distinct Grade levels from existing students
@@ -141,7 +181,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   // Pre-index student groups, enrollments, and balances in a single memoized pass for ultra-fast rendering
   const studentDataMap = useMemo(() => {
-    const allEnrs = db.getEnrollments();
     const groupsMap = new Map<string, Group>(groups.map((g) => [g.id, g]));
 
     const map = new Map<
@@ -157,7 +196,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     >();
 
     students.forEach((student) => {
-      const sEnrs = allEnrs.filter((e) => e.studentId === student.id && e.status !== 'stopped');
+      const sEnrs = db.getStudentEnrollments(student.id);
       const sGroups: { group: Group; enrollment: Enrollment }[] = [];
       const sPriv: { group?: Group; enrollment: Enrollment }[] = [];
       const grpIds = new Set<string>();
@@ -192,7 +231,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     });
 
     return map;
-  }, [students, groups]);
+  }, [students, groups, enrollments, sessions, payments, allAttendance]);
 
   // Counts for active vs archived
   const activeStudentsCount = useMemo(
@@ -226,6 +265,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
   // Filtered students list
   const filteredStudents = useMemo(() => {
+    const q = deferredSearchQuery.toLowerCase().trim();
     return students.filter((student) => {
       // 1. Status Filter (Active vs Archived)
       const isArchived = student.status === 'archived';
@@ -233,7 +273,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
       if (activeTabType === 'archived' && !isArchived) return false;
 
       // 2. Search Query
-      const q = searchQuery.toLowerCase().trim();
       if (q) {
         const matchesSearch =
           student.name.toLowerCase().includes(q) ||
@@ -271,7 +310,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     students,
     studentDataMap,
     activeTabType,
-    searchQuery,
+    deferredSearchQuery,
     selectedGradeFilter,
     selectedGroupFilter,
     quickFilter,
@@ -360,6 +399,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             ? (t('navGroups') || (isEn ? 'Groups' : 'المجموعات'))
             : (t('studentsTitle') || (isEn ? 'Students' : 'الطلاب'))
         }
+        unreadCount={unreadNotificationsCount}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />
@@ -412,8 +452,11 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <GroupsView
             groups={groups}
             allStudents={students}
+            enrollments={enrollments}
             sessions={sessions}
+            allAttendance={allAttendance}
             payments={payments}
+            isLoading={isLoading}
             onOpenAddGroup={onOpenAddGroup || (() => {})}
             onOpenGroupProfile={onOpenGroupProfile || (() => {})}
             onEditGroup={onEditGroup}
@@ -658,8 +701,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             )}
           </div>
 
-          {/* 3. Student Cards List or Empty State */}
-          {students.length === 0 ? (
+          {/* 3. Student Cards List, Loading Skeleton, or Empty State */}
+          {showStudentsSkeleton ? (
+            <StudentCardsSkeleton count={4} />
+          ) : students.length === 0 ? (
             /* Empty State 1: No students at all */
             <div className="bg-mint-soft border border-mint rounded-[var(--radius-card)] p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-white">
               <div className="w-40 h-32 flex items-center justify-center">
@@ -723,7 +768,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div
+              key={`${activeTabType}-${quickFilter}-${selectedGradeFilter}-${selectedGroupFilter}`}
+              className="space-y-3"
+            >
               {filteredStudents.map((student, index) => {
                 const data = studentDataMap.get(student.id);
                 const studentGroups = data?.studentGroups || [];
@@ -747,7 +795,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
                 // Stagger delay for top 8 items: 120Hz-ready fade-up staggered 18ms, disabled for lists over 50
                 const isStaggerEnabled = filteredStudents.length <= 50;
-                const staggerDelay = isStaggerEnabled && index < 8 ? `${index * 18}ms` : undefined;
+                const staggerClass = isStaggerEnabled
+                  ? `animate-tile-stagger ${index < STAGGER_DELAY_CLASSES.length ? STAGGER_DELAY_CLASSES[index] : ''}`
+                  : '';
 
                 // Meta line: group/private, billing type
                 const serviceLabel = data?.isPrivateOnly
@@ -801,7 +851,6 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 return (
                   <div
                     key={student.id}
-                    style={{ animationDelay: staggerDelay }}
                     onClick={() => {
                       if (isSelectionMode && !isStudentArchived) {
                         toggleSelectStudent(student.id);
@@ -810,8 +859,8 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       }
                     }}
                     className={`relative overflow-hidden rounded-[var(--radius-card)] p-4 border text-navy transition-transform duration-120 ease-out cursor-pointer select-none active:scale-[0.985] will-change-transform ${
-                      isStaggerEnabled ? 'animate-tile-stagger' : ''
-                    } ${bgClass} ${
+                      index >= 12 ? 'cv-list-item ' : ''
+                    }${staggerClass} ${bgClass} ${
                       isStudentArchived ? 'opacity-70' : ''
                     } ${isSelected ? 'ring-2 ring-navy' : ''}`}
                   >

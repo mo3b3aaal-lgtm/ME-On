@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Session, Group, Student, Attendance, AttendanceStatus, BehaviorRating, HomeworkRating } from '../types';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Session, Group, Student, Enrollment, Attendance, AttendanceStatus, BehaviorRating, HomeworkRating } from '../types';
 import { db } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
@@ -9,12 +9,16 @@ import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClas
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
+import { useDelayedLoading } from './ui/Skeleton';
+import { LessonStudioRosterSkeleton } from './skeletons/ClassySkeletons';
 import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
+import { isEnrollmentActiveOnDate } from '../utils/schedule';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
   onClose: () => void;
   session: Session | null;
+  isLoading?: boolean;
   onSaveComplete: () => void;
 }
 
@@ -31,10 +35,253 @@ interface StudentAttendanceRecord {
   notes: string;
 }
 
+const DEFAULT_ATTENDANCE_RECORD: StudentAttendanceRecord = {
+  status: 'present',
+  isCharged: true,
+  absenceReason: '',
+  homeworkDone: true,
+  notes: '',
+};
+
+interface AttendanceStudentRowProps {
+  student: Student;
+  index: number;
+  record: StudentAttendanceRecord;
+  enrollment: Enrollment | undefined;
+  isPrivateSession: boolean;
+  isEn: boolean;
+  presentLabel: string;
+  lateLabel: string;
+  currencyLabel: string;
+  editLabel: string;
+  onToggleHomework: (studentId: string) => void;
+  onMarkPresent: (studentId: string) => void;
+  onMarkLate: (studentId: string) => void;
+  onOpenAbsenceModal: (student: Student) => void;
+  onOpenPrivateIntake: (student: Student) => void;
+}
+
+const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
+  ({
+    student,
+    index,
+    record: currentRecord,
+    enrollment: enr,
+    isPrivateSession,
+    isEn,
+    presentLabel,
+    lateLabel,
+    currencyLabel,
+    editLabel,
+    onToggleHomework,
+    onMarkPresent,
+    onMarkLate,
+    onOpenAbsenceModal,
+    onOpenPrivateIntake,
+  }) => {
+    const credit = enr?.sessionCredit || 0;
+    const isAbsent =
+      currentRecord.status === 'absent_charged' ||
+      currentRecord.status === 'absent_free' ||
+      currentRecord.status === 'absent' ||
+      currentRecord.status === 'excused';
+
+    return (
+      <div
+        style={{ animationDelay: `${index * 40}ms` }}
+        className={`p-3.5 rounded-2xl bg-page border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${
+          isAbsent
+            ? currentRecord.isCharged
+              ? 'border-line bg-mist'
+              : 'border-line bg-mist'
+            : 'border-line'
+        }`}
+      >
+        {/* Top Row: Name + Credit Badge + Homework Checkbox */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <StudentAvatar
+              student={student}
+              size="sm"
+              showFrame={true}
+              className="shrink-0"
+            />
+            <div className="min-w-0">
+              <h4 className="font-bold text-navy text-xs leading-tight truncate">{student.name}</h4>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
+                    credit <= 0
+                      ? 'bg-coral/10 text-coral border border-coral/20'
+                      : 'bg-mint-soft text-navy'
+                  }`}
+                >
+                  {isEn ? `Credit: ${credit} sessions` : `رصيد: ${credit} حصص`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Homework toggle */}
+          <button
+            type="button"
+            onClick={() => onToggleHomework(student.id)}
+            className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+              currentRecord.homeworkDone
+                ? 'bg-mint-soft text-navy border-navy'
+                : 'bg-page text-slate border-line'
+            }`}
+          >
+            <AppIcon name={currentRecord.homeworkDone ? 'check' : 'minus'} size={12} weight="bold" />
+            <span>
+              {currentRecord.homeworkDone
+                ? isEn
+                  ? 'HW Done'
+                  : 'حل الواجب'
+                : isEn
+                ? 'HW Incomplete'
+                : 'لم يحل'}
+            </span>
+          </button>
+        </div>
+
+        {/* Attendance Status Buttons: 3 selectable tiles with radius 18px */}
+        <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+          {/* 1. Present */}
+          <button
+            type="button"
+            onClick={() => onMarkPresent(student.id)}
+            className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+              currentRecord.status === 'present'
+                ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
+            }`}
+          >
+            <AppIcon name="check" size={14} weight="bold" />
+            <span>{presentLabel}</span>
+          </button>
+
+          {/* 2. Late */}
+          <button
+            type="button"
+            onClick={() => onMarkLate(student.id)}
+            className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+              currentRecord.status === 'late'
+                ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
+            }`}
+          >
+            <AppIcon name="clock" size={14} weight="fill" />
+            <span>{lateLabel}</span>
+          </button>
+
+          {/* 3. Absent Trigger (opens confirmation modal) */}
+          <button
+            type="button"
+            onClick={() => onOpenAbsenceModal(student)}
+            className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+              isAbsent
+                ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
+                : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
+            }`}
+          >
+            <AppIcon name="warning" size={14} weight="fill" />
+            <span>{isEn ? 'Absent' : 'غائب'}</span>
+          </button>
+        </div>
+
+        {/* Zero credit warning for prepaid charged students */}
+        {enr &&
+          (enr.billingMode === 'prepaid' ||
+            enr.billingType === 'prepaid' ||
+            (enr.billingType === 'per_session' && enr.billingMode !== 'postpaid')) &&
+          credit <= 0 &&
+          currentRecord.isCharged && (
+            <div className="p-2.5 bg-coral/10 text-coral border border-coral/20 rounded-xl text-[11px] font-bold flex items-center gap-1.5">
+              <AppIcon name="warning" size={16} className="shrink-0" />
+              <span>
+                {isEn
+                  ? `Alert: Insufficient session credit (Balance: 0). Attendance will be saved and charged as due (${enr.customPrice || 100} ${currencyLabel}).`
+                  : `تنبيه: لا يوجد رصيد حصص كافٍ (الرصيد: 0). سيتم حفظ الحضور وتسجيل الحصة كمستحقة للدفع بقيمة ${enr.customPrice || 100} ج.م.`}
+              </span>
+            </div>
+          )}
+
+        {/* Private Present Detail Sub-badge with edit button */}
+        {!isAbsent && isPrivateSession && currentRecord.status === 'present' && (
+          <div className="p-2.5 rounded-xl border border-navy/20 bg-mint-soft flex items-center justify-between gap-2 text-[11px] text-navy">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <AppIcon name="checkCircle" size={16} weight="fill" className="text-teal shrink-0" />
+              <span className="font-bold">
+                {currentRecord.hours
+                  ? `${currentRecord.hours} ${isEn ? 'hours' : 'ساعة'}`
+                  : `${currentRecord.sessionUnits || 1} ${isEn ? 'session(s)' : 'حصة'}`}
+              </span>
+              {currentRecord.pricePerStudent ? (
+                <span className="text-navy font-bold">
+                  • {currentRecord.pricePerStudent} {currencyLabel}
+                </span>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onOpenPrivateIntake(student)}
+              className="px-2.5 py-1 rounded-lg bg-page border border-line text-[10px] font-bold text-navy hover:bg-mint-soft transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+            >
+              <AppIcon name="edit" size={12} className="text-navy" />
+              <span>{editLabel}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Absent Detail Sub-badge with edit button */}
+        {isAbsent && (
+          <div className="p-2.5 rounded-xl border border-line bg-mist flex items-center justify-between gap-2 text-[11px] text-navy">
+            <div className="flex items-center gap-1.5 min-w-0 truncate">
+              {currentRecord.isCharged ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-coral shrink-0" />
+                  <span className="font-bold">{isEn ? 'Charged Absence:' : 'حصة محسوبة:'}</span>
+                  <span className="truncate">
+                    {isEn
+                      ? 'Consumes session credit or added to due balance'
+                      : 'تستهلك رصيد حصة أو تُضاف للمستحقات'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-slate shrink-0" />
+                  <span className="font-bold">{isEn ? 'Exempt Absence:' : 'غير محسوبة:'}</span>
+                  <span className="font-medium text-slate truncate">
+                    {isEn
+                      ? `Reason: ${currentRecord.absenceReason || 'Exempt'}`
+                      : `السبب: ${currentRecord.absenceReason || 'معفي'}`}
+                  </span>
+                </>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onOpenAbsenceModal(student)}
+              className="px-2.5 py-1 rounded-lg bg-page border border-line text-[10px] font-bold text-navy hover:bg-mint-soft transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
+            >
+              <AppIcon name="edit" size={12} className="text-navy" />
+              <span>{editLabel}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
 export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   isOpen,
   onClose,
   session,
+  isLoading = false,
   onSaveComplete,
 }) => {
   const { t, isRTL, language } = useTranslation();
@@ -68,16 +315,60 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     return undefined;
   }, [sessionStudentId, group?.type, groupId]);
 
-  const enrolledStudents = useMemo(() => {
-    if (!sessionId) return [];
-    if (privateStudent) return [privateStudent];
-    if (!groupId) return [];
-    return db.getGroupStudents(groupId);
-  }, [sessionId, groupId, privateStudent]);
-
   const existingAttendance = useMemo(
     () => (sessionId && isOpen ? db.getSessionAttendance(sessionId) : []),
     [sessionId, isOpen]
+  );
+
+  const enrolledStudents = useMemo(() => {
+    if (!sessionId) return [];
+    const sessionDate = session?.date;
+    const result: Student[] = [];
+    const seenIds = new Set<string>();
+
+    if (privateStudent) {
+      const hasExisting = existingAttendance.some((a) => a.studentId === privateStudent.id);
+      if (hasExisting || !sessionDate) {
+        result.push(privateStudent);
+        seenIds.add(privateStudent.id);
+      } else {
+        const privEnrs = db.getStudentPrivateEnrollments(privateStudent.id).map((p) => p.enrollment);
+        const matchingEnr =
+          (session?.enrollmentId ? privEnrs.find((e) => e.id === session.enrollmentId) : undefined) ||
+          privEnrs[0] ||
+          null;
+        if (isEnrollmentActiveOnDate(matchingEnr, sessionDate, privateStudent)) {
+          result.push(privateStudent);
+          seenIds.add(privateStudent.id);
+        }
+      }
+    } else if (groupId) {
+      const activeGroupStudents = db.getGroupStudents(groupId, sessionDate);
+      for (const st of activeGroupStudents) {
+        if (!seenIds.has(st.id)) {
+          seenIds.add(st.id);
+          result.push(st);
+        }
+      }
+    }
+
+    // Always preserve students who already have recorded historical attendance on this session
+    for (const att of existingAttendance) {
+      if (!seenIds.has(att.studentId)) {
+        const st = db.getStudentById(att.studentId);
+        if (st) {
+          seenIds.add(st.id);
+          result.push(st);
+        }
+      }
+    }
+
+    return result;
+  }, [sessionId, session?.date, session?.enrollmentId, groupId, privateStudent, existingAttendance]);
+
+  const showRosterSkeleton = useDelayedLoading(
+    Boolean(isLoading) && enrolledStudents.length === 0,
+    90
   );
 
   const allEnrollments = useMemo(() => {
@@ -89,8 +380,44 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     return db.getGroupEnrollments(groupId);
   }, [sessionId, groupId, isPrivateSession, privateStudent]);
 
+  const enrollmentByStudentId = useMemo(() => {
+    const map = new Map<string, Enrollment>();
+    for (const enr of allEnrollments) {
+      if (!map.has(enr.studentId)) {
+        map.set(enr.studentId, enr);
+      }
+    }
+    return map;
+  }, [allEnrollments]);
+
   // Local state for attendance records mapping: studentId -> StudentAttendanceRecord
   const [records, setRecords] = useState<Record<string, StudentAttendanceRecord>>({});
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
+
+  const isEnRef = useRef(isEn);
+  isEnRef.current = isEn;
+  const predefinedReasonsRef = useRef(PREDEFINED_ABSENCE_REASONS);
+  predefinedReasonsRef.current = PREDEFINED_ABSENCE_REASONS;
+  const privateContextRef = useRef({
+    isPrivateSession,
+    privateStudent,
+    enrolledStudents,
+  });
+  privateContextRef.current = {
+    isPrivateSession,
+    privateStudent,
+    enrolledStudents,
+  };
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current !== null) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   // Confirmation dialog state for individual student absence
   const [confirmingStudent, setConfirmingStudent] = useState<Student | null>(null);
@@ -108,6 +435,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
 
   useEffect(() => {
+    if (saveTimerRef.current !== null) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    setIsSavedSuccess(false);
+
     const map: Record<string, StudentAttendanceRecord> = {};
 
     for (const st of enrolledStudents) {
@@ -146,10 +479,16 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   // State for Private Class Intake Dialog
   const [privateIntakeStudent, setPrivateIntakeStudent] = useState<Student | null>(null);
 
+  const handleOpenPrivateIntake = useCallback((student: Student) => {
+    setPrivateIntakeStudent(student);
+  }, []);
+
   // Handle clicking "حاضر"
-  const markPresent = (studentId: string) => {
-    if (isPrivateSession || privateStudent) {
-      const targetStudent = enrolledStudents.find((s) => s.id === studentId) || privateStudent;
+  const markPresent = useCallback((studentId: string) => {
+    const ctx = privateContextRef.current;
+    if (ctx.isPrivateSession || ctx.privateStudent) {
+      const targetStudent =
+        ctx.enrolledStudents.find((s) => s.id === studentId) || ctx.privateStudent;
       if (targetStudent) {
         setPrivateIntakeStudent(targetStudent);
         return;
@@ -159,13 +498,13 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     setRecords((prev) => ({
       ...prev,
       [studentId]: {
-        ...prev[studentId],
+        ...(prev[studentId] || DEFAULT_ATTENDANCE_RECORD),
         status: 'present',
         isCharged: true,
         absenceReason: '',
       },
     }));
-  };
+  }, []);
 
   const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
     if (!privateIntakeStudent) return;
@@ -193,44 +532,46 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   };
 
   // Handle clicking "متأخر"
-  const markLate = (studentId: string) => {
+  const markLate = useCallback((studentId: string) => {
     setRecords((prev) => ({
       ...prev,
       [studentId]: {
-        ...prev[studentId],
+        ...(prev[studentId] || DEFAULT_ATTENDANCE_RECORD),
         status: 'late',
         isCharged: true,
         absenceReason: '',
       },
     }));
-  };
+  }, []);
 
   // Open absence decision dialog
-  const openAbsenceModal = (student: Student) => {
-    const currentRec = records[student.id];
+  const openAbsenceModal = useCallback((student: Student) => {
+    const currentRec = recordsRef.current[student.id];
+    const reasons = predefinedReasonsRef.current;
+    const en = isEnRef.current;
     setConfirmingStudent(student);
     if (currentRec && (currentRec.status === 'absent_free' || currentRec.status === 'excused')) {
       setSelectedChargeDecision('free');
-      if (PREDEFINED_ABSENCE_REASONS.includes(currentRec.absenceReason)) {
+      if (reasons.includes(currentRec.absenceReason)) {
         setSelectedReason(currentRec.absenceReason);
         setCustomReasonText('');
       } else if (currentRec.absenceReason) {
-        setSelectedReason(isEn ? 'Custom reason' : 'سبب مخصص');
+        setSelectedReason(en ? 'Custom reason' : 'سبب مخصص');
         setCustomReasonText(currentRec.absenceReason);
       } else {
-        setSelectedReason(PREDEFINED_ABSENCE_REASONS[0]);
+        setSelectedReason(reasons[0]);
         setCustomReasonText('');
       }
     } else if (currentRec && (currentRec.status === 'absent_charged' || currentRec.status === 'absent')) {
       setSelectedChargeDecision('charged');
-      setSelectedReason(PREDEFINED_ABSENCE_REASONS[0]);
+      setSelectedReason(reasons[0]);
       setCustomReasonText('');
     } else {
       setSelectedChargeDecision(null);
-      setSelectedReason(PREDEFINED_ABSENCE_REASONS[0]);
+      setSelectedReason(reasons[0]);
       setCustomReasonText('');
     }
-  };
+  }, []);
 
   // Save the absence decision from dialog
   const handleConfirmAbsence = () => {
@@ -307,18 +648,21 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   };
 
   // Toggle homework
-  const toggleHomework = (studentId: string) => {
-    setRecords((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        homeworkDone: !prev[studentId]?.homeworkDone,
-      },
-    }));
-  };
+  const toggleHomework = useCallback((studentId: string) => {
+    setRecords((prev) => {
+      const existing = prev[studentId] || DEFAULT_ATTENDANCE_RECORD;
+      return {
+        ...prev,
+        [studentId]: {
+          ...existing,
+          homeworkDone: !existing.homeworkDone,
+        },
+      };
+    });
+  }, []);
 
   // Mark all present
-  const setAllPresent = () => {
+  const setAllPresent = useCallback(() => {
     setRecords((prev) => {
       const next: Record<string, StudentAttendanceRecord> = { ...prev };
       Object.keys(next).forEach((stId) => {
@@ -331,14 +675,14 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       });
       return next;
     });
-  };
+  }, []);
 
   const handleSave = () => {
     if (!session || isSavedSuccess) return;
     const listToSave: Attendance[] = [];
 
     Object.entries(records).forEach(([studentId, item]: [string, StudentAttendanceRecord]) => {
-      const enr = allEnrollments.find((e) => e.studentId === studentId);
+      const enr = enrollmentByStudentId.get(studentId);
       const prevAtt = existingAttendance.find((a) => a.studentId === studentId);
       listToSave.push({
         ...prevAtt,
@@ -374,8 +718,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     db.saveAttendanceBatch(session.id, listToSave);
     setIsSavedSuccess(true);
     triggerSuccessHaptic();
-    
-    setTimeout(() => {
+
+    if (saveTimerRef.current !== null) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
       onSaveComplete();
       onClose();
     }, 650);
@@ -510,7 +858,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 triggerLightHaptic();
                 handleSave();
               }}
-              disabled={isSavedSuccess}
+              disabled={isSavedSuccess || showRosterSkeleton}
               className="btn-orange flex-1 cursor-pointer"
             >
               {isSavedSuccess ? (
@@ -570,7 +918,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
         {/* Students List */}
         <div className="space-y-2.5">
-          {enrolledStudents.length === 0 ? (
+          {showRosterSkeleton ? (
+            <LessonStudioRosterSkeleton count={3} />
+          ) : enrolledStudents.length === 0 ? (
             <div className="p-8 text-center text-slate space-y-2 bg-page rounded-2xl border border-line">
               <AppIcon name="students" size={32} weight="duotone" className="mx-auto text-slate" />
               <p className="text-xs font-bold">
@@ -578,191 +928,26 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
               </p>
             </div>
           ) : (
-            enrolledStudents.map((student, index) => {
-              const currentRecord = records[student.id] || {
-                status: 'present',
-                isCharged: true,
-                absenceReason: '',
-                homeworkDone: true,
-                notes: '',
-              };
-              const enr = allEnrollments.find((e) => e.studentId === student.id);
-              const credit = enr?.sessionCredit || 0;
-              const isAbsent =
-                currentRecord.status === 'absent_charged' ||
-                currentRecord.status === 'absent_free' ||
-                currentRecord.status === 'absent' ||
-                currentRecord.status === 'excused';
-
-              return (
-                <div
-                  key={student.id}
-                  style={{ animationDelay: `${index * 40}ms` }}
-                  className={`p-3.5 rounded-2xl bg-page border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${
-                    isAbsent
-                      ? currentRecord.isCharged
-                        ? 'border-line bg-mist'
-                        : 'border-line bg-mist'
-                      : 'border-line'
-                  }`}
-                >
-                  {/* Top Row: Name + Credit Badge + Homework Checkbox */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <StudentAvatar
-                        student={student}
-                        size="sm"
-                        showFrame={true}
-                        className="shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-navy text-xs leading-tight truncate">{student.name}</h4>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                              credit <= 0
-                                ? 'bg-coral/10 text-coral border border-coral/20'
-                                : 'bg-mint-soft text-navy'
-                            }`}
-                          >
-                            {isEn ? `Credit: ${credit} sessions` : `رصيد: ${credit} حصص`}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Homework toggle */}
-                    <button
-                      type="button"
-                      onClick={() => toggleHomework(student.id)}
-                      className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
-                        currentRecord.homeworkDone
-                          ? 'bg-mint-soft text-navy border-navy'
-                          : 'bg-page text-slate border-line'
-                      }`}
-                    >
-                      <AppIcon name={currentRecord.homeworkDone ? 'check' : 'minus'} size={12} weight="bold" />
-                      <span>{currentRecord.homeworkDone ? (isEn ? 'HW Done' : 'حل الواجب') : (isEn ? 'HW Incomplete' : 'لم يحل')}</span>
-                    </button>
-                  </div>
-
-                  {/* Attendance Status Buttons: 3 selectable tiles with radius 18px */}
-                  <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                    {/* 1. Present */}
-                    <button
-                      type="button"
-                      onClick={() => markPresent(student.id)}
-                      className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                        currentRecord.status === 'present'
-                          ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
-                          : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
-                      }`}
-                    >
-                      <AppIcon name="check" size={14} weight="bold" />
-                      <span>{t('present')}</span>
-                    </button>
-
-                    {/* 2. Late */}
-                    <button
-                      type="button"
-                      onClick={() => markLate(student.id)}
-                      className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                        currentRecord.status === 'late'
-                          ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
-                          : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
-                      }`}
-                    >
-                      <AppIcon name="clock" size={14} weight="fill" />
-                      <span>{t('late')}</span>
-                    </button>
-
-                    {/* 3. Absent Trigger (opens confirmation modal) */}
-                    <button
-                      type="button"
-                      onClick={() => openAbsenceModal(student)}
-                      className={`py-2 px-2 rounded-[18px] text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                        isAbsent
-                          ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
-                          : 'bg-mint-soft text-navy border-line hover:bg-mint/60'
-                      }`}
-                    >
-                      <AppIcon name="warning" size={14} weight="fill" />
-                      <span>{isEn ? 'Absent' : 'غائب'}</span>
-                    </button>
-                  </div>
-
-                  {/* Zero credit warning for prepaid charged students */}
-                  {enr && (enr.billingMode === 'prepaid' || enr.billingType === 'prepaid' || (enr.billingType === 'per_session' && enr.billingMode !== 'postpaid')) && credit <= 0 && currentRecord.isCharged && (
-                    <div className="p-2.5 bg-coral/10 text-coral border border-coral/20 rounded-xl text-[11px] font-bold flex items-center gap-1.5">
-                      <AppIcon name="warning" size={16} className="shrink-0" />
-                      <span>
-                        {isEn
-                          ? `Alert: Insufficient session credit (Balance: 0). Attendance will be saved and charged as due (${enr.customPrice || 100} ${t('currency')}).`
-                          : `تنبيه: لا يوجد رصيد حصص كافٍ (الرصيد: 0). سيتم حفظ الحضور وتسجيل الحصة كمستحقة للدفع بقيمة ${enr.customPrice || 100} ج.م.`}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Private Present Detail Sub-badge with edit button */}
-                  {!isAbsent && isPrivateSession && currentRecord.status === 'present' && (
-                    <div className="p-2.5 rounded-xl border border-navy/20 bg-mint-soft flex items-center justify-between gap-2 text-[11px] text-navy">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <AppIcon name="checkCircle" size={16} weight="fill" className="text-teal shrink-0" />
-                        <span className="font-bold">
-                          {currentRecord.hours
-                            ? `${currentRecord.hours} ${isEn ? 'hours' : 'ساعة'}`
-                            : `${currentRecord.sessionUnits || 1} ${isEn ? 'session(s)' : 'حصة'}`}
-                        </span>
-                        {currentRecord.pricePerStudent ? (
-                          <span className="text-navy font-bold">• {currentRecord.pricePerStudent} {t('currency')}</span>
-                        ) : null}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setPrivateIntakeStudent(student)}
-                        className="px-2.5 py-1 rounded-lg bg-page border border-line text-[10px] font-bold text-navy hover:bg-mint-soft transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-                      >
-                        <AppIcon name="edit" size={12} className="text-navy" />
-                        <span>{t('edit')}</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Absent Detail Sub-badge with edit button */}
-                  {isAbsent && (
-                    <div className="p-2.5 rounded-xl border border-line bg-mist flex items-center justify-between gap-2 text-[11px] text-navy">
-                      <div className="flex items-center gap-1.5 min-w-0 truncate">
-                        {currentRecord.isCharged ? (
-                          <>
-                            <span className="w-2 h-2 rounded-full bg-coral shrink-0" />
-                            <span className="font-bold">{isEn ? 'Charged Absence:' : 'حصة محسوبة:'}</span>
-                            <span className="truncate">{isEn ? 'Consumes session credit or added to due balance' : 'تستهلك رصيد حصة أو تُضاف للمستحقات'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="w-2 h-2 rounded-full bg-slate shrink-0" />
-                            <span className="font-bold">{isEn ? 'Exempt Absence:' : 'غير محسوبة:'}</span>
-                            <span className="font-medium text-slate truncate">
-                              {isEn ? `Reason: ${currentRecord.absenceReason || 'Exempt'}` : `السبب: ${currentRecord.absenceReason || 'معفي'}`}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => openAbsenceModal(student)}
-                        className="px-2.5 py-1 rounded-lg bg-page border border-line text-[10px] font-bold text-navy hover:bg-mint-soft transition-colors shrink-0 flex items-center gap-1 cursor-pointer shadow-2xs"
-                      >
-                        <AppIcon name="edit" size={12} className="text-navy" />
-                        <span>{t('edit')}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })
+            enrolledStudents.map((student, index) => (
+              <AttendanceStudentRow
+                key={student.id}
+                student={student}
+                index={index}
+                record={records[student.id] || DEFAULT_ATTENDANCE_RECORD}
+                enrollment={enrollmentByStudentId.get(student.id)}
+                isPrivateSession={isPrivateSession}
+                isEn={isEn}
+                presentLabel={t('present')}
+                lateLabel={t('late')}
+                currencyLabel={t('currency')}
+                editLabel={t('edit')}
+                onToggleHomework={toggleHomework}
+                onMarkPresent={markPresent}
+                onMarkLate={markLate}
+                onOpenAbsenceModal={openAbsenceModal}
+                onOpenPrivateIntake={handleOpenPrivateIntake}
+              />
+            ))
           )}
         </div>
       </BottomSheet>

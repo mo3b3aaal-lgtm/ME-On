@@ -26,7 +26,7 @@ export const WhiteCard: React.FC<WhiteCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-page border border-line rounded-[var(--radius-card)] shadow-white text-navy ${paddingClass} ${interactiveClasses} ${className}`.trim()}
+      className={`white-card bg-page border border-line rounded-[var(--radius-card)] shadow-white text-navy ${paddingClass} ${interactiveClasses} ${className}`.trim()}
       {...rest}
     >
       {children}

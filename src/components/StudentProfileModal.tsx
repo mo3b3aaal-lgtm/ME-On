@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { BottomSheet } from './ui/BottomSheet';
 import {
@@ -39,7 +39,16 @@ import {
   formatTimeDisplay,
   parseTimeToMinutes,
   getStudentEffectiveSchedule,
+  getEnrollmentDateStatus,
+  getEffectiveEnrollmentPeriod,
+  validateEnrollmentPeriod,
+  isExplicitPrivateSessionOperationalOnDate,
 } from '../utils/schedule';
+import {
+  EnrollmentPeriodFields,
+  EnrollmentPeriodFormValue,
+  sanitizePeriodForPersistence,
+} from './EnrollmentPeriodFields';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import {
   calculateStudentBehaviorStats,
@@ -126,6 +135,7 @@ interface StudentProfileModalProps {
   onClose: () => void;
   student: Student | null;
   allGroups: Group[];
+  domainRevision?: number;
   onEditStudent: (student: Student) => void;
   onOpenEnrollModal: (student: Student) => void;
   onOpenAddPayment: (student: Student, enrollmentId?: string) => void;
@@ -147,6 +157,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onClose,
   student,
   allGroups,
+  domainRevision = 0,
   onEditStudent,
   onOpenEnrollModal,
   onOpenAddPayment,
@@ -178,13 +189,24 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   // Student persistent teacher notes
   const [notesText, setNotesText] = useState<string>('');
   const [isNotesSaved, setIsNotesSaved] = useState<boolean>(false);
+  const notesSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (notesSavedTimerRef.current !== null) {
+      clearTimeout(notesSavedTimerRef.current);
+      notesSavedTimerRef.current = null;
+    }
     if (student) {
       setNotesText(student.notes || '');
       setIsNotesSaved(false);
     }
-  }, [student?.id, student?.notes]);
+    return () => {
+      if (notesSavedTimerRef.current !== null) {
+        clearTimeout(notesSavedTimerRef.current);
+        notesSavedTimerRef.current = null;
+      }
+    };
+  }, [isOpen, student?.id, student?.notes]);
 
   const handleSaveNotes = () => {
     if (!student) return;
@@ -194,24 +216,42 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     };
     db.saveStudent(updated);
     setIsNotesSaved(true);
-    setTimeout(() => setIsNotesSaved(false), 2500);
+    if (notesSavedTimerRef.current !== null) {
+      clearTimeout(notesSavedTimerRef.current);
+    }
+    notesSavedTimerRef.current = setTimeout(() => {
+      notesSavedTimerRef.current = null;
+      setIsNotesSaved(false);
+    }, 2500);
     onDataChanged();
   };
 
-  // Edit enrollment billing state
+  // Edit enrollment billing & operational period state
   const [editingEnrollmentId, setEditingEnrollmentId] = useState<string | null>(null);
   const [editBillingMode, setEditBillingMode] = useState<BillingMode>('prepaid');
   const [editCustomPrice, setEditCustomPrice] = useState<number>(100);
   const [editHourlyRate, setEditHourlyRate] = useState<number>(150);
   const [editPackagePrice, setEditPackagePrice] = useState<number>(900);
   const [editPackageSessions, setEditPackageSessions] = useState<number>(10);
+  const [editPeriodValue, setEditPeriodValue] = useState<EnrollmentPeriodFormValue>({
+    startDate: undefined,
+    endDate: undefined,
+    vacationPeriods: [],
+  });
+  const [editPeriodError, setEditPeriodError] = useState<string | null>(null);
 
   // Load relations and calculated financials (Memoized to guarantee instant tab switches & zero lag)
   const studentId = student?.id;
   const [profileDataVersion, setProfileDataVersion] = useState(0);
-  const studentGroups = useMemo(() => (studentId ? db.getStudentGroups(studentId) : []), [studentId, isOpen, profileDataVersion]);
-  const enrollments = useMemo(() => (studentId ? db.getEnrollments() : []), [studentId, isOpen, profileDataVersion]);
-  
+  const studentGroups = useMemo(
+    () => (studentId ? db.getStudentGroups(studentId) : []),
+    [studentId, isOpen, profileDataVersion, domainRevision]
+  );
+  const enrollments = useMemo(
+    () => (studentId ? db.getEnrollments() : []),
+    [studentId, isOpen, profileDataVersion, domainRevision]
+  );
+
   const grandFinancials: StudentGrandFinancialSummary = useMemo(() => {
     if (!studentId) {
       return {
@@ -248,11 +288,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       };
     }
     return db.calculateStudentGrandFinancials(studentId);
-  }, [studentId, isOpen, profileDataVersion]);
+  }, [studentId, isOpen, profileDataVersion, domainRevision]);
 
   const allPayments = grandFinancials.allPayments;
-  const attendanceList = useMemo(() => (studentId ? db.getStudentAttendance(studentId) : []), [studentId, isOpen, profileDataVersion]);
-  const allSessions = useMemo(() => (studentId ? db.getSessions() : []), [studentId, isOpen, profileDataVersion]);
+  const attendanceList = useMemo(
+    () => (studentId && isOpen ? db.getStudentAttendance(studentId) : []),
+    [studentId, isOpen, profileDataVersion, domainRevision]
+  );
+  const allSessions = useMemo(
+    () => (studentId && isOpen ? db.getSessions() : []),
+    [studentId, isOpen, profileDataVersion, domainRevision]
+  );
+  const sessionsById = useMemo(() => new Map(allSessions.map((s) => [s.id, s])), [allSessions]);
+  const groupsById = useMemo(() => new Map(allGroups.map((g) => [g.id, g])), [allGroups]);
+  const studentGroupIds = useMemo(() => new Set(studentGroups.map((g) => g.group.id)), [studentGroups]);
 
   interface StudentSessionHistoryItem {
     id: string;
@@ -274,13 +323,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   // Complete session history sorted strictly chronologically (newest to oldest)
   const sortedSessionHistory = useMemo((): StudentSessionHistoryItem[] => {
-    if (!studentId) return [];
+    if (!studentId || !isOpen) return [];
 
     const entries: StudentSessionHistoryItem[] = [];
     const representedSessionIds = new Set<string>();
 
     attendanceList.forEach((att) => {
-      const session = allSessions.find((s) => s.id === att.sessionId);
+      const session = sessionsById.get(att.sessionId);
       if (session) {
         representedSessionIds.add(session.id);
       }
@@ -319,8 +368,23 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     });
 
     // Also include any private sessions directly assigned to this student without an attendance record yet
+    const studentMapForSessionFilter = new Map<string, Student>();
+    if (student) studentMapForSessionFilter.set(student.id, student);
+
     allSessions.forEach((s) => {
       if (s.studentId === studentId && !representedSessionIds.has(s.id)) {
+        if (
+          s.date &&
+          !isExplicitPrivateSessionOperationalOnDate(
+            s,
+            s.date,
+            enrollments,
+            studentMapForSessionFilter,
+            false
+          )
+        ) {
+          return;
+        }
         representedSessionIds.add(s.id);
         const rawDate = s.date || '';
         const rawTime = s.startTime || '';
@@ -358,11 +422,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       }
       return b.id.localeCompare(a.id);
     });
-  }, [studentId, attendanceList, allSessions, isEn, isRTL]);
-  const allCreditLogs = useMemo(() => (studentId ? db.getCreditLogs().filter((l) => l.studentId === studentId) : []), [studentId]);
-  const studentBehaviorLogs = useMemo(() => (studentId ? db.getStudentBehaviorLogs(studentId) : []), [studentId]);
+  }, [studentId, student, isOpen, attendanceList, allSessions, sessionsById, enrollments, isEn, isRTL]);
+  const allCreditLogs = useMemo(
+    () => (studentId && isOpen ? db.getCreditLogs().filter((l) => l.studentId === studentId) : []),
+    [studentId, isOpen, profileDataVersion, domainRevision]
+  );
+  const studentBehaviorLogs = useMemo(
+    () => (studentId && isOpen ? db.getStudentBehaviorLogs(studentId) : []),
+    [studentId, isOpen, profileDataVersion, domainRevision]
+  );
   const behaviorStats = useMemo(() => calculateStudentBehaviorStats(studentBehaviorLogs), [studentBehaviorLogs]);
-  const serviceType = useMemo(() => (studentId ? db.getStudentServiceType(studentId) : 'none'), [studentId]);
+  const serviceType = useMemo(
+    () => (studentId ? db.getStudentServiceType(studentId) : 'none'),
+    [studentId, isOpen, profileDataVersion, domainRevision]
+  );
 
   const { todayStr: todayDateStr } = useCurrentLocalDate();
 
@@ -385,8 +458,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   // Upcoming scheduled classes for student
   const upcomingClasses = useMemo(() => {
-    return studentId ? getUpcomingClassesForStudent(studentId, allGroups, enrollments, 5, isRTL, allSessions) : [];
-  }, [studentId, allGroups, enrollments, isRTL, allSessions]);
+    return studentId
+      ? getUpcomingClassesForStudent(studentId, allGroups, enrollments, 5, isRTL, allSessions, student)
+      : [];
+  }, [studentId, student, allGroups, enrollments, isRTL, allSessions]);
 
   const nextClass = upcomingClasses[0] || null;
 
@@ -409,7 +484,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     let late = 0;
 
     attendanceList.forEach((a) => {
-      const s = allSessions.find((sess) => sess.id === a.sessionId);
+      const s = sessionsById.get(a.sessionId);
       const isHourly =
         s?.isHourly === true ||
         (a.hours !== undefined && a.hours !== null && Number(a.hours) > 0);
@@ -434,7 +509,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     const cancelled = allSessions.filter(
       (s) =>
         s.status === 'cancelled' &&
-        (s.studentId === studentId || studentGroups.some((g) => g.group.id === s.groupId))
+        (s.studentId === studentId || (s.groupId ? studentGroupIds.has(s.groupId) : false))
     ).length;
 
     const totalCounted = roundMoney(present + absentCharged + absentExcused + late, 2);
@@ -450,7 +525,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       cancelledCount: cancelled,
       attendanceRate: rate,
     };
-  }, [attendanceList, allSessions, studentId, studentGroups]);
+  }, [attendanceList, allSessions, sessionsById, studentId, studentGroupIds]);
 
   // Recent activity stream
   interface ActivityItem {
@@ -489,8 +564,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
     // 2. Add attendance activities
     attendanceList.slice(0, 8).forEach((att) => {
-      const ses = allSessions.find((s) => s.id === att.sessionId);
-      const grp = allGroups.find((g) => g.id === ses?.groupId);
+      const ses = sessionsById.get(att.sessionId);
+      const grp = ses?.groupId ? groupsById.get(ses.groupId) : undefined;
       const isPres = att.status === 'present';
       const isLate = att.status === 'late';
       const isCharged =
@@ -565,7 +640,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       recentActivity: activities,
       latestActivities: activities.slice(0, 6),
     };
-  }, [studentBehaviorLogs, attendanceList, allSessions, allGroups, allPayments, allCreditLogs, isEn, t]);
+  }, [studentBehaviorLogs, attendanceList, sessionsById, groupsById, allPayments, allCreditLogs, isEn, t]);
 
   const privateEnrollments = useMemo(
     () => grandFinancials.enrollmentsSummary.filter((e) => e.groupType === 'private'),
@@ -601,6 +676,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         roomOrLocation: newPrivateLocation,
       });
       setIsAddingPrivateService(false);
+      setProfileDataVersion((v) => v + 1);
       onDataChanged();
     } catch (err) {
       console.error(err);
@@ -617,9 +693,24 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     setEditHourlyRate(enroll.hourlyRate || 150);
     setEditPackagePrice(enroll.packagePrice || 900);
     setEditPackageSessions(enroll.packageSessionsCount || 10);
+    const effPeriod = getEffectiveEnrollmentPeriod(enroll, student);
+    setEditPeriodValue({
+      startDate: effPeriod.startDate,
+      endDate: effPeriod.endDate,
+      vacationPeriods: effPeriod.vacationPeriods.map((vp) => ({ ...vp })),
+    });
+    setEditPeriodError(null);
   };
 
   const handleSaveEnrollmentBilling = (enrId: string) => {
+    const validation = validateEnrollmentPeriod(editPeriodValue, language);
+    if (!validation.valid) {
+      setEditPeriodError(validation.errors[0]);
+      return;
+    }
+    setEditPeriodError(null);
+
+    const cleanPeriod = sanitizePeriodForPersistence(editPeriodValue);
     const isHourly = editBillingMode === 'hourly';
     const isPkg = editBillingMode === 'package';
     db.updateEnrollmentBilling(enrId, {
@@ -629,9 +720,64 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       hourlyRate: isHourly ? editHourlyRate : undefined,
       packagePrice: isPkg ? editPackagePrice : undefined,
       packageSessionsCount: isPkg ? editPackageSessions : undefined,
+      startDate: cleanPeriod.startDate || '',
+      endDate: cleanPeriod.endDate || '',
+      vacationPeriods: cleanPeriod.vacationPeriods,
     });
     setEditingEnrollmentId(null);
+    setProfileDataVersion((v) => v + 1);
     onDataChanged();
+  };
+
+  const renderEnrollmentPeriodStatusPill = (enrId: string) => {
+    const rawEnr = enrollments.find((e) => e.id === enrId);
+    if (!rawEnr) return null;
+    const statusToday = getEnrollmentDateStatus(rawEnr, todayDateStr, student);
+    const eff = getEffectiveEnrollmentPeriod(rawEnr, student);
+
+    if (statusToday.reason === 'before_start' && statusToday.startDate) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300/60">
+          <AppIcon name="calendar" size={11} />
+          <span>{t('periodStatusBeforeStart', { date: statusToday.startDate })}</span>
+        </span>
+      );
+    }
+    if (statusToday.reason === 'on_vacation' && statusToday.activeVacation) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300/60">
+          <AppIcon name="calendarRange" size={11} />
+          <span>{t('periodStatusOnVacation', { date: statusToday.activeVacation.endDate })}</span>
+        </span>
+      );
+    }
+    if (statusToday.reason === 'ended' && statusToday.endDate) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-coral-soft text-coral border border-coral/30">
+          <AppIcon name="calendar" size={11} />
+          <span>{t('periodStatusEnded', { date: statusToday.endDate })}</span>
+        </span>
+      );
+    }
+    if (eff.startDate || eff.endDate || eff.vacationPeriods.length > 0) {
+      const partsLabel: string[] = [];
+      if (eff.startDate) partsLabel.push(`${t('lessonStartDate')}: ${eff.startDate}`);
+      if (eff.endDate) partsLabel.push(`${eff.endDate}`);
+      if (eff.vacationPeriods.length > 0) {
+        partsLabel.push(
+          isEn
+            ? `${eff.vacationPeriods.length} vacation(s)`
+            : `${eff.vacationPeriods.length} إجازة`
+        );
+      }
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E1EBEC]/35 text-[#0F2A4A] border border-[#E1EBEC]">
+          <AppIcon name="calendarRange" size={11} />
+          <span dir="ltr">{partsLabel.join(' • ')}</span>
+        </span>
+      );
+    }
+    return null;
   };
 
   const handleToggleSessionPaymentOverride = (sessionId: string) => {
@@ -670,6 +816,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const handleRemoveEnrollment = (enrollmentId: string, groupName: string) => {
     if (confirm(isEn ? `Are you sure you want to unenroll student from ${groupName}?` : `هل أنت متأكد من إلغاء قيد الطالب من ${groupName}؟`)) {
       db.removeEnrollment(enrollmentId);
+      setProfileDataVersion((v) => v + 1);
       onDataChanged();
     }
   };
@@ -1701,6 +1848,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             <p className="text-[11px] text-[#5F7083]">
                               {isEn ? 'Class Price:' : 'سعر الحصة المقرر:'} <strong className="text-[#0F2A4A]">{enr.customPrice} {t('currency')}</strong>
                             </p>
+                            {renderEnrollmentPeriodStatusPill(enr.enrollmentId)}
                           </div>
 
                           <div className="flex items-center gap-1.5">
@@ -1708,7 +1856,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               type="button"
                               onClick={() => handleStartEditEnrollment(enr.enrollmentId)}
                               className="p-1.5 rounded-lg bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 text-[#5F7083] hover:text-[#0F2A4A] border border-[#E1EBEC] transition-colors cursor-pointer"
-                              title={isEn ? 'Edit Pricing' : 'تعديل شروط التسعير والاشتراك'}
+                              title={isEn ? 'Edit Pricing & Period' : 'تعديل شروط التسعير وفترة الاشتراك'}
                             >
                               <AppIcon name="edit" size={14} />
                             </button>
@@ -1723,10 +1871,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Inline Billing Editor */}
+                        {/* Inline Billing & Operational Period Editor */}
                         {editingEnrollmentId === enr.enrollmentId && (
                           <div className="p-3 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] space-y-2.5 text-xs">
-                            <span className="font-black text-[#0F2A4A] block">{isEn ? 'Edit Billing & Pricing Mode:' : 'تعديل نظام المحاسبة والتسعير:'}</span>
+                            <span className="font-black text-[#0F2A4A] block">{isEn ? 'Edit Billing & Operational Period:' : 'تعديل نظام المحاسبة وفترة الحصص:'}</span>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="block text-[10px] text-[#5F7083] font-bold mb-1">
@@ -1751,12 +1899,27 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 </label>
                                 <input
                                   type="number"
-                                  value={editCustomPrice}
-                                  onChange={(e) => setEditCustomPrice(Number(e.target.value))}
+                                  value={editBillingMode === 'hourly' ? editHourlyRate : editBillingMode === 'package' ? editPackagePrice : editCustomPrice}
+                                  onChange={(e) => {
+                                    const num = Number(e.target.value);
+                                    if (editBillingMode === 'hourly') setEditHourlyRate(num);
+                                    else if (editBillingMode === 'package') setEditPackagePrice(num);
+                                    else setEditCustomPrice(num);
+                                  }}
                                   className="w-full p-2 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A]"
                                 />
                               </div>
                             </div>
+
+                            <EnrollmentPeriodFields
+                              value={editPeriodValue}
+                              onChange={(next) => {
+                                setEditPeriodError(null);
+                                setEditPeriodValue(next);
+                              }}
+                              compact
+                              externalError={editPeriodError}
+                            />
 
                             <div className="flex justify-end gap-1.5 pt-1">
                               <button
@@ -2178,6 +2341,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                                 ? (isEn ? `Hourly Rate: ${enr.customPrice} ${t('currency')}` : `سعر الساعة: ${enr.customPrice} ج.م`)
                                 : (isEn ? `Session Price: ${enr.customPrice} ${t('currency')}` : `سعر الحصة: ${enr.customPrice} ج.م`)}
                             </p>
+                            {renderEnrollmentPeriodStatusPill(enr.enrollmentId)}
                           </div>
 
                           <div className="flex items-center gap-1.5">
@@ -2194,7 +2358,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                               type="button"
                               onClick={() => handleStartEditEnrollment(enr.enrollmentId)}
                               className="p-1.5 rounded-lg bg-[#E1EBEC]/15 hover:bg-[#E1EBEC]/35 text-[#5F7083] hover:text-[#0F2A4A] border border-[#E1EBEC] transition-colors cursor-pointer"
-                              title={isEn ? 'Edit Pricing' : 'تعديل شروط التسعير والاشتراك'}
+                              title={isEn ? 'Edit Pricing & Period' : 'تعديل شروط التسعير وفترة الاشتراك'}
                             >
                               <AppIcon name="edit" size={14} />
                             </button>
@@ -2208,6 +2372,75 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                             </button>
                           </div>
                         </div>
+
+                        {/* Inline Billing & Operational Period Editor for Private Service */}
+                        {editingEnrollmentId === enr.enrollmentId && (
+                          <div className="p-3 bg-[#E1EBEC]/15 rounded-2xl border border-[#E1EBEC] space-y-2.5 text-xs">
+                            <span className="font-black text-[#0F2A4A] block">{isEn ? 'Edit Billing & Operational Period:' : 'تعديل نظام المحاسبة وفترة الحصص:'}</span>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] text-[#5F7083] font-bold mb-1">
+                                  {isEn ? 'Billing Mode' : 'نظام المحاسبة'}
+                                </label>
+                                <select
+                                  value={editBillingMode}
+                                  onChange={(e) => setEditBillingMode(e.target.value as BillingMode)}
+                                  className="w-full p-2 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A]"
+                                >
+                                  <option value="prepaid">{isEn ? 'Prepaid Per Session' : 'دفع مسبق بالحصة'}</option>
+                                  <option value="postpaid">{isEn ? 'Postpaid (Pay After)' : 'دفع بعد الحصة (آجل)'}</option>
+                                  <option value="monthly">{isEn ? 'Monthly Subscription' : 'اشتراك شهري'}</option>
+                                  <option value="package">{isEn ? 'Session Package' : 'باقة حصص'}</option>
+                                  <option value="hourly">{isEn ? 'Hourly Rate' : 'محاسبة بالساعة'}</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] text-[#5F7083] font-bold mb-1">
+                                  {isEn ? `Price (${t('currency')})` : `السعر المخصص (${t('currency')})`}
+                                </label>
+                                <input
+                                  type="number"
+                                  value={editBillingMode === 'hourly' ? editHourlyRate : editBillingMode === 'package' ? editPackagePrice : editCustomPrice}
+                                  onChange={(e) => {
+                                    const num = Number(e.target.value);
+                                    if (editBillingMode === 'hourly') setEditHourlyRate(num);
+                                    else if (editBillingMode === 'package') setEditPackagePrice(num);
+                                    else setEditCustomPrice(num);
+                                  }}
+                                  className="w-full p-2 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs font-bold text-[#0F2A4A]"
+                                />
+                              </div>
+                            </div>
+
+                            <EnrollmentPeriodFields
+                              value={editPeriodValue}
+                              onChange={(next) => {
+                                setEditPeriodError(null);
+                                setEditPeriodValue(next);
+                              }}
+                              compact
+                              externalError={editPeriodError}
+                            />
+
+                            <div className="flex justify-end gap-1.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingEnrollmentId(null)}
+                                className="px-3 py-1.5 rounded-xl bg-[#FFFFFF] border border-[#E1EBEC] text-xs font-bold text-[#5F7083]"
+                              >
+                                {t('cancel')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEnrollmentBilling(enr.enrollmentId)}
+                                className="px-3.5 py-1.5 rounded-xl bg-[#17375E] text-[#FFFFFF] text-xs font-black shadow-xs"
+                              >
+                                {t('save')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Financial & Workload Metrics Strip */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center text-[10px]">
@@ -2789,6 +3022,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           availableGroups={allGroups}
           onSuccess={() => {
             setIsQuickBehaviorModalOpen(false);
+            setProfileDataVersion((v) => v + 1);
             onDataChanged();
           }}
         />

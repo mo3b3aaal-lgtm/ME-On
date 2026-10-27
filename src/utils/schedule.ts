@@ -1,6 +1,273 @@
-import { Group, Student, Enrollment, Session, SessionStatus } from '../types';
-import { getAppLanguage } from './i18n';
+import { Group, Student, Enrollment, Session, SessionStatus, Attendance, VacationPeriod } from '../types';
+import { getAppLanguage, t } from './i18n';
 import { getLocalDateParts, getLocalDateString, parseLocalTimeToStandard, toLocalISODate, parseLocalDateStr } from './localDate';
+
+// ==========================================
+// 0. CENTRAL ENROLLMENT OPERATIONAL PERIOD ENGINE
+// ==========================================
+
+/**
+ * Pure local calendar-date normalizer ("YYYY-MM-DD").
+ * Never parses YYYY-MM-DD as UTC midnight, avoiding timezone off-by-one shifts.
+ */
+export function normalizeLocalDateOnly(dateInput?: Date | string | null): string | undefined {
+  if (dateInput === null || dateInput === undefined) return undefined;
+
+  if (dateInput instanceof Date) {
+    if (isNaN(dateInput.getTime())) return undefined;
+    return toLocalISODate(dateInput);
+  }
+
+  if (typeof dateInput !== 'string') return undefined;
+  const trimmed = dateInput.trim();
+  if (!trimmed) return undefined;
+
+  const exactMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
+  if (exactMatch) {
+    const y = Number(exactMatch[1]);
+    const m = Number(exactMatch[2]);
+    const d = Number(exactMatch[3]);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return undefined;
+    const cal = new Date(y, m - 1, d);
+    if (cal.getFullYear() !== y || cal.getMonth() !== m - 1 || cal.getDate() !== d) {
+      return undefined;
+    }
+    return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(trimmed);
+  if (isNaN(parsed.getTime())) return undefined;
+  return toLocalISODate(parsed);
+}
+
+export interface EffectiveEnrollmentPeriod {
+  startDate?: string;
+  endDate?: string;
+  vacationPeriods: VacationPeriod[];
+}
+
+/**
+ * Resolves the effective operational period for an enrollment or direct student service.
+ * If an Enrollment explicitly defines any period field (startDate, endDate, or vacationPeriods),
+ * its scope is authoritative and isolated from other enrollments of the same student.
+ * Otherwise, falls back to student-level defaults (preserving legacy and direct-schedule records).
+ */
+export function getEffectiveEnrollmentPeriod(
+  enrollment?: Enrollment | null,
+  student?: Student | null
+): EffectiveEnrollmentPeriod {
+  const hasEnrollmentScope =
+    Boolean(enrollment) &&
+    (enrollment!.startDate !== undefined ||
+      enrollment!.endDate !== undefined ||
+      enrollment!.vacationPeriods !== undefined);
+
+  if (hasEnrollmentScope && enrollment) {
+    return {
+      startDate: normalizeLocalDateOnly(enrollment.startDate),
+      endDate: normalizeLocalDateOnly(enrollment.endDate),
+      vacationPeriods: Array.isArray(enrollment.vacationPeriods) ? enrollment.vacationPeriods : [],
+    };
+  }
+
+  return {
+    startDate: normalizeLocalDateOnly(student?.startDate),
+    endDate: normalizeLocalDateOnly(student?.endDate),
+    vacationPeriods: Array.isArray(student?.vacationPeriods) ? student!.vacationPeriods! : [],
+  };
+}
+
+export interface EnrollmentDateActivityStatus {
+  active: boolean;
+  reason: 'active' | 'invalid_date' | 'archived_or_stopped' | 'before_start' | 'ended' | 'on_vacation';
+  startDate?: string;
+  endDate?: string;
+  activeVacation?: VacationPeriod;
+}
+
+/**
+ * Detailed pure evaluation of whether an enrollment/service is operational on a local calendar date.
+ * - Start date is inclusive.
+ * - End date is inclusive.
+ * - Vacation startDate and endDate are BOTH inactive; resumes on vacation.endDate + 1 (if <= endDate).
+ * - Honors archive/stopped/paused statuses.
+ * - Legacy records without dates remain active.
+ */
+export function getEnrollmentDateStatus(
+  enrollment: Enrollment | null | undefined,
+  dateInput: Date | string,
+  student?: Student | null
+): EnrollmentDateActivityStatus {
+  const targetDateStr = normalizeLocalDateOnly(dateInput);
+  if (!targetDateStr) {
+    return { active: false, reason: 'invalid_date' };
+  }
+
+  if (student && (student.status === 'archived' || student.status === 'inactive')) {
+    return { active: false, reason: 'archived_or_stopped' };
+  }
+
+  if (enrollment && (enrollment.status === 'stopped' || enrollment.status === 'paused')) {
+    return { active: false, reason: 'archived_or_stopped' };
+  }
+
+  const { startDate, endDate, vacationPeriods } = getEffectiveEnrollmentPeriod(enrollment, student);
+
+  if (startDate && targetDateStr < startDate) {
+    return { active: false, reason: 'before_start', startDate, endDate };
+  }
+
+  if (endDate && targetDateStr > endDate) {
+    return { active: false, reason: 'ended', startDate, endDate };
+  }
+
+  for (const vp of vacationPeriods) {
+    if (!vp) continue;
+    const vStart = normalizeLocalDateOnly(vp.startDate);
+    const vEnd = normalizeLocalDateOnly(vp.endDate);
+    if (vStart && vEnd && vStart <= vEnd) {
+      if (targetDateStr >= vStart && targetDateStr <= vEnd) {
+        return {
+          active: false,
+          reason: 'on_vacation',
+          startDate,
+          endDate,
+          activeVacation: vp,
+        };
+      }
+    }
+  }
+
+  return { active: true, reason: 'active', startDate, endDate };
+}
+
+/**
+ * Central pure boolean helper answering whether an enrollment/service is operational on a given local calendar date.
+ */
+export function isEnrollmentActiveOnDate(
+  enrollment: Enrollment | null | undefined,
+  dateInput: Date | string,
+  student?: Student | null
+): boolean {
+  return getEnrollmentDateStatus(enrollment, dateInput, student).active;
+}
+
+export interface EnrollmentPeriodValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Validates operational startDate, optional endDate, and vacationPeriods.
+ * Prevents endDate < startDate and invalid/incomplete vacation ranges, and warns on overlapping vacations.
+ */
+export function validateEnrollmentPeriod(
+  period: {
+    startDate?: string;
+    endDate?: string;
+    vacationPeriods?: VacationPeriod[];
+  },
+  langOverride?: 'ar' | 'en-GB' | 'en-US'
+): EnrollmentPeriodValidationResult {
+  const lang = langOverride || getAppLanguage();
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  const rawStart = period.startDate?.trim() || '';
+  const rawEnd = period.endDate?.trim() || '';
+  const normStart = rawStart ? normalizeLocalDateOnly(rawStart) : undefined;
+  const normEnd = rawEnd ? normalizeLocalDateOnly(rawEnd) : undefined;
+
+  if (rawStart && !normStart) {
+    errors.push(lang === 'ar' ? 'صيغة تاريخ بداية الحصص غير صحيحة.' : 'Invalid Lesson Start Date.');
+  }
+  if (rawEnd && !normEnd) {
+    errors.push(lang === 'ar' ? 'صيغة تاريخ نهاية الحصص غير صحيحة.' : 'Invalid Lesson End Date.');
+  }
+  if (normStart && normEnd && normEnd < normStart) {
+    errors.push(t('errEndDateBeforeStartDate', lang));
+  }
+
+  const validVacations: { start: string; end: string }[] = [];
+  const vacations = Array.isArray(period.vacationPeriods) ? period.vacationPeriods : [];
+
+  for (const vp of vacations) {
+    const rawVStart = vp?.startDate?.trim() || '';
+    const rawVEnd = vp?.endDate?.trim() || '';
+    if (!rawVStart || !rawVEnd) {
+      errors.push(t('errVacationMissingDates', lang));
+      continue;
+    }
+    const vStart = normalizeLocalDateOnly(rawVStart);
+    const vEnd = normalizeLocalDateOnly(rawVEnd);
+    if (!vStart || !vEnd) {
+      errors.push(t('errVacationMissingDates', lang));
+      continue;
+    }
+    if (vEnd < vStart) {
+      errors.push(t('errVacationInvalidRange', lang));
+      continue;
+    }
+    validVacations.push({ start: vStart, end: vEnd });
+  }
+
+  if (validVacations.length > 1) {
+    const sorted = [...validVacations].sort((a, b) =>
+      a.start !== b.start ? a.start.localeCompare(b.start) : a.end.localeCompare(b.end)
+    );
+    let hasOverlap = false;
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].start <= sorted[i - 1].end) {
+        hasOverlap = true;
+        break;
+      }
+    }
+    if (hasOverlap) {
+      warnings.push(t('warnVacationOverlap', lang));
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: Array.from(new Set(errors)),
+    warnings: Array.from(new Set(warnings)),
+  };
+}
+
+/**
+ * Determines whether an explicit saved Session record should appear operationally on `dateStr`.
+ * Completed, cancelled, or attendance-recorded sessions are ALWAYS preserved for historical integrity.
+ * Unrecorded 'scheduled' private sessions are filtered if the student's enrollment is inactive on `dateStr`.
+ */
+export function isExplicitPrivateSessionOperationalOnDate(
+  session: Session,
+  dateStr: string,
+  enrollments: Enrollment[],
+  studentsById: Map<string, Student>,
+  hasRecordedAttendance: boolean
+): boolean {
+  if (session.status === 'completed' || session.status === 'cancelled' || hasRecordedAttendance) {
+    return true;
+  }
+  const isPrivate = !session.groupId || Boolean(session.studentId);
+  if (!isPrivate) {
+    return true;
+  }
+  const student = session.studentId ? studentsById.get(session.studentId) : undefined;
+  const enr =
+    (session.enrollmentId ? enrollments.find((e) => e.id === session.enrollmentId) : undefined) ||
+    (session.studentId
+      ? enrollments.find(
+          (e) =>
+            e.studentId === session.studentId &&
+            (e.serviceType === 'private' || !e.groupId) &&
+            e.status !== 'stopped'
+        )
+      : undefined);
+
+  return isEnrollmentActiveOnDate(enr, dateStr, student);
+}
 
 // ==========================================
 // 1. CANONICAL WEEKDAYS ARCHITECTURE
@@ -749,6 +1016,10 @@ export function getScheduledClassesForDate(
 
     // Check if any active enrollment in this group has custom schedule days meeting today
     const customEnrollmentsMeetingToday = groupEnrollments.filter((enr) => {
+      const stu = activeStudentsMap.get(enr.studentId);
+      if (!stu || !isEnrollmentActiveOnDate(enr, parts.dateStr, stu)) {
+        return false;
+      }
       if (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0) {
         return normalizeScheduleDays(enr.scheduleDays).includes(canonicalTodayKey);
       }
@@ -833,10 +1104,13 @@ export function getScheduledClassesForDate(
   const activePrivateEnrollments = enrollments.filter(
     (e) => (e.serviceType === 'private' || !e.groupId) && e.status !== 'stopped'
   );
+  const studentsWithPrivateEnrollments = new Set<string>();
 
   for (const enr of activePrivateEnrollments) {
+    studentsWithPrivateEnrollments.add(enr.studentId);
     const stu = activeStudentsMap.get(enr.studentId);
     if (!stu) continue;
+    if (!isEnrollmentActiveOnDate(enr, parts.dateStr, stu)) continue;
 
     const privDays = (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0)
       ? enr.scheduleDays
@@ -882,8 +1156,11 @@ export function getScheduledClassesForDate(
     }
   }
 
-  // Also check active students with direct privateDays or scheduleDays not yet covered
+  // Also check active students with direct privateDays not yet covered by a private Enrollment
   for (const stu of activeStudentsMap.values()) {
+    if (studentsWithPrivateEnrollments.has(stu.id)) continue;
+    if (!isEnrollmentActiveOnDate(null, parts.dateStr, stu)) continue;
+
     if (stu.privateDays && Array.isArray(stu.privateDays) && stu.privateDays.length > 0) {
       const normPD = normalizeScheduleDays(stu.privateDays);
       if (normPD.includes(canonicalTodayKey)) {
@@ -949,7 +1226,7 @@ export interface UpcomingStudentClass {
 }
 
 /**
- * Get upcoming scheduled classes for a specific student for the next 7-14 days
+ * Get upcoming scheduled classes for a specific student, respecting enrollment start/end dates & vacations.
  */
 export function getUpcomingClassesForStudent(
   studentId: string,
@@ -957,14 +1234,36 @@ export function getUpcomingClassesForStudent(
   enrollments: Enrollment[],
   limit: number = 5,
   isRTLOrLang?: boolean | string,
-  sessionsParam?: Session[]
+  sessionsParam?: Session[],
+  studentParam?: Student | null,
+  referenceDate?: Date | string
 ): UpcomingStudentClass[] {
   if (!studentId) return [];
 
   const isRTL = isRTLMode(isRTLOrLang);
 
+  let resolvedStudent: Student | null | undefined = studentParam;
+  if (!resolvedStudent && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const rawSt = localStorage.getItem('tm_v2_students');
+      if (rawSt) {
+        const parsedSt = JSON.parse(rawSt);
+        if (Array.isArray(parsedSt)) {
+          resolvedStudent = parsedSt.find((s: Student) => s.id === studentId) || null;
+        }
+      }
+    } catch {}
+  }
+
+  if (resolvedStudent && (resolvedStudent.status === 'archived' || resolvedStudent.status === 'inactive')) {
+    return [];
+  }
+
   const studentEnrollments = enrollments.filter(
     (e) => e.studentId === studentId && e.status !== 'stopped'
+  );
+  const hasPrivateEnrollment = studentEnrollments.some(
+    (e) => e.serviceType === 'private' || !e.groupId
   );
 
   const groupsMap = new Map<string, Group>();
@@ -980,17 +1279,36 @@ export function getUpcomingClassesForStudent(
   } else if (typeof window !== 'undefined' && window.localStorage) {
     try {
       const raw = localStorage.getItem('tm_v2_sessions');
-      if (raw) allSessionsList = JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          allSessionsList = parsed;
+        }
+      }
     } catch {}
   }
 
-  const todayStr = toLocalISODate(new Date());
+  const baseDateObj = referenceDate
+    ? typeof referenceDate === 'string'
+      ? parseLocalDateStr(referenceDate)
+      : new Date(referenceDate)
+    : new Date();
+  const todayStr = toLocalISODate(baseDateObj);
 
   const explicitScheduled = allSessionsList.filter(
     (s) => s.studentId === studentId && s.status === 'scheduled' && s.date >= todayStr
   );
 
   for (const s of explicitScheduled) {
+    const matchedEnr =
+      (s.enrollmentId ? studentEnrollments.find((e) => e.id === s.enrollmentId) : undefined) ||
+      studentEnrollments.find((e) =>
+        s.groupId ? e.groupId === s.groupId : e.serviceType === 'private' || !e.groupId
+      );
+    if (!isEnrollmentActiveOnDate(matchedEnr, s.date, resolvedStudent)) {
+      continue;
+    }
+
     const rawTime = s.startTime || '16:00';
     const slotKey = `${s.date}_${rawTime}`;
     coveredDateSlotKeys.add(slotKey);
@@ -1028,12 +1346,11 @@ export function getUpcomingClassesForStudent(
     });
   }
 
-  // 2. Recurring schedule slots for the next 14 days
-  const today = new Date();
+  // 2. Recurring schedule slots across operational horizon (up to 60 days so post-vacation / pre-start classes appear cleanly)
+  const scanStart = parseLocalDateStr(todayStr);
 
-  for (let offset = 0; offset < 14; offset++) {
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + offset);
+  for (let offset = 0; offset < 60; offset++) {
+    const targetDate = new Date(scanStart.getFullYear(), scanStart.getMonth(), scanStart.getDate() + offset);
     const dayIdx = targetDate.getDay();
     const canonKey = DAY_INDEX_TO_CANONICAL[dayIdx] || 'saturday';
     const localizedDayName = getLocalizedWeekdayName(canonKey, isRTL);
@@ -1047,6 +1364,8 @@ export function getUpcomingClassesForStudent(
         : localizedDayName;
 
     for (const enr of studentEnrollments) {
+      if (!isEnrollmentActiveOnDate(enr, dateStr, resolvedStudent)) continue;
+
       const isPrivate = enr.serviceType === 'private' || !enr.groupId;
       const group = enr.groupId ? groupsMap.get(enr.groupId) : undefined;
 
@@ -1060,17 +1379,19 @@ export function getUpcomingClassesForStudent(
       if (isPrivate) {
         const privDays = (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0)
           ? enr.scheduleDays
-          : [];
+          : (resolvedStudent?.privateDays && Array.isArray(resolvedStudent.privateDays) && resolvedStudent.privateDays.length > 0
+              ? resolvedStudent.privateDays
+              : (resolvedStudent?.scheduleDays || []));
         meetsOnDay = normalizeScheduleDays(privDays).includes(canonKey);
         if (!meetsOnDay) continue;
 
-        const timesMap = enr.scheduleTimes;
+        const timesMap = enr.scheduleTimes || resolvedStudent?.privateTimes || resolvedStudent?.scheduleTimes;
         const normPT = normalizeScheduleTimes(timesMap);
         effectiveTimes = normPT[canonKey]?.length
           ? normPT[canonKey]
-          : [(enr.scheduleTime || '16:00')];
-        loc = getLocalizedLocationName(enr.roomOrLocation || (isRTL ? 'منزل الطالب' : "Student's Home"), isRTL);
-        subj = getLocalizedSubjectName(enr.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
+          : [(enr.scheduleTime || resolvedStudent?.privateTime || resolvedStudent?.scheduleTime || '16:00')];
+        loc = getLocalizedLocationName(enr.roomOrLocation || resolvedStudent?.privateLocation || (isRTL ? 'منزل الطالب' : "Student's Home"), isRTL);
+        subj = getLocalizedSubjectName(enr.subject || resolvedStudent?.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
       } else {
         const groupNormalizedDays = normalizeScheduleDays(group!.scheduleDays);
         meetsOnDay = groupNormalizedDays.includes(canonKey);
@@ -1108,6 +1429,49 @@ export function getUpcomingClassesForStudent(
           location: loc,
           accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
         });
+      }
+    }
+
+    // Fallback for direct student privateDays without an Enrollment
+    if (
+      !hasPrivateEnrollment &&
+      resolvedStudent &&
+      resolvedStudent.privateDays &&
+      Array.isArray(resolvedStudent.privateDays) &&
+      resolvedStudent.privateDays.length > 0 &&
+      isEnrollmentActiveOnDate(null, dateStr, resolvedStudent)
+    ) {
+      if (normalizeScheduleDays(resolvedStudent.privateDays).includes(canonKey)) {
+        const normPT = normalizeScheduleTimes(resolvedStudent.privateTimes);
+        const effectiveTimes = normPT[canonKey]?.length
+          ? normPT[canonKey]
+          : [(resolvedStudent.privateTime || resolvedStudent.scheduleTime || '16:00')];
+        const loc = getLocalizedLocationName(resolvedStudent.privateLocation || (isRTL ? 'منزل الطالب' : "Student's Home"), isRTL);
+        const subj = getLocalizedSubjectName(resolvedStudent.subject, isRTL) || (isRTL ? 'درس خاص' : 'Private Lesson');
+
+        for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
+          const rawTime = effectiveTimes[tIdx];
+          const slotKey = `${dateStr}_${rawTime}`;
+          if (coveredDateSlotKeys.has(slotKey)) continue;
+          coveredDateSlotKeys.add(slotKey);
+
+          const formattedTime = formatTimeDisplay(rawTime, isRTL);
+          const cleanKey = (rawTime || 'flex').replace(/[^a-zA-Z0-9]/g, '_');
+          upcoming.push({
+            id: `up_stu_${resolvedStudent.id}_${dateStr}_${tIdx}_${cleanKey}`,
+            dateStr,
+            dayName: localizedDayName,
+            dayRelative,
+            time: formattedTime,
+            rawTime,
+            groupId: '',
+            groupName: isRTL ? 'درس خاص' : 'Private Lesson',
+            isPrivate: true,
+            subject: subj,
+            location: loc,
+            accentColor: resolvedStudent.avatarColor || '#0F2A4A',
+          });
+        }
       }
     }
 
@@ -1572,58 +1936,57 @@ export function formatDateKey(year: number, monthIndex: number, day: number): st
   return `${year}-${m}-${d}`;
 }
 
-export function getYearClassStatsMap(
-  year: number,
-  sessions: Session[],
+export interface RecurringSlotRef {
+  groupId?: string;
+  studentId?: string;
+  isPrivate: boolean;
+  time: string;
+  enrollment?: Enrollment;
+  student?: Student;
+}
+
+export function buildRecurringSlotsByWeekday(
   groups: Group[],
   enrollments: Enrollment[],
   students: Student[]
-): Map<string, DayClassSummary> {
-  const statsMap = new Map<string, DayClassSummary>();
-  const todayStr = toLocalISODate();
-
-  const sessionsByDate = new Map<string, Session[]>();
-  for (const s of sessions) {
-    if (!s.date) continue;
-    if (s.date.startsWith(`${year}-`) || s.year === year) {
-      const list = sessionsByDate.get(s.date) || [];
-      list.push(s);
-      sessionsByDate.set(s.date, list);
-    }
-  }
-
+): Map<CanonicalWeekday, RecurringSlotRef[]> {
   const activeStudentsMap = new Map<string, Student>();
   students.forEach((st) => {
     if (st.status !== 'archived') activeStudentsMap.set(st.id, st);
   });
 
-  const activeEnrollmentsByGroup = new Map<string, Enrollment[]>();
-  enrollments.forEach((enr) => {
-    if (enr.status !== 'stopped') {
-      const list = activeEnrollmentsByGroup.get(enr.groupId) || [];
-      list.push(enr);
-      activeEnrollmentsByGroup.set(enr.groupId, list);
-    }
-  });
+  const activePrivateEnrollments = enrollments.filter(
+    (e) => (e.serviceType === 'private' || !e.groupId) && e.status !== 'stopped'
+  );
+  const studentsWithPrivateEnrollments = new Set<string>();
+  activePrivateEnrollments.forEach((e) => studentsWithPrivateEnrollments.add(e.studentId));
 
-  interface RecurringSlotRef {
-    groupId?: string;
-    studentId?: string;
-    isPrivate: boolean;
-    time: string;
-  }
+  // Also check custom-schedule group enrollments that meet on days outside their group's default days
+  const customGroupEnrollments = enrollments.filter(
+    (e) =>
+      e.serviceType !== 'private' &&
+      Boolean(e.groupId) &&
+      e.status !== 'stopped' &&
+      Array.isArray(e.scheduleDays) &&
+      e.scheduleDays.length > 0
+  );
+  const groupsById = new Map<string, Group>();
+  groups.forEach((g) => groupsById.set(g.id, g));
+
   const recurringSlotsByWeekday = new Map<CanonicalWeekday, RecurringSlotRef[]>();
 
   for (const canonDay of CANONICAL_WEEKDAYS) {
     const slots: RecurringSlotRef[] = [];
 
     // 1. Group recurring schedules (Strict domain separation: genuine groups only)
+    const groupDaysCovered = new Set<string>();
     for (const group of groups) {
       if (group.type === 'private') continue;
       if (!group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
       const meets = normalizeScheduleDays(group.scheduleDays).includes(canonDay);
       if (!meets) continue;
 
+      groupDaysCovered.add(group.id);
       const times = getTimesForDayInGroup(group, canonDay);
       const effectiveTimes = times.length > 0 ? times : [group.scheduleTime || '16:00'];
       for (const t of effectiveTimes) {
@@ -1635,11 +1998,28 @@ export function getYearClassStatsMap(
       }
     }
 
+    // 1b. Custom-schedule group enrollments on days where the parent group itself doesn't meet
+    for (const enr of customGroupEnrollments) {
+      if (groupDaysCovered.has(enr.groupId)) continue;
+      const group = groupsById.get(enr.groupId);
+      const stu = activeStudentsMap.get(enr.studentId);
+      if (!group || group.type === 'private' || !stu) continue;
+      if (!normalizeScheduleDays(enr.scheduleDays || []).includes(canonDay)) continue;
+      const rawTimes = getTimesForDayInEnrollment(enr, group, canonDay);
+      const effectiveTimes = rawTimes.length > 0 ? rawTimes : [group.scheduleTime || '16:00'];
+      for (const t of effectiveTimes) {
+        slots.push({
+          groupId: group.id,
+          isPrivate: false,
+          time: t,
+          enrollment: enr,
+          student: stu,
+        });
+      }
+    }
+
     // 2. Private recurring schedules (Active private enrollments without group requirement)
     const coveredPrivateSlotKeys = new Set<string>();
-    const activePrivateEnrollments = enrollments.filter(
-      (e) => (e.serviceType === 'private' || !e.groupId) && e.status !== 'stopped'
-    );
 
     for (const enr of activePrivateEnrollments) {
       const stu = activeStudentsMap.get(enr.studentId);
@@ -1658,20 +2038,23 @@ export function getYearClassStatsMap(
           : [(enr.scheduleTime || stu.privateTime || stu.scheduleTime || '16:00')];
 
         for (const t of effectiveTimes) {
-          const slotKey = `${stu.id}_${canonDay}_${t}`;
+          const slotKey = `${enr.id}_${stu.id}_${canonDay}_${t}`;
           if (coveredPrivateSlotKeys.has(slotKey)) continue;
           coveredPrivateSlotKeys.add(slotKey);
           slots.push({
             studentId: stu.id,
             isPrivate: true,
             time: t,
+            enrollment: enr,
+            student: stu,
           });
         }
       }
     }
 
-    // 3. Active students with direct private schedule properties
+    // 3. Active students with direct private schedule properties (no private Enrollment)
     for (const stu of activeStudentsMap.values()) {
+      if (studentsWithPrivateEnrollments.has(stu.id)) continue;
       if (stu.privateDays && Array.isArray(stu.privateDays) && stu.privateDays.length > 0) {
         const normPD = normalizeScheduleDays(stu.privateDays);
         if (normPD.includes(canonDay)) {
@@ -1688,6 +2071,7 @@ export function getYearClassStatsMap(
               studentId: stu.id,
               isPrivate: true,
               time: t,
+              student: stu,
             });
           }
         }
@@ -1697,70 +2081,206 @@ export function getYearClassStatsMap(
     recurringSlotsByWeekday.set(canonDay, slots);
   }
 
-  for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
-    const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = formatDateKey(year, monthIdx, day);
-      const dateObj = new Date(year, monthIdx, day);
-      const dayOfWeek = dateObj.getDay();
-      const canonDay = DAY_INDEX_TO_CANONICAL[dayOfWeek] || 'saturday';
-      const isPast = dateStr < todayStr;
+  return recurringSlotsByWeekday;
+}
 
-      const explicitSessions = sessionsByDate.get(dateStr) || [];
-      
-      let completedCount = 0;
-      let scheduledCount = 0;
-      let cancelledCount = 0;
+function populateMonthDaysStats(
+  year: number,
+  monthIdx: number,
+  startDay: number,
+  endDay: number,
+  sessionsByDate: Map<string, Session[]>,
+  recurringSlotsByWeekday: Map<CanonicalWeekday, RecurringSlotRef[]>,
+  todayStr: string,
+  statsMap: Map<string, DayClassSummary>,
+  enrollments: Enrollment[],
+  studentsById: Map<string, Student>
+): void {
+  for (let day = startDay; day <= endDay; day++) {
+    const dateStr = formatDateKey(year, monthIdx, day);
+    const dateObj = new Date(year, monthIdx, day);
+    const dayOfWeek = dateObj.getDay();
+    const canonDay = DAY_INDEX_TO_CANONICAL[dayOfWeek] || 'saturday';
+    const isPast = dateStr < todayStr;
 
-      const representedKeys = new Set<string>();
+    const rawExplicitSessions = sessionsByDate.get(dateStr) || [];
+    const explicitSessions = rawExplicitSessions.filter((s) =>
+      isExplicitPrivateSessionOperationalOnDate(
+        s,
+        dateStr,
+        enrollments,
+        studentsById,
+        s.status === 'completed'
+      )
+    );
 
-      for (const s of explicitSessions) {
-        if (s.status === 'completed') completedCount++;
-        else if (s.status === 'cancelled') cancelledCount++;
-        else scheduledCount++;
+    let completedCount = 0;
+    let scheduledCount = 0;
+    let cancelledCount = 0;
 
-        const sMins = parseTimeToMinutes(s.startTime || '16:00');
-        if (s.studentId) {
-          representedKeys.add(`priv_${s.studentId}_${sMins}`);
-        }
-        if (s.groupId) {
-          representedKeys.add(`grp_${s.groupId}_${sMins}`);
-        }
+    const representedKeys = new Set<string>();
+
+    for (const s of explicitSessions) {
+      if (s.status === 'completed') completedCount++;
+      else if (s.status === 'cancelled') cancelledCount++;
+      else scheduledCount++;
+
+      const sMins = parseTimeToMinutes(s.startTime || '16:00');
+      if (s.studentId) {
+        representedKeys.add(`priv_${s.studentId}_${sMins}`);
       }
-
-      let totalCount = explicitSessions.length;
-
-      if (!isPast) {
-        const slots = recurringSlotsByWeekday.get(canonDay) || [];
-        for (const slot of slots) {
-          const slotMins = parseTimeToMinutes(slot.time || '16:00');
-          if (slot.isPrivate && slot.studentId) {
-            const privKey = `priv_${slot.studentId}_${slotMins}`;
-            if (representedKeys.has(privKey)) continue;
-            representedKeys.add(privKey);
-            scheduledCount++;
-            totalCount++;
-          } else if (slot.groupId) {
-            const grpKey = `grp_${slot.groupId}_${slotMins}`;
-            if (representedKeys.has(grpKey)) continue;
-            representedKeys.add(grpKey);
-            scheduledCount++;
-            totalCount++;
-          }
-        }
-      }
-
-      if (totalCount > 0) {
-        statsMap.set(dateStr, {
-          dateStr,
-          totalCount,
-          completedCount,
-          scheduledCount,
-          cancelledCount,
-          hasRecordedSession: explicitSessions.length > 0,
-        });
+      if (s.groupId) {
+        representedKeys.add(`grp_${s.groupId}_${sMins}`);
       }
     }
+
+    let totalCount = explicitSessions.length;
+
+    if (!isPast) {
+      const slots = recurringSlotsByWeekday.get(canonDay) || [];
+      for (const slot of slots) {
+        if ((slot.isPrivate || slot.enrollment || slot.student) && !isEnrollmentActiveOnDate(slot.enrollment, dateStr, slot.student)) {
+          continue;
+        }
+        const slotMins = parseTimeToMinutes(slot.time || '16:00');
+        if (slot.isPrivate && slot.studentId) {
+          const privKey = `priv_${slot.studentId}_${slotMins}`;
+          if (representedKeys.has(privKey)) continue;
+          representedKeys.add(privKey);
+          scheduledCount++;
+          totalCount++;
+        } else if (slot.groupId) {
+          const grpKey = `grp_${slot.groupId}_${slotMins}`;
+          if (representedKeys.has(grpKey)) continue;
+          representedKeys.add(grpKey);
+          scheduledCount++;
+          totalCount++;
+        }
+      }
+    }
+
+    if (totalCount > 0) {
+      statsMap.set(dateStr, {
+        dateStr,
+        totalCount,
+        completedCount,
+        scheduledCount,
+        cancelledCount,
+        hasRecordedSession: explicitSessions.length > 0,
+      });
+    }
+  }
+}
+
+export interface MonthClassStatsOptions {
+  startDay?: number;
+  endDay?: number;
+  recurringSlotsByWeekday?: Map<CanonicalWeekday, RecurringSlotRef[]>;
+  todayStr?: string;
+}
+
+export function getMonthClassStatsMap(
+  year: number,
+  monthIndex: number,
+  sessions: Session[],
+  groups: Group[],
+  enrollments: Enrollment[],
+  students: Student[],
+  options?: MonthClassStatsOptions
+): Map<string, DayClassSummary> {
+  const statsMap = new Map<string, DayClassSummary>();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const startDay = Math.max(1, options?.startDay ?? 1);
+  const endDay = Math.min(daysInMonth, options?.endDay ?? daysInMonth);
+
+  if (startDay > endDay) {
+    return statsMap;
+  }
+
+  const todayStr = options?.todayStr ?? toLocalISODate();
+  const monthPrefix = `${year}-${String(monthIndex + 1).padStart(2, '0')}-`;
+  const minDateStr = formatDateKey(year, monthIndex, startDay);
+  const maxDateStr = formatDateKey(year, monthIndex, endDay);
+
+  const sessionsByDate = new Map<string, Session[]>();
+  for (const s of sessions) {
+    if (!s.date || !s.date.startsWith(monthPrefix)) continue;
+    if (s.date < minDateStr || s.date > maxDateStr) continue;
+    const list = sessionsByDate.get(s.date);
+    if (list) {
+      list.push(s);
+    } else {
+      sessionsByDate.set(s.date, [s]);
+    }
+  }
+
+  const studentsById = new Map<string, Student>();
+  students.forEach((st) => studentsById.set(st.id, st));
+
+  const recurringSlotsByWeekday =
+    options?.recurringSlotsByWeekday ?? buildRecurringSlotsByWeekday(groups, enrollments, students);
+
+  populateMonthDaysStats(
+    year,
+    monthIndex,
+    startDay,
+    endDay,
+    sessionsByDate,
+    recurringSlotsByWeekday,
+    todayStr,
+    statsMap,
+    enrollments,
+    studentsById
+  );
+
+  return statsMap;
+}
+
+export function getYearClassStatsMap(
+  year: number,
+  sessions: Session[],
+  groups: Group[],
+  enrollments: Enrollment[],
+  students: Student[],
+  precomputedOrOptions?:
+    | Map<CanonicalWeekday, RecurringSlotRef[]>
+    | { recurringSlotsByWeekday?: Map<CanonicalWeekday, RecurringSlotRef[]>; todayStr?: string }
+): Map<string, DayClassSummary> {
+  const statsMap = new Map<string, DayClassSummary>();
+  const isMapArg = precomputedOrOptions instanceof Map;
+  const todayStr = (!isMapArg && precomputedOrOptions?.todayStr) ? precomputedOrOptions.todayStr : toLocalISODate();
+
+  const sessionsByDate = new Map<string, Session[]>();
+  for (const s of sessions) {
+    if (!s.date) continue;
+    if (s.date.startsWith(`${year}-`) || s.year === year) {
+      const list = sessionsByDate.get(s.date) || [];
+      list.push(s);
+      sessionsByDate.set(s.date, list);
+    }
+  }
+
+  const studentsById = new Map<string, Student>();
+  students.forEach((st) => studentsById.set(st.id, st));
+
+  const recurringSlotsByWeekday = isMapArg
+    ? precomputedOrOptions
+    : (precomputedOrOptions?.recurringSlotsByWeekday ?? buildRecurringSlotsByWeekday(groups, enrollments, students));
+
+  for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
+    const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+    populateMonthDaysStats(
+      year,
+      monthIdx,
+      1,
+      daysInMonth,
+      sessionsByDate,
+      recurringSlotsByWeekday,
+      todayStr,
+      statsMap,
+      enrollments,
+      studentsById
+    );
   }
 
   return statsMap;
@@ -1918,13 +2438,17 @@ export interface DetailedDateAgenda {
   items: DetailedDateAgendaItem[];
 }
 
+const EMPTY_SESSION_ATTENDANCE: Attendance[] = [];
+
 export function getDetailedAgendaForDate(
   dateStr: string,
   sessions: Session[],
   groups: Group[],
   enrollments: Enrollment[],
   students: Student[],
-  isRTLOrLang?: boolean | string
+  isRTLOrLang?: boolean | string,
+  allAttendance?: Attendance[],
+  todayOverrideStr?: string
 ): DetailedDateAgenda {
   const isRTL = isRTLMode(isRTLOrLang);
   const dateObj = parseLocalDateStr(dateStr);
@@ -1932,7 +2456,7 @@ export function getDetailedAgendaForDate(
   const canonDay = DAY_INDEX_TO_CANONICAL[dayOfWeek] || 'saturday';
   const dayName = getLocalizedWeekdayName(canonDay, isRTL);
   
-  const todayStr = toLocalISODate();
+  const todayStr = todayOverrideStr || toLocalISODate();
   const isToday = dateStr === todayStr;
   const isPast = dateStr < todayStr;
   const isFuture = dateStr > todayStr;
@@ -1974,23 +2498,52 @@ export function getDetailedAgendaForDate(
   }
   const finalExplicitSessions = Array.from(seenExplicitOccurrences.values());
 
+  // Resolve and index attendance once per call (only when explicit sessions exist on this date)
+  const attendanceBySessionId = new Map<string, Attendance[]>();
+  if (finalExplicitSessions.length > 0) {
+    const explicitSessionIds = new Set(finalExplicitSessions.map((s) => s.id));
+    let sourceAttendance: Attendance[] = EMPTY_SESSION_ATTENDANCE;
+    if (Array.isArray(allAttendance)) {
+      sourceAttendance = allAttendance;
+    } else if (typeof localStorage !== 'undefined') {
+      try {
+        const rawAtt = localStorage.getItem('tm_v2_attendance');
+        if (rawAtt) {
+          const parsed = JSON.parse(rawAtt);
+          if (Array.isArray(parsed)) {
+            sourceAttendance = parsed;
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    for (const att of sourceAttendance) {
+      if (!att || typeof att !== 'object' || !explicitSessionIds.has(att.sessionId)) continue;
+      const bucket = attendanceBySessionId.get(att.sessionId);
+      if (bucket) {
+        bucket.push(att);
+      } else {
+        attendanceBySessionId.set(att.sessionId, [att]);
+      }
+    }
+  }
+
   const representedKeys = new Set<string>();
 
   for (const session of finalExplicitSessions) {
+    const attendanceList = attendanceBySessionId.get(session.id) || EMPTY_SESSION_ATTENDANCE;
+    if (!isExplicitPrivateSessionOperationalOnDate(session, dateStr, enrollments, studentsMap, attendanceList.length > 0)) {
+      continue;
+    }
+
     const group = groupsMap.get(session.groupId);
     const isPrivate = group?.type === 'private' || !!session.studentId || !session.groupId;
     const groupEnrs = session.groupId ? (enrollmentsByGroup.get(session.groupId) || []) : [];
-    
-    let attendanceList: any[] = [];
-    try {
-      const rawAtt = localStorage.getItem('tm_v2_attendance');
-      if (rawAtt) {
-        const parsed = JSON.parse(rawAtt);
-        attendanceList = parsed.filter((a: any) => a.sessionId === session.id);
-      }
-    } catch {
-      // Fallback
-    }
+    const activeGroupEnrsOnDate = groupEnrs.filter((e) =>
+      isEnrollmentActiveOnDate(e, dateStr, studentsMap.get(e.studentId))
+    );
 
     const presentCount = attendanceList.filter((a) => a.status === 'present' || a.status === 'late').length;
     const absentChargedCount = attendanceList.filter(
@@ -2058,60 +2611,114 @@ export function getDetailedAgendaForDate(
       presentCount,
       absentChargedCount,
       absentFreeCount,
-      totalStudentsCount: attendanceList.length > 0 ? attendanceList.length : (isPrivate ? 1 : groupEnrs.length),
+      totalStudentsCount: attendanceList.length > 0 ? attendanceList.length : (isPrivate ? 1 : activeGroupEnrsOnDate.length),
       attendanceRecords: enrichedAttendance,
     });
   }
 
-  // Recurring slots for future days
+  // Recurring slots for future/today days
   if (!isPast) {
     // 1. Group recurring slots (Strict domain separation: genuine groups only)
     for (const group of groups) {
       if (group.type === 'private') continue;
-      if (!group.scheduleDays || !Array.isArray(group.scheduleDays)) continue;
-      const meetsOnDay = normalizeScheduleDays(group.scheduleDays).includes(canonDay);
-      if (!meetsOnDay) continue;
-
-      const groupTimes = getTimesForDayInGroup(group, canonDay);
-      const effectiveTimes = groupTimes.length > 0 ? groupTimes : [group.scheduleTime || '16:00'];
       const groupEnrs = enrollmentsByGroup.get(group.id) || [];
+      const activeGroupEnrsOnDate = groupEnrs.filter((e) =>
+        isEnrollmentActiveOnDate(e, dateStr, studentsMap.get(e.studentId))
+      );
 
-      for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
-        const rawTime = effectiveTimes[tIdx];
-        const sortMinutes = parseTimeToMinutes(rawTime);
-        const grpKey = `grp_${group.id}_${sortMinutes}`;
-        if (representedKeys.has(grpKey)) continue;
-        representedKeys.add(grpKey);
+      const groupNormalizedDays = group.scheduleDays && Array.isArray(group.scheduleDays) ? normalizeScheduleDays(group.scheduleDays) : [];
+      const meetsOnDay = groupNormalizedDays.includes(canonDay);
+      const customEnrsMeetingToday = activeGroupEnrsOnDate.filter(
+        (enr) => Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0 && normalizeScheduleDays(enr.scheduleDays).includes(canonDay)
+      );
 
-        const formattedTime = formatTimeDisplay(rawTime, isRTL);
-        const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
-        const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
+      if (meetsOnDay) {
+        const groupTimes = getTimesForDayInGroup(group, canonDay);
+        const effectiveTimes = groupTimes.length > 0 ? groupTimes : [group.scheduleTime || '16:00'];
 
-        items.push({
-          id: `rec_grp_${group.id}_${tIdx}`,
-          source: 'recurring_schedule',
-          groupId: group.id,
-          groupName: group.name,
-          isPrivate: false,
-          subject: subj,
-          stageOrGrade: group.gradeLevel,
-          location: loc,
-          dateStr,
-          dayName,
-          startTime: rawTime,
-          formattedTime,
-          sortMinutes,
-          status: 'scheduled',
-          accentColor: group.accentColor || '#17375E',
-          pricePerStudent: group.defaultPrice,
-          hourlyRate: group.hourlyRate,
-          billingMode: group.billingMode,
-          hasRecordedAttendance: false,
-          presentCount: 0,
-          absentChargedCount: 0,
-          absentFreeCount: 0,
-          totalStudentsCount: groupEnrs.length,
-        });
+        for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
+          const rawTime = effectiveTimes[tIdx];
+          const sortMinutes = parseTimeToMinutes(rawTime);
+          const grpKey = `grp_${group.id}_${sortMinutes}`;
+          if (representedKeys.has(grpKey)) continue;
+          representedKeys.add(grpKey);
+
+          const formattedTime = formatTimeDisplay(rawTime, isRTL);
+          const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+          const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
+
+          items.push({
+            id: `rec_grp_${group.id}_${tIdx}`,
+            source: 'recurring_schedule',
+            groupId: group.id,
+            groupName: group.name,
+            isPrivate: false,
+            subject: subj,
+            stageOrGrade: group.gradeLevel,
+            location: loc,
+            dateStr,
+            dayName,
+            startTime: rawTime,
+            formattedTime,
+            sortMinutes,
+            status: 'scheduled',
+            accentColor: group.accentColor || '#17375E',
+            pricePerStudent: group.defaultPrice,
+            hourlyRate: group.hourlyRate,
+            billingMode: group.billingMode,
+            hasRecordedAttendance: false,
+            presentCount: 0,
+            absentChargedCount: 0,
+            absentFreeCount: 0,
+            totalStudentsCount: activeGroupEnrsOnDate.length,
+          });
+        }
+      } else if (customEnrsMeetingToday.length > 0) {
+        for (const enr of customEnrsMeetingToday) {
+          const stu = studentsMap.get(enr.studentId);
+          const rawTimes = getTimesForDayInEnrollment(enr, group, canonDay);
+          const effectiveTimes = rawTimes.length > 0 ? rawTimes : [group.scheduleTime || '16:00'];
+
+          for (let tIdx = 0; tIdx < effectiveTimes.length; tIdx++) {
+            const rawTime = effectiveTimes[tIdx];
+            const sortMinutes = parseTimeToMinutes(rawTime);
+            const grpKey = `grp_${group.id}_${sortMinutes}`;
+            if (representedKeys.has(grpKey)) continue;
+            representedKeys.add(grpKey);
+
+            const formattedTime = formatTimeDisplay(rawTime, isRTL);
+            const loc = getLocalizedLocationName(group.roomOrLocation, isRTL);
+            const subj = getLocalizedSubjectName(group.subject, isRTL) || (isRTL ? 'مجموعة دراسية' : 'Tuition Group');
+
+            items.push({
+              id: `rec_grp_custom_${group.id}_${enr.id}_${tIdx}`,
+              source: 'recurring_schedule',
+              groupId: group.id,
+              groupName: group.name,
+              studentId: stu?.id,
+              studentName: stu?.name,
+              isPrivate: false,
+              subject: subj,
+              stageOrGrade: group.gradeLevel,
+              location: loc,
+              dateStr,
+              dayName,
+              startTime: rawTime,
+              formattedTime,
+              sortMinutes,
+              status: 'scheduled',
+              accentColor: group.accentColor || '#17375E',
+              pricePerStudent: enr.customPrice || group.defaultPrice,
+              hourlyRate: enr.hourlyRate || group.hourlyRate,
+              billingMode: enr.billingMode || group.billingMode,
+              hasRecordedAttendance: false,
+              presentCount: 0,
+              absentChargedCount: 0,
+              absentFreeCount: 0,
+              totalStudentsCount: customEnrsMeetingToday.length,
+            });
+          }
+        }
       }
     }
 
@@ -2120,10 +2727,13 @@ export function getDetailedAgendaForDate(
     const activePrivateEnrollments = enrollments.filter(
       (e) => (e.serviceType === 'private' || !e.groupId) && e.status !== 'stopped'
     );
+    const studentsWithPrivateEnrollments = new Set<string>();
 
     for (const enr of activePrivateEnrollments) {
+      studentsWithPrivateEnrollments.add(enr.studentId);
       const student = studentsMap.get(enr.studentId);
       if (!student || student.status === 'archived') continue;
+      if (!isEnrollmentActiveOnDate(enr, dateStr, student)) continue;
 
       const privDays = (enr.scheduleDays && Array.isArray(enr.scheduleDays) && enr.scheduleDays.length > 0)
         ? enr.scheduleDays
@@ -2180,9 +2790,12 @@ export function getDetailedAgendaForDate(
       }
     }
 
-    // 3. Active students with direct privateDays or scheduleDays not yet covered
+    // 3. Active students with direct privateDays not yet covered by a private Enrollment
     for (const student of studentsMap.values()) {
       if (student.status === 'archived') continue;
+      if (studentsWithPrivateEnrollments.has(student.id)) continue;
+      if (!isEnrollmentActiveOnDate(null, dateStr, student)) continue;
+
       if (student.privateDays && Array.isArray(student.privateDays) && student.privateDays.length > 0) {
         if (normalizeScheduleDays(student.privateDays).includes(canonDay)) {
           const normPT = normalizeScheduleTimes(student.privateTimes);

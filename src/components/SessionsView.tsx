@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Session, Group, Student, Payment, ActiveTab } from '../types';
+import React, { useState, useMemo, useCallback, useDeferredValue } from 'react';
+import { Session, Group, Student, Enrollment, Payment, ActiveTab } from '../types';
 import { db } from '../utils/storage';
 import { ScreenHeader } from './ui/ScreenHeader';
 import { NavyCalendar } from './NavyCalendar';
@@ -19,6 +19,8 @@ interface SessionsViewProps {
   sessions: Session[];
   groups: Group[];
   students?: Student[];
+  enrollments?: Enrollment[];
+  allAttendance?: Attendance[];
   payments?: Payment[];
   onOpenAddSession: (defaultGroupId?: string, defaultDate?: string) => void;
   onEditSession: (session: Session) => void;
@@ -29,6 +31,8 @@ interface SessionsViewProps {
   onDataChanged?: () => void;
   onNavigateToTab?: (tab: ActiveTab) => void;
   onOpenNotificationsModal?: () => void;
+  unreadNotificationsCount?: number;
+  isLoading?: boolean;
 }
 
 /**
@@ -73,10 +77,14 @@ function formatSelectedDateHeading(dateStr: string, isEn: boolean): string {
   }
 }
 
+const EMPTY_STUDENTS: Student[] = [];
+
 export const SessionsView: React.FC<SessionsViewProps> = ({
   sessions,
   groups,
-  students = [],
+  students = EMPTY_STUDENTS,
+  enrollments: enrollmentsProp,
+  allAttendance: allAttendanceProp,
   onOpenAddSession,
   onOpenAttendanceModal,
   onOpenStudentProfile,
@@ -84,6 +92,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   onDataChanged,
   onNavigateToTab,
   onOpenNotificationsModal,
+  unreadNotificationsCount,
+  isLoading = false,
 }) => {
   const { t, language, isRTL } = useTranslation();
   const isEn = language.startsWith('en');
@@ -93,11 +103,19 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
-  // Enrollments
+  const studentsById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
+  const groupsById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
+
+  // Enrollments & Attendance snapshots
   const enrollments = useMemo(() => {
-    return db.getEnrollments();
-  }, [sessions, groups]);
+    return enrollmentsProp ?? db.getEnrollments();
+  }, [enrollmentsProp, sessions, groups, students]);
+
+  const allAttendance = useMemo(() => {
+    return allAttendanceProp ?? db.getAttendance();
+  }, [allAttendanceProp, sessions]);
 
   // Detailed Agenda for selected date (merging saved sessions and recurring scheduled classes)
   const selectedDateAgenda = useMemo(() => {
@@ -107,15 +125,16 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       groups,
       enrollments,
       students,
-      true
+      true,
+      allAttendance
     );
-  }, [selectedDateStr, sessions, groups, enrollments, students]);
+  }, [selectedDateStr, sessions, groups, enrollments, students, allAttendance]);
 
   // Convert agenda items into ScheduledClassItems for the timeline
   const timelineItems: ScheduledClassItem[] = useMemo(() => {
     const items = selectedDateAgenda.items.map((it) => {
-      const student = it.studentId ? students.find((s) => s.id === it.studentId) : undefined;
-      const group = groups.find((g) => g.id === it.groupId);
+      const student = it.studentId ? studentsById.get(it.studentId) : undefined;
+      const group = it.groupId ? groupsById.get(it.groupId) : undefined;
       return {
         id: it.id,
         groupId: it.groupId,
@@ -135,9 +154,9 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       };
     });
 
-    if (!searchQuery.trim()) return items;
+    const q = deferredSearchQuery.toLowerCase().trim();
+    if (!q) return items;
 
-    const q = searchQuery.toLowerCase().trim();
     return items.filter((it) => {
       return (
         it.groupName?.toLowerCase().includes(q) ||
@@ -145,71 +164,84 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
         it.subject?.toLowerCase().includes(q)
       );
     });
-  }, [selectedDateAgenda.items, students, groups, searchQuery]);
+  }, [selectedDateAgenda.items, studentsById, groupsById, deferredSearchQuery]);
 
   // Find exact session matching an agenda item
-  const findSessionForScheduleItem = (item: ScheduledClassItem) => {
-    const agendaItem = selectedDateAgenda.items.find((a) => a.id === item.id);
-    if (agendaItem?.session) return agendaItem.session;
+  const findSessionForScheduleItem = useCallback(
+    (item: ScheduledClassItem) => {
+      const agendaItem = selectedDateAgenda.items.find((a) => a.id === item.id);
+      if (agendaItem?.session) return agendaItem.session;
 
-    const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
-    return sessions.find((s) => {
-      if (s.date !== selectedDateStr || s.status === 'cancelled') return false;
-      if (item.isPrivate || item.studentId) {
-        if (s.studentId !== item.studentId) return false;
-      } else {
-        if (s.groupId !== item.groupId) return false;
-      }
-      const sMins = parseTimeToMinutes(s.startTime || '16:00');
-      return sMins === itemMins;
-    });
-  };
+      const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
+      return sessions.find((s) => {
+        if (s.date !== selectedDateStr || s.status === 'cancelled') return false;
+        if (item.isPrivate || item.studentId) {
+          if (s.studentId !== item.studentId) return false;
+        } else {
+          if (s.groupId !== item.groupId) return false;
+        }
+        const sMins = parseTimeToMinutes(s.startTime || '16:00');
+        return sMins === itemMins;
+      });
+    },
+    [selectedDateAgenda.items, sessions, selectedDateStr]
+  );
 
   // Start class / attendance for a recurring item that does not have an explicit session record yet
-  const handleStartRecurringClass = (item: ScheduledClassItem) => {
-    const isPrivate = item.isPrivate || !!item.studentId;
-    const targetGroup = item.groupId ? groups.find((g) => g.id === item.groupId) : undefined;
-    const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time || '16:00');
-    const deterministicEntityKey = isPrivate
-      ? `stu_${item.studentId || 'priv'}`
-      : `grp_${item.groupId || 'academic'}`;
-    const deterministicId = `sess_${selectedDateStr}_${deterministicEntityKey}_${itemMins}`;
+  const handleStartRecurringClass = useCallback(
+    (item: ScheduledClassItem) => {
+      const isPrivate = item.isPrivate || !!item.studentId;
+      const targetGroup = item.groupId ? groups.find((g) => g.id === item.groupId) : undefined;
+      const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time || '16:00');
+      const deterministicEntityKey = isPrivate
+        ? `stu_${item.studentId || 'priv'}`
+        : `grp_${item.groupId || 'academic'}`;
+      const deterministicId = `sess_${selectedDateStr}_${deterministicEntityKey}_${itemMins}`;
 
-    // Check if session already exists
-    const existing = sessions.find((s) => s.id === deterministicId) || findSessionForScheduleItem(item) || db.getSessionById(deterministicId);
-    if (existing) {
-      onOpenAttendanceModal(existing);
-      return;
-    }
+      // Check if session already exists
+      const existing =
+        sessions.find((s) => s.id === deterministicId) ||
+        findSessionForScheduleItem(item) ||
+        db.getSessionById(deterministicId);
+      if (existing) {
+        onOpenAttendanceModal(existing);
+        return;
+      }
 
-    const now = new Date().toISOString();
-    const newSession: Session = {
-      id: deterministicId,
-      groupId: item.groupId || '',
-      title: isPrivate
-        ? (item.studentName ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}` : (isEn ? 'Private Lesson' : 'درس خاص'))
-        : (targetGroup?.name || item.groupName || (isEn ? 'Class' : 'حصة')),
-      date: selectedDateStr,
-      dayName: item.dayName,
-      startTime: item.rawTime || item.time?.split(' - ')[0] || '16:00',
-      endTime: item.time?.split(' - ')[1] || '',
-      sessionNumber: 1,
-      hours: 1.5,
-      hourlyRate: targetGroup?.hourlyRate || targetGroup?.defaultPrice || 100,
-      pricePerStudent: targetGroup?.defaultPrice || 100,
-      status: 'scheduled',
-      notes: '',
-      studentId: item.studentId,
-      year: parseInt(selectedDateStr.split('-')[0], 10),
-      month: parseInt(selectedDateStr.split('-')[1], 10),
-      createdAt: now,
-      updatedAt: now,
-    };
+      const now = new Date().toISOString();
+      const newSession: Session = {
+        id: deterministicId,
+        groupId: item.groupId || '',
+        title: isPrivate
+          ? item.studentName
+            ? `${isEn ? 'Private Lesson' : 'درس خاص'} - ${item.studentName}`
+            : isEn
+            ? 'Private Lesson'
+            : 'درس خاص'
+          : targetGroup?.name || item.groupName || (isEn ? 'Class' : 'حصة'),
+        date: selectedDateStr,
+        dayName: item.dayName,
+        startTime: item.rawTime || item.time?.split(' - ')[0] || '16:00',
+        endTime: item.time?.split(' - ')[1] || '',
+        sessionNumber: 1,
+        hours: 1.5,
+        hourlyRate: targetGroup?.hourlyRate || targetGroup?.defaultPrice || 100,
+        pricePerStudent: targetGroup?.defaultPrice || 100,
+        status: 'scheduled',
+        notes: '',
+        studentId: item.studentId,
+        year: parseInt(selectedDateStr.split('-')[0], 10),
+        month: parseInt(selectedDateStr.split('-')[1], 10),
+        createdAt: now,
+        updatedAt: now,
+      };
 
-    db.saveSession(newSession);
-    if (onDataChanged) onDataChanged();
-    onOpenAttendanceModal(newSession);
-  };
+      db.saveSession(newSession);
+      if (onDataChanged) onDataChanged();
+      onOpenAttendanceModal(newSession);
+    },
+    [groups, selectedDateStr, sessions, findSessionForScheduleItem, onOpenAttendanceModal, isEn, onDataChanged]
+  );
 
   const [privateIntakeTarget, setPrivateIntakeTarget] = useState<{
     item?: ScheduledClassItem;
@@ -218,40 +250,40 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   } | null>(null);
 
   // Router for session taps: opens PrivateClassIntakeModal for private lessons, group modal for groups
-  const handleSessionCardClick = (
-    item: ScheduledClassItem,
-    matchingSession?: Session
-  ) => {
-    const isPrivate =
-      item.isPrivate ||
-      !!item.studentId ||
-      (matchingSession ? !matchingSession.groupId || !!matchingSession.studentId : false);
+  const handleSessionCardClick = useCallback(
+    (item: ScheduledClassItem, matchingSession?: Session) => {
+      const isPrivate =
+        item.isPrivate ||
+        !!item.studentId ||
+        (matchingSession ? !matchingSession.groupId || !!matchingSession.studentId : false);
 
-    const existing = matchingSession || findSessionForScheduleItem(item);
+      const existing = matchingSession || findSessionForScheduleItem(item);
 
-    if (isPrivate) {
-      const studentId =
-        item.studentId ||
-        matchingSession?.studentId ||
-        (item.studentName ? students.find((s) => s.name === item.studentName)?.id : '') ||
-        '';
+      if (isPrivate) {
+        const studentId =
+          item.studentId ||
+          matchingSession?.studentId ||
+          (item.studentName ? students.find((s) => s.name === item.studentName)?.id : '') ||
+          '';
 
-      if (studentId) {
-        setPrivateIntakeTarget({
-          item,
-          session: existing,
-          studentId,
-        });
-        return;
+        if (studentId) {
+          setPrivateIntakeTarget({
+            item,
+            session: existing,
+            studentId,
+          });
+          return;
+        }
       }
-    }
 
-    if (existing) {
-      onOpenAttendanceModal(existing);
-    } else {
-      handleStartRecurringClass(item);
-    }
-  };
+      if (existing) {
+        onOpenAttendanceModal(existing);
+      } else {
+        handleStartRecurringClass(item);
+      }
+    },
+    [findSessionForScheduleItem, students, onOpenAttendanceModal, handleStartRecurringClass]
+  );
 
   const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
     if (!privateIntakeTarget) return;
@@ -341,6 +373,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       {/* 1. Screen Header */}
       <ScreenHeader
         title={t('sessionsTitle') || (isEn ? 'Sessions' : 'الحصص')}
+        unreadCount={unreadNotificationsCount}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />
@@ -348,13 +381,14 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       {/* 2. NavyCalendar Card */}
       <NavyCalendar
         selectedDateStr={selectedDateStr}
-        onSelectDate={(d) => setSelectedDateStr(d)}
+        onSelectDate={setSelectedDateStr}
         sessions={sessions}
         groups={groups}
         students={students}
+        enrollments={enrollments}
         onOpenAddSession={onOpenAddSession}
         viewMode={viewMode}
-        onViewModeChange={(vm) => setViewMode(vm)}
+        onViewModeChange={setViewMode}
       />
 
       {/* 3. Below the card: Selected date heading (.t-title) + Quick Search Toggle */}
@@ -419,8 +453,10 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           sessions={sessions}
           students={students}
           groups={groups}
+          allAttendance={allAttendance}
           selectedDateStr={selectedDateStr}
           isToday={selectedDateStr === todayStr}
+          isLoading={Boolean(isLoading) && sessions.length === 0 && groups.length === 0 && students.length === 0}
           findSessionForScheduleItem={findSessionForScheduleItem}
           onTapSession={handleSessionCardClick}
           onRecordAttendance={handleStartRecurringClass}

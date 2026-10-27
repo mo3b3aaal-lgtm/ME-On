@@ -237,19 +237,36 @@ export function useSwipeGesture({
 export interface UsePageSwipeNavigationOptions {
   activeTab: ActiveTab;
   disabled: boolean;
-  onSwipeNavigate: (targetTab: TopLevelNavTab, direction: 'forward' | 'backward') => void;
+  onSwipeNavigate: (
+    targetTab: TopLevelNavTab,
+    direction: 'forward' | 'backward',
+    settledByDrag?: boolean
+  ) => void;
+  onEnsureTabMounted?: (targetTab: TopLevelNavTab) => void;
+}
+
+function clearPanelInlineStyle(el: HTMLElement | null): void {
+  if (!el) return;
+  el.style.transition = '';
+  el.style.transform = '';
+  el.style.opacity = '';
+  el.style.visibility = '';
+  el.style.zIndex = '';
+  el.style.pointerEvents = '';
+  el.style.willChange = '';
 }
 
 /**
  * High-performance horizontal swipe navigation hook for Classy's top-level pages.
- * - Zero React re-renders during drag (direct DOM translate3d + opacity on stageRef)
- * - Smooth 140ms spring-free release back to origin when cancelled
- * - Protects Android system edge-back zones, vertical scrolling, inputs, text selection, and horizontal carousels
+ * - Live 1:1 finger tracking across current & adjacent tab panels using pure GPU translate3d + opacity
+ * - Zero React re-renders during drag; velocity-aware smooth settle on commit or snap-back on cancel
+ * - Preserves exact Classy swipe direction mapping, non-wrapping boundaries, and OS edge-back exclusion
  */
 export function usePageSwipeNavigation({
   activeTab,
   disabled,
   onSwipeNavigate,
+  onEnsureTabMounted,
 }: UsePageSwipeNavigationOptions) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const cleanupTimerRef = useRef<number | null>(null);
@@ -267,6 +284,11 @@ export function usePageSwipeNavigation({
     dy: number;
     reducedMotion: boolean;
     isRTL: boolean;
+    currentPanel: HTMLElement | null;
+    peekPanel: HTMLElement | null;
+    peekTab: TopLevelNavTab | null;
+    trackedDualPanel: boolean;
+    ensuredTabs: Set<TopLevelNavTab>;
   }>({
     active: false,
     axis: null,
@@ -279,6 +301,11 @@ export function usePageSwipeNavigation({
     dy: 0,
     reducedMotion: false,
     isRTL: true,
+    currentPanel: null,
+    peekPanel: null,
+    peekTab: null,
+    trackedDualPanel: false,
+    ensuredTabs: new Set(),
   });
 
   const clearStageInlineStyles = useCallback(() => {
@@ -286,35 +313,70 @@ export function usePageSwipeNavigation({
       window.clearTimeout(cleanupTimerRef.current);
       cleanupTimerRef.current = null;
     }
-    const el = stageRef.current;
-    if (el) {
-      el.style.transition = '';
-      el.style.transform = '';
-      el.style.opacity = '';
+    const stageEl = stageRef.current;
+    if (stageEl) {
+      stageEl.style.transition = '';
+      stageEl.style.transform = '';
+      stageEl.style.opacity = '';
+      const panels = stageEl.querySelectorAll<HTMLElement>('[data-tab-panel]');
+      for (let i = 0; i < panels.length; i++) {
+        clearPanelInlineStyle(panels[i]);
+      }
     }
+    clearPanelInlineStyle(gestureRef.current.currentPanel);
+    clearPanelInlineStyle(gestureRef.current.peekPanel);
+    gestureRef.current.currentPanel = null;
+    gestureRef.current.peekPanel = null;
+    gestureRef.current.peekTab = null;
+    gestureRef.current.trackedDualPanel = false;
   }, []);
 
-  const animateSnapBack = useCallback(() => {
-    const el = stageRef.current;
-    if (!el) return;
-    if (cleanupTimerRef.current !== null) {
-      window.clearTimeout(cleanupTimerRef.current);
-    }
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduced || !el.style.transform) {
-      clearStageInlineStyles();
-      return;
-    }
-    el.style.transition =
-      'transform 150ms cubic-bezier(0.2, 0, 0, 1), opacity 150ms cubic-bezier(0.2, 0, 0, 1)';
-    el.style.transform = 'translate3d(0, 0, 0)';
-    el.style.opacity = '1';
-    cleanupTimerRef.current = window.setTimeout(() => {
-      clearStageInlineStyles();
-    }, 150);
-  }, [clearStageInlineStyles]);
+  const animateSnapBack = useCallback(
+    (lastDx: number) => {
+      const stageEl = stageRef.current;
+      const curPanel = gestureRef.current.currentPanel;
+      const peekPanel = gestureRef.current.peekPanel;
+
+      if (!stageEl || !curPanel) {
+        clearStageInlineStyles();
+        return;
+      }
+
+      if (cleanupTimerRef.current !== null) {
+        window.clearTimeout(cleanupTimerRef.current);
+        cleanupTimerRef.current = null;
+      }
+
+      const reduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+      if (reduced || !curPanel.style.transform) {
+        clearStageInlineStyles();
+        return;
+      }
+
+      const stageWidth = Math.max(280, stageEl.clientWidth || 390);
+      const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+      const durationMs = 155;
+
+      curPanel.style.transition = `transform ${durationMs}ms ${ease}, opacity ${durationMs}ms ${ease}`;
+      curPanel.style.transform = 'translate3d(0, 0, 0)';
+      curPanel.style.opacity = '1';
+
+      if (peekPanel) {
+        const parkX = lastDx >= 0 ? -stageWidth : stageWidth;
+        peekPanel.style.transition = `transform ${durationMs}ms ${ease}, opacity ${durationMs}ms ${ease}`;
+        peekPanel.style.transform = `translate3d(${parkX}px, 0, 0)`;
+        peekPanel.style.opacity = '0.9';
+      }
+
+      cleanupTimerRef.current = window.setTimeout(() => {
+        clearStageInlineStyles();
+      }, durationMs + 16);
+    },
+    [clearStageInlineStyles]
+  );
 
   useEffect(() => {
     return () => {
@@ -379,6 +441,11 @@ export function usePageSwipeNavigation({
         dy: 0,
         reducedMotion,
         isRTL,
+        currentPanel: null,
+        peekPanel: null,
+        peekTab: null,
+        trackedDualPanel: false,
+        ensuredTabs: new Set(),
       };
     },
     [activeTab, disabled, clearStageInlineStyles]
@@ -417,15 +484,80 @@ export function usePageSwipeNavigation({
       g.dy = dy;
 
       if (!g.reducedMotion && stageRef.current) {
+        const stageEl = stageRef.current;
+        const currentMain = normalizeTopLevelTab(activeTab);
+        if (!currentMain) return;
+
+        const currentPanel =
+          g.currentPanel ||
+          stageEl.querySelector<HTMLElement>(`[data-tab-panel="${currentMain}"]`);
+        if (!currentPanel) return;
+        g.currentPanel = currentPanel;
+
+        const stageWidth = Math.max(280, stageEl.clientWidth || 390);
+        const sign = Math.sign(dx);
+        const effectiveDx = absX > 8 ? (absX - 8) * sign : 0;
         const candidate = resolveSwipeTargetTab(activeTab, dx, g.isRTL);
-        const offset = computeSwipeTrackOffset(dx, Boolean(candidate));
-        const opacity = 1 - Math.min(0.08, Math.abs(offset) / 420);
-        stageRef.current.style.transition = 'none';
-        stageRef.current.style.transform = `translate3d(${offset.toFixed(1)}px, 0, 0)`;
-        stageRef.current.style.opacity = opacity.toFixed(3);
+
+        if (candidate) {
+          if (!g.ensuredTabs.has(candidate.targetTab)) {
+            g.ensuredTabs.add(candidate.targetTab);
+            onEnsureTabMounted?.(candidate.targetTab);
+          }
+
+          const targetPanel = stageEl.querySelector<HTMLElement>(
+            `[data-tab-panel="${candidate.targetTab}"]`
+          );
+
+          if (g.peekPanel && g.peekPanel !== targetPanel) {
+            clearPanelInlineStyle(g.peekPanel);
+            g.peekPanel = null;
+            g.peekTab = null;
+            g.trackedDualPanel = false;
+          }
+
+          const clampedDx = Math.max(-stageWidth, Math.min(stageWidth, effectiveDx));
+          const progress = Math.min(1, Math.abs(clampedDx) / stageWidth);
+
+          currentPanel.style.willChange = 'transform, opacity';
+          currentPanel.style.transition = 'none';
+          currentPanel.style.visibility = 'visible';
+          currentPanel.style.zIndex = '1';
+          currentPanel.style.transform = `translate3d(${clampedDx.toFixed(1)}px, 0, 0)`;
+          currentPanel.style.opacity = (1 - progress * 0.1).toFixed(3);
+
+          if (targetPanel && targetPanel !== currentPanel) {
+            const enterX = (dx > 0 ? -stageWidth : stageWidth) + clampedDx;
+            targetPanel.style.willChange = 'transform, opacity';
+            targetPanel.style.transition = 'none';
+            targetPanel.style.visibility = 'visible';
+            targetPanel.style.zIndex = '2';
+            targetPanel.style.pointerEvents = 'none';
+            targetPanel.style.transform = `translate3d(${enterX.toFixed(1)}px, 0, 0)`;
+            targetPanel.style.opacity = (0.94 + progress * 0.06).toFixed(3);
+            g.peekPanel = targetPanel;
+            g.peekTab = candidate.targetTab;
+            g.trackedDualPanel = true;
+          }
+        } else {
+          // Outer boundary: never wrap around; apply gentle rubber-band resistance
+          if (g.peekPanel) {
+            clearPanelInlineStyle(g.peekPanel);
+            g.peekPanel = null;
+            g.peekTab = null;
+            g.trackedDualPanel = false;
+          }
+          const rubberOffset = Math.max(-18, Math.min(18, effectiveDx * 0.12));
+          currentPanel.style.willChange = 'transform';
+          currentPanel.style.transition = 'none';
+          currentPanel.style.visibility = 'visible';
+          currentPanel.style.zIndex = '1';
+          currentPanel.style.transform = `translate3d(${rubberOffset.toFixed(1)}px, 0, 0)`;
+          currentPanel.style.opacity = '1';
+        }
       }
     },
-    [activeTab, disabled]
+    [activeTab, disabled, onEnsureTabMounted]
   );
 
   const finishGesture = useCallback(
@@ -445,7 +577,7 @@ export function usePageSwipeNavigation({
 
       if (cancelled || disabled) {
         g.axis = null;
-        animateSnapBack();
+        animateSnapBack(g.dx);
         return;
       }
 
@@ -455,11 +587,78 @@ export function usePageSwipeNavigation({
       g.axis = null;
 
       if (resolved) {
-        clearStageInlineStyles();
-        triggerLightHaptic();
-        onSwipeNavigate(resolved.targetTab, resolved.direction);
+        const stageEl = stageRef.current;
+        const currentMain = normalizeTopLevelTab(activeTab);
+        const currentPanel =
+          g.currentPanel ||
+          (stageEl && currentMain
+            ? stageEl.querySelector<HTMLElement>(`[data-tab-panel="${currentMain}"]`)
+            : null);
+        const targetPanel = stageEl
+          ? stageEl.querySelector<HTMLElement>(`[data-tab-panel="${resolved.targetTab}"]`)
+          : null;
+
+        if (!g.reducedMotion && stageEl && currentPanel && targetPanel && currentPanel !== targetPanel) {
+          if (cleanupTimerRef.current !== null) {
+            window.clearTimeout(cleanupTimerRef.current);
+            cleanupTimerRef.current = null;
+          }
+
+          if (g.peekPanel && g.peekPanel !== targetPanel) {
+            clearPanelInlineStyle(g.peekPanel);
+          }
+
+          const stageWidth = Math.max(280, stageEl.clientWidth || 390);
+          const traveled = Math.min(stageWidth, Math.max(0, Math.abs(g.dx) - 8));
+          const remainingRatio = Math.max(0.25, 1 - traveled / stageWidth);
+          const speedBoost = Math.min(45, Math.abs(g.velocityX) * 35);
+          const settleMs = Math.round(
+            Math.max(125, Math.min(180, 180 * remainingRatio - speedBoost + 45))
+          );
+          const ease = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+          // If ultra-fast flick committed before targetPanel received a drag frame, prime its start offset
+          if (!g.trackedDualPanel || g.peekPanel !== targetPanel) {
+            const startEnterX = g.dx > 0 ? -stageWidth : stageWidth;
+            targetPanel.style.transition = 'none';
+            targetPanel.style.visibility = 'visible';
+            targetPanel.style.zIndex = '2';
+            targetPanel.style.opacity = '0.94';
+            targetPanel.style.transform = `translate3d(${startEnterX}px, 0, 0)`;
+            void targetPanel.offsetWidth;
+          }
+
+          const exitX = g.dx > 0 ? stageWidth : -stageWidth;
+          currentPanel.style.visibility = 'visible';
+          currentPanel.style.zIndex = '1';
+          currentPanel.style.pointerEvents = 'none';
+          currentPanel.style.transition = `transform ${settleMs}ms ${ease}, opacity ${settleMs}ms ${ease}`;
+          currentPanel.style.transform = `translate3d(${exitX}px, 0, 0)`;
+          currentPanel.style.opacity = '0.88';
+
+          targetPanel.style.visibility = 'visible';
+          targetPanel.style.zIndex = '2';
+          targetPanel.style.pointerEvents = 'auto';
+          targetPanel.style.transition = `transform ${settleMs}ms ${ease}, opacity ${settleMs}ms ${ease}`;
+          targetPanel.style.transform = 'translate3d(0, 0, 0)';
+          targetPanel.style.opacity = '1';
+
+          g.currentPanel = currentPanel;
+          g.peekPanel = targetPanel;
+
+          triggerLightHaptic();
+          onSwipeNavigate(resolved.targetTab, resolved.direction, true);
+
+          cleanupTimerRef.current = window.setTimeout(() => {
+            clearStageInlineStyles();
+          }, settleMs + 16);
+        } else {
+          clearStageInlineStyles();
+          triggerLightHaptic();
+          onSwipeNavigate(resolved.targetTab, resolved.direction, false);
+        }
       } else {
-        animateSnapBack();
+        animateSnapBack(g.dx);
       }
     },
     [activeTab, disabled, animateSnapBack, clearStageInlineStyles, onSwipeNavigate]

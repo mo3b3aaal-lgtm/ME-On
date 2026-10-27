@@ -35,9 +35,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'Platinum Frame',
       tierAr: 'بلاتينيوم',
       tierEn: 'Platinum',
-      cardBgClass: 'bg-gradient-to-br from-[#F0F9FF]/95 via-white/95 to-[#E0F2FE]/75',
-      cardBorderClass: 'border-[#BAE6FD] hover:border-[#7DD3FC] shadow-xs',
-      pillClass: 'bg-[#F0F9FF] border-[#BAE6FD] text-[#0369A1]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#F0F9FF]/95 via-white/95 to-[#E0F2FE]/75 dark:from-[#0F2942]/95 dark:via-[#112338]/95 dark:to-[#133654]/90',
+      cardBorderClass:
+        'border-[#BAE6FD] hover:border-[#7DD3FC] dark:border-[#38BDF8]/40 dark:hover:border-[#7DD3FC]/65 shadow-xs',
+      pillClass:
+        'bg-[#F0F9FF] border-[#BAE6FD] text-[#0369A1] dark:bg-[#0C2D48] dark:border-[#38BDF8]/45 dark:text-[#BAE6FD]',
       glowColor: 'rgba(56, 189, 248, 0.35)',
       patternType: 'platinum',
     };
@@ -52,9 +55,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'Gold Frame',
       tierAr: 'ذهبي',
       tierEn: 'Gold',
-      cardBgClass: 'bg-gradient-to-br from-[#FFFDF5]/95 via-white/95 to-[#FEF3C7]/65',
-      cardBorderClass: 'border-[#FDE68A] hover:border-[#FCD34D] shadow-xs',
-      pillClass: 'bg-[#FFFDF5] border-[#FDE68A] text-[#B45309]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#FFFDF5]/95 via-white/95 to-[#FEF3C7]/65 dark:from-[#2B2212]/95 dark:via-[#142336]/95 dark:to-[#332611]/90',
+      cardBorderClass:
+        'border-[#FDE68A] hover:border-[#FCD34D] dark:border-[#F59E0B]/45 dark:hover:border-[#FBBF24]/70 shadow-xs',
+      pillClass:
+        'bg-[#FFFDF5] border-[#FDE68A] text-[#B45309] dark:bg-[#362812] dark:border-[#F59E0B]/50 dark:text-[#FDE68A]',
       glowColor: 'rgba(245, 158, 11, 0.35)',
       patternType: 'gold',
     };
@@ -69,9 +75,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'VIP Frame',
       tierAr: 'VIP',
       tierEn: 'VIP',
-      cardBgClass: 'bg-gradient-to-br from-[#FFFBEB]/95 via-white/95 to-[#FEF08A]/50',
-      cardBorderClass: 'border-[#FCD34D] hover:border-[#F59E0B] shadow-xs',
-      pillClass: 'bg-[#FEF3C7] border-[#FCD34D] text-[#92400E]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#FFFBEB]/95 via-white/95 to-[#FEF08A]/50 dark:from-[#2E2310]/95 dark:via-[#132235]/95 dark:to-[#382910]/90',
+      cardBorderClass:
+        'border-[#FCD34D] hover:border-[#F59E0B] dark:border-[#FBBF24]/50 dark:hover:border-[#FCD34D]/75 shadow-xs',
+      pillClass:
+        'bg-[#FEF3C7] border-[#FCD34D] text-[#92400E] dark:bg-[#3B2B11] dark:border-[#FBBF24]/55 dark:text-[#FEF08A]',
       glowColor: 'rgba(217, 119, 6, 0.35)',
       patternType: 'vip',
     };
@@ -86,9 +95,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'Story Frame',
       tierAr: 'ستوري',
       tierEn: 'Story',
-      cardBgClass: 'bg-gradient-to-br from-[#FAF5FF]/95 via-white/95 to-[#F3E8FF]/70',
-      cardBorderClass: 'border-[#E9D5FF] hover:border-[#D8B4FE] shadow-xs',
-      pillClass: 'bg-[#FAF5FF] border-[#E9D5FF] text-[#7E22CE]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#FAF5FF]/95 via-white/95 to-[#F3E8FF]/70 dark:from-[#23193E]/95 dark:via-[#122338]/95 dark:to-[#2C1D4B]/90',
+      cardBorderClass:
+        'border-[#E9D5FF] hover:border-[#D8B4FE] dark:border-[#C084FC]/45 dark:hover:border-[#D8B4FE]/70 shadow-xs',
+      pillClass:
+        'bg-[#FAF5FF] border-[#E9D5FF] text-[#7E22CE] dark:bg-[#2D1E4A] dark:border-[#C084FC]/50 dark:text-[#E9D5FF]',
       glowColor: 'rgba(168, 85, 247, 0.35)',
       patternType: 'story',
     };
@@ -103,9 +115,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'Challenge Frame',
       tierAr: 'تحدي',
       tierEn: 'Challenge',
-      cardBgClass: 'bg-gradient-to-br from-[#FFF5F5]/95 via-white/95 to-[#FEE2E2]/65',
-      cardBorderClass: 'border-[#FECACA] hover:border-[#FCA5A5] shadow-xs',
-      pillClass: 'bg-[#FFF5F5] border-[#FECACA] text-[#B91C1C]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#FFF5F5]/95 via-white/95 to-[#FEE2E2]/65 dark:from-[#331820]/95 dark:via-[#132337]/95 dark:to-[#3B1B22]/90',
+      cardBorderClass:
+        'border-[#FECACA] hover:border-[#FCA5A5] dark:border-[#F87171]/45 dark:hover:border-[#FCA5A5]/70 shadow-xs',
+      pillClass:
+        'bg-[#FFF5F5] border-[#FECACA] text-[#B91C1C] dark:bg-[#3D1C24] dark:border-[#F87171]/50 dark:text-[#FECACA]',
       glowColor: 'rgba(239, 68, 68, 0.35)',
       patternType: 'challenge',
     };
@@ -120,9 +135,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'Nature Frame',
       tierAr: 'طبيعة',
       tierEn: 'Nature',
-      cardBgClass: 'bg-gradient-to-br from-[#F0FDF4]/95 via-white/95 to-[#DCFCE7]/65',
-      cardBorderClass: 'border-[#BBF7D0] hover:border-[#86EFAC] shadow-xs',
-      pillClass: 'bg-[#F0FDF4] border-[#BBF7D0] text-[#15803D]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#F0FDF4]/95 via-white/95 to-[#DCFCE7]/65 dark:from-[#0F2E2A]/95 dark:via-[#112338]/95 dark:to-[#133830]/90',
+      cardBorderClass:
+        'border-[#BBF7D0] hover:border-[#86EFAC] dark:border-[#34D399]/45 dark:hover:border-[#6EE7B7]/70 shadow-xs',
+      pillClass:
+        'bg-[#F0FDF4] border-[#BBF7D0] text-[#15803D] dark:bg-[#11362E] dark:border-[#34D399]/50 dark:text-[#A7F3D0]',
       glowColor: 'rgba(16, 185, 129, 0.35)',
       patternType: 'nature',
     };
@@ -137,9 +155,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'Cosmic Frame',
       tierAr: 'كوني',
       tierEn: 'Cosmic',
-      cardBgClass: 'bg-gradient-to-br from-[#EEF2FF]/95 via-white/95 to-[#E0E7FF]/70',
-      cardBorderClass: 'border-[#C7D2FE] hover:border-[#A5B4FC] shadow-xs',
-      pillClass: 'bg-[#EEF2FF] border-[#C7D2FE] text-[#4338CA]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#EEF2FF]/95 via-white/95 to-[#E0E7FF]/70 dark:from-[#172146]/95 dark:via-[#112338]/95 dark:to-[#1E2756]/90',
+      cardBorderClass:
+        'border-[#C7D2FE] hover:border-[#A5B4FC] dark:border-[#818CF8]/45 dark:hover:border-[#A5B4FC]/70 shadow-xs',
+      pillClass:
+        'bg-[#EEF2FF] border-[#C7D2FE] text-[#4338CA] dark:bg-[#1D2854] dark:border-[#818CF8]/50 dark:text-[#C7D2FE]',
       glowColor: 'rgba(99, 102, 241, 0.35)',
       patternType: 'cosmic',
     };
@@ -154,9 +175,12 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
       nameEn: 'Silver Frame',
       tierAr: 'فضي',
       tierEn: 'Silver',
-      cardBgClass: 'bg-gradient-to-br from-[#F8FAFC]/95 via-white/95 to-[#F1F5F9]/85',
-      cardBorderClass: 'border-[#CBD5E1] hover:border-[#94A3B8] shadow-xs',
-      pillClass: 'bg-[#F8FAFC] border-[#CBD5E1] text-[#334155]',
+      cardBgClass:
+        'bg-gradient-to-br from-[#F8FAFC]/95 via-white/95 to-[#F1F5F9]/85 dark:from-[#182B40]/95 dark:via-[#112338]/95 dark:to-[#1E344D]/90',
+      cardBorderClass:
+        'border-[#CBD5E1] hover:border-[#94A3B8] dark:border-[#94A3B8]/45 dark:hover:border-[#CBD5E1]/70 shadow-xs',
+      pillClass:
+        'bg-[#F8FAFC] border-[#CBD5E1] text-[#334155] dark:bg-[#1B3047] dark:border-[#94A3B8]/50 dark:text-[#E2E8F0]',
       glowColor: 'rgba(148, 163, 184, 0.35)',
       patternType: 'silver',
     };
@@ -172,7 +196,7 @@ export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardThe
 export const FrameCornerWatermark: React.FC<{
   patternType: FrameCardTheme['patternType'];
   className?: string;
-}> = ({ patternType, className = '' }) => {
+}> = React.memo(({ patternType, className = '' }) => {
   switch (patternType) {
     case 'platinum':
       return (
@@ -305,4 +329,4 @@ export const FrameCornerWatermark: React.FC<{
     default:
       return null;
   }
-};
+});

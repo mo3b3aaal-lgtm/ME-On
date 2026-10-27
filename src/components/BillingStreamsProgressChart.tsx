@@ -77,12 +77,15 @@ interface DailyStreamDataPoint {
   cumulativeTotalRevenue: number;
 }
 
+const EMPTY_GROUPS: Group[] = [];
+const EMPTY_ENROLLMENTS: Enrollment[] = [];
+
 export const BillingStreamsProgressChart: React.FC<BillingStreamsProgressChartProps> = ({
   sessions,
   allAttendance,
   students = [],
-  groups = [],
-  enrollments = [],
+  groups = EMPTY_GROUPS,
+  enrollments = EMPTY_ENROLLMENTS,
   payments = [],
   periodFilter = 'last_month',
   customStartDate,

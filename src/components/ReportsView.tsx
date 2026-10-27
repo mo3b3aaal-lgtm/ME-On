@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { Suspense, lazy, useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { Student, Group, Session, Payment, ReportPeriodFilter, Enrollment, Attendance, ActiveTab } from '../types';
 import { db, roundMoney, getArabicMonthName, getSessionLessonQuantity } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
@@ -6,8 +6,6 @@ import { useTranslation } from '../utils/i18n';
 import { toLocalISODate } from '../utils/localDate';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { StudentAvatar } from './StudentAvatar';
-import { AttendanceTrendsChart } from './AttendanceTrendsChart';
-import { BillingStreamsProgressChart } from './BillingStreamsProgressChart';
 import { AppIcon } from './ui/AppIcon';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { ScreenHeader } from './ui/ScreenHeader';
@@ -16,7 +14,26 @@ import { NavyCard } from './ui/NavyCard';
 import { MintCard } from './ui/MintCard';
 import { WhiteCard } from './ui/WhiteCard';
 import { ProgressRing, useCountUp } from './ui/ProgressRing';
+import { DelayedFallback, useDelayedLoading } from './ui/Skeleton';
+import { ReportChartSkeleton, ReportsContentSkeleton } from './skeletons/ClassySkeletons';
 import { EmptyBox } from './illustrations/EmptyBox';
+
+const loadAttendanceTrendsChart = () => import('./AttendanceTrendsChart');
+const loadBillingStreamsProgressChart = () => import('./BillingStreamsProgressChart');
+
+const AttendanceTrendsChart = lazy(() =>
+  loadAttendanceTrendsChart().then((m) => ({ default: m.AttendanceTrendsChart }))
+);
+const BillingStreamsProgressChart = lazy(() =>
+  loadBillingStreamsProgressChart().then((m) => ({ default: m.BillingStreamsProgressChart }))
+);
+
+const AnimatedCountValue: React.FC<{ value: number; duration?: number }> = React.memo(
+  ({ value, duration = 600 }) => {
+    const animated = useCountUp(value, duration);
+    return <>{animated}</>;
+  }
+);
 
 interface ReportsViewProps {
   students: Student[];
@@ -24,10 +41,13 @@ interface ReportsViewProps {
   sessions: Session[];
   payments: Payment[];
   enrollments?: Enrollment[];
+  allAttendance?: Attendance[];
+  isLoading?: boolean;
   onOpenAddPayment?: (student?: Student, enrollmentId?: string) => void;
   onOpenStudentProfile?: (student: Student) => void;
   onNavigateToTab?: (tab: ActiveTab) => void;
   onOpenNotificationsModal?: () => void;
+  unreadNotificationsCount?: number;
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({
@@ -36,13 +56,39 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   sessions,
   payments,
   enrollments,
+  allAttendance,
+  isLoading = false,
   onOpenAddPayment,
   onOpenStudentProfile,
   onNavigateToTab,
   onOpenNotificationsModal,
+  unreadNotificationsCount,
 }) => {
   const { t, language, isRTL } = useTranslation();
   const isEn = language.startsWith('en');
+  const rawReportsLoading =
+    Boolean(isLoading) &&
+    students.length === 0 &&
+    groups.length === 0 &&
+    sessions.length === 0 &&
+    payments.length === 0;
+  const showReportsSkeleton = useDelayedLoading(rawReportsLoading, 90);
+
+  // Pre-warm lazy chart chunks during idle time once ReportsView mounts
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const win = window as any;
+      const warm = () => {
+        Promise.all([loadBillingStreamsProgressChart(), loadAttendanceTrendsChart()]).catch(() => {});
+      };
+      if (typeof win.requestIdleCallback === 'function') {
+        win.requestIdleCallback(warm, { timeout: 400 });
+      } else {
+        warm();
+      }
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const { now: today, todayStr } = useCurrentLocalDate();
   const currentMonth = today.getMonth() + 1;
@@ -71,20 +117,37 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || '');
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [overdueSearchQuery, setOverdueSearchQuery] = useState('');
+  const deferredPaymentSearchQuery = useDeferredValue(paymentSearchQuery);
+  const deferredOverdueSearchQuery = useDeferredValue(overdueSearchQuery);
   const [methodFilter] = useState<string>('all');
 
-  const activeEnrollments = useMemo(() => enrollments || db.getEnrollments(), [enrollments]);
-  const allAttendanceRecords = useMemo(() => db.getAttendance(), [sessions]);
+  const studentsById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
+  const groupsById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
+  const paymentsByStudentId = useMemo(() => {
+    const map = new Map<string, Payment[]>();
+    payments.forEach((p) => {
+      const list = map.get(p.studentId);
+      if (list) list.push(p);
+      else map.set(p.studentId, [p]);
+    });
+    return map;
+  }, [payments]);
+
+  const activeEnrollments = useMemo(() => enrollments ?? db.getEnrollments(), [enrollments]);
+  const allAttendanceRecords = useMemo(
+    () => allAttendance ?? db.getAttendance(),
+    [allAttendance, sessions]
+  );
 
   // 1. Overall Teacher Calculations from db
   const teacherSummary = useMemo(() => {
     return db.calculateTeacherFinancialOverview(periodFilter);
-  }, [periodFilter, students, payments, sessions]);
+  }, [periodFilter, students, groups, activeEnrollments, sessions, allAttendanceRecords, payments]);
 
   // Full Financial History Engine
   const financialHistory = useMemo(() => {
     return teacherSummary.financialHistory || db.calculateFinancialHistory();
-  }, [teacherSummary, payments, sessions, activeEnrollments, groups, students]);
+  }, [teacherSummary, payments, sessions, allAttendanceRecords, activeEnrollments, groups, students]);
 
   // Attendance & Sessions Analytics for current period
   const attendanceAnalytics = useMemo(() => {
@@ -125,7 +188,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     // Helper: For Session-based Private Lessons, return sessionUnits; for Hourly or Group, return 1
     const getSessionUnitFactor = (s?: Session, att?: Attendance | null): number => {
       if (!s) return 1;
-      const grp = groups.find((g) => g.id === s.groupId);
+      const grp = s.groupId ? groupsById.get(s.groupId) : undefined;
       const isPrivate = !!s.studentId || grp?.type === 'private' || (s.groupId && s.groupId.startsWith('private_'));
       if (!isPrivate) return 1;
 
@@ -148,9 +211,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       return getSessionLessonQuantity(s, att);
     };
 
+    const firstAttBySessionId = new Map<string, Attendance>();
+    relevantAtt.forEach((a) => {
+      if (!firstAttBySessionId.has(a.sessionId)) {
+        firstAttBySessionId.set(a.sessionId, a);
+      }
+    });
+
     const completedLessonsCount = roundMoney(
       completedSessions.reduce((sum, s) => {
-        const sAtt = relevantAtt.find((a) => a.sessionId === s.id);
+        const sAtt = firstAttBySessionId.get(s.id);
         return sum + getSessionUnitFactor(s, sAtt);
       }, 0),
       2
@@ -207,7 +277,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   }, [
     sessions,
     allAttendanceRecords,
-    groups,
+    groupsById,
     activeEnrollments,
     periodFilter,
     todayStr,
@@ -227,12 +297,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
     const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
     const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    const q = deferredPaymentSearchQuery.trim().toLowerCase();
 
     return payments.filter((p) => {
       // Search query
-      if (paymentSearchQuery.trim()) {
-        const q = paymentSearchQuery.toLowerCase();
-        const student = students.find((s) => s.id === p.studentId);
+      if (q) {
+        const student = studentsById.get(p.studentId);
         const studentMatches = student?.name.toLowerCase().includes(q);
         const notesMatches = p.notes?.toLowerCase().includes(q);
         if (!studentMatches && !notesMatches) return false;
@@ -258,8 +328,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     });
   }, [
     payments,
-    paymentSearchQuery,
-    students,
+    deferredPaymentSearchQuery,
+    studentsById,
     methodFilter,
     periodFilter,
     todayStr,
@@ -338,6 +408,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Overdue Students List
   const overdueStudentsList = useMemo(() => {
     const activeStudents = students.filter((s) => s.status !== 'archived');
+    const q = deferredOverdueSearchQuery.trim().toLowerCase();
     const list: {
       student: Student;
       grandTotalDue: number;
@@ -350,8 +421,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     activeStudents.forEach((st) => {
       const fin = db.calculateStudentGrandFinancials(st.id);
       if (fin.grandRemaining > 0) {
-        if (overdueSearchQuery.trim()) {
-          const q = overdueSearchQuery.toLowerCase();
+        if (q) {
           const matches =
             st.name.toLowerCase().includes(q) ||
             (st.phone && st.phone.includes(q)) ||
@@ -359,8 +429,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           if (!matches) return;
         }
 
-        const studentPayments = payments.filter((p) => p.studentId === st.id);
-        const lastPayment = studentPayments.sort((a, b) => b.date.localeCompare(a.date))[0];
+        const studentPayments = paymentsByStudentId.get(st.id) || [];
+        let lastPayment: Payment | undefined;
+        for (let i = 0; i < studentPayments.length; i++) {
+          const p = studentPayments[i];
+          if (!lastPayment || p.date > lastPayment.date) {
+            lastPayment = p;
+          }
+        }
         list.push({
           student: st,
           grandTotalDue: fin.grandTotalDue,
@@ -374,25 +450,49 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
     list.sort((a, b) => b.grandRemaining - a.grandRemaining);
     return list;
-  }, [students, payments, overdueSearchQuery]);
+  }, [
+    students,
+    groups,
+    activeEnrollments,
+    sessions,
+    allAttendanceRecords,
+    paymentsByStudentId,
+    deferredOverdueSearchQuery,
+  ]);
 
   // Selected Student Dossier
   const selectedStudentGrandFin = useMemo(() => {
     return selectedStudentId ? db.calculateStudentGrandFinancials(selectedStudentId) : null;
-  }, [selectedStudentId, students, payments, sessions]);
+  }, [
+    selectedStudentId,
+    students,
+    groups,
+    activeEnrollments,
+    sessions,
+    allAttendanceRecords,
+    payments,
+  ]);
 
   const selectedStudentObj = useMemo(() => {
-    return students.find((s) => s.id === selectedStudentId);
-  }, [students, selectedStudentId]);
+    return studentsById.get(selectedStudentId);
+  }, [studentsById, selectedStudentId]);
 
   // Selected Group Dossier
   const selectedGroupFin = useMemo(() => {
     return selectedGroupId ? db.calculateGroupFinancials(selectedGroupId) : null;
-  }, [selectedGroupId, groups, students, sessions, payments]);
+  }, [
+    selectedGroupId,
+    groups,
+    students,
+    activeEnrollments,
+    sessions,
+    allAttendanceRecords,
+    payments,
+  ]);
 
   const selectedGroupObj = useMemo(() => {
-    return groups.find((g) => g.id === selectedGroupId);
-  }, [groups, selectedGroupId]);
+    return groupsById.get(selectedGroupId);
+  }, [groupsById, selectedGroupId]);
 
   const handlePrint = () => {
     window.print();
@@ -460,10 +560,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     { key: 'all_time', label: isEn ? 'All Time' : 'كل الوقت' },
   ];
 
-  const animatedPeriodRevenue = useCountUp(periodRevenue, 800);
-  const animatedTotalCollected = useCountUp(financialHistory.totalCollected, 800);
-  const animatedTotalDue = useCountUp(financialHistory.totalDue, 800);
-
   return (
     <div
       className="flex-1 overflow-y-auto overflow-x-hidden max-w-full w-full min-w-0 android-scrollbar px-5 py-4 space-y-4 text-navy pb-32 bg-page relative overscroll-contain"
@@ -472,12 +568,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {/* 1. Screen Header */}
       <ScreenHeader
         title={t('reportsTitle') || (isEn ? 'Reports' : 'التقارير')}
+        unreadCount={unreadNotificationsCount}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />
 
-      {/* 2. Top Summary = NavyCard with main number (.t-display white) and ProgressRing for collection rate */}
-      <NavyCard className="relative">
+      {showReportsSkeleton ? (
+        <ReportsContentSkeleton />
+      ) : (
+        <>
+          {/* 2. Top Summary = NavyCard with main number (.t-display white) and ProgressRing for collection rate */}
+          <NavyCard className="relative">
         <div className="flex items-center justify-between gap-4 relative z-10">
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center gap-2">
@@ -490,7 +591,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 {isEn ? 'Total revenue' : 'إجمالي التحصيل'}
               </div>
               <div className="t-display text-page mt-1">
-                {animatedPeriodRevenue}{' '}
+                <AnimatedCountValue value={periodRevenue} />{' '}
                 <span className="text-sm font-semibold text-page/80">{t('currency')}</span>
               </div>
             </div>
@@ -792,18 +893,26 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   title={isEn ? 'Billing Streams' : 'مسارات المحاسبة'}
                   subtitle={isEn ? 'Lesson-based vs Hourly comparison' : 'مقارنة الحصص بالساعات'}
                 />
-                <BillingStreamsProgressChart
-                  sessions={sessions}
-                  allAttendance={allAttendanceRecords}
-                  students={students}
-                  groups={groups}
-                  enrollments={activeEnrollments}
-                  payments={payments}
-                  periodFilter={periodFilter}
-                  customStartDate={customStartDate}
-                  customEndDate={customEndDate}
-                  compact
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <BillingStreamsProgressChart
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    enrollments={activeEnrollments}
+                    payments={payments}
+                    periodFilter={periodFilter}
+                    customStartDate={customStartDate}
+                    customEndDate={customEndDate}
+                    compact
+                  />
+                </Suspense>
               </WhiteCard>
 
               {/* Chart 2 Container = WhiteCard with 16px padding and SectionHeader */}
@@ -812,16 +921,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   title={isEn ? 'Attendance Trends' : 'منحنيات الحضور'}
                   subtitle={isEn ? 'Student commitment over time' : 'معدل التزام الطلاب عبر الوقت'}
                 />
-                <AttendanceTrendsChart
-                  sessions={sessions}
-                  allAttendance={allAttendanceRecords}
-                  students={students}
-                  groups={groups}
-                  periodFilter={periodFilter}
-                  customStartDate={customStartDate}
-                  customEndDate={customEndDate}
-                  compact
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceTrendsChart
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    periodFilter={periodFilter}
+                    customStartDate={customStartDate}
+                    customEndDate={customEndDate}
+                    compact
+                  />
+                </Suspense>
               </WhiteCard>
             </div>
           )}
@@ -833,17 +950,25 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 title={isEn ? 'Billing Streams' : 'مسارات المحاسبة'}
                 subtitle={isEn ? 'Lesson-based vs Hourly performance' : 'تفاصيل مسارات الحصص والساعات'}
               />
-              <BillingStreamsProgressChart
-                sessions={sessions}
-                allAttendance={allAttendanceRecords}
-                students={students}
-                groups={groups}
-                enrollments={activeEnrollments}
-                payments={payments}
-                periodFilter={periodFilter}
-                customStartDate={customStartDate}
-                customEndDate={customEndDate}
-              />
+              <Suspense
+                fallback={
+                  <DelayedFallback delayMs={75}>
+                    <ReportChartSkeleton />
+                  </DelayedFallback>
+                }
+              >
+                <BillingStreamsProgressChart
+                  sessions={sessions}
+                  allAttendance={allAttendanceRecords}
+                  students={students}
+                  groups={groups}
+                  enrollments={activeEnrollments}
+                  payments={payments}
+                  periodFilter={periodFilter}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                />
+              </Suspense>
             </WhiteCard>
           )}
 
@@ -855,15 +980,23 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   title={isEn ? 'Attendance Trends' : 'منحنيات الحضور'}
                   subtitle={isEn ? 'Commitment trends across sessions' : 'منحنيات التزام الطلاب عبر الحصص'}
                 />
-                <AttendanceTrendsChart
-                  sessions={sessions}
-                  allAttendance={allAttendanceRecords}
-                  students={students}
-                  groups={groups}
-                  periodFilter={periodFilter}
-                  customStartDate={customStartDate}
-                  customEndDate={customEndDate}
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceTrendsChart
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    periodFilter={periodFilter}
+                    customStartDate={customStartDate}
+                    customEndDate={customEndDate}
+                  />
+                </Suspense>
               </WhiteCard>
 
               {/* Attendance metrics grid (2-column MintCards) */}
@@ -1026,7 +1159,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     {isEn ? 'Total All-Time Collected' : 'إجمالي ما تم تحصيله'}
                   </span>
                   <div className="t-display text-page mt-1">
-                    {animatedTotalCollected}{' '}
+                    <AnimatedCountValue value={financialHistory.totalCollected} />{' '}
                     <span className="text-xs font-semibold text-page/80">{t('currency')}</span>
                   </div>
                 </div>
@@ -1035,7 +1168,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     {isEn ? 'Total Expected Due' : 'إجمالي القيمة المستحقة'}
                   </span>
                   <div className="t-display text-page mt-1">
-                    {animatedTotalDue}{' '}
+                    <AnimatedCountValue value={financialHistory.totalDue} />{' '}
                     <span className="text-xs font-semibold text-page/80">{t('currency')}</span>
                   </div>
                 </div>
@@ -1083,12 +1216,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     <span className="text-end">{isEn ? 'Amount' : 'المبلغ'}</span>
                   </div>
                   {/* Table Rows */}
-                  {filteredPayments.map((p) => {
-                    const st = students.find((s) => s.id === p.studentId);
+                  {filteredPayments.map((p, idx) => {
+                    const st = studentsById.get(p.studentId);
                     return (
                       <div
                         key={p.id}
-                        className="py-3 flex items-center justify-between gap-3 text-xs"
+                        className={`py-3 flex items-center justify-between gap-3 text-xs ${
+                          idx >= 16 ? 'cv-list-item' : ''
+                        }`}
                       >
                         <div className="min-w-0">
                           <strong className="font-semibold text-navy block truncate">
@@ -1286,17 +1421,25 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   title={isEn ? 'Group Attendance Trends' : 'منحنيات حضور المجموعة'}
                   subtitle={`${selectedGroupObj.name} • ${selectedGroupObj.subject}`}
                 />
-                <AttendanceTrendsChart
-                  sessions={sessions}
-                  allAttendance={allAttendanceRecords}
-                  students={students}
-                  groups={groups}
-                  selectedGroupId={selectedGroupId}
-                  periodFilter={periodFilter}
-                  customStartDate={customStartDate}
-                  customEndDate={customEndDate}
-                  compact
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceTrendsChart
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    selectedGroupId={selectedGroupId}
+                    periodFilter={periodFilter}
+                    customStartDate={customStartDate}
+                    customEndDate={customEndDate}
+                    compact
+                  />
+                </Suspense>
               </WhiteCard>
             </div>
           )}
@@ -1405,21 +1548,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   title={isEn ? 'Attendance Trends' : 'منحنيات حضور الطالب'}
                   subtitle={selectedStudentObj.name}
                 />
-                <AttendanceTrendsChart
-                  sessions={sessions}
-                  allAttendance={allAttendanceRecords}
-                  students={students}
-                  groups={groups}
-                  selectedStudentId={selectedStudentId}
-                  periodFilter={periodFilter}
-                  customStartDate={customStartDate}
-                  customEndDate={customEndDate}
-                  compact
-                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceTrendsChart
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    selectedStudentId={selectedStudentId}
+                    periodFilter={periodFilter}
+                    customStartDate={customStartDate}
+                    customEndDate={customEndDate}
+                    compact
+                  />
+                </Suspense>
               </WhiteCard>
             </div>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

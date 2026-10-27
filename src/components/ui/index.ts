@@ -12,3 +12,4 @@ export * from './ScreenHeader';
 export * from './BottomSheet';
 export * from './AttendanceChoiceTiles';
 export * from './ConfirmDialog';
+export * from './Skeleton';

@@ -71,7 +71,7 @@ export const NavyCard: React.FC<NavyCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`relative overflow-hidden bg-navy text-page rounded-[var(--radius-hero)] p-5 shadow-navy ${interactiveClasses} ${className}`.trim()}
+      className={`navy-card relative overflow-hidden bg-navy text-page rounded-[var(--radius-hero)] p-5 shadow-navy ${interactiveClasses} ${className}`.trim()}
       {...rest}
     >
       {showDecor && <NavyDecor />}

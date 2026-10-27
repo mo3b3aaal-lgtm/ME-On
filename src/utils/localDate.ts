@@ -102,13 +102,36 @@ export function getLocalDateParts(
   dateInput: Date | number | string = new Date(),
   timeZone: string = getDeviceTimezone()
 ): LocalDateParts {
-  const dateStr = getLocalDateString(dateInput, timeZone);
+  const isDateOnlyStr =
+    typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim());
+
+  const dateStr = isDateOnlyStr
+    ? dateInput.trim()
+    : getLocalDateString(dateInput, timeZone);
   const [yearStr, monthStr, dayStr] = dateStr.split('-');
   const year = parseInt(yearStr, 10);
   const month = parseInt(monthStr, 10);
   const day = parseInt(dayStr, 10);
 
-  // Determine weekday in target timezone
+  if (isDateOnlyStr) {
+    const localCal = new Date(year, month - 1, day);
+    const weekdayIndex = localCal.getDay();
+    const canonicalWeekday = DAY_INDEX_TO_CANONICAL[weekdayIndex] || 'saturday';
+    return {
+      year,
+      month,
+      day,
+      dateStr,
+      canonicalWeekday,
+      weekdayIndex,
+      hour: 0,
+      minute: 0,
+      second: 0,
+      timeZone,
+    };
+  }
+
+  // Determine weekday in target timezone for full timestamps / Date instances
   let d = typeof dateInput === 'string' ? new Date(dateInput) : new Date(dateInput);
   if (isNaN(d.getTime())) d = new Date();
 

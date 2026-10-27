@@ -54,6 +54,7 @@ import {
   MapPin,
   Medal,
   Minus,
+  Moon,
   PencilSimple,
   Percent,
   Phone,
@@ -73,6 +74,7 @@ import {
   SquaresFour,
   Stack,
   Star,
+  Sun,
   Tag,
   Trash,
   Translate,
@@ -214,6 +216,8 @@ export const ICON_MAP = {
   restore: ArrowCounterClockwise,
   eye: Eye,
   eyeOff: EyeSlash,
+  moon: Moon,
+  sun: Sun,
 } satisfies Record<string, Icon>;
 
 export type AppIconName = keyof typeof ICON_MAP;

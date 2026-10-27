@@ -95,6 +95,14 @@ export type PaymentTargetType =
 // Time period filter for reports
 export type ReportPeriodFilter = 'today' | 'last_7_days' | 'this_week' | 'this_month' | 'last_month' | 'specific_month' | 'custom_range' | 'all_time';
 
+// Operational Vacation / Suspension Period for an Enrollment or Student
+export interface VacationPeriod {
+  id: string;
+  startDate: string; // YYYY-MM-DD (inclusive inactive start)
+  endDate: string; // YYYY-MM-DD (inclusive inactive end)
+  reason?: string;
+}
+
 // 1. Student Entity (طالب واحد فقط دون استنساخ)
 export interface Student {
   id: string;
@@ -121,6 +129,9 @@ export interface Student {
   subject?: string; // المادة الدراسية
   serviceType?: string; // نوع الخدمة
   city?: string;
+  startDate?: string; // YYYY-MM-DD تاريخ بداية الحصص (افتراضي/مباشر)
+  endDate?: string; // YYYY-MM-DD تاريخ نهاية الحصص (اختياري)
+  vacationPeriods?: VacationPeriod[]; // الإجازات وفترات التوقف المؤقتة
   archivedAt?: string; // تاريخ الأرشفة عند الحذف الآمن مع الاحتفاظ بالسجلات
   archivedReason?: string; // سبب الأرشفة
   createdAt: string;
@@ -176,6 +187,9 @@ export interface Enrollment {
   discount: number; // قيمة الخصم إن وجد
   status: EnrollmentStatus;
   joinedAt: string;
+  startDate?: string; // YYYY-MM-DD تاريخ بداية الحصص الفعلي لهذا الاشتراك
+  endDate?: string; // YYYY-MM-DD تاريخ نهاية الحصص الفعلي لهذا الاشتراك (اختياري)
+  vacationPeriods?: VacationPeriod[]; // الإجازات وفترات التوقف المؤقتة لهذا الاشتراك
   notes?: string;
   subject?: string; // المادة الدراسية (للدروس الخصوصية)
   roomOrLocation?: string; // مكان الحصة (للدروس الخصوصية)
@@ -419,6 +433,9 @@ export interface EnrollmentFinancialSummary {
   creditLogs: SessionCreditLog[];
   monthlyLedger: MonthlyBillingLedgerItem[];
   payments: Payment[];
+  startDate?: string;
+  endDate?: string;
+  vacationPeriods?: VacationPeriod[];
 }
 
 // 10. Student Grand Financial Summary (مع الفصل التام بين ماليات المجموعات والدروس الخاصة)
@@ -891,36 +908,121 @@ export interface BulkCreateSessionsResult {
 // Notification & Smart Reminders Domain Models
 // ==========================================
 
+export type NotificationCategory =
+  | 'lesson_reminders'
+  | 'attendance'
+  | 'financial'
+  | 'packages'
+  | 'follow_ups'
+  | 'sync_backup'
+  | 'system';
+
 export type NotificationType =
+  | 'upcoming_class'
+  | 'day_of_lesson_summary'
+  | 'unrecorded_attendance'
+  | 'post_lesson_completion'
+  | 'student_absent'
+  | 'repeated_absence'
+  | 'payment_overdue'
+  | 'payment_recorded'
+  | 'balance_threshold_exceeded'
+  | 'today_lesson_debt'
   | 'package_completed'
+  | 'package_one_remaining'
   | 'package_almost_due'
   | 'finished_package'
-  | 'payment_overdue'
-  | 'unrecorded_attendance'
-  | 'repeated_absence'
   | 'low_credit'
-  | 'upcoming_class';
+  | 'financial_follow_up'
+  | 'incomplete_record'
+  | 'sync_failed'
+  | 'sync_restored'
+  | 'backup_failed'
+  | 'restore_failed'
+  | 'backup_completed'
+  | 'permission_denied';
 
 export type NotificationStatus = 'active' | 'resolved' | 'dismissed';
-export type NotificationPriority = 'high' | 'medium' | 'low';
+export type NotificationPriority = 'critical' | 'high' | 'medium' | 'low';
 export type NotificationActionType =
   | 'record_attendance'
+  | 'open_private_session'
+  | 'open_session'
   | 'add_payment'
   | 'open_student'
   | 'open_group'
+  | 'open_settings'
+  | 'open_permissions'
   | 'whatsapp'
   | 'call';
 
+export type NotificationSoundPreset = 'default' | 'soft_chime' | 'silent';
+export type LessonReminderLeadMinutes = 5 | 10 | 15 | 30 | 60;
+export type NotificationHistoryRetentionDays = 7 | 30 | 90 | 365;
+
 export interface NotificationSettings {
-  enableEarlyPackageWarning: boolean; // تنبيه مبكر قبل اكتمال الباقة/الحصص
-  earlyWarningLessonThreshold: number; // عدد الحصص قبل الاكتمال (افتراضي 1)
-  enableAttendanceReminders: boolean; // تنبيهات رصد الحضور
-  enableOverdueReminders: boolean; // تنبيهات مستحقات السداد
-  enableAbsenceReminders: boolean; // تنبيهات الغياب المتكرر
-  enableDailyAttendanceReminder?: boolean; // تذكير تسجيل الحضور اليومي
-  dailyAttendanceReminderTime?: string; // وقت التذكير اليومي (افتراضي "22:00" أي 10:00 م)
-  notificationSoundUri?: string; // مسار أو اسم ملف الصوت المخصص للتنبيه (e.g. "beep.wav", "classy_chime.wav", etc.)
-  notificationSoundName?: string; // الاسم المعروض لنغمة التنبيه المحددة
+  // Master Controls
+  enableNotifications?: boolean; // Master notifications switch (default: true)
+  enableMobileNotifications?: boolean; // OS / Local device notifications (default: true)
+  enableInAppNotifications?: boolean; // In-app Notification Center & badges (default: true)
+  enableNotificationSound?: boolean; // Sound master toggle (default: true)
+  enableNotificationVibration?: boolean; // Vibration toggle (default: true)
+
+  // Quiet Hours
+  quietHoursEnabled?: boolean; // Quiet hours switch (default: false)
+  quietHoursStart?: string; // HH:MM (default: "22:00")
+  quietHoursEnd?: string; // HH:MM (default: "07:00")
+  quietHoursDays?: string[]; // Canonical weekdays e.g. ['friday']; empty = all days
+  allowCriticalDuringQuietHours?: boolean; // Allow critical alerts during quiet hours (default: false)
+
+  // Category A — Lesson Reminders
+  enableLessonReminders?: boolean; // Upcoming lesson reminders (default: true)
+  lessonReminderLeadMinutes?: LessonReminderLeadMinutes; // 5 | 10 | 15 | 30 | 60 (default: 15)
+  enableDayOfLessonReminder?: boolean; // Morning summary on lesson days (default: false)
+  dayOfLessonReminderTime?: string; // HH:MM (default: "08:00")
+  enableGroupLessonReminders?: boolean; // Scheduled group lesson reminders (default: true)
+  enablePrivateLessonReminders?: boolean; // Scheduled private lesson reminders (default: true)
+
+  // Category B — Attendance & Missed Lessons
+  enableAttendanceReminders: boolean; // Unrecorded lesson attendance (default: true)
+  enableStudentAbsenceAlerts?: boolean; // Student marked absent & repeated absence (default: true)
+  enableAbsenceReminders: boolean; // Legacy alias kept in sync with enableStudentAbsenceAlerts
+  enablePostLessonCompletionReminder?: boolean; // Post-lesson attendance completion reminder (default: true)
+  postLessonReminderDelayMinutes?: number; // Minutes after lesson end (default: 30)
+  enableDailyAttendanceReminder?: boolean; // Daily attendance sweep reminder (default: true)
+  dailyAttendanceReminderTime?: string; // HH:MM (default: "22:00")
+
+  // Category C — Student Financial Alerts
+  enableOverdueReminders: boolean; // Overdue balance alerts (default: true)
+  enablePaymentRecordedAlerts?: boolean; // Payment recorded confirmation (default: false)
+  enableBalanceThresholdAlert?: boolean; // Balance exceeds threshold alert (default: false)
+  balanceThresholdAmount?: number; // Configurable threshold amount (default: 500)
+  enableTodayLessonDebtAlerts?: boolean; // Outstanding balance for students with lessons today (default: true)
+
+  // Category D — Package & Subscription Alerts
+  enablePackageCompletedAlerts?: boolean; // Package limit reached (default: true)
+  enableOneSessionRemainingAlert?: boolean; // 1 session remaining in package (default: true)
+  enableEarlyPackageWarning: boolean; // Package nearly exhausted (default: true)
+  earlyWarningLessonThreshold: number; // Remaining sessions threshold (default: 2)
+  enablePrepaidCreditExhaustedAlerts?: boolean; // Prepaid credit exhausted (default: true)
+
+  // Category E — Student Records & Follow-Ups
+  enableFinancialFollowUpAlerts?: boolean; // Students requiring financial follow-up (default: true)
+  enableIncompleteLessonAlerts?: boolean; // Incomplete lesson/attendance records (default: true)
+
+  // Category F — Backup & Synchronization
+  enableSyncFailureAlerts?: boolean; // Cloud sync failure & recovery (default: true)
+  enableBackupFailureAlerts?: boolean; // Backup / restore failure (default: true)
+  enableBackupCompletionAlerts?: boolean; // Optional backup completion confirmation (default: false)
+
+  // Category G — System & Permission Alerts
+  enableSystemPermissionAlerts?: boolean; // OS permission denied setup prompt (default: true)
+
+  // Sound & History Management
+  soundPreset?: NotificationSoundPreset; // 'default' | 'soft_chime' | 'silent'
+  notificationSoundUri?: string; // Kept backward-compatible ('default' | 'soft_chime' | 'silent')
+  notificationSoundName?: string; // Display name of selected sound
+  historyRetentionDays?: NotificationHistoryRetentionDays; // 7 | 30 | 90 | 365 (default: 30)
 }
 
 export interface NotificationStateItem {
@@ -929,10 +1031,58 @@ export interface NotificationStateItem {
   isDismissed?: boolean;
   readAt?: string;
   dismissedAt?: string;
+  firstSeenAt?: string;
+  lastValueSnapshot?: number | string;
+}
+
+export interface PersistedNotificationEvent {
+  id: string;
+  dedupeKey: string;
+  userId: string;
+  category: NotificationCategory;
+  type: NotificationType;
+  priority: NotificationPriority;
+  status: NotificationStatus;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  badgeAr: string;
+  badgeEn: string;
+  actionType: NotificationActionType;
+  createdAt: string;
+  resolvedAt?: string;
+  studentId?: string;
+  studentName?: string;
+  studentPhone?: string;
+  parentPhone?: string;
+  parentRelation?: string;
+  groupId?: string;
+  groupName?: string;
+  sessionId?: string;
+  enrollmentId?: string;
+  isPrivate?: boolean;
+  isChargedAbsence?: boolean;
+  amount?: number;
+  date?: string;
+  timeStr?: string;
+  targetTab?: ActiveTab;
+}
+
+export interface ScheduledNotificationRecord {
+  key: string;
+  numericId: number;
+  fingerprint: string;
+  triggerAt: string;
+  category: NotificationCategory;
+  title: string;
+  body: string;
+  extra: Record<string, any>;
 }
 
 export interface SmartReminderItem {
   id: string;
+  category?: NotificationCategory;
   type: NotificationType;
   priority: NotificationPriority;
   status: NotificationStatus;
@@ -948,9 +1098,13 @@ export interface SmartReminderItem {
   groupId?: string;
   groupName?: string;
   sessionId?: string;
+  isPrivate?: boolean;
+  isChargedAbsence?: boolean;
   amount?: number;
   remainingCredits?: number;
+  date?: string;
   timeStr?: string;
+  targetTab?: ActiveTab;
   actionType: NotificationActionType;
   // Package / Cycle tracking metadata
   enrollmentId?: string;
@@ -960,6 +1114,7 @@ export interface SmartReminderItem {
   lessonsRemaining?: number;
   createdAt?: string;
   resolvedAt?: string;
+  isEventRecord?: boolean;
 }
 
 export type AppNotification = SmartReminderItem;

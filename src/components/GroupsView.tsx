@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Group, Student, Session, Payment, ActiveTab } from '../types';
+import { Group, Student, Enrollment, Session, Attendance, Payment, ActiveTab } from '../types';
 import { db } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
@@ -7,6 +7,8 @@ import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
 import { EmptyBox } from './illustrations';
+import { useDelayedLoading } from './ui/Skeleton';
+import { GroupCardsSkeleton } from './skeletons/ClassySkeletons';
 import {
   getArabicDayForDate,
   getTimesForDayInGroup,
@@ -18,8 +20,11 @@ import {
 interface GroupsViewProps {
   groups: Group[];
   allStudents: Student[];
+  enrollments?: Enrollment[];
   sessions?: Session[];
+  allAttendance?: Attendance[];
   payments?: Payment[];
+  isLoading?: boolean;
   onOpenAddGroup: () => void;
   onOpenGroupProfile: (group: Group) => void;
   onEditGroup?: (group: Group) => void;
@@ -34,11 +39,17 @@ interface GroupsViewProps {
   onOpenNotificationsModal?: () => void;
 }
 
+const EMPTY_SESSIONS: Session[] = [];
+const EMPTY_PAYMENTS: Payment[] = [];
+
 export const GroupsView: React.FC<GroupsViewProps> = ({
   groups,
   allStudents,
-  sessions = [],
-  payments = [],
+  enrollments,
+  sessions = EMPTY_SESSIONS,
+  allAttendance,
+  payments = EMPTY_PAYMENTS,
+  isLoading = false,
   onOpenAddGroup,
   onOpenGroupProfile,
   onEditGroup,
@@ -54,6 +65,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
 }) => {
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
+  const showGroupsSkeleton = useDelayedLoading(Boolean(isLoading) && groups.length === 0, 90);
   const { todayStr } = useCurrentLocalDate();
   const todayArabicDay = useMemo(() => getArabicDayForDate(todayStr), [todayStr]);
 
@@ -67,7 +79,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
 
   // Pre-index group enrollments, private students, and statistics in a single memoized pass
   const groupDataMap = useMemo(() => {
-    const allEnrs = db.getEnrollments();
+    const allEnrs = enrollments ?? db.getEnrollments();
     const studentsMap = new Map<string, Student>(allStudents.map((s) => [s.id, s]));
 
     const map = new Map<
@@ -101,7 +113,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
     });
 
     return map;
-  }, [groups, allStudents, sessions, payments]);
+  }, [groups, allStudents, enrollments, sessions, payments, allAttendance]);
 
   // Compute groups that have sessions scheduled or recurring today
   const groupsWithTodayClass = useMemo(() => {
@@ -319,8 +331,10 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
         )}
       </div>
 
-      {/* 2. Group Cards List or Empty State */}
-      {groups.length === 0 ? (
+      {/* 2. Group Cards List, Loading Skeleton, or Empty State */}
+      {showGroupsSkeleton ? (
+        <GroupCardsSkeleton count={3} />
+      ) : groups.length === 0 ? (
         <div className="bg-mint-soft border border-mint rounded-[var(--radius-card)] p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-white">
           <div className="w-36 h-28 flex items-center justify-center">
             <EmptyBox className="w-full h-full" />

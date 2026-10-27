@@ -9,6 +9,8 @@ export interface ScreenHeaderProps {
   accentWord?: string;
   /** Whether there are unread notifications (shows a small orange dot on bell) */
   hasUnreadNotifications?: boolean;
+  /** Unread notification count (renders compact numeric badge on bell when > 0) */
+  unreadCount?: number;
   /** Callback when bell icon is clicked */
   onOpenNotifications?: () => void;
   /** Callback when gear icon is clicked (opens Settings) */
@@ -19,19 +21,22 @@ export interface ScreenHeaderProps {
 /**
  * ScreenHeader:
  * - Start side: title (.t-display navy, max 2 lines, optional accent word in orange)
- * - End side: bell (AppIcon fill, navy, 26px, no container, orange dot if unread)
+ * - End side: bell (AppIcon fill, navy, 26px, no container, orange badge/dot if unread)
  *             gear (AppIcon fill, navy, 26px, no container, opens Settings)
  */
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
   accentWord,
   hasUnreadNotifications = false,
+  unreadCount,
   onOpenNotifications,
   onOpenSettings,
   className = '',
 }) => {
   const { t, language } = useTranslation();
   const isEn = language.startsWith('en');
+  const effectiveUnreadCount = typeof unreadCount === 'number' ? Math.max(0, unreadCount) : 0;
+  const showDotOnly = unreadCount === undefined && hasUnreadNotifications;
 
   return (
     <header
@@ -56,17 +61,28 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           <button
             type="button"
             onClick={onOpenNotifications}
-            aria-label={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
+            aria-label={
+              effectiveUnreadCount > 0
+                ? `${t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')} (${effectiveUnreadCount})`
+                : t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')
+            }
             title={t('smartNotifications') || (isEn ? 'Notifications' : 'الإشعارات')}
             className="relative w-11 h-11 text-navy hover:text-navy/80 active:scale-95 transition-transform cursor-pointer flex items-center justify-center"
           >
             <AppIcon name="bell" weight="fill" size={26} />
-            {hasUnreadNotifications && (
+            {effectiveUnreadCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="absolute top-0.5 end-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-orange text-white text-[10px] font-black leading-none flex items-center justify-center ring-2 ring-page"
+              >
+                {effectiveUnreadCount > 99 ? '99+' : effectiveUnreadCount}
+              </span>
+            ) : showDotOnly ? (
               <span
                 aria-hidden="true"
                 className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-orange ring-2 ring-page"
               />
-            )}
+            ) : null}
           </button>
         )}
 

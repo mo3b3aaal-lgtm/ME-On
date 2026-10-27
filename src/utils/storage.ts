@@ -58,10 +58,18 @@ import {
   TodayPrivateSessionItem,
   TodayStudentPrivateSummary,
   CategoryFinancialBreakdown,
+  VacationPeriod,
 } from '../types';
 import { getAppLanguage } from './i18n';
 import { getLocalDateString, toLocalISODate, parseLocalDateStr } from './localDate';
-import { formatTimeDisplay, parseTimeToMinutes, getScheduledClassesForDate } from './schedule';
+import {
+  formatTimeDisplay,
+  parseTimeToMinutes,
+  getScheduledClassesForDate,
+  isEnrollmentActiveOnDate,
+  getEffectiveEnrollmentPeriod,
+  isExplicitPrivateSessionOperationalOnDate,
+} from './schedule';
 import {
   roundMoney,
   multiplyMoney,
@@ -497,16 +505,83 @@ const DEFAULT_TEACHER_PROFILE: TeacherProfile = {
 };
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  enableEarlyPackageWarning: false,
-  earlyWarningLessonThreshold: 1,
+  enableNotifications: true,
+  enableMobileNotifications: true,
+  enableInAppNotifications: true,
+  enableNotificationSound: true,
+  enableNotificationVibration: true,
+  quietHoursEnabled: false,
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00',
+  quietHoursDays: [],
+  allowCriticalDuringQuietHours: false,
+  enableLessonReminders: true,
+  lessonReminderLeadMinutes: 15,
+  enableDayOfLessonReminder: false,
+  dayOfLessonReminderTime: '08:00',
+  enableGroupLessonReminders: true,
+  enablePrivateLessonReminders: true,
   enableAttendanceReminders: true,
-  enableOverdueReminders: true,
+  enableStudentAbsenceAlerts: true,
   enableAbsenceReminders: true,
+  enablePostLessonCompletionReminder: true,
+  postLessonReminderDelayMinutes: 30,
   enableDailyAttendanceReminder: true,
   dailyAttendanceReminderTime: '22:00',
-  notificationSoundUri: 'beep.wav',
-  notificationSoundName: 'Classy Alert (Beep)',
+  enableOverdueReminders: true,
+  enablePaymentRecordedAlerts: false,
+  enableBalanceThresholdAlert: false,
+  balanceThresholdAmount: 500,
+  enableTodayLessonDebtAlerts: true,
+  enablePackageCompletedAlerts: true,
+  enableOneSessionRemainingAlert: true,
+  enableEarlyPackageWarning: true,
+  earlyWarningLessonThreshold: 2,
+  enablePrepaidCreditExhaustedAlerts: true,
+  enableFinancialFollowUpAlerts: true,
+  enableIncompleteLessonAlerts: true,
+  enableSyncFailureAlerts: true,
+  enableBackupFailureAlerts: true,
+  enableBackupCompletionAlerts: false,
+  enableSystemPermissionAlerts: true,
+  soundPreset: 'default',
+  notificationSoundUri: 'default',
+  notificationSoundName: 'Default Device Sound',
+  historyRetentionDays: 30,
 };
+
+export interface NotificationDomainHooks {
+  onScheduleChanged?: (userId: string) => void;
+  onAttendanceBatchSaved?: (params: {
+    sessionId: string;
+    session?: Session;
+    newRecords: Attendance[];
+    oldRecords: Attendance[];
+    userId: string;
+  }) => void;
+  onPaymentRecorded?: (params: { payment: Payment; userId: string }) => void;
+  onFinancialsMutated?: (userId: string) => void;
+  onSyncOutcome?: (params: {
+    outcome: 'success' | 'server_failure';
+    errorReason?: string;
+    isManual?: boolean;
+    userId: string;
+  }) => void;
+  onUserSessionChanged?: (params: {
+    prevUserId: string;
+    nextUserId: string;
+    isLogout: boolean;
+  }) => void;
+  onNotificationSettingsChanged?: (userId: string) => void;
+  onNotificationStateMutated?: (userId: string) => void;
+  onDataCleared?: (userId: string) => void;
+}
+
+let notificationDomainHooks: NotificationDomainHooks | null = null;
+
+export function registerNotificationDomainHooks(hooks: NotificationDomainHooks): void {
+  notificationDomainHooks = hooks;
+}
 
 // ==========================================
 // Homework Launch URL & Share Message Helpers
@@ -586,49 +661,179 @@ ${assignment.launchUrl}
 // Base Generic Storage Helper
 // ==========================================
 
-const listCache = new Map<string, { raw: string; parsed: unknown[] }>();
-let activeUserCache: { raw: string | null; userId: string } | null = null;
+const rawListStore = new Map<string, unknown[]>();
+const keyRevisions = new Map<string, number>();
+let dbDomainRevision = 1;
+let syncDirtyCounter = 1;
+const lastSyncedAccountSnapshot = new Map<string, { rev: number; pkg: UserAccountDataPackage }>();
+let activeUserIdMemo: string | null = null;
 
-function getList<T>(key: string, fallback: T[] = []): T[] {
+interface StudentsDomainSnapshot {
+  rev: number;
+  list: Student[];
+  activeList: Student[];
+  archivedList: Student[];
+  byId: Map<string, Student>;
+}
+
+interface GroupsDomainSnapshot {
+  rev: number;
+  list: Group[];
+  byId: Map<string, Group>;
+}
+
+interface EnrollmentsDomainSnapshot {
+  rev: number;
+  list: Enrollment[];
+  byId: Map<string, Enrollment>;
+  activeByStudentId: Map<string, Enrollment[]>;
+  activeByGroupId: Map<string, Enrollment[]>;
+}
+
+interface SessionsDomainSnapshot {
+  rev: number;
+  list: Session[];
+  byId: Map<string, Session>;
+  byGroupId: Map<string, Session[]>;
+  byStudentId: Map<string, Session[]>;
+  byEnrollmentId: Map<string, Session[]>;
+}
+
+interface AttendanceDomainSnapshot {
+  rev: number;
+  list: Attendance[];
+  bySessionId: Map<string, Attendance[]>;
+  byStudentId: Map<string, Attendance[]>;
+}
+
+interface PaymentsDomainSnapshot {
+  rev: number;
+  list: Payment[];
+  byStudentId: Map<string, Payment[]>;
+  byEnrollmentId: Map<string, Payment[]>;
+}
+
+interface CreditLogsDomainSnapshot {
+  rev: number;
+  list: SessionCreditLog[];
+  byEnrollmentId: Map<string, SessionCreditLog[]>;
+}
+
+const studentsSnapshotByUser = new Map<string, StudentsDomainSnapshot>();
+const groupsSnapshotByUser = new Map<string, GroupsDomainSnapshot>();
+const enrollmentsSnapshotByUser = new Map<string, EnrollmentsDomainSnapshot>();
+const sessionsSnapshotByUser = new Map<string, SessionsDomainSnapshot>();
+const attendanceSnapshotByUser = new Map<string, AttendanceDomainSnapshot>();
+const paymentsSnapshotByUser = new Map<string, PaymentsDomainSnapshot>();
+const creditLogsSnapshotByUser = new Map<string, CreditLogsDomainSnapshot>();
+
+const enrollmentFinancialsCache = new Map<string, EnrollmentFinancialSummary | undefined>();
+const studentGrandFinancialsCache = new Map<string, StudentGrandFinancialSummary>();
+const groupFinancialsCache = new Map<string, GroupFinancialSummary | undefined>();
+const financialHistoryCache = new Map<string, LifetimeFinancialSummary>();
+
+function clearDerivedFinancialCaches(): void {
+  enrollmentFinancialsCache.clear();
+  studentGrandFinancialsCache.clear();
+  groupFinancialsCache.clear();
+  financialHistoryCache.clear();
+}
+
+function getKeyRevision(key: string): number {
+  return keyRevisions.get(key) ?? 0;
+}
+
+function bumpKeyRevision(key: string): void {
+  keyRevisions.set(key, (keyRevisions.get(key) ?? 0) + 1);
+  if (key !== STORAGE_KEYS.ACCOUNTS) {
+    dbDomainRevision++;
+    syncDirtyCounter++;
+    clearDerivedFinancialCaches();
+  }
+}
+
+function getCurrentYearMonthCacheToken(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}`;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (!e.key) {
+      rawListStore.clear();
+      activeUserIdMemo = null;
+      studentsSnapshotByUser.clear();
+      groupsSnapshotByUser.clear();
+      enrollmentsSnapshotByUser.clear();
+      sessionsSnapshotByUser.clear();
+      attendanceSnapshotByUser.clear();
+      paymentsSnapshotByUser.clear();
+      creditLogsSnapshotByUser.clear();
+      dbDomainRevision++;
+      syncDirtyCounter++;
+      lastSyncedAccountSnapshot.clear();
+      clearDerivedFinancialCaches();
+      return;
+    }
+    if (e.key === STORAGE_KEYS.CURRENT_SESSION) {
+      activeUserIdMemo = null;
+      dbDomainRevision++;
+      syncDirtyCounter++;
+      clearDerivedFinancialCaches();
+      return;
+    }
+    if (e.key.startsWith('tm_v2_user_backup_') || e.key.startsWith('tm_v2_last_sync_')) {
+      lastSyncedAccountSnapshot.clear();
+    }
+    rawListStore.delete(e.key);
+    bumpKeyRevision(e.key);
+  });
+}
+
+function getListReadOnly<T>(key: string, fallback: T[] = []): readonly T[] {
+  if (rawListStore.has(key)) {
+    return rawListStore.get(key) as T[];
+  }
   try {
     const raw = localStorage.getItem(key);
     if (!raw) {
-      listCache.delete(key);
+      rawListStore.set(key, fallback);
       return fallback;
-    }
-    const cached = listCache.get(key);
-    if (cached && cached.raw === raw) {
-      return (cached.parsed as T[]).slice();
     }
     const parsed = JSON.parse(raw) as T[];
     if (Array.isArray(parsed)) {
-      listCache.set(key, { raw, parsed });
-      return parsed.slice();
+      rawListStore.set(key, parsed);
+      return parsed;
     }
-    return parsed;
+    return fallback;
   } catch (err) {
     console.error(`Error reading key ${key} from storage:`, err);
     return fallback;
   }
 }
 
+function getList<T>(key: string, fallback: T[] = []): T[] {
+  return getListReadOnly<T>(key, fallback).slice();
+}
+
 function saveList<T>(key: string, data: T[]): void {
   try {
-    const serialized = JSON.stringify(data);
-    localStorage.setItem(key, serialized);
-    listCache.delete(key);
+    const snapshot = data.slice();
+    rawListStore.set(key, snapshot);
+    bumpKeyRevision(key);
+    localStorage.setItem(key, JSON.stringify(snapshot));
   } catch (err) {
     console.error(`Error saving key ${key} to storage:`, err);
   }
 }
 
-// Active User Context Resolver
+// Active User Context Resolver (O(1) in-memory memoized to avoid multi-MB CURRENT_SESSION IPC reads)
 export function getActiveUserId(): string {
+  if (activeUserIdMemo !== null) {
+    return activeUserIdMemo;
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
-    if (activeUserCache && activeUserCache.raw === raw) {
-      return activeUserCache.userId;
-    }
     let resolved = 'acc_master_teacher';
     if (raw) {
       const user = JSON.parse(raw);
@@ -636,9 +841,10 @@ export function getActiveUserId(): string {
         resolved = user.id;
       }
     }
-    activeUserCache = { raw, userId: resolved };
+    activeUserIdMemo = resolved;
     return resolved;
   } catch {}
+  activeUserIdMemo = 'acc_master_teacher';
   return 'acc_master_teacher';
 }
 
@@ -721,6 +927,7 @@ export function getResetAllBefore(userId?: string): string | undefined {
 
 export function setResetAllBefore(timestampIso: string, userId?: string): void {
   const targetUserId = userId || getActiveUserId();
+  syncDirtyCounter++;
   try {
     localStorage.setItem(`${STORAGE_KEYS.RESET_ALL_BEFORE}_${targetUserId}`, timestampIso);
   } catch {}
@@ -1200,6 +1407,57 @@ export function cleanupDuplicateSessions(): {
 // Run migration safely on module load
 ensureDataMigrated();
 
+const pendingAccountSyncUsers = new Set<string>();
+let pendingAccountSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushPendingAccountSyncs(): void {
+  if (pendingAccountSyncTimer !== null) {
+    clearTimeout(pendingAccountSyncTimer);
+    pendingAccountSyncTimer = null;
+  }
+  if (pendingAccountSyncUsers.size === 0) return;
+  const usersToFlush = Array.from(pendingAccountSyncUsers);
+  pendingAccountSyncUsers.clear();
+  for (const uid of usersToFlush) {
+    try {
+      autoSyncUserAccount(uid);
+    } catch (err) {
+      console.warn('Deferred account backup sync warning:', err);
+    }
+  }
+}
+
+function scheduleAutoSyncUserAccount(userId?: string): void {
+  const targetUserId = userId || getActiveUserId();
+  pendingAccountSyncUsers.add(targetUserId);
+  if (pendingAccountSyncTimer !== null) {
+    clearTimeout(pendingAccountSyncTimer);
+  }
+  pendingAccountSyncTimer = setTimeout(() => {
+    pendingAccountSyncTimer = null;
+    const win = typeof window !== 'undefined' ? (window as any) : null;
+    if (win && typeof win.requestIdleCallback === 'function') {
+      win.requestIdleCallback(
+        () => {
+          flushPendingAccountSyncs();
+        },
+        { timeout: 400 }
+      );
+    } else {
+      flushPendingAccountSyncs();
+    }
+  }, 180);
+}
+
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushPendingAccountSyncs();
+    }
+  });
+  window.addEventListener('pagehide', flushPendingAccountSyncs);
+}
+
 /**
  * دالة مزامنة بيانات المستخدم مع حسابه تلقائياً
  * تقوم بجمع كافة الطلاب والمجموعات والحصص والاشتراكات والحضور والمدفوعات والواجبات
@@ -1207,18 +1465,32 @@ ensureDataMigrated();
  */
 export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   const targetUserId = userId || getActiveUserId();
+  pendingAccountSyncUsers.delete(targetUserId);
+  if (pendingAccountSyncUsers.size === 0 && pendingAccountSyncTimer !== null) {
+    clearTimeout(pendingAccountSyncTimer);
+    pendingAccountSyncTimer = null;
+  }
 
-  const allStudents = getList<Student>(STORAGE_KEYS.STUDENTS, []);
-  const allGroups = getList<Group>(STORAGE_KEYS.GROUPS, []);
-  const allEnrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
-  const allSessions = getList<Session>(STORAGE_KEYS.SESSIONS, []);
-  const allAttendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
-  const allPayments = getList<Payment>(STORAGE_KEYS.PAYMENTS, []);
-  const allCreditLogs = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
-  const allBehaviorLogs = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
-  const allHomeworkTests = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []);
-  const allHomeworkAssignments = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
-  const allHomeworkQuestionResults = getList<HomeworkQuestionResult>(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, []);
+  const cachedSync = lastSyncedAccountSnapshot.get(targetUserId);
+  if (cachedSync && cachedSync.rev === syncDirtyCounter) {
+    try {
+      if (localStorage.getItem(`tm_v2_last_sync_${targetUserId}`) === cachedSync.pkg.lastSyncTime) {
+        return cachedSync.pkg;
+      }
+    } catch {}
+  }
+
+  const allStudents = getListReadOnly<Student>(STORAGE_KEYS.STUDENTS, []);
+  const allGroups = getListReadOnly<Group>(STORAGE_KEYS.GROUPS, []);
+  const allEnrollments = getListReadOnly<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
+  const allSessions = getListReadOnly<Session>(STORAGE_KEYS.SESSIONS, []);
+  const allAttendance = getListReadOnly<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
+  const allPayments = getListReadOnly<Payment>(STORAGE_KEYS.PAYMENTS, []);
+  const allCreditLogs = getListReadOnly<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
+  const allBehaviorLogs = getListReadOnly<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
+  const allHomeworkTests = getListReadOnly<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []);
+  const allHomeworkAssignments = getListReadOnly<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []);
+  const allHomeworkQuestionResults = getListReadOnly<HomeworkQuestionResult>(STORAGE_KEYS.HOMEWORK_QUESTION_RESULTS, []);
 
   const userStudents = allStudents.filter((s) => (s.userId ? s.userId === targetUserId : targetUserId === 'acc_master_teacher'));
   const userGroups = allGroups.filter((g) => (g.userId ? g.userId === targetUserId : targetUserId === 'acc_master_teacher'));
@@ -1271,39 +1543,46 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
     },
   };
 
-  // 1. Redundant persistent account backup storage
+  // 1. Primary persistent account backup storage (single full-package serialization)
+  let backupSavedToDedicatedKey = false;
   try {
     localStorage.setItem(`tm_v2_user_backup_${targetUserId}`, JSON.stringify(dataPackage));
     localStorage.setItem(`tm_v2_last_sync_${targetUserId}`, nowIso);
+    backupSavedToDedicatedKey = true;
   } catch (err) {
     console.warn('Storage sync warning:', err);
   }
 
-  // 2. Embed into UserAccount object inside ACCOUNTS list
+  // 2. Update UserAccount metadata inside ACCOUNTS list without duplicating multi-MB syncedData
+  //    when the dedicated backup key saved cleanly (preserving syncedData fallback only on error).
   try {
     const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
     const idx = accounts.findIndex((a) => a.id === targetUserId);
     if (idx >= 0) {
-      accounts[idx] = {
-        ...accounts[idx],
-        lastSyncAt: nowIso,
-        syncedData: dataPackage,
-      };
+      const { syncedData: _prevSyncedData, ...lightweightAccount } = accounts[idx];
+      accounts[idx] = backupSavedToDedicatedKey
+        ? {
+            ...lightweightAccount,
+            lastSyncAt: nowIso,
+          }
+        : {
+            ...lightweightAccount,
+            lastSyncAt: nowIso,
+            syncedData: dataPackage,
+          };
       saveList(STORAGE_KEYS.ACCOUNTS, accounts);
 
-      // Also update CURRENT_SESSION if active user
-      const rawCur = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
-      if (rawCur) {
-        const curUser = JSON.parse(rawCur);
-        if (curUser && curUser.id === targetUserId) {
-          localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(accounts[idx]));
-        }
+      // Keep CURRENT_SESSION lightweight (auth/account metadata without multi-MB syncedData duplication)
+      if (getActiveUserId() === targetUserId) {
+        const { syncedData: _omitSyncedData, ...lightweightSessionUser } = accounts[idx];
+        localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(lightweightSessionUser));
       }
     }
   } catch (err) {
     console.error('Account sync error:', err);
   }
 
+  lastSyncedAccountSnapshot.set(targetUserId, { rev: syncDirtyCounter, pkg: dataPackage });
   return dataPackage;
 }
 
@@ -1553,6 +1832,14 @@ export async function performFullSync(
         targetUserId
       );
 
+      try {
+        notificationDomainHooks?.onSyncOutcome?.({
+          outcome: 'success',
+          isManual,
+          userId: targetUserId,
+        });
+      } catch {}
+
       return {
         success: true,
         message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
@@ -1582,6 +1869,17 @@ export async function performFullSync(
       },
       targetUserId
     );
+
+    if (isServerUnreachable) {
+      try {
+        notificationDomainHooks?.onSyncOutcome?.({
+          outcome: 'server_failure',
+          errorReason: failureReason,
+          isManual,
+          userId: targetUserId,
+        });
+      } catch {}
+    }
 
     return {
       success: true,
@@ -1919,22 +2217,280 @@ function normalizeLuxuryAccentColor(color: string | undefined, idSeed: string, f
   return ALLOWED_LUXURY_HEX[Math.abs(hash) % ALLOWED_LUXURY_HEX.length];
 }
 
+function getStudentsSnapshot(userId?: string): StudentsDomainSnapshot {
+  const currentUserId = userId || getActiveUserId();
+  const rev = getKeyRevision(STORAGE_KEYS.STUDENTS);
+  const existing = studentsSnapshotByUser.get(currentUserId);
+  if (existing && existing.rev === rev) {
+    return existing;
+  }
+  const all = getListReadOnly<Student>(STORAGE_KEYS.STUDENTS, []);
+  const list: Student[] = [];
+  const activeList: Student[] = [];
+  const archivedList: Student[] = [];
+  const byId = new Map<string, Student>();
+
+  for (let i = 0; i < all.length; i++) {
+    const s = all[i];
+    if (!(s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher')) {
+      continue;
+    }
+    const normalizedColor = normalizeLuxuryAccentColor(s.avatarColor, s.id, '#17375E');
+    const normalizedStudent =
+      s.avatarColor === normalizedColor ? s : { ...s, avatarColor: normalizedColor };
+    list.push(normalizedStudent);
+    byId.set(normalizedStudent.id, normalizedStudent);
+    if (normalizedStudent.status === 'archived') {
+      archivedList.push(normalizedStudent);
+    } else {
+      activeList.push(normalizedStudent);
+    }
+  }
+
+  const snap: StudentsDomainSnapshot = { rev, list, activeList, archivedList, byId };
+  studentsSnapshotByUser.set(currentUserId, snap);
+  return snap;
+}
+
+function getGroupsSnapshot(userId?: string): GroupsDomainSnapshot {
+  const currentUserId = userId || getActiveUserId();
+  const rev = getKeyRevision(STORAGE_KEYS.GROUPS);
+  const existing = groupsSnapshotByUser.get(currentUserId);
+  if (existing && existing.rev === rev) {
+    return existing;
+  }
+  const all = getListReadOnly<Group>(STORAGE_KEYS.GROUPS, []);
+  const list: Group[] = [];
+  const byId = new Map<string, Group>();
+
+  for (let i = 0; i < all.length; i++) {
+    const g = all[i];
+    if (!(g.userId ? g.userId === currentUserId : currentUserId === 'acc_master_teacher')) {
+      continue;
+    }
+    const normalizedAccent = normalizeLuxuryAccentColor(
+      g.accentColor,
+      g.id,
+      g.type === 'private' ? '#0F2A4A' : '#17375E'
+    );
+    const normalizedGroup =
+      g.accentColor === normalizedAccent ? g : { ...g, accentColor: normalizedAccent };
+    list.push(normalizedGroup);
+    byId.set(normalizedGroup.id, normalizedGroup);
+  }
+
+  const snap: GroupsDomainSnapshot = { rev, list, byId };
+  groupsSnapshotByUser.set(currentUserId, snap);
+  return snap;
+}
+
+function getEnrollmentsSnapshot(userId?: string): EnrollmentsDomainSnapshot {
+  const currentUserId = userId || getActiveUserId();
+  const rev = getKeyRevision(STORAGE_KEYS.ENROLLMENTS);
+  const existing = enrollmentsSnapshotByUser.get(currentUserId);
+  if (existing && existing.rev === rev) {
+    return existing;
+  }
+  const all = getListReadOnly<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
+  const list: Enrollment[] = [];
+  const byId = new Map<string, Enrollment>();
+  const activeByStudentId = new Map<string, Enrollment[]>();
+  const activeByGroupId = new Map<string, Enrollment[]>();
+
+  for (let i = 0; i < all.length; i++) {
+    const e = all[i];
+    if (!(e.userId ? e.userId === currentUserId : currentUserId === 'acc_master_teacher')) {
+      continue;
+    }
+    list.push(e);
+    byId.set(e.id, e);
+    if (e.status !== 'stopped') {
+      const sArr = activeByStudentId.get(e.studentId);
+      if (sArr) sArr.push(e);
+      else activeByStudentId.set(e.studentId, [e]);
+
+      if (e.groupId) {
+        const gArr = activeByGroupId.get(e.groupId);
+        if (gArr) gArr.push(e);
+        else activeByGroupId.set(e.groupId, [e]);
+      }
+    }
+  }
+
+  const snap: EnrollmentsDomainSnapshot = {
+    rev,
+    list,
+    byId,
+    activeByStudentId,
+    activeByGroupId,
+  };
+  enrollmentsSnapshotByUser.set(currentUserId, snap);
+  return snap;
+}
+
+function getSessionsSnapshot(userId?: string): SessionsDomainSnapshot {
+  const currentUserId = userId || getActiveUserId();
+  const rev = getKeyRevision(STORAGE_KEYS.SESSIONS);
+  const existing = sessionsSnapshotByUser.get(currentUserId);
+  if (existing && existing.rev === rev) {
+    return existing;
+  }
+  const all = getListReadOnly<Session>(STORAGE_KEYS.SESSIONS, []);
+  const list: Session[] = [];
+  const byId = new Map<string, Session>();
+  const byGroupId = new Map<string, Session[]>();
+  const byStudentId = new Map<string, Session[]>();
+  const byEnrollmentId = new Map<string, Session[]>();
+
+  for (let i = 0; i < all.length; i++) {
+    const s = all[i];
+    if (!(s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher')) {
+      continue;
+    }
+    list.push(s);
+    byId.set(s.id, s);
+    if (s.groupId) {
+      const gArr = byGroupId.get(s.groupId);
+      if (gArr) gArr.push(s);
+      else byGroupId.set(s.groupId, [s]);
+    }
+    if (s.studentId) {
+      const stArr = byStudentId.get(s.studentId);
+      if (stArr) stArr.push(s);
+      else byStudentId.set(s.studentId, [s]);
+    }
+    if (s.enrollmentId) {
+      const eArr = byEnrollmentId.get(s.enrollmentId);
+      if (eArr) eArr.push(s);
+      else byEnrollmentId.set(s.enrollmentId, [s]);
+    }
+  }
+
+  const snap: SessionsDomainSnapshot = {
+    rev,
+    list,
+    byId,
+    byGroupId,
+    byStudentId,
+    byEnrollmentId,
+  };
+  sessionsSnapshotByUser.set(currentUserId, snap);
+  return snap;
+}
+
+function getAttendanceSnapshot(userId?: string): AttendanceDomainSnapshot {
+  const currentUserId = userId || getActiveUserId();
+  const rev = getKeyRevision(STORAGE_KEYS.ATTENDANCE);
+  const existing = attendanceSnapshotByUser.get(currentUserId);
+  if (existing && existing.rev === rev) {
+    return existing;
+  }
+  const all = getListReadOnly<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
+  const list: Attendance[] = [];
+  const bySessionId = new Map<string, Attendance[]>();
+  const byStudentId = new Map<string, Attendance[]>();
+
+  for (let i = 0; i < all.length; i++) {
+    const a = all[i];
+    if (!(a.userId ? a.userId === currentUserId : currentUserId === 'acc_master_teacher')) {
+      continue;
+    }
+    list.push(a);
+    const sesArr = bySessionId.get(a.sessionId);
+    if (sesArr) sesArr.push(a);
+    else bySessionId.set(a.sessionId, [a]);
+
+    const stArr = byStudentId.get(a.studentId);
+    if (stArr) stArr.push(a);
+    else byStudentId.set(a.studentId, [a]);
+  }
+
+  const snap: AttendanceDomainSnapshot = { rev, list, bySessionId, byStudentId };
+  attendanceSnapshotByUser.set(currentUserId, snap);
+  return snap;
+}
+
+function getPaymentsSnapshot(userId?: string): PaymentsDomainSnapshot {
+  const currentUserId = userId || getActiveUserId();
+  const rev = getKeyRevision(STORAGE_KEYS.PAYMENTS);
+  const existing = paymentsSnapshotByUser.get(currentUserId);
+  if (existing && existing.rev === rev) {
+    return existing;
+  }
+  const all = getListReadOnly<Payment>(STORAGE_KEYS.PAYMENTS, []);
+  const list: Payment[] = [];
+  const byStudentId = new Map<string, Payment[]>();
+  const byEnrollmentId = new Map<string, Payment[]>();
+
+  for (let i = 0; i < all.length; i++) {
+    const p = all[i];
+    if (!(p.userId ? p.userId === currentUserId : currentUserId === 'acc_master_teacher')) {
+      continue;
+    }
+    list.push(p);
+    const stArr = byStudentId.get(p.studentId);
+    if (stArr) stArr.push(p);
+    else byStudentId.set(p.studentId, [p]);
+
+    if (p.enrollmentId) {
+      const eArr = byEnrollmentId.get(p.enrollmentId);
+      if (eArr) eArr.push(p);
+      else byEnrollmentId.set(p.enrollmentId, [p]);
+    }
+  }
+
+  const snap: PaymentsDomainSnapshot = { rev, list, byStudentId, byEnrollmentId };
+  paymentsSnapshotByUser.set(currentUserId, snap);
+  return snap;
+}
+
+function getCreditLogsSnapshot(userId?: string): CreditLogsDomainSnapshot {
+  const currentUserId = userId || getActiveUserId();
+  const rev = getKeyRevision(STORAGE_KEYS.CREDIT_LOGS);
+  const existing = creditLogsSnapshotByUser.get(currentUserId);
+  if (existing && existing.rev === rev) {
+    return existing;
+  }
+  const all = getListReadOnly<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
+  const list: SessionCreditLog[] = [];
+  const byEnrollmentId = new Map<string, SessionCreditLog[]>();
+
+  for (let i = 0; i < all.length; i++) {
+    const l = all[i];
+    if (!(l.userId ? l.userId === currentUserId : currentUserId === 'acc_master_teacher')) {
+      continue;
+    }
+    list.push(l);
+    const eArr = byEnrollmentId.get(l.enrollmentId);
+    if (eArr) eArr.push(l);
+    else byEnrollmentId.set(l.enrollmentId, [l]);
+  }
+
+  byEnrollmentId.forEach((arr) => {
+    arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  });
+
+  const snap: CreditLogsDomainSnapshot = { rev, list, byEnrollmentId };
+  creditLogsSnapshotByUser.set(currentUserId, snap);
+  return snap;
+}
+
+const EMPTY_ENROLLMENTS: Enrollment[] = [];
+const EMPTY_ATTENDANCE: Attendance[] = [];
+const EMPTY_PAYMENTS: Payment[] = [];
+const EMPTY_CREDIT_LOGS: SessionCreditLog[] = [];
+
 // ==========================================
 export const db = {
+  getDomainRevision: (): number => dbDomainRevision,
+
   // 1. Students (الطلاب)
   getStudents: (userId?: string): Student[] => {
-    const currentUserId = userId || getActiveUserId();
-    const all = getList<Student>(STORAGE_KEYS.STUDENTS, []);
-    return all
-      .filter((s) => (s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher'))
-      .map((s) => ({
-        ...s,
-        avatarColor: normalizeLuxuryAccentColor(s.avatarColor, s.id, '#17375E'),
-      }));
+    return getStudentsSnapshot(userId).list;
   },
 
   getStudentById: (id: string): Student | undefined => {
-    return db.getStudents().find((s) => s.id === id);
+    return getStudentsSnapshot().byId.get(id);
   },
 
   saveStudent: (student: Student): void => {
@@ -1955,15 +2511,18 @@ export const db = {
       list.unshift(studentWithUser);
     }
     saveList(STORAGE_KEYS.STUDENTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
   },
 
   getActiveStudents: (userId?: string): Student[] => {
-    return db.getStudents(userId).filter((s) => s.status !== 'archived');
+    return getStudentsSnapshot(userId).activeList;
   },
 
   getArchivedStudents: (userId?: string): Student[] => {
-    return db.getStudents(userId).filter((s) => s.status === 'archived');
+    return getStudentsSnapshot(userId).archivedList;
   },
 
   archiveStudent: (id: string, reason?: string): void => {
@@ -1996,7 +2555,10 @@ export const db = {
       saveList(STORAGE_KEYS.ENROLLMENTS, updatedEnrs);
     }
 
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
   },
 
   restoreStudent: (id: string): Student | undefined => {
@@ -2030,7 +2592,10 @@ export const db = {
       saveList(STORAGE_KEYS.ENROLLMENTS, updatedEnrs);
     }
 
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
     return restored;
   },
 
@@ -2075,7 +2640,10 @@ export const db = {
     saveList(STORAGE_KEYS.BEHAVIOR_LOGS, behaviorLogs.filter((b) => b.studentId !== id));
     saveList(STORAGE_KEYS.SESSIONS, sessions.filter((s) => s.studentId !== id));
 
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -2089,18 +2657,11 @@ export const db = {
 
   // 2. Groups (المجموعات والدروس الخاصة)
   getGroups: (userId?: string): Group[] => {
-    const currentUserId = userId || getActiveUserId();
-    const all = getList<Group>(STORAGE_KEYS.GROUPS, []);
-    return all
-      .filter((g) => (g.userId ? g.userId === currentUserId : currentUserId === 'acc_master_teacher'))
-      .map((g) => ({
-        ...g,
-        accentColor: normalizeLuxuryAccentColor(g.accentColor, g.id, g.type === 'private' ? '#0F2A4A' : '#17375E'),
-      }));
+    return getGroupsSnapshot(userId).list;
   },
 
   getGroupById: (id: string): Group | undefined => {
-    return db.getGroups().find((g) => g.id === id);
+    return getGroupsSnapshot().byId.get(id);
   },
 
   saveGroup: (group: Group): void => {
@@ -2121,7 +2682,10 @@ export const db = {
       list.unshift(groupWithUser);
     }
     saveList(STORAGE_KEYS.GROUPS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
   },
 
   deleteGroup: (id: string): void => {
@@ -2152,51 +2716,57 @@ export const db = {
     saveList(STORAGE_KEYS.SESSIONS, sessions.filter((s) => s.groupId !== id));
     saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => !sessionIds.has(a.sessionId)));
 
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
     performFullSync(activeUserId, false).catch(() => {});
   },
 
   // 3. Enrollments (تسجيلات الطلاب في المجموعات والدروس الخاصة)
   getEnrollments: (userId?: string): Enrollment[] => {
-    const currentUserId = userId || getActiveUserId();
-    const all = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
-    return all.filter((e) => (e.userId ? e.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+    return getEnrollmentsSnapshot(userId).list;
   },
 
   getEnrollmentById: (id: string): Enrollment | undefined => {
-    return db.getEnrollments().find((e) => e.id === id);
+    return getEnrollmentsSnapshot().byId.get(id);
   },
 
   getStudentEnrollments: (studentId: string): Enrollment[] => {
-    return db.getEnrollments().filter((e) => e.studentId === studentId && e.status !== 'stopped');
+    return getEnrollmentsSnapshot().activeByStudentId.get(studentId) || EMPTY_ENROLLMENTS;
   },
 
   getGroupEnrollments: (groupId: string): Enrollment[] => {
-    if (!groupId) return [];
-    return db.getEnrollments().filter((e) => e.groupId === groupId && e.status !== 'stopped');
+    if (!groupId) return EMPTY_ENROLLMENTS;
+    return getEnrollmentsSnapshot().activeByGroupId.get(groupId) || EMPTY_ENROLLMENTS;
   },
 
-  getGroupStudents: (groupId: string): Student[] => {
+  getGroupStudents: (groupId: string, onDateStr?: string): Student[] => {
     if (!groupId) return [];
     const group = db.getGroupById(groupId);
+    const studentsSnap = getStudentsSnapshot();
     const enrollments = db.getGroupEnrollments(groupId).filter((e) => {
-      if (group && group.type !== 'private') {
-        return e.serviceType !== 'private';
+      if (group && group.type !== 'private' && e.serviceType === 'private') {
+        return false;
+      }
+      if (onDateStr) {
+        const st = studentsSnap.byId.get(e.studentId);
+        return isEnrollmentActiveOnDate(e, onDateStr, st);
       }
       return true;
     });
     const studentIds = new Set(enrollments.map((e) => e.studentId));
-    return db.getStudents().filter((s) => studentIds.has(s.id) && s.status !== 'archived');
+    return studentsSnap.activeList.filter((s) => studentIds.has(s.id));
   },
 
   getStudentGroups: (studentId: string): { group: Group; enrollment: Enrollment }[] => {
     const enrollments = db.getStudentEnrollments(studentId);
-    const groups = db.getGroups();
+    const groupsById = getGroupsSnapshot().byId;
     const result: { group: Group; enrollment: Enrollment }[] = [];
 
     for (const enr of enrollments) {
       if (!enr.groupId) continue;
-      const g = groups.find((grp) => grp.id === enr.groupId);
+      const g = groupsById.get(enr.groupId);
       // ONLY REAL GROUPS: Not private pseudo-groups and not serviceType private
       if (g && g.type !== 'private' && enr.serviceType !== 'private') {
         result.push({ group: g, enrollment: enr });
@@ -2207,11 +2777,11 @@ export const db = {
 
   getStudentPrivateEnrollments: (studentId: string): { group?: Group; enrollment: Enrollment }[] => {
     const enrollments = db.getStudentEnrollments(studentId);
-    const groups = db.getGroups();
+    const groupsById = getGroupsSnapshot().byId;
     const result: { group?: Group; enrollment: Enrollment }[] = [];
 
     for (const enr of enrollments) {
-      const g = enr.groupId ? groups.find((grp) => grp.id === enr.groupId) : undefined;
+      const g = enr.groupId ? groupsById.get(enr.groupId) : undefined;
       if (enr.serviceType === 'private' || g?.type === 'private') {
         result.push({ group: g, enrollment: enr });
       }
@@ -2258,6 +2828,10 @@ export const db = {
       scheduleTimes?: Record<string, string | string[]>;
       roomOrLocation?: string;
       notes?: string;
+      startDate?: string;
+      endDate?: string;
+      vacationPeriods?: VacationPeriod[];
+      joinedAt?: string;
     }
   ): { group?: Group; enrollment: Enrollment } => {
     const student = db.getStudentById(studentId);
@@ -2287,7 +2861,10 @@ export const db = {
       found.scheduleTimes = options.scheduleTimes;
       found.subject = options.subject;
       found.roomOrLocation = options.roomOrLocation;
-      found.notes = options.notes;
+      if (options.notes !== undefined) found.notes = options.notes;
+      if ('startDate' in options) found.startDate = options.startDate;
+      if ('endDate' in options) found.endDate = options.endDate;
+      if ('vacationPeriods' in options) found.vacationPeriods = options.vacationPeriods;
       found.status = 'active';
       found.updatedAt = new Date().toISOString();
       db.updateEnrollment(found);
@@ -2330,7 +2907,10 @@ export const db = {
       financialCredit: 0,
       discount: 0,
       status: 'active',
-      joinedAt: new Date().toISOString(),
+      joinedAt: options.joinedAt || new Date().toISOString(),
+      startDate: options.startDate,
+      endDate: options.endDate,
+      vacationPeriods: options.vacationPeriods,
       notes: options.notes,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -2352,6 +2932,10 @@ export const db = {
         updatedAt: new Date().toISOString(),
       });
     }
+
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
 
     return { enrollment: newEnrollment };
   },
@@ -2392,7 +2976,7 @@ export const db = {
     }
 
     if (found) {
-      // Re-activate if was paused/stopped, and update pricing options
+      // Re-activate if was paused/stopped, and update pricing & operational period options without overwriting unspecified fields
       found.status = 'active';
       if (resolvedOptions?.customPrice !== undefined) found.customPrice = resolvedOptions.customPrice;
       if (resolvedOptions?.billingType !== undefined) found.billingType = resolvedOptions.billingType;
@@ -2401,6 +2985,12 @@ export const db = {
       if (resolvedOptions?.pricingValue !== undefined) found.pricingValue = resolvedOptions.pricingValue;
       if (resolvedOptions?.baseSessionsPerMonth !== undefined) found.baseSessionsPerMonth = resolvedOptions.baseSessionsPerMonth;
       if (resolvedOptions?.extraSessionPrice !== undefined) found.extraSessionPrice = resolvedOptions.extraSessionPrice;
+      if (resolvedOptions?.scheduleDays !== undefined) found.scheduleDays = resolvedOptions.scheduleDays;
+      if (resolvedOptions?.scheduleTime !== undefined) found.scheduleTime = resolvedOptions.scheduleTime;
+      if (resolvedOptions?.scheduleTimes !== undefined) found.scheduleTimes = resolvedOptions.scheduleTimes;
+      if ('startDate' in resolvedOptions) found.startDate = resolvedOptions.startDate;
+      if ('endDate' in resolvedOptions) found.endDate = resolvedOptions.endDate;
+      if ('vacationPeriods' in resolvedOptions) found.vacationPeriods = resolvedOptions.vacationPeriods;
       db.updateEnrollment(found);
       return found;
     }
@@ -2417,15 +3007,22 @@ export const db = {
       pricingType: resolvedOptions?.pricingType || 'same_as_group',
       pricingValue: resolvedOptions?.pricingValue || 0,
       customPrice: calculatedPrice,
+      hourlyRate: resolvedOptions?.hourlyRate,
       baseSessionsPerMonth: resolvedOptions?.baseSessionsPerMonth || baseSessions,
       extraSessionPrice: resolvedOptions?.extraSessionPrice,
       packageSessionsCount: resolvedOptions?.packageSessionsCount || 8,
       packagePrice: resolvedOptions?.packagePrice || calculatedPrice,
+      scheduleDays: resolvedOptions?.scheduleDays,
+      scheduleTime: resolvedOptions?.scheduleTime,
+      scheduleTimes: resolvedOptions?.scheduleTimes,
       sessionCredit: resolvedOptions?.sessionCredit || 0,
       financialCredit: resolvedOptions?.financialCredit || 0,
       discount: resolvedOptions?.discount || 0,
       status: resolvedOptions?.status || 'active',
       joinedAt: resolvedOptions?.joinedAt || toLocalISODate(),
+      startDate: resolvedOptions?.startDate,
+      endDate: resolvedOptions?.endDate,
+      vacationPeriods: resolvedOptions?.vacationPeriods,
       notes: resolvedOptions?.notes || '',
       updatedAt: now,
       createdAt: now,
@@ -2435,7 +3032,10 @@ export const db = {
     const allEnrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
     allEnrollments.unshift(newEnrollment);
     saveList(STORAGE_KEYS.ENROLLMENTS, allEnrollments);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
     return newEnrollment;
   },
 
@@ -2444,7 +3044,10 @@ export const db = {
     addDeletionTombstone('enrollment', enrollmentId, activeUserId);
     const list = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []).filter((e) => e.id !== enrollmentId);
     saveList(STORAGE_KEYS.ENROLLMENTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
   },
 
   updateEnrollment: (enrollment: Enrollment): void => {
@@ -2468,7 +3071,10 @@ export const db = {
       });
     }
     saveList(STORAGE_KEYS.ENROLLMENTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
   },
 
   /**
@@ -2477,14 +3083,17 @@ export const db = {
   updateEnrollmentBilling: (
     enrollmentId: string,
     updates: {
-      billingType: BillingType;
+      billingType?: BillingType;
       billingMode?: BillingMode;
-      customPrice: number;
+      customPrice?: number;
       hourlyRate?: number;
       baseSessionsPerMonth?: number;
       extraSessionPrice?: number;
       packageSessionsCount?: number;
       packagePrice?: number;
+      startDate?: string;
+      endDate?: string;
+      vacationPeriods?: VacationPeriod[];
     }
   ): Enrollment | undefined => {
     const enr = db.getEnrollmentById(enrollmentId);
@@ -2492,14 +3101,17 @@ export const db = {
 
     const updated: Enrollment = {
       ...enr,
-      billingType: updates.billingType,
-      billingMode: updates.billingMode || (updates.billingType as any),
-      customPrice: updates.customPrice,
-      hourlyRate: updates.hourlyRate,
-      baseSessionsPerMonth: updates.baseSessionsPerMonth,
-      extraSessionPrice: updates.extraSessionPrice,
-      packageSessionsCount: updates.packageSessionsCount,
-      packagePrice: updates.packagePrice,
+      billingType: updates.billingType ?? enr.billingType,
+      billingMode: updates.billingMode ?? (updates.billingType as any) ?? enr.billingMode,
+      customPrice: updates.customPrice !== undefined ? updates.customPrice : enr.customPrice,
+      hourlyRate: 'hourlyRate' in updates ? updates.hourlyRate : enr.hourlyRate,
+      baseSessionsPerMonth: 'baseSessionsPerMonth' in updates ? updates.baseSessionsPerMonth : enr.baseSessionsPerMonth,
+      extraSessionPrice: 'extraSessionPrice' in updates ? updates.extraSessionPrice : enr.extraSessionPrice,
+      packageSessionsCount: 'packageSessionsCount' in updates ? updates.packageSessionsCount : enr.packageSessionsCount,
+      packagePrice: 'packagePrice' in updates ? updates.packagePrice : enr.packagePrice,
+      startDate: 'startDate' in updates ? (updates.startDate?.trim() || undefined) : enr.startDate,
+      endDate: 'endDate' in updates ? (updates.endDate?.trim() || undefined) : enr.endDate,
+      vacationPeriods: 'vacationPeriods' in updates ? updates.vacationPeriods : enr.vacationPeriods,
     };
 
     db.updateEnrollment(updated);
@@ -2508,13 +3120,11 @@ export const db = {
 
   // 4. Sessions (الحصص)
   getSessions: (userId?: string): Session[] => {
-    const currentUserId = userId || getActiveUserId();
-    const all = getList<Session>(STORAGE_KEYS.SESSIONS, []);
-    return all.filter((s) => (s.userId ? s.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+    return getSessionsSnapshot(userId).list;
   },
 
   getSessionById: (id: string): Session | undefined => {
-    return db.getSessions().find((s) => s.id === id);
+    return getSessionsSnapshot().byId.get(id);
   },
 
   saveSession: (session: Session): void => {
@@ -2535,7 +3145,10 @@ export const db = {
       list.unshift(sessionWithUser);
     }
     saveList(STORAGE_KEYS.SESSIONS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
   },
 
   /**
@@ -2973,37 +3586,33 @@ export const db = {
 
     const remainingAtt = attendance.filter((a) => a.sessionId !== id);
     saveList(STORAGE_KEYS.ATTENDANCE, remainingAtt);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+    } catch {}
     performFullSync(activeUserId, false).catch(() => {});
   },
 
   // 5. Attendance (الحضور والغياب)
   getAttendance: (userId?: string): Attendance[] => {
-    const currentUserId = userId || getActiveUserId();
-    const all = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
-    return all.filter((a) => (a.userId ? a.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+    return getAttendanceSnapshot(userId).list;
   },
 
   getSessionAttendance: (sessionId: string): Attendance[] => {
-    return db.getAttendance().filter((a) => a.sessionId === sessionId);
+    return getAttendanceSnapshot().bySessionId.get(sessionId) || EMPTY_ATTENDANCE;
   },
 
   getStudentAttendance: (studentId: string): Attendance[] => {
-    return db.getAttendance().filter((a) => a.studentId === studentId);
+    return getAttendanceSnapshot().byStudentId.get(studentId) || EMPTY_ATTENDANCE;
   },
 
   // 5.1 Session Credit Logs (سجل حركات رصيد الحصص الدفع المسبق)
   getCreditLogs: (userId?: string): SessionCreditLog[] => {
-    const currentUserId = userId || getActiveUserId();
-    const all = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
-    return all.filter((l) => (l.userId ? l.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+    return getCreditLogsSnapshot(userId).list;
   },
 
   getEnrollmentCreditLogs: (enrollmentId: string): SessionCreditLog[] => {
-    return db
-      .getCreditLogs()
-      .filter((log) => log.enrollmentId === enrollmentId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return getCreditLogsSnapshot().byEnrollmentId.get(enrollmentId) || EMPTY_CREDIT_LOGS;
   },
 
   addCreditLog: (logData: Omit<SessionCreditLog, 'id' | 'createdAt'>): SessionCreditLog => {
@@ -3156,23 +3765,34 @@ export const db = {
       }
     }
 
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onAttendanceBatchSaved?.({
+        sessionId,
+        session: db.getSessionById(sessionId) || session,
+        newRecords: mergedSessionAttendance,
+        oldRecords: oldSessionAttendance,
+        userId: activeUserId,
+      });
+    } catch {}
   },
 
   // 6. Payments Engine (نظام المدفوعات والتحصيلات المتطور)
   getPayments: (userId?: string): Payment[] => {
-    const currentUserId = userId || getActiveUserId();
-    const all = getList<Payment>(STORAGE_KEYS.PAYMENTS, []);
-    return all.filter((p) => (p.userId ? p.userId === currentUserId : currentUserId === 'acc_master_teacher'));
+    return getPaymentsSnapshot(userId).list;
   },
 
   getStudentPayments: (studentId: string): Payment[] => {
-    return db.getPayments().filter((p) => p.studentId === studentId);
+    return getPaymentsSnapshot().byStudentId.get(studentId) || EMPTY_PAYMENTS;
   },
 
   getEnrollmentPayments: (enrollmentId: string): Payment[] => {
     const enr = db.getEnrollmentById(enrollmentId);
-    return db.getPayments().filter((p) => {
+    const paymentsSnap = getPaymentsSnapshot();
+    const studentPayments = enr
+      ? paymentsSnap.byStudentId.get(enr.studentId) || EMPTY_PAYMENTS
+      : paymentsSnap.byEnrollmentId.get(enrollmentId) || EMPTY_PAYMENTS;
+    return studentPayments.filter((p) => {
       if (p.enrollmentId === enrollmentId) return true;
       if (!p.enrollmentId && enr && p.studentId === enr.studentId && p.groupId === enr.groupId) return true;
       return false;
@@ -3396,7 +4016,13 @@ export const db = {
     removeDeletionTombstone('payment', paymentId, activeUserId);
     payments.unshift(newPayment);
     saveList(STORAGE_KEYS.PAYMENTS, payments);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onPaymentRecorded?.({
+        payment: newPayment,
+        userId: activeUserId,
+      });
+    } catch {}
     return newPayment;
   },
 
@@ -3418,7 +4044,10 @@ export const db = {
       list.unshift(paymentWithUser);
     }
     saveList(STORAGE_KEYS.PAYMENTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onFinancialsMutated?.(activeUserId);
+    } catch {}
   },
 
   deletePayment: (id: string): void => {
@@ -3426,7 +4055,10 @@ export const db = {
     addDeletionTombstone('payment', id, activeUserId);
     const list = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter((p) => p.id !== id);
     saveList(STORAGE_KEYS.PAYMENTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
+    try {
+      notificationDomainHooks?.onFinancialsMutated?.(activeUserId);
+    } catch {}
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -3466,7 +4098,8 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.TEACHER_PROFILE, JSON.stringify(profile));
       }
-      autoSyncUserAccount(currentUserId);
+      syncDirtyCounter++;
+      scheduleAutoSyncUserAccount(currentUserId);
     } catch {}
   },
 
@@ -3492,7 +4125,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_SETTINGS, JSON.stringify(settings));
       }
-      autoSyncUserAccount(currentUserId);
+      notificationDomainHooks?.onNotificationSettingsChanged?.(currentUserId);
     } catch {}
   },
 
@@ -3530,6 +4163,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
       }
+      notificationDomainHooks?.onNotificationStateMutated?.(currentUserId);
     } catch {}
   },
 
@@ -3549,6 +4183,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
       }
+      notificationDomainHooks?.onNotificationStateMutated?.(currentUserId);
     } catch {}
   },
 
@@ -3565,6 +4200,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
       }
+      notificationDomainHooks?.onNotificationStateMutated?.(currentUserId);
     } catch {}
   },
 
@@ -3600,7 +4236,7 @@ export const db = {
       list.unshift(testWithUser);
     }
     saveList(STORAGE_KEYS.HOMEWORK_TESTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
     return testWithUser;
   },
 
@@ -3609,7 +4245,7 @@ export const db = {
     addDeletionTombstone('homeworkTest', id, activeUserId);
     const list = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []).filter((t) => t.id !== id);
     saveList(STORAGE_KEYS.HOMEWORK_TESTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -3649,7 +4285,7 @@ export const db = {
       list.unshift(assignmentWithUser);
     }
     saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
     return assignmentWithUser;
   },
 
@@ -3677,7 +4313,7 @@ export const db = {
     }
 
     saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, Array.from(map.values()));
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
     return savedItems;
   },
 
@@ -3686,7 +4322,7 @@ export const db = {
     addDeletionTombstone('homeworkAssignment', id, activeUserId);
     const list = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []).filter((a) => a.id !== id);
     saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -3827,7 +4463,7 @@ export const db = {
       list.unshift(logWithUser);
     }
     saveList(STORAGE_KEYS.BEHAVIOR_LOGS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
     return logWithUser;
   },
 
@@ -3836,7 +4472,7 @@ export const db = {
     addDeletionTombstone('behaviorLog', id, activeUserId);
     const list = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []).filter((b) => b.id !== id);
     saveList(STORAGE_KEYS.BEHAVIOR_LOGS, list);
-    autoSyncUserAccount(activeUserId);
+    scheduleAutoSyncUserAccount(activeUserId);
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -3849,8 +4485,17 @@ export const db = {
    * حساب السجل المالي والمحاسبي الكامل لاشتراك محدد لطالب في مجموعة أو درس خاص
    */
   calculateEnrollmentFinancials: (enrollmentId: string): EnrollmentFinancialSummary | undefined => {
+    const activeUserId = getActiveUserId();
+    const cacheKey = `${activeUserId}:${dbDomainRevision}:${getCurrentYearMonthCacheToken()}:${enrollmentId}`;
+    if (enrollmentFinancialsCache.has(cacheKey)) {
+      return enrollmentFinancialsCache.get(cacheKey);
+    }
+
     const enrollment = db.getEnrollmentById(enrollmentId);
-    if (!enrollment) return undefined;
+    if (!enrollment) {
+      enrollmentFinancialsCache.set(cacheKey, undefined);
+      return undefined;
+    }
 
     const isPrivateService = enrollment.serviceType === 'private';
     const group = enrollment.groupId ? db.getGroupById(enrollment.groupId) : undefined;
@@ -3860,7 +4505,8 @@ export const db = {
     const groupType = isPrivateService ? 'private' : (group ? group.type : enrollment.serviceType);
     const accentColor = group ? group.accentColor : (isPrivateService ? '#0F2A4A' : '#17375E');
 
-    const allGroupSessions = db.getSessions().filter((s) => {
+    const sessionsSnap = getSessionsSnapshot(activeUserId);
+    const allGroupSessions = sessionsSnap.list.filter((s) => {
       if (s.enrollmentId && s.enrollmentId === enrollment.id) return true;
       if (enrollment.groupId && s.groupId === enrollment.groupId) return true;
       if (isPrivateService && s.studentId === enrollment.studentId) return true;
@@ -3881,7 +4527,7 @@ export const db = {
 
     const attendedCount = consumedAttendance.length;
     const consumedUnits = consumedAttendance.reduce((sum, a) => {
-      const sess = sessions.find((s) => s.id === a.sessionId);
+      const sess = sessionsSnap.byId.get(a.sessionId);
       const units =
         a.sessionUnits !== undefined && a.sessionUnits !== null
           ? Number(a.sessionUnits)
@@ -3928,29 +4574,61 @@ export const db = {
       );
 
     if (enrollment.billingType === 'monthly') {
-      // Collect months where student has activity (enrollment join date, sessions, or payments)
+      // Collect months where student has operational activity (start/join date, attended/active sessions, or payments)
       const monthsSet = new Set<string>();
+      const studentObj = getStudentsSnapshot(activeUserId).byId.get(enrollment.studentId);
+      const { startDate: effStart, endDate: effEnd, vacationPeriods: effVacations } =
+        getEffectiveEnrollmentPeriod(enrollment, studentObj);
+      const hasConfiguredPeriod =
+        Boolean(effStart) || Boolean(effEnd) || effVacations.length > 0;
 
-      // Join date month
-      if (enrollment.joinedAt) {
+      const now = new Date();
+      const todayLocalStr = toLocalISODate(now);
+      const curYear = now.getFullYear();
+      const curMonth = now.getMonth() + 1;
+      const curMonthFirstDay = `${curYear}-${String(curMonth).padStart(2, '0')}-01`;
+      const curMonthLastDay = `${curYear}-${String(curMonth).padStart(2, '0')}-${String(
+        new Date(curYear, curMonth, 0).getDate()
+      ).padStart(2, '0')}`;
+
+      // Operational start month or legacy join month
+      if (effStart) {
+        if (effStart <= todayLocalStr && (!effEnd || effStart <= effEnd)) {
+          const d = parseLocalDateStr(effStart);
+          if (!isNaN(d.getTime())) {
+            monthsSet.add(`${d.getFullYear()}-${d.getMonth() + 1}`);
+          }
+        }
+      } else if (enrollment.joinedAt) {
         const d = parseLocalDateStr(enrollment.joinedAt);
         if (!isNaN(d.getTime())) {
-          monthsSet.add(`${d.getFullYear()}-${d.getMonth() + 1}`);
+          const joinedDateStr = toLocalISODate(d);
+          if (!effEnd || joinedDateStr <= effEnd) {
+            monthsSet.add(`${d.getFullYear()}-${d.getMonth() + 1}`);
+          }
         }
       }
 
-      // Current month
-      const now = new Date();
-      monthsSet.add(`${now.getFullYear()}-${now.getMonth() + 1}`);
+      // Current month (only if enrollment has started by end of current month and hasn't ended before start of current month)
+      if ((!effStart || effStart <= curMonthLastDay) && (!effEnd || effEnd >= curMonthFirstDay)) {
+        monthsSet.add(`${curYear}-${curMonth}`);
+      }
 
-      // Months from sessions
+      // Months from sessions (always include months with actual student attendance; only include unrecorded/group-wide sessions when enrollment was active on s.date)
+      const consumedSessionIdsForStudent = new Set(consumedAttendance.map((a) => a.sessionId));
       sessions.forEach((s) => {
         if (s.month && s.year) {
-          monthsSet.add(`${s.year}-${s.month}`);
+          if (
+            consumedSessionIdsForStudent.has(s.id) ||
+            !hasConfiguredPeriod ||
+            (s.date && isEnrollmentActiveOnDate(enrollment, s.date, studentObj))
+          ) {
+            monthsSet.add(`${s.year}-${s.month}`);
+          }
         }
       });
 
-      // Months from payments
+      // Months from payments (always preserved 100%)
       payments.forEach((p) => {
         if (p.targetYear && p.targetMonth) {
           monthsSet.add(`${p.targetYear}-${p.targetMonth}`);
@@ -4226,7 +4904,7 @@ export const db = {
 
     const creditLogs = db.getEnrollmentCreditLogs(enrollment.id);
 
-    return {
+    const summary: EnrollmentFinancialSummary = {
       enrollmentId: enrollment.id,
       groupId: enrollment.groupId,
       groupName,
@@ -4261,13 +4939,25 @@ export const db = {
       creditLogs,
       monthlyLedger,
       payments,
+      startDate: enrollment.startDate,
+      endDate: enrollment.endDate,
+      vacationPeriods: enrollment.vacationPeriods,
     };
+    enrollmentFinancialsCache.set(cacheKey, summary);
+    return summary;
   },
 
   /**
    * حساب التقرير المالي الشامل للطالب عبر كل المجموعات والدروس الخاصة
    */
   calculateStudentGrandFinancials: (studentId: string): StudentGrandFinancialSummary => {
+    const activeUserId = getActiveUserId();
+    const cacheKey = `${activeUserId}:${dbDomainRevision}:${getCurrentYearMonthCacheToken()}:${studentId}`;
+    const cached = studentGrandFinancialsCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const student = db.getStudentById(studentId);
     const studentName = student ? student.name : 'طالب غير محدد';
     const enrollments = db.getStudentEnrollments(studentId);
@@ -4367,7 +5057,7 @@ export const db = {
       2
     );
 
-    return {
+    const grandSummary: StudentGrandFinancialSummary = {
       studentId,
       studentName,
       enrollmentsSummary,
@@ -4389,18 +5079,29 @@ export const db = {
       hasGroupService: groupSummaries.length > 0,
       hasPrivateService: privateSummaries.length > 0,
     };
+    studentGrandFinancialsCache.set(cacheKey, grandSummary);
+    return grandSummary;
   },
 
   /**
    * حساب التقرير المالي للمجموعة مع تفاصيل كل طالب
    */
   calculateGroupFinancials: (groupId: string): GroupFinancialSummary | undefined => {
+    const activeUserId = getActiveUserId();
+    const cacheKey = `${activeUserId}:${dbDomainRevision}:${getCurrentYearMonthCacheToken()}:${groupId}`;
+    if (groupFinancialsCache.has(cacheKey)) {
+      return groupFinancialsCache.get(cacheKey);
+    }
+
     const group = db.getGroupById(groupId);
-    if (!group) return undefined;
+    if (!group) {
+      groupFinancialsCache.set(cacheKey, undefined);
+      return undefined;
+    }
 
     const enrollments = db.getGroupEnrollments(groupId);
-    const students = db.getStudents();
-    const sessions = db.getSessions().filter((s) => s.groupId === groupId);
+    const studentsById = getStudentsSnapshot(activeUserId).byId;
+    const sessions = getSessionsSnapshot(activeUserId).byGroupId.get(groupId) || [];
     const completedSessions = sessions.filter((s) => s.status === 'completed');
 
     let totalDue = 0;
@@ -4411,7 +5112,7 @@ export const db = {
     const studentsSummary: GroupFinancialSummary['studentsSummary'] = [];
 
     for (const enr of enrollments) {
-      const st = students.find((s) => s.id === enr.studentId);
+      const st = studentsById.get(enr.studentId);
       if (!st) continue;
 
       const enrSummary = db.calculateEnrollmentFinancials(enr.id);
@@ -4436,12 +5137,12 @@ export const db = {
 
     const isHourlyGroup = group.billingType === 'hourly' || group.billingMode === 'hourly';
     const isPrivateGroup = group.type === 'private';
-    const allAtt = db.getAttendance();
+    const attBySession = getAttendanceSnapshot(activeUserId).bySessionId;
     const completedLessonsOrSessionsCount =
       isPrivateGroup && !isHourlyGroup
         ? roundMoney(
             completedSessions.reduce((sum, s) => {
-              const att = allAtt.find((a) => a.sessionId === s.id);
+              const att = attBySession.get(s.id)?.[0];
               return sum + getSessionLessonQuantity(s, att);
             }, 0),
             2
@@ -4450,7 +5151,7 @@ export const db = {
 
     const remainingAmount = Math.max(0, subtractMoney(totalDue, totalPaid));
 
-    return {
+    const summary: GroupFinancialSummary = {
       groupId: group.id,
       groupName: group.name,
       groupType: group.type,
@@ -4471,6 +5172,8 @@ export const db = {
       totalPrepaidCredits,
       studentsSummary,
     };
+    groupFinancialsCache.set(cacheKey, summary);
+    return summary;
   },
 
   /**
@@ -4503,6 +5206,8 @@ export const db = {
     const allGroups = db.getGroups();
     const allEnrs = db.getEnrollments();
     const allStudents = db.getStudents();
+    const studentsById = new Map<string, Student>();
+    allStudents.forEach((st) => studentsById.set(st.id, st));
     const scheduledItems = getScheduledClassesForDate(date, allGroups, allStudents, allEnrs);
     const studentScheduledPrivate = scheduledItems.filter(
       (it) => it.isPrivate && (it.studentId === studentId || it.studentName === studentName)
@@ -4510,9 +5215,20 @@ export const db = {
 
     const sessionItems: TodayPrivateSessionItem[] = [];
 
-    // 1. First add recorded / existing session records for today
+    // 1. First add recorded / active session records for today
     todaySessions.forEach((s) => {
       const att = todayAttendance.find((a) => a.sessionId === s.id);
+      if (
+        !isExplicitPrivateSessionOperationalOnDate(
+          s,
+          date,
+          allEnrs,
+          studentsById,
+          Boolean(att) || s.status === 'completed'
+        )
+      ) {
+        return;
+      }
       const enr = allEnrollments.find(
         (e) => e.enrollment.id === s.enrollmentId || e.enrollment.groupId === s.groupId
       )?.enrollment;
@@ -4741,11 +5457,20 @@ export const db = {
    * مع احتساب حصص الدفع المسبق المؤكدة كإيراد محصل فعلياً
    */
   calculateFinancialHistory: (userId?: string): LifetimeFinancialSummary => {
-    const groups = db.getGroups(userId);
-    const enrollments = db.getEnrollments(userId);
-    const sessions = db.getSessions(userId);
-    const attendance = db.getAttendance(userId);
-    const payments = db.getPayments(userId);
+    const resolvedUserId = userId || getActiveUserId();
+    const cacheKey = `${resolvedUserId}:${dbDomainRevision}:${getCurrentYearMonthCacheToken()}`;
+    const cached = financialHistoryCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const groupsSnap = getGroupsSnapshot(resolvedUserId);
+    const groups = groupsSnap.list;
+    const enrollmentsSnap = getEnrollmentsSnapshot(resolvedUserId);
+    const enrollments = enrollmentsSnap.list;
+    const sessions = getSessionsSnapshot(resolvedUserId).list;
+    const attendanceSnap = getAttendanceSnapshot(resolvedUserId);
+    const payments = getPaymentsSnapshot(resolvedUserId).list;
 
     // Collect all months with activity (from sessions, payments, and current month)
     const monthKeysSet = new Set<string>();
@@ -4827,17 +5552,17 @@ export const db = {
         const isCancelled = s.status === 'cancelled';
         if (isCancelled) cancelledCount++;
 
-        const grp = groups.find((g) => g.id === s.groupId);
+        const grp = s.groupId ? groupsSnap.byId.get(s.groupId) : undefined;
         const isPrivate = !!s.studentId || grp?.type === 'private' || s.groupId.startsWith('private_');
         const targetB = isPrivate ? privateBreakdown : groupBreakdown;
 
-        const sAttendance = attendance.filter((a) => a.sessionId === s.id);
-        const sEnr = enrollments.find(
-          (e) =>
-            e.id === s.enrollmentId ||
-            (sAttendance[0]?.enrollmentId && e.id === sAttendance[0].enrollmentId) ||
-            (s.studentId && e.studentId === s.studentId && e.groupId === s.groupId)
-        );
+        const sAttendance = attendanceSnap.bySessionId.get(s.id) || EMPTY_ATTENDANCE;
+        const sEnr =
+          (s.enrollmentId ? enrollmentsSnap.byId.get(s.enrollmentId) : undefined) ||
+          (sAttendance[0]?.enrollmentId ? enrollmentsSnap.byId.get(sAttendance[0].enrollmentId) : undefined) ||
+          (s.studentId
+            ? enrollments.find((e) => e.studentId === s.studentId && e.groupId === s.groupId)
+            : undefined);
         const isSessionHourly =
           s.isHourly === true ||
           s.billingMode === 'hourly' ||
@@ -5142,7 +5867,7 @@ export const db = {
       lifePriv.totalRemaining = addMoney(lifePriv.totalRemaining, m.private.totalRemaining);
     });
 
-    return {
+    const lifetimeSummary: LifetimeFinancialSummary = {
       totalCompletedSessions: lifetimeCompleted,
       presentSessionsCount: lifetimePresent,
       lateSessionsCount: lifetimeLate,
@@ -5157,6 +5882,8 @@ export const db = {
       years: yearRecords,
       months: [...monthRecords].reverse(),
     };
+    financialHistoryCache.set(cacheKey, lifetimeSummary);
+    return lifetimeSummary;
   },
 
   /**
@@ -5308,20 +6035,24 @@ export const db = {
     let dataToRestore: UserAccountDataPackage | null = explicitData || null;
 
     if (!dataToRestore) {
-      // 1. Try from user account object
-      const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
-      const acc = accounts.find((a) => a.id === targetUserId);
-      if (acc?.syncedData) {
-        dataToRestore = acc.syncedData;
-      }
-    }
-
-    if (!dataToRestore) {
-      // 2. Try from dedicated user backup key
+      // 1. Primary lookup from dedicated user backup key, with timestamp-aware fallback to legacy embedded syncedData
+      let backupPkg: UserAccountDataPackage | null = null;
       try {
         const raw = localStorage.getItem(`tm_v2_user_backup_${targetUserId}`);
-        if (raw) dataToRestore = JSON.parse(raw);
+        if (raw) backupPkg = JSON.parse(raw);
       } catch {}
+
+      const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+      const acc = accounts.find((a) => a.id === targetUserId);
+      const legacyEmbeddedPkg = acc?.syncedData || null;
+
+      if (backupPkg && legacyEmbeddedPkg) {
+        const backupTs = new Date(backupPkg.lastSyncTime || 0).getTime();
+        const legacyTs = new Date(legacyEmbeddedPkg.lastSyncTime || 0).getTime();
+        dataToRestore = legacyTs > backupTs ? legacyEmbeddedPkg : backupPkg;
+      } else {
+        dataToRestore = backupPkg || legacyEmbeddedPkg;
+      }
     }
 
     if (!dataToRestore) {
@@ -5465,6 +6196,9 @@ export const db = {
       });
 
       autoSyncUserAccount(targetUserId);
+      try {
+        notificationDomainHooks?.onScheduleChanged?.(targetUserId);
+      } catch {}
 
       return {
         success: true,
@@ -5559,6 +6293,9 @@ export const db = {
       }
       if (data.teacherProfile) db.saveTeacherProfile(data.teacherProfile);
       autoSyncUserAccount(activeUserId);
+      try {
+        notificationDomainHooks?.onScheduleChanged?.(activeUserId);
+      } catch {}
       return true;
     } catch (err) {
       console.error('Import error:', err);
@@ -5597,9 +6334,23 @@ export const db = {
   },
 
   setCurrentSession: (user: UserAccount | null): void => {
+    const prevUserId = getActiveUserId();
     if (!user) {
+      activeUserIdMemo = 'acc_master_teacher';
+      dbDomainRevision++;
+      clearDerivedFinancialCaches();
       localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
+      try {
+        notificationDomainHooks?.onUserSessionChanged?.({
+          prevUserId,
+          nextUserId: activeUserIdMemo,
+          isLogout: true,
+        });
+      } catch {}
     } else {
+      activeUserIdMemo = user.id || 'acc_master_teacher';
+      dbDomainRevision++;
+      clearDerivedFinancialCaches();
       if (!user.authToken) {
         const storedToken = localStorage.getItem(`tm_v2_auth_token_${user.id}`);
         if (storedToken && storedToken.trim()) {
@@ -5611,7 +6362,31 @@ export const db = {
           localStorage.setItem(`tm_v2_auth_token_${user.id}`, user.authToken.trim());
         } catch {}
       }
-      localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(user));
+      const { syncedData: _omitSyncedData, ...lightweightUser } = user;
+      localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(lightweightUser));
+      if (prevUserId !== activeUserIdMemo) {
+        try {
+          notificationDomainHooks?.onUserSessionChanged?.({
+            prevUserId,
+            nextUserId: activeUserIdMemo,
+            isLogout: false,
+          });
+        } catch {}
+      }
+    }
+  },
+
+  warmCaches: (userId?: string): void => {
+    const targetUserId = userId || getActiveUserId();
+    const students = getStudentsSnapshot(targetUserId).list;
+    getGroupsSnapshot(targetUserId);
+    getEnrollmentsSnapshot(targetUserId);
+    getSessionsSnapshot(targetUserId);
+    getAttendanceSnapshot(targetUserId);
+    getPaymentsSnapshot(targetUserId);
+    getCreditLogsSnapshot(targetUserId);
+    for (let i = 0; i < students.length; i++) {
+      db.calculateStudentGrandFinancials(students[i].id);
     }
   },
 
@@ -6024,8 +6799,15 @@ export const db = {
     saveDeletionTombstones([], targetUserId);
 
     // 5. Clear backup and userAccount.syncedData
+    lastSyncedAccountSnapshot.delete(targetUserId);
+    syncDirtyCounter++;
     try {
       localStorage.removeItem(`tm_v2_user_backup_${targetUserId}`);
+      localStorage.removeItem(`tm_v2_last_sync_${targetUserId}`);
+    } catch {}
+
+    try {
+      notificationDomainHooks?.onDataCleared?.(targetUserId);
     } catch {}
 
     const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Student, Group, BillingType, BillingMode, PricingModifierType } from '../types';
 import { db, calculateCustomEnrollmentPrice } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
@@ -10,7 +10,13 @@ import {
   CanonicalWeekday,
   normalizeScheduleTimesList,
   getLocalizedWeekdayName,
+  validateEnrollmentPeriod,
 } from '../utils/schedule';
+import {
+  EnrollmentPeriodFields,
+  EnrollmentPeriodFormValue,
+  sanitizePeriodForPersistence,
+} from './EnrollmentPeriodFields';
 
 interface EnrollExistingStudentModalProps {
   isOpen: boolean;
@@ -84,6 +90,20 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   const [pricingType, setPricingType] = useState<PricingModifierType>('standard');
   const [pricingValue, setPricingValue] = useState<number>(0);
 
+  const [periodValue, setPeriodValue] = useState<EnrollmentPeriodFormValue>({
+    startDate: undefined,
+    endDate: undefined,
+    vacationPeriods: [],
+  });
+  const [periodError, setPeriodError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPeriodValue({ startDate: undefined, endDate: undefined, vacationPeriods: [] });
+      setPeriodError(null);
+    }
+  }, [isOpen]);
+
   const basePrice = selectedGroup ? selectedGroup.defaultPrice : 0;
   const calculatedFinalPrice = calculateCustomEnrollmentPrice(basePrice, pricingType, pricingValue);
 
@@ -150,6 +170,18 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
   const handleSave = () => {
     if (selectedStudentIds.length === 0) return;
 
+    const validation = validateEnrollmentPeriod(periodValue, language);
+    if (!validation.valid) {
+      setPeriodError(validation.errors[0]);
+      return;
+    }
+    setPeriodError(null);
+
+    const cleanPeriod = sanitizePeriodForPersistence(periodValue);
+    const hasPeriodPayload = Boolean(
+      cleanPeriod.startDate || cleanPeriod.endDate || cleanPeriod.vacationPeriods.length > 0
+    );
+
     if (enrollmentKind === 'private_service') {
       const isPkg = privBillingMode === 'package';
       const isHr = privBillingMode === 'hourly';
@@ -177,6 +209,9 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
           scheduleTime: primaryTime,
           scheduleTimes: cleanPrivTimes,
           roomOrLocation: privLocation,
+          startDate: cleanPeriod.startDate,
+          endDate: cleanPeriod.endDate,
+          vacationPeriods: hasPeriodPayload ? cleanPeriod.vacationPeriods : undefined,
         });
       }
     } else {
@@ -200,6 +235,9 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
           customPrice: calculatedFinalPrice,
           baseSessionsPerMonth: resolvedBillingMode === 'monthly' ? baseSessionsPerMonth : undefined,
           packageSessionsCount: resolvedBillingMode === 'package' ? packageSessionsCount : undefined,
+          startDate: cleanPeriod.startDate,
+          endDate: cleanPeriod.endDate,
+          vacationPeriods: hasPeriodPayload ? cleanPeriod.vacationPeriods : undefined,
           status: 'active',
         });
       }
@@ -598,6 +636,16 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
             </div>
           </>
         )}
+
+        {/* Operational Enrollment Period & Vacations */}
+        <EnrollmentPeriodFields
+          value={periodValue}
+          onChange={(next) => {
+            setPeriodError(null);
+            setPeriodValue(next);
+          }}
+          externalError={periodError}
+        />
       </div>
     </BottomSheet>
   );

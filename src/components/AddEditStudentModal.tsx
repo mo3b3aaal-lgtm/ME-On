@@ -17,7 +17,14 @@ import {
   normalizeScheduleTimes,
   getLocalizedWeekdayName,
   getStudentEffectiveSchedule,
+  getEffectiveEnrollmentPeriod,
+  validateEnrollmentPeriod,
 } from '../utils/schedule';
+import {
+  EnrollmentPeriodFields,
+  EnrollmentPeriodFormValue,
+  sanitizePeriodForPersistence,
+} from './EnrollmentPeriodFields';
 
 interface AddEditStudentModalProps {
   isOpen: boolean;
@@ -85,7 +92,23 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
     { id: '1', day: 'saturday', time: '16:00' },
   ]);
 
+  // Operational enrollment period state (shared vs independent group/private scopes)
+  const emptyPeriod: EnrollmentPeriodFormValue = {
+    startDate: undefined,
+    endDate: undefined,
+    vacationPeriods: [],
+  };
+  const [periodScopeMode, setPeriodScopeMode] = useState<'shared' | 'independent'>('shared');
+  const [sharedPeriod, setSharedPeriod] = useState<EnrollmentPeriodFormValue>(emptyPeriod);
+  const [groupPeriod, setGroupPeriod] = useState<EnrollmentPeriodFormValue>(emptyPeriod);
+  const [privatePeriod, setPrivatePeriod] = useState<EnrollmentPeriodFormValue>(emptyPeriod);
+  const [isPeriodTouched, setIsPeriodTouched] = useState(false);
+  const [periodFormError, setPeriodFormError] = useState<string | null>(null);
+
   useEffect(() => {
+    setPeriodFormError(null);
+    setIsPeriodTouched(false);
+
     if (editingStudent) {
       setName(editingStudent.name);
       setPhone(editingStudent.phone || '');
@@ -103,12 +126,15 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       // Load enrolled groups & check private enrollments
       const enrollments = db.getStudentEnrollments(editingStudent.id);
       const regularGroupIds: string[] = [];
+      const regularGroupEnrs: Enrollment[] = [];
+      let primaryPrivEnr: Enrollment | undefined;
       let hasPrivate = false;
 
       enrollments.forEach((enr) => {
         const group = enr.groupId ? allGroups.find((g) => g.id === enr.groupId) : undefined;
         if (enr.serviceType === 'private' || group?.type === 'private') {
           hasPrivate = true;
+          if (!primaryPrivEnr) primaryPrivEnr = enr;
           if (enr.customPrice) setPrivatePrice(enr.customPrice);
           if (enr.hourlyRate) setPrivateHourlyRate(enr.hourlyRate);
           if (enr.billingMode) setPrivateBillingMode(enr.billingMode);
@@ -117,6 +143,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           if (enr.roomOrLocation || group?.roomOrLocation) setPrivateLocation(enr.roomOrLocation || group?.roomOrLocation || '');
         } else if (enr.groupId) {
           regularGroupIds.push(enr.groupId);
+          regularGroupEnrs.push(enr);
         }
       });
 
@@ -128,14 +155,43 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
       setSelectedGroupIds(regularGroupIds);
 
+      const resolvedStudentPeriod = getEffectiveEnrollmentPeriod(null, editingStudent);
+      const resolvedGroupPeriod = regularGroupEnrs[0]
+        ? getEffectiveEnrollmentPeriod(regularGroupEnrs[0], editingStudent)
+        : resolvedStudentPeriod;
+      const resolvedPrivatePeriod = primaryPrivEnr
+        ? getEffectiveEnrollmentPeriod(primaryPrivEnr, editingStudent)
+        : resolvedStudentPeriod;
+
       if (hasPrivate && regularGroupIds.length > 0) {
         setSubscriptionMode('both');
+        const periodsDiffer =
+          (resolvedGroupPeriod.startDate || '') !== (resolvedPrivatePeriod.startDate || '') ||
+          (resolvedGroupPeriod.endDate || '') !== (resolvedPrivatePeriod.endDate || '') ||
+          JSON.stringify(resolvedGroupPeriod.vacationPeriods) !==
+            JSON.stringify(resolvedPrivatePeriod.vacationPeriods);
+        setPeriodScopeMode(periodsDiffer ? 'independent' : 'shared');
+        setSharedPeriod(resolvedGroupPeriod);
+        setGroupPeriod(resolvedGroupPeriod);
+        setPrivatePeriod(resolvedPrivatePeriod);
       } else if (hasPrivate) {
         setSubscriptionMode('private');
+        setPeriodScopeMode('shared');
+        setSharedPeriod(resolvedPrivatePeriod);
+        setGroupPeriod(resolvedStudentPeriod);
+        setPrivatePeriod(resolvedPrivatePeriod);
       } else if (regularGroupIds.length > 0) {
         setSubscriptionMode('group');
+        setPeriodScopeMode('shared');
+        setSharedPeriod(resolvedGroupPeriod);
+        setGroupPeriod(resolvedGroupPeriod);
+        setPrivatePeriod(resolvedStudentPeriod);
       } else {
         setSubscriptionMode('none');
+        setPeriodScopeMode('shared');
+        setSharedPeriod(resolvedStudentPeriod);
+        setGroupPeriod(resolvedStudentPeriod);
+        setPrivatePeriod(resolvedStudentPeriod);
       }
 
       // Schedule slots initialization
@@ -183,6 +239,10 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setPrivatePackagePrice(800);
       setPrivateLocation('منزل الطالب');
       setScheduleSlots([{ id: '1', day: 'saturday', time: '16:00' }]);
+      setPeriodScopeMode('shared');
+      setSharedPeriod({ startDate: undefined, endDate: undefined, vacationPeriods: [] });
+      setGroupPeriod({ startDate: undefined, endDate: undefined, vacationPeriods: [] });
+      setPrivatePeriod({ startDate: undefined, endDate: undefined, vacationPeriods: [] });
     }
   }, [editingStudent, defaultGroupId, allGroups, isOpen]);
 
@@ -249,6 +309,39 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
     if (e) e.preventDefault();
     if (!name.trim()) return;
 
+    const isIndependentBoth = subscriptionMode === 'both' && periodScopeMode === 'independent';
+
+    if (isIndependentBoth) {
+      const grpCheck = validateEnrollmentPeriod(groupPeriod, language);
+      if (!grpCheck.valid) {
+        setPeriodFormError(grpCheck.errors[0]);
+        return;
+      }
+      const privCheck = validateEnrollmentPeriod(privatePeriod, language);
+      if (!privCheck.valid) {
+        setPeriodFormError(privCheck.errors[0]);
+        return;
+      }
+    } else {
+      const sharedCheck = validateEnrollmentPeriod(sharedPeriod, language);
+      if (!sharedCheck.valid) {
+        setPeriodFormError(sharedCheck.errors[0]);
+        return;
+      }
+    }
+    setPeriodFormError(null);
+
+    const cleanShared = sanitizePeriodForPersistence(sharedPeriod);
+    const cleanGroup = isIndependentBoth ? sanitizePeriodForPersistence(groupPeriod) : cleanShared;
+    const cleanPrivate = isIndependentBoth ? sanitizePeriodForPersistence(privatePeriod) : cleanShared;
+
+    const hasGroupPeriodPayload =
+      isIndependentBoth ||
+      Boolean(cleanGroup.startDate || cleanGroup.endDate || cleanGroup.vacationPeriods.length > 0);
+    const hasPrivatePeriodPayload =
+      isIndependentBoth ||
+      Boolean(cleanPrivate.startDate || cleanPrivate.endDate || cleanPrivate.vacationPeriods.length > 0);
+
     const studentId = editingStudent
       ? editingStudent.id
       : `st_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -272,7 +365,22 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
 
     const primaryScheduleTime = scheduleSlots[0]?.time || '16:00';
 
+    const studentLevelPeriod = isIndependentBoth
+      ? { startDate: undefined, endDate: undefined, vacationPeriods: undefined }
+      : editingStudent && !isPeriodTouched
+      ? {
+          startDate: editingStudent.startDate,
+          endDate: editingStudent.endDate,
+          vacationPeriods: editingStudent.vacationPeriods,
+        }
+      : {
+          startDate: cleanShared.startDate,
+          endDate: cleanShared.endDate,
+          vacationPeriods: cleanShared.vacationPeriods.length > 0 ? cleanShared.vacationPeriods : undefined,
+        };
+
     const studentData: Student = {
+      ...(editingStudent || {}),
       id: studentId,
       name: name.trim(),
       phone: phone.trim() || undefined,
@@ -287,6 +395,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       scheduleDays: canonicalDays,
       scheduleTime: primaryScheduleTime,
       scheduleTimes: validTimesMap,
+      startDate: studentLevelPeriod.startDate,
+      endDate: studentLevelPeriod.endDate,
+      vacationPeriods: studentLevelPeriod.vacationPeriods,
       status: editingStudent ? editingStudent.status : 'active',
       createdAt: editingStudent ? editingStudent.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -310,12 +421,15 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             customPrice: defaultPrice,
             scheduleDays: canonicalDays.length > 0 ? canonicalDays : undefined,
             scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
+            startDate: cleanGroup.startDate,
+            endDate: cleanGroup.endDate,
+            vacationPeriods: hasGroupPeriodPayload ? cleanGroup.vacationPeriods : undefined,
             status: 'active',
           });
         });
       }
 
-      // 2. Private Lesson Service
+      // 2. Private Lesson Service (strictly isolated — never creates a Group)
       if (subscriptionMode === 'private' || subscriptionMode === 'both') {
         db.createPrivateLessonService(studentData.id, {
           subject: privateSubject.trim() || 'درس خاص',
@@ -329,6 +443,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
           scheduleTime: primaryScheduleTime,
           scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
           roomOrLocation: privateLocation,
+          startDate: cleanPrivate.startDate,
+          endDate: cleanPrivate.endDate,
+          vacationPeriods: hasPrivatePeriodPayload ? cleanPrivate.vacationPeriods : undefined,
         });
       }
     } else {
@@ -353,6 +470,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             customPrice: defaultPrice,
             scheduleDays: canonicalDays.length > 0 ? canonicalDays : undefined,
             scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
+            startDate: cleanGroup.startDate,
+            endDate: cleanGroup.endDate,
+            vacationPeriods: hasGroupPeriodPayload ? cleanGroup.vacationPeriods : undefined,
             status: 'active',
           });
         }
@@ -365,14 +485,27 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         }
       });
 
-      // Update remaining active enrollments with the updated student schedule
+      // Update remaining active group enrollments with the updated student schedule & touched period
       const updatedEnrollments = db.getStudentEnrollments(studentData.id);
       updatedEnrollments.forEach((enr) => {
-        if (canonicalDays.length > 0) {
+        const grp = enr.groupId ? allGroups.find((g) => g.id === enr.groupId) : undefined;
+        const isPriv = enr.serviceType === 'private' || grp?.type === 'private';
+        if (!isPriv) {
           db.updateEnrollment({
             ...enr,
-            scheduleDays: canonicalDays,
-            scheduleTimes: validTimesMap,
+            ...(canonicalDays.length > 0
+              ? {
+                  scheduleDays: canonicalDays,
+                  scheduleTimes: validTimesMap,
+                }
+              : {}),
+            ...(isPeriodTouched
+              ? {
+                  startDate: cleanGroup.startDate,
+                  endDate: cleanGroup.endDate,
+                  vacationPeriods: cleanGroup.vacationPeriods,
+                }
+              : {}),
             updatedAt: new Date().toISOString(),
           });
         }
@@ -394,6 +527,13 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             packagePrice: privateBillingMode === 'package' ? (privatePackagePrice || 800) : undefined,
             scheduleDays: canonicalDays.length > 0 ? canonicalDays : privEnr.scheduleDays,
             scheduleTimes: canonicalDays.length > 0 ? validTimesMap : privEnr.scheduleTimes,
+            ...(isPeriodTouched
+              ? {
+                  startDate: cleanPrivate.startDate,
+                  endDate: cleanPrivate.endDate,
+                  vacationPeriods: cleanPrivate.vacationPeriods,
+                }
+              : {}),
             updatedAt: new Date().toISOString(),
           });
         } else {
@@ -409,6 +549,9 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             scheduleTime: primaryScheduleTime,
             scheduleTimes: canonicalDays.length > 0 ? validTimesMap : undefined,
             roomOrLocation: privateLocation,
+            startDate: cleanPrivate.startDate,
+            endDate: cleanPrivate.endDate,
+            vacationPeriods: hasPrivatePeriodPayload ? cleanPrivate.vacationPeriods : undefined,
           });
         }
       } else if (subscriptionMode === 'group' && privEnr) {
@@ -867,6 +1010,96 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             <span>{t('addScheduleSlot')}</span>
           </button>
         </div>
+
+        {/* Operational Enrollment Period & Vacations */}
+        {subscriptionMode === 'both' ? (
+          <div className="p-4 rounded-2xl bg-page border border-line space-y-3.5 shadow-2xs">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs sm:text-sm font-black text-navy flex items-center gap-2">
+                <AppIcon name="calendarRange" size={14} className="text-navy" />
+                <span>{t('enrollmentPeriodSectionTitle')}</span>
+              </label>
+            </div>
+
+            <SegmentedControl<'shared' | 'independent'>
+              value={periodScopeMode}
+              onChange={(mode) => {
+                setIsPeriodTouched(true);
+                setPeriodFormError(null);
+                if (mode === 'independent' && periodScopeMode === 'shared') {
+                  setGroupPeriod({ ...sharedPeriod, vacationPeriods: [...sharedPeriod.vacationPeriods] });
+                  setPrivatePeriod({ ...sharedPeriod, vacationPeriods: [...sharedPeriod.vacationPeriods] });
+                }
+                setPeriodScopeMode(mode);
+              }}
+              options={[
+                { value: 'shared', label: t('periodScopeShared') },
+                { value: 'independent', label: t('periodScopeIndependent') },
+              ]}
+            />
+
+            {periodScopeMode === 'shared' ? (
+              <EnrollmentPeriodFields
+                value={sharedPeriod}
+                onChange={(next) => {
+                  setIsPeriodTouched(true);
+                  setPeriodFormError(null);
+                  setSharedPeriod(next);
+                }}
+                title=""
+                compact
+                externalError={periodFormError}
+              />
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 rounded-2xl bg-mist/60 border border-line space-y-2">
+                  <span className="text-xs font-black text-navy flex items-center gap-1.5">
+                    <AppIcon name="groups" size={13} className="text-navy" />
+                    <span>{t('groupTypeGroup')}</span>
+                  </span>
+                  <EnrollmentPeriodFields
+                    value={groupPeriod}
+                    onChange={(next) => {
+                      setIsPeriodTouched(true);
+                      setPeriodFormError(null);
+                      setGroupPeriod(next);
+                    }}
+                    title=""
+                    compact
+                  />
+                </div>
+
+                <div className="p-3 rounded-2xl bg-mist/60 border border-line space-y-2">
+                  <span className="text-xs font-black text-navy flex items-center gap-1.5">
+                    <AppIcon name="sparkles" size={13} weight="fill" className="text-orange" />
+                    <span>{t('groupTypePrivate')}</span>
+                  </span>
+                  <EnrollmentPeriodFields
+                    value={privatePeriod}
+                    onChange={(next) => {
+                      setIsPeriodTouched(true);
+                      setPeriodFormError(null);
+                      setPrivatePeriod(next);
+                    }}
+                    title=""
+                    compact
+                    externalError={periodFormError}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <EnrollmentPeriodFields
+            value={sharedPeriod}
+            onChange={(next) => {
+              setIsPeriodTouched(true);
+              setPeriodFormError(null);
+              setSharedPeriod(next);
+            }}
+            externalError={periodFormError}
+          />
+        )}
 
         {/* Notes */}
         <div className="p-4 rounded-2xl bg-page border border-line space-y-2 shadow-2xs">

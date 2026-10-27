@@ -22,7 +22,7 @@ export const MintCard: React.FC<MintCardProps> = ({
     : '';
 
   const hasExplicitBg = className.includes('bg-');
-  const defaultBgClasses = hasExplicitBg ? '' : 'bg-mint shadow-mint';
+  const defaultBgClasses = hasExplicitBg ? '' : 'mint-surface-card bg-mint shadow-mint';
 
   return (
     <div

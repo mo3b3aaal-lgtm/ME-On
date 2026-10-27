@@ -15,6 +15,25 @@
     <meta name="theme-color" content="#FFFFFF" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('tm_app_theme_v1');
+          var d = t === 'dark';
+          var r = document.documentElement;
+          if (d) {
+            r.classList.add('dark');
+            r.setAttribute('data-theme', 'dark');
+            r.style.colorScheme = 'dark';
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) m.setAttribute('content', '#0B1829');
+          } else {
+            r.setAttribute('data-theme', 'light');
+            r.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-page text-navy antialiased select-none font-sans overflow-x-hidden" dir="rtl">
     <div id="root"></div>

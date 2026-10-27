@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   HealthCheckDiagnosticResult,
   runExactHealthCheckDiagnostics,
@@ -8,6 +8,8 @@ import { checkOverallConnectivity } from '../utils/network';
 import { useTranslation } from '../utils/i18n';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { useDelayedLoading } from './ui/Skeleton';
+import { NetworkDiagnosticsSkeleton } from './skeletons/ClassySkeletons';
 
 interface NetworkDiagnosticsModalProps {
   isOpen: boolean;
@@ -26,11 +28,23 @@ export const NetworkDiagnosticsModal: React.FC<NetworkDiagnosticsModalProps> = (
   );
   const [isRunning, setIsRunning] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showInitialSkeleton = useDelayedLoading(isRunning && !diagnostics, 80);
 
   useEffect(() => {
     if (isOpen) {
       handleRunCheck();
+    } else if (copiedTimerRef.current !== null) {
+      clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = null;
+      setCopied(false);
     }
+    return () => {
+      if (copiedTimerRef.current !== null) {
+        clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = null;
+      }
+    };
   }, [isOpen]);
 
   const handleRunCheck = async () => {
@@ -81,8 +95,14 @@ Stack: ${diagnostics.exceptionStack || 'None'}
 ==========================================================`;
 
     navigator.clipboard.writeText(report).then(() => {
+      if (copiedTimerRef.current !== null) {
+        clearTimeout(copiedTimerRef.current);
+      }
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      copiedTimerRef.current = setTimeout(() => {
+        copiedTimerRef.current = null;
+        setCopied(false);
+      }, 2500);
     });
   };
 
@@ -150,6 +170,9 @@ Stack: ${diagnostics.exceptionStack || 'None'}
         </div>
       }
     >
+      {showInitialSkeleton ? (
+        <NetworkDiagnosticsSkeleton />
+      ) : (
       <div className="space-y-4 text-xs">
         {/* Main Status Badge */}
         <div
@@ -259,6 +282,7 @@ Stack: ${diagnostics.exceptionStack || 'None'}
           </div>
         </div>
       </div>
+      )}
     </BottomSheet>
   );
 };

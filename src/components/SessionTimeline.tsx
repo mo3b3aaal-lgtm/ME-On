@@ -10,6 +10,8 @@ import { MintCard } from './ui/MintCard';
 import { EmptyBox } from './illustrations/EmptyBox';
 import { db } from '../utils/storage';
 import { getStudentFrameCardTheme, FrameCornerWatermark } from '../utils/frameTheme';
+import { useDelayedLoading } from './ui/Skeleton';
+import { SessionTimelineSkeleton } from './skeletons/ClassySkeletons';
 
 export interface SessionTimelineProps {
   items: ScheduledClassItem[];
@@ -19,6 +21,7 @@ export interface SessionTimelineProps {
   allAttendance?: Attendance[];
   selectedDateStr?: string;
   isToday?: boolean;
+  isLoading?: boolean;
   onRecordAttendance?: (item: ScheduledClassItem) => void;
   onOpenAttendanceModal?: (session: Session) => void;
   onTapSession?: (item: ScheduledClassItem, matchingSession?: Session) => void;
@@ -37,13 +40,17 @@ export interface SessionTimelineProps {
  * starting with a hollow 10px circle (2px orange border, white fill), updated every minute.
  * Empty day: EmptyBox illustration + one line + btn-soft "Add session".
  */
+const EMPTY_STUDENTS: Student[] = [];
+const EMPTY_GROUPS: Group[] = [];
+
 const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
   items,
-  students = [],
-  groups = [],
+  students = EMPTY_STUDENTS,
+  groups = EMPTY_GROUPS,
   allAttendance = [],
   selectedDateStr,
   isToday: controlledIsToday,
+  isLoading = false,
   findSessionForScheduleItem,
   onRecordAttendance,
   onOpenAttendanceModal,
@@ -66,14 +73,16 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
     return map;
   }, [students]);
 
-  // Memoized group students map for fast in-memory lookups
+  const effectiveDateStr = selectedDateStr || todayStr;
+
+  // Memoized group students map for fast in-memory lookups on the target date
   const groupStudentsMap = useMemo(() => {
     const map = new Map<string, Student[]>();
     groups.forEach((g) => {
-      map.set(g.id, db.getGroupStudents(g.id));
+      map.set(g.id, db.getGroupStudents(g.id, effectiveDateStr));
     });
     return map;
-  }, [groups, students]);
+  }, [groups, students, effectiveDateStr]);
 
   // Current time in minutes for "Now" line positioning, updated every minute
   const [currentMinutes, setCurrentMinutes] = useState(() => {
@@ -112,6 +121,12 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
     }
     return sortedItems.length;
   }, [isToday, sortedItems, currentMinutes]);
+
+  const showSkeleton = useDelayedLoading(Boolean(isLoading) && sortedItems.length === 0, 90);
+
+  if (showSkeleton) {
+    return <SessionTimelineSkeleton count={3} className={className} />;
+  }
 
   // Empty state
   if (sortedItems.length === 0) {
@@ -177,7 +192,7 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
           : null;
 
         const groupStudents = !isPrivate && item.groupId
-          ? (groupStudentsMap.get(item.groupId) || db.getGroupStudents(item.groupId))
+          ? (groupStudentsMap.get(item.groupId) || db.getGroupStudents(item.groupId, effectiveDateStr))
           : [];
 
         const title = isPrivate

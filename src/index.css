@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "./styles/frames.css";
 
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: 'Poppins', 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-display: 'Poppins', 'Cairo', system-ui, sans-serif;
@@ -335,6 +337,7 @@
    ========================================================================== */
 :root {
   --color-page: #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
   --color-mist: #F1F7F7;
   --color-mint: #B9DAD6;
   --color-mint-soft: #DCEDEB;
@@ -417,6 +420,346 @@
   --status-info: var(--color-navy-soft, #2F4E78);
   --status-info-bg: var(--color-mist, #F1F7F7);
   --status-info-border: var(--color-line, #E1EBEC);
+}
+
+/* ==========================================================================
+   HARBOR MINT HIGH-CONTRAST DARK THEME TOKENS
+   Preserves authentic Harbor Mint brand accents (#B9DAD6 Mint, #F5A04A Orange,
+   Harbor Navy #17375E) with WCAG AA/AAA foreground & surface contrast.
+   ========================================================================== */
+:root.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Core Harbor Mint Dark Tokens */
+  --color-page: #0B1829;
+  --color-surface-elevated: #112338;
+  --color-mist: #142940;
+  --color-mint: #B9DAD6;
+  --color-mint-soft: #163244;
+  --color-navy: #EEF7F6;
+  --color-navy-deep: #FFFFFF;
+  --color-navy-soft: #7FB3DF;
+  --color-orange: #F5A04A;
+  --color-orange-deep: #F7B267;
+  --color-on-orange: #0B1829;
+  --color-slate: #B4CADB;
+  --color-fog: #829EB8;
+  --color-line: #284968;
+  --color-teal: #45CFC4;
+  --color-coral: #FF7676;
+
+  /* Dark Elevation Shadows */
+  --shadow-mint: 0 12px 28px rgba(3, 9, 18, 0.50), inset 0 1px 0 rgba(185, 218, 214, 0.12);
+  --shadow-navy: 0 18px 36px rgba(2, 7, 15, 0.62), inset 0 1px 0 rgba(185, 218, 214, 0.14);
+  --shadow-white: 0 8px 22px rgba(3, 9, 18, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-nav: 0 -4px 24px rgba(2, 7, 15, 0.52), 0 14px 32px rgba(2, 7, 15, 0.65);
+  --shadow-orange: 0 8px 22px rgba(245, 160, 74, 0.28);
+
+  /* Semantic UI Token Overrides */
+  --classy-primary: var(--color-mint);
+  --classy-primary-hover: #CBE6E3;
+  --classy-primary-active: #A6CEC9;
+
+  --classy-background: var(--color-page);
+  --classy-background-secondary: var(--color-mist);
+  --classy-surface: var(--color-surface-elevated);
+  --classy-surface-elevated: var(--color-mint-soft);
+
+  --classy-secondary: var(--color-slate);
+  --classy-accent: var(--color-orange);
+  --classy-accent-secondary: var(--color-mint);
+
+  --classy-text-primary: var(--color-navy);
+  --classy-text-secondary: var(--color-slate);
+  --classy-text-muted: var(--color-slate);
+  --classy-text-on-primary: #0B1829;
+
+  --classy-border: var(--color-line);
+  --classy-divider: var(--color-line);
+
+  --classy-success: var(--color-teal);
+  --classy-warning: var(--color-orange);
+  --classy-danger: var(--color-coral);
+  --classy-info: var(--color-navy-soft);
+  --classy-disabled: var(--color-fog);
+
+  --color-canvas: var(--color-page);
+  --color-text-main: var(--color-navy);
+  --color-text-muted: var(--color-slate);
+  --color-border-subtle: var(--color-line);
+
+  --status-success: var(--color-teal);
+  --status-success-bg: color-mix(in srgb, #45CFC4 16%, #112338);
+  --status-success-border: color-mix(in srgb, #45CFC4 36%, #284968);
+  --status-warning: var(--color-orange);
+  --status-warning-bg: color-mix(in srgb, #F5A04A 18%, #112338);
+  --status-warning-border: color-mix(in srgb, #F5A04A 38%, #284968);
+  --status-danger: var(--color-coral);
+  --status-danger-bg: color-mix(in srgb, #FF7676 18%, #112338);
+  --status-danger-border: color-mix(in srgb, #FF7676 38%, #284968);
+  --status-info: var(--color-navy-soft);
+  --status-info-bg: var(--color-mist);
+  --status-info-border: var(--color-line);
+
+  /* Re-point Legacy Tailwind Color Ramps for High-Contrast Dark Surfaces */
+  /* 1. blue / sky / cyan / indigo -> dark Harbor Mint & Ice-Blue ramps */
+  --color-blue-50: #132C3F;
+  --color-blue-100: #18364D;
+  --color-blue-200: #224866;
+  --color-blue-300: #5E95BE;
+  --color-blue-400: #7EB2D8;
+  --color-blue-500: #9AC8E8;
+  --color-blue-600: #B9DAD6;
+  --color-blue-700: #D2EAE7;
+  --color-blue-800: #E4F3F1;
+  --color-blue-900: #F1FAF9;
+  --color-blue-950: #FFFFFF;
+
+  --color-sky-50: #132C3F;
+  --color-sky-100: #18364D;
+  --color-sky-200: #224866;
+  --color-sky-300: #5E95BE;
+  --color-sky-400: #7EB2D8;
+  --color-sky-500: #9AC8E8;
+  --color-sky-600: #B9DAD6;
+  --color-sky-700: #D2EAE7;
+  --color-sky-800: #E4F3F1;
+  --color-sky-900: #F1FAF9;
+  --color-sky-950: #FFFFFF;
+
+  --color-cyan-50: #132C3F;
+  --color-cyan-100: #18364D;
+  --color-cyan-200: #224866;
+  --color-cyan-300: #5E95BE;
+  --color-cyan-400: #7EB2D8;
+  --color-cyan-500: #9AC8E8;
+  --color-cyan-600: #B9DAD6;
+  --color-cyan-700: #D2EAE7;
+  --color-cyan-800: #E4F3F1;
+  --color-cyan-900: #F1FAF9;
+  --color-cyan-950: #FFFFFF;
+
+  --color-indigo-50: #152B44;
+  --color-indigo-100: #1B3654;
+  --color-indigo-200: #26496E;
+  --color-indigo-300: #6B9AC7;
+  --color-indigo-400: #8AB5DC;
+  --color-indigo-500: #A6CBEB;
+  --color-indigo-600: #B9DAD6;
+  --color-indigo-700: #D2EAE7;
+  --color-indigo-800: #E4F3F1;
+  --color-indigo-900: #F1FAF9;
+  --color-indigo-950: #FFFFFF;
+
+  /* 2. teal / green / emerald -> Harbor Teal dark ramp */
+  --color-teal-50: #102E38;
+  --color-teal-100: #143A44;
+  --color-teal-200: #1D4E58;
+  --color-teal-300: #359E96;
+  --color-teal-400: #45CFC4;
+  --color-teal-500: #62DCD2;
+  --color-teal-600: #7BE6DD;
+  --color-teal-700: #9DEEE7;
+  --color-teal-800: #C2F5F0;
+  --color-teal-900: #E2FBF8;
+  --color-teal-950: #FFFFFF;
+
+  --color-green-50: #102E38;
+  --color-green-100: #143A44;
+  --color-green-200: #1D4E58;
+  --color-green-300: #359E96;
+  --color-green-400: #45CFC4;
+  --color-green-500: #62DCD2;
+  --color-green-600: #7BE6DD;
+  --color-green-700: #9DEEE7;
+  --color-green-800: #C2F5F0;
+  --color-green-900: #E2FBF8;
+  --color-green-950: #FFFFFF;
+
+  --color-emerald-50: #102E38;
+  --color-emerald-100: #143A44;
+  --color-emerald-200: #1D4E58;
+  --color-emerald-300: #359E96;
+  --color-emerald-400: #45CFC4;
+  --color-emerald-500: #62DCD2;
+  --color-emerald-600: #7BE6DD;
+  --color-emerald-700: #9DEEE7;
+  --color-emerald-800: #C2F5F0;
+  --color-emerald-900: #E2FBF8;
+  --color-emerald-950: #FFFFFF;
+
+  /* 3. orange / amber / yellow -> Harbor Orange dark ramp */
+  --color-orange-50: #29221E;
+  --color-orange-100: #362B20;
+  --color-orange-200: #4D3B25;
+  --color-orange-300: #D98B3A;
+  --color-orange-400: #F5A04A;
+  --color-orange-500: #F7AE63;
+  --color-orange-600: #F9BE80;
+  --color-orange-700: #FBD0A1;
+  --color-orange-800: #FDE1C2;
+  --color-orange-900: #FEF0E1;
+  --color-orange-950: #FFFFFF;
+
+  --color-amber-50: #29221E;
+  --color-amber-100: #362B20;
+  --color-amber-200: #4D3B25;
+  --color-amber-300: #D98B3A;
+  --color-amber-400: #F5A04A;
+  --color-amber-500: #F7AE63;
+  --color-amber-600: #F9BE80;
+  --color-amber-700: #FBD0A1;
+  --color-amber-800: #FDE1C2;
+  --color-amber-900: #FEF0E1;
+  --color-amber-950: #FFFFFF;
+
+  --color-yellow-50: #29221E;
+  --color-yellow-100: #362B20;
+  --color-yellow-200: #4D3B25;
+  --color-yellow-300: #D98B3A;
+  --color-yellow-400: #F5A04A;
+  --color-yellow-500: #F7AE63;
+  --color-yellow-600: #F9BE80;
+  --color-yellow-700: #FBD0A1;
+  --color-yellow-800: #FDE1C2;
+  --color-yellow-900: #FEF0E1;
+  --color-yellow-950: #FFFFFF;
+
+  /* 4. red / rose / pink -> Harbor Coral dark ramp */
+  --color-red-50: #2C1925;
+  --color-red-100: #3B1F2C;
+  --color-red-200: #542938;
+  --color-red-300: #E06363;
+  --color-red-400: #FF7676;
+  --color-red-500: #FF8A8A;
+  --color-red-600: #FFA1A1;
+  --color-red-700: #FFB8B8;
+  --color-red-800: #FFD1D1;
+  --color-red-900: #FFE8E8;
+  --color-red-950: #FFFFFF;
+
+  --color-rose-50: #2C1925;
+  --color-rose-100: #3B1F2C;
+  --color-rose-200: #542938;
+  --color-rose-300: #E06363;
+  --color-rose-400: #FF7676;
+  --color-rose-500: #FF8A8A;
+  --color-rose-600: #FFA1A1;
+  --color-rose-700: #FFB8B8;
+  --color-rose-800: #FFD1D1;
+  --color-rose-900: #FFE8E8;
+  --color-rose-950: #FFFFFF;
+
+  --color-pink-50: #2C1925;
+  --color-pink-100: #3B1F2C;
+  --color-pink-200: #542938;
+  --color-pink-300: #E06363;
+  --color-pink-400: #FF7676;
+  --color-pink-500: #FF8A8A;
+  --color-pink-600: #FFA1A1;
+  --color-pink-700: #FFB8B8;
+  --color-pink-800: #FFD1D1;
+  --color-pink-900: #FFE8E8;
+  --color-pink-950: #FFFFFF;
+
+  /* 5. purple / violet / fuchsia -> Harbor Steel-Blue dark ramp */
+  --color-purple-50: #172742;
+  --color-purple-100: #1F3354;
+  --color-purple-200: #2B456E;
+  --color-purple-300: #729FD0;
+  --color-purple-400: #8FB8E3;
+  --color-purple-500: #A9CCF0;
+  --color-purple-600: #C0DCF7;
+  --color-purple-700: #D4E8FA;
+  --color-purple-800: #E5F2FC;
+  --color-purple-900: #F2F8FE;
+  --color-purple-950: #FFFFFF;
+
+  --color-violet-50: #172742;
+  --color-violet-100: #1F3354;
+  --color-violet-200: #2B456E;
+  --color-violet-300: #729FD0;
+  --color-violet-400: #8FB8E3;
+  --color-violet-500: #A9CCF0;
+  --color-violet-600: #C0DCF7;
+  --color-violet-700: #D4E8FA;
+  --color-violet-800: #E5F2FC;
+  --color-violet-900: #F2F8FE;
+  --color-violet-950: #FFFFFF;
+
+  --color-fuchsia-50: #172742;
+  --color-fuchsia-100: #1F3354;
+  --color-fuchsia-200: #2B456E;
+  --color-fuchsia-300: #729FD0;
+  --color-fuchsia-400: #8FB8E3;
+  --color-fuchsia-500: #A9CCF0;
+  --color-fuchsia-600: #C0DCF7;
+  --color-fuchsia-700: #D4E8FA;
+  --color-fuchsia-800: #E5F2FC;
+  --color-fuchsia-900: #F2F8FE;
+  --color-fuchsia-950: #FFFFFF;
+
+  /* 6. slate / gray / zinc / neutral / stone -> Harbor Slate dark ramp */
+  --color-slate-50: #12253B;
+  --color-slate-100: #172E48;
+  --color-slate-200: #244362;
+  --color-slate-300: #5B7B99;
+  --color-slate-400: #829EB8;
+  --color-slate-500: #9BB5CC;
+  --color-slate-600: #B4CADB;
+  --color-slate-700: #CBE0EE;
+  --color-slate-800: #DFEEF7;
+  --color-slate-900: #EEF7F6;
+  --color-slate-950: #FFFFFF;
+
+  --color-gray-50: #12253B;
+  --color-gray-100: #172E48;
+  --color-gray-200: #244362;
+  --color-gray-300: #5B7B99;
+  --color-gray-400: #829EB8;
+  --color-gray-500: #9BB5CC;
+  --color-gray-600: #B4CADB;
+  --color-gray-700: #CBE0EE;
+  --color-gray-800: #DFEEF7;
+  --color-gray-900: #EEF7F6;
+  --color-gray-950: #FFFFFF;
+
+  --color-zinc-50: #12253B;
+  --color-zinc-100: #172E48;
+  --color-zinc-200: #244362;
+  --color-zinc-300: #5B7B99;
+  --color-zinc-400: #829EB8;
+  --color-zinc-500: #9BB5CC;
+  --color-zinc-600: #B4CADB;
+  --color-zinc-700: #CBE0EE;
+  --color-zinc-800: #DFEEF7;
+  --color-zinc-900: #EEF7F6;
+  --color-zinc-950: #FFFFFF;
+
+  --color-neutral-50: #12253B;
+  --color-neutral-100: #172E48;
+  --color-neutral-200: #244362;
+  --color-neutral-300: #5B7B99;
+  --color-neutral-400: #829EB8;
+  --color-neutral-500: #9BB5CC;
+  --color-neutral-600: #B4CADB;
+  --color-neutral-700: #CBE0EE;
+  --color-neutral-800: #DFEEF7;
+  --color-neutral-900: #EEF7F6;
+  --color-neutral-950: #FFFFFF;
+
+  --color-stone-50: #12253B;
+  --color-stone-100: #172E48;
+  --color-stone-200: #244362;
+  --color-stone-300: #5B7B99;
+  --color-stone-400: #829EB8;
+  --color-stone-500: #9BB5CC;
+  --color-stone-600: #B4CADB;
+  --color-stone-700: #CBE0EE;
+  --color-stone-800: #DFEEF7;
+  --color-stone-900: #EEF7F6;
+  --color-stone-950: #FFFFFF;
 }
 
 /* ==========================================================================
@@ -506,7 +849,7 @@
 .section-label {
   font-size: 11px;
   font-weight: 700;
-  color: #4A5B6E;
+  color: var(--color-slate, #4A5B6E);
   letter-spacing: 0.08em;
 }
 :lang(en) .section-label,
@@ -1161,17 +1504,17 @@ input[type="radio"] {
    BACKWARD COMPATIBILITY ALIASES
    ========================================================================== */
 .neu-card, .royal-card, .bento-stat-card {
-  background-color: #FFFFFF;
+  background-color: var(--color-surface-elevated, var(--color-page, #FFFFFF));
   border-radius: 20px;
-  box-shadow: 0 6px 18px rgba(23, 55, 94, 0.07);
-  border: 1px solid #E1EBEC;
+  box-shadow: var(--shadow-white);
+  border: 1px solid var(--color-line, #E1EBEC);
   transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), border-color 160ms ease, background-color 160ms ease;
 }
 
 .neu-card-hover:hover, .royal-card-hover:hover, .bento-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 26px rgba(23, 55, 94, 0.12);
-  border-color: #E58A2B;
+  box-shadow: var(--shadow-mint);
+  border-color: var(--color-orange-deep, #E58A2B);
 }
 
 /* ==========================================================================
@@ -1336,7 +1679,7 @@ button:not(:disabled):active,
 .modal-drag-handle {
   width: 40px;
   height: 5px;
-  background-color: #E1EBEC;
+  background-color: var(--color-line, #E1EBEC);
   border-radius: 9999px;
   margin: 0 auto;
   cursor: grab;
@@ -1344,7 +1687,7 @@ button:not(:disabled):active,
 }
 
 .modal-drag-handle:active {
-  background-color: #17375E;
+  background-color: var(--color-navy, #17375E);
   transform: scaleX(1.2);
 }
 
@@ -1426,25 +1769,9 @@ main,
   animation: icon-pop 300ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
 }
 
-@keyframes tile-stagger {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-tile-stagger {
-  animation: tile-stagger 220ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
-  backface-visibility: hidden;
-  transform-origin: center top;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-icon-pop,
+  .animate-fade-up,
   .animate-tile-stagger,
   .animate-day-pop,
   .animate-slide-month-left,
@@ -1482,6 +1809,8 @@ main,
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background-color: var(--color-page);
+  backface-visibility: hidden;
 }
 
 .tab-panel-active {
@@ -1496,6 +1825,16 @@ main,
   visibility: hidden;
   pointer-events: none;
   z-index: 0;
+}
+
+.tab-panel-inactive .animate-tile-stagger,
+.tab-panel-inactive .animate-fade-up {
+  animation: none;
+}
+
+.cv-list-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 92px;
 }
 
 @media print {
@@ -1735,35 +2074,34 @@ main,
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translate3d(0, 8px, 0);
+    transform: translate3d(0, 10px, 0);
   }
   to {
-    opacity: 1;
     transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-fade-up {
-  animation: fade-up 150ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: fade-up 220ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) backwards;
   backface-visibility: hidden;
 }
 
 @keyframes tile-stagger {
   from {
     opacity: 0;
-    transform: translate3d(0, 6px, 0);
+    transform: translate3d(0, 10px, 0);
   }
   to {
-    opacity: 1;
     transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-tile-stagger {
-  animation: tile-stagger 150ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: tile-stagger 220ms var(--ease-out, cubic-bezier(0.22, 0.61, 0.36, 1)) backwards;
   backface-visibility: hidden;
 }
 
+.stagger-0, .motion-stagger-0 { animation-delay: 0ms; }
 .stagger-1, .motion-stagger-1 { animation-delay: 18ms; }
 .stagger-2, .motion-stagger-2 { animation-delay: 36ms; }
 .stagger-3, .motion-stagger-3 { animation-delay: 54ms; }
@@ -1851,10 +2189,10 @@ main,
 
 @keyframes skeleton-shimmer {
   0% {
-    background-position: -200% 0;
+    background-position: 100% 0;
   }
   100% {
-    background-position: 200% 0;
+    background-position: -100% 0;
   }
 }
 
@@ -1862,11 +2200,37 @@ main,
   background: linear-gradient(
     90deg,
     var(--color-mint-soft) 0%,
-    color-mix(in srgb, var(--color-mint) 45%, var(--color-mint-soft)) 50%,
+    color-mix(in srgb, var(--color-mint) 34%, var(--color-mint-soft)) 50%,
     var(--color-mint-soft) 100%
   );
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.85s ease-in-out infinite;
+}
+
+.skeleton-shimmer-on-mint {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-navy) 9%, var(--color-mint-soft)) 0%,
+    color-mix(in srgb, var(--color-page) 48%, var(--color-mint-soft)) 50%,
+    color-mix(in srgb, var(--color-navy) 9%, var(--color-mint-soft)) 100%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.85s ease-in-out infinite;
+}
+
+.skeleton-shimmer-on-navy {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.11) 0%,
+    rgba(255, 255, 255, 0.20) 50%,
+    rgba(255, 255, 255, 0.11) 100%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.85s ease-in-out infinite;
+}
+
+.skeleton-static {
+  background-color: var(--color-mint-soft);
 }
 
 @keyframes toast-slide-up {
@@ -1958,6 +2322,8 @@ main,
   }
 
   .skeleton-shimmer,
+  .skeleton-shimmer-on-mint,
+  .skeleton-shimmer-on-navy,
   .animate-slide-up-fade,
   .animate-bounce-subtle,
   .animate-spin-slow,
@@ -1974,4 +2340,265 @@ main,
   .slide-in-from-top-1 {
     animation: none !important;
   }
+
+  .skeleton-shimmer {
+    background: var(--color-mint-soft) !important;
+  }
+
+  .skeleton-shimmer-on-mint {
+    background: color-mix(in srgb, var(--color-navy) 10%, var(--color-mint-soft)) !important;
+  }
+
+  .skeleton-shimmer-on-navy {
+    background: rgba(255, 255, 255, 0.14) !important;
+  }
 }
+
+/* ==========================================================================
+   HARBOR MINT HIGH-CONTRAST DARK THEME — COMPONENT & SURFACE HARMONIZATION
+   ========================================================================== */
+html.dark body,
+[data-theme="dark"] body {
+  letter-spacing: 0;
+  color-scheme: dark;
+}
+
+/* 1. Signature Harbor Navy Hero Cards & Calendar (NavyCard, Reports Hero, NavyCalendar)
+      Preserves authentic Harbor Navy #17375E -> #0E2644 surface, white ink,
+      Harbor Mint #B9DAD6 active week strip, and Harbor Orange #F5A04A selected day */
+html.dark .navy-card,
+html.dark .classy-dark-card,
+html.dark .classy-sheen-header {
+  --color-page: #FFFFFF;
+  --color-navy: #17375E;
+  --color-navy-deep: #0F2A4A;
+  --color-navy-soft: #2F4E78;
+  --color-slate: #C7DBEC;
+  --color-fog: #99B4CB;
+  background: linear-gradient(145deg, #17375E 0%, #0E2644 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(185, 218, 214, 0.24);
+  box-shadow: var(--shadow-navy);
+}
+
+/* 2. Default MintCard & Featured Mint Surfaces
+      Keeps --color-mint (#B9DAD6) as the authentic Harbor Mint brand accent while
+      elevating full card surfaces to a rich Dark Harbor Mint container */
+html.dark .mint-surface-card,
+html.dark .mint-card,
+html.dark .bg-mint.shadow-mint,
+html.dark button.bg-mint {
+  background: linear-gradient(145deg, #163847 0%, #112C39 100%);
+  border: 1px solid rgba(185, 218, 214, 0.30);
+  color: var(--color-navy);
+}
+
+html.dark button.bg-mint .bg-navy.text-white {
+  background-color: var(--color-mint);
+  color: #0B1829;
+}
+
+html.dark .bg-mint.text-navy:not(.mint-surface-card):not(.shadow-mint):not(button) {
+  color: #0B1829;
+}
+
+/* 3. Elevated Structural Cards & Explicit White Surfaces */
+html.dark .white-card,
+html.dark .classy-card,
+html.dark .classy-bento-sapphire,
+html.dark .classy-bento-navy,
+html.dark .classy-bento-steel,
+html.dark .classy-bento-silver,
+html.dark .classy-rose-card,
+html.dark .classy-cyan-card,
+html.dark .classy-mint-card,
+html.dark .bg-white {
+  background-color: var(--color-surface-elevated);
+}
+
+/* 4. Bottom Sheets, Modals & Scrim Backdrops */
+html.dark [role="dialog"] > div.bg-page {
+  background-color: #0F2034;
+  border-color: rgba(185, 218, 214, 0.20);
+}
+
+html.dark [role="dialog"] > div.bg-page > div.bg-page {
+  background-color: #0F2034;
+}
+
+html.dark .animate-backdrop-fade,
+html.dark .animate-backdrop-exit,
+html.dark .bg-navy-deep\/40,
+html.dark .bg-navy-deep\/50,
+html.dark .bg-navy-deep\/60,
+html.dark .bg-navy\/40,
+html.dark .bg-navy\/50,
+html.dark .bg-navy\/60 {
+  background-color: rgba(3, 8, 16, 0.74) !important;
+}
+
+/* 5. Interactive Controls: Buttons, Filter Chips, Segmented Controls & Toggles
+      Uses authentic Harbor Mint (#B9DAD6) & Harbor Orange (#F5A04A) with deep #0B1829 ink */
+html.dark .btn-navy,
+html.dark .btn-violet,
+html.dark .btn-coral {
+  background-color: var(--color-mint);
+  color: #0B1829;
+  border-color: rgba(185, 218, 214, 0.45);
+}
+
+html.dark .btn-navy:hover:not(:disabled),
+html.dark .btn-navy:active:not(:disabled) {
+  background-color: #CBE6E3;
+  color: #0B1829;
+}
+
+html.dark .btn-soft,
+html.dark .btn-secondary {
+  border-color: rgba(185, 218, 214, 0.16);
+}
+
+html.dark .btn-soft:hover:not(:disabled),
+html.dark .btn-secondary:hover:not(:disabled),
+html.dark .hover\:bg-mint:hover {
+  background-color: var(--color-mint);
+  color: #0B1829;
+}
+
+html.dark .hover\:bg-mint\/60:hover {
+  background-color: rgba(185, 218, 214, 0.18);
+}
+
+html.dark .btn-danger-solid,
+html.dark .btn-destructive-solid {
+  background-color: #E04F4F !important;
+  color: #FFFFFF !important;
+  border-color: #E04F4F !important;
+}
+
+html.dark .chip {
+  border-color: rgba(185, 218, 214, 0.14);
+}
+
+html.dark .chip-active {
+  background-color: var(--color-mint);
+  color: #0B1829;
+  border-color: var(--color-mint);
+  font-weight: 600;
+}
+
+html.dark :is(.chip-active, .btn-navy) .text-white {
+  color: #0B1829;
+}
+
+html.dark .segmented-control,
+html.dark .classy-segment {
+  background-color: #102437;
+  border: 1px solid var(--color-line);
+}
+
+html.dark .segmented-thumb {
+  background-color: var(--color-mint);
+  box-shadow: 0 2px 10px rgba(3, 9, 18, 0.40);
+}
+
+html.dark .segmented-item-active {
+  color: #0B1829 !important;
+  font-weight: 700;
+}
+
+html.dark .classy-segment-btn-active {
+  background-color: var(--color-mint) !important;
+  color: #0B1829 !important;
+}
+
+html.dark .classy-toggle {
+  background-color: #294663;
+  border: 1px solid rgba(185, 218, 214, 0.18);
+}
+
+html.dark .classy-toggle-knob {
+  background-color: #EEF7F6;
+  box-shadow: 0 2px 6px rgba(2, 7, 15, 0.45);
+}
+
+html.dark .classy-toggle-on,
+html.dark .classy-toggle[aria-checked="true"] {
+  background-color: var(--color-mint);
+  border-color: var(--color-mint);
+}
+
+html.dark .classy-toggle-on .classy-toggle-knob,
+html.dark .classy-toggle[aria-checked="true"] .classy-toggle-knob {
+  background-color: #0B1829;
+}
+
+/* 6. Inputs, Selects & Native Pickers */
+html.dark :is(.field, .input-field, .classy-input, .classy-select, .classy-textarea, input, select, textarea) {
+  color-scheme: dark;
+}
+
+html.dark :is(.field, .input-field, .classy-input, .classy-select, .classy-textarea, textarea.field, textarea.input-field) {
+  background-color: #0E1F33;
+  border-color: var(--color-line);
+  color: var(--color-navy);
+}
+
+html.dark :is(.field, .input-field, .classy-input, .classy-select, .classy-textarea, textarea.field):focus {
+  border-color: var(--color-mint);
+  background-color: #11263E;
+  box-shadow: 0 0 0 3px rgba(185, 218, 214, 0.20);
+}
+
+html.dark :is(.field, .input-field, .classy-input, .classy-textarea, textarea.field)::placeholder {
+  color: var(--color-fog);
+}
+
+html.dark input[type="checkbox"],
+html.dark input[type="radio"] {
+  accent-color: var(--color-mint);
+}
+
+/* 7. Toasts & Explicit Navy/Orange Badges */
+html.dark .bg-navy.text-white {
+  background-color: #193D68;
+  color: #FFFFFF;
+  border-color: rgba(185, 218, 214, 0.26);
+}
+
+html.dark .bg-orange.text-navy {
+  color: #0B1829;
+}
+
+/* 8. Floating Bottom Navigation Bar, FAB, Outer Frame & Scrollbars */
+html.dark nav[aria-label="Bottom Navigation"] {
+  background-color: rgba(17, 35, 56, 0.96);
+  border-color: rgba(185, 218, 214, 0.22);
+}
+
+html.dark nav[aria-label="Bottom Navigation"] > div > button.rounded-full {
+  background-color: #163244;
+  border-color: var(--color-mint);
+  box-shadow: 0 8px 22px rgba(2, 7, 15, 0.65);
+}
+
+html.dark .classy-fab {
+  background: linear-gradient(135deg, #B9DAD6 0%, #8FC3BD 100%);
+  color: #0B1829;
+  box-shadow: 0 12px 28px -4px rgba(2, 7, 15, 0.65);
+}
+
+@media (min-width: 768px) {
+  html.dark .md\:bg-mint {
+    background-color: #06101C;
+  }
+}
+
+html.dark .android-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(185, 218, 214, 0.28);
+}
+
+html.dark .android-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(185, 218, 214, 0.48);
+}
+

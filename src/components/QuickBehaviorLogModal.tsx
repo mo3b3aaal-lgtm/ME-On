@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Student, Group, BehaviorCategory, StudentBehaviorLog, PredefinedBehaviorTag } from '../types';
 import { PREDEFINED_BEHAVIOR_TAGS } from '../utils/behavior';
 import { db } from '../utils/storage';
@@ -47,6 +47,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
   // Save animation state
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSavedSuccess, setIsSavedSuccess] = useState<boolean>(false);
+  const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Student's enrollments to resolve groups
   const studentEnrollments = student ? db.getStudentEnrollments(student.id) : [];
@@ -56,6 +57,10 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
   );
 
   useEffect(() => {
+    if (submitTimerRef.current !== null) {
+      clearTimeout(submitTimerRef.current);
+      submitTimerRef.current = null;
+    }
     if (isOpen && student) {
       const defaultTag = PREDEFINED_BEHAVIOR_TAGS.find((t) => t.id === 'excellent_participation') || PREDEFINED_BEHAVIOR_TAGS[0];
       setSelectedTag(defaultTag);
@@ -73,6 +78,12 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
       setIsSubmitting(false);
       setIsSavedSuccess(false);
     }
+    return () => {
+      if (submitTimerRef.current !== null) {
+        clearTimeout(submitTimerRef.current);
+        submitTimerRef.current = null;
+      }
+    };
   }, [isOpen, student?.id]);
 
   if (!isOpen || !student) return null;
@@ -131,7 +142,11 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
     db.saveBehaviorLog(newLog);
 
     setIsSavedSuccess(true);
-    setTimeout(() => {
+    if (submitTimerRef.current !== null) {
+      clearTimeout(submitTimerRef.current);
+    }
+    submitTimerRef.current = setTimeout(() => {
+      submitTimerRef.current = null;
       setIsSubmitting(false);
       if (onSuccess) {
         onSuccess(newLog);

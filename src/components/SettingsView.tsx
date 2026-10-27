@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   TeacherProfile,
   UserAccount,
   AutoSyncFrequency,
   AutoSyncConfig,
   NotificationSettings,
+  LessonReminderLeadMinutes,
+  NotificationHistoryRetentionDays,
   ActiveTab,
 } from '../types';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
@@ -13,6 +15,8 @@ import { SegmentedControl } from './ui/SegmentedControl';
 import { Toggle } from './ui/Toggle';
 import { Toast, type ToastType } from './ui/Toast';
 import { SyncStatusPill } from './ui/SyncStatusPill';
+import { useDelayedLoading } from './ui/Skeleton';
+import { SettingsSyncStatusSkeleton } from './skeletons/ClassySkeletons';
 import {
   db,
   formatSyncTimeArabic,
@@ -24,19 +28,36 @@ import {
   DetailedNetworkStatus,
 } from '../utils/network';
 import { useTranslation, Language } from '../utils/i18n';
+import { useTheme } from '../utils/theme';
+import { triggerLightHaptic, useHapticsPreference } from '../utils/haptics';
 import { toLocalISODate } from '../utils/localDate';
 import {
   formatReminderTimeDisplay,
-  scheduleDailyAttendanceReminder,
   sendTestAttendanceReminderNotification,
-  requestNotificationPermission,
-  AVAILABLE_NOTIFICATION_SOUNDS,
   updateNotificationSoundPreference,
 } from '../utils/localNotifications';
+import {
+  HISTORY_RETENTION_OPTIONS,
+  LESSON_LEAD_TIME_OPTIONS,
+  VERIFIED_NOTIFICATION_SOUNDS,
+  type OsPermissionState,
+  clearNotificationHistoryForUser,
+  getPermissionStatusSync,
+  getPlatformNotificationCapabilities,
+  normalizeNotificationSettings,
+  notifyBackupOrRestoreEvent,
+  playNotificationSoundTone,
+  refreshPermissionStatus,
+  requestPlatformNotificationPermission,
+  resetPermissionAlertDismissal,
+  restoreDefaultNotificationSettings,
+  subscribeToNotifications,
+} from '../utils/notificationCenter';
 
 interface SettingsViewProps {
   teacherProfile: TeacherProfile;
   currentUser: UserAccount | null;
+  isActive?: boolean;
   onProfileUpdated: (profile: TeacherProfile) => void;
   onDataReset: () => void;
   onLogout: () => void;
@@ -47,6 +68,7 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   teacherProfile,
   currentUser,
+  isActive = true,
   onProfileUpdated,
   onDataReset,
   onLogout,
@@ -54,6 +76,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onBack,
 }) => {
   const { language, setLanguage, isRTL, t } = useTranslation();
+  const { isDark, setTheme } = useTheme();
+  const { hapticsEnabled, setHapticsEnabled } = useHapticsPreference();
   const isEn = language.startsWith('en');
 
   // Profile Form state
@@ -67,15 +91,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => db.getLastSyncTime(currentUser?.id));
   const [autoSyncConfig, setAutoSyncConfig] = useState<AutoSyncConfig>(() => db.getAutoSyncConfig(currentUser?.id));
   const [networkStatus, setNetworkStatus] = useState<DetailedNetworkStatus>(() => getCachedNetworkStatus());
-  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(() => db.getNotificationSettings(currentUser?.id));
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(() =>
+    normalizeNotificationSettings(db.getNotificationSettings(currentUser?.id))
+  );
+  const [permStatus, setPermStatus] = useState<OsPermissionState>(() => getPermissionStatusSync());
+  const [expandedNotifGroup, setExpandedNotifGroup] = useState<
+    'quiet' | 'lessons' | 'attendance' | 'financial' | 'packages' | 'system_sync' | null
+  >(null);
+  const [confirmClearNotifHistory, setConfirmClearNotifHistory] = useState(false);
+  const [confirmRestoreNotifDefaults, setConfirmRestoreNotifDefaults] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isImportingBackup, setIsImportingBackup] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const showAsyncSyncSkeleton = useDelayedLoading(
+    isImportingBackup || networkStatus.statusReason === 'checking',
+    90
+  );
 
   // Password change in settings
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [passMessage, setPassMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const savedSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const passTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (savedSuccessTimerRef.current !== null) {
+        clearTimeout(savedSuccessTimerRef.current);
+      }
+      if (passTimerRef.current !== null) {
+        clearTimeout(passTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setName(teacherProfile.name);
@@ -90,6 +141,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   ]);
 
   useEffect(() => {
+    if (!isActive) return;
+
     const syncSnapshot = () => {
       const nextTime = db.getLastSyncTime(currentUser?.id);
       const nextCfg = db.getAutoSyncConfig(currentUser?.id);
@@ -99,9 +152,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       );
     };
 
+    const syncNotifSnapshot = () => {
+      const latest = normalizeNotificationSettings(db.getNotificationSettings(currentUser?.id));
+      setNotifSettings((prev) =>
+        JSON.stringify(prev) === JSON.stringify(latest) ? prev : latest
+      );
+      setPermStatus(getPermissionStatusSync());
+    };
+
     syncSnapshot();
+    syncNotifSnapshot();
+    refreshPermissionStatus().then((st) => setPermStatus(st)).catch(() => {});
 
     const unsubscribeSync = db.subscribeToSyncUpdates(syncSnapshot);
+    const unsubscribeNotif = subscribeToNotifications(syncNotifSnapshot);
 
     const unsubscribeNet = subscribeToNetworkStatus((status) => {
       setNetworkStatus((prev) =>
@@ -115,13 +179,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     return () => {
       unsubscribeSync();
+      unsubscribeNotif();
       unsubscribeNet();
       clearInterval(interval);
     };
-  }, [currentUser]);
+  }, [currentUser, isActive]);
 
   const showToast = (message: string, type: ToastType = 'success') => {
     setToast({ message, type });
+  };
+
+  const handleToggleDarkTheme = (nextDark: boolean) => {
+    triggerLightHaptic();
+    setTheme(nextDark ? 'dark' : 'light');
+    showToast(
+      nextDark
+        ? (isEn ? 'Dark theme enabled.' : 'تم تفعيل الوضع الداكن.')
+        : (isEn ? 'Light theme enabled.' : 'تم تفعيل الوضع الفاتح.'),
+      'info'
+    );
+  };
+
+  const handleToggleHaptics = (nextEnabled: boolean) => {
+    setHapticsEnabled(nextEnabled);
+    if (nextEnabled) {
+      triggerLightHaptic();
+    }
+    showToast(
+      nextEnabled ? t('hapticFeedbackEnabledToast') : t('hapticFeedbackDisabledToast'),
+      'info'
+    );
   };
 
   // Handle frequency schedule change
@@ -176,6 +263,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       a.click();
       URL.revokeObjectURL(url);
 
+      notifyBackupOrRestoreEvent({
+        eventType: 'backup_completed',
+        userId: currentUser?.id,
+      });
+
       showToast(
         isEn
           ? 'Backup exported successfully!'
@@ -183,6 +275,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         'success'
       );
     } catch (err) {
+      notifyBackupOrRestoreEvent({
+        eventType: 'backup_failed',
+        userId: currentUser?.id,
+      });
       showToast(isEn ? 'Error occurred during backup.' : 'حدث خطأ أثناء إجراء النسخ الاحتياطي.', 'error');
     } finally {
       setIsSyncing(false);
@@ -215,9 +311,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         );
         onDataReset();
       } else {
+        notifyBackupOrRestoreEvent({
+          eventType: 'restore_failed',
+          detail: res.message,
+          userId: currentUser.id,
+        });
         showToast(res.message, 'error');
       }
     } catch (err) {
+      notifyBackupOrRestoreEvent({
+        eventType: 'restore_failed',
+        userId: currentUser.id,
+      });
       showToast(isEn ? 'Data restore failed.' : 'فشلت عملية استعادة البيانات.', 'error');
     } finally {
       setIsSyncing(false);
@@ -240,6 +345,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
 
+    setIsImportingBackup(true);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -254,11 +360,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           );
           onDataReset();
         } else {
+          notifyBackupOrRestoreEvent({
+            eventType: 'restore_failed',
+            detail: res.message,
+            userId: currentUser?.id,
+          });
           showToast(res.message || (isEn ? 'Invalid backup file format.' : 'صيغة ملف النسخ غير صحيحة.'), 'error');
         }
       } catch (err) {
+        notifyBackupOrRestoreEvent({
+          eventType: 'restore_failed',
+          userId: currentUser?.id,
+        });
         showToast(isEn ? 'Failed to parse backup JSON file.' : 'فشل قراءة ملف النسخة الاحتياطية.', 'error');
+      } finally {
+        setIsImportingBackup(false);
       }
+    };
+    reader.onerror = () => {
+      setIsImportingBackup(false);
+      notifyBackupOrRestoreEvent({
+        eventType: 'restore_failed',
+        userId: currentUser?.id,
+      });
+      showToast(isEn ? 'Failed to read backup file.' : 'تعذر قراءة ملف النسخة الاحتياطية.', 'error');
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -277,7 +402,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     onProfileUpdated(updated);
     setSavedSuccess(true);
     showToast(isEn ? 'Profile updated successfully!' : 'تم حفظ بيانات المعلم بنجاح!', 'success');
-    setTimeout(() => setSavedSuccess(false), 3000);
+    if (savedSuccessTimerRef.current !== null) {
+      clearTimeout(savedSuccessTimerRef.current);
+    }
+    savedSuccessTimerRef.current = setTimeout(() => {
+      setSavedSuccess(false);
+      savedSuccessTimerRef.current = null;
+    }, 3000);
   };
 
   // Handle password change
@@ -300,88 +431,176 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setPassMessage({ type: 'success', text: isEn ? 'Password changed successfully!' : 'تم تغيير كلمة المرور بنجاح!' });
       setCurrentPass('');
       setNewPass('');
-      setTimeout(() => {
+      if (passTimerRef.current !== null) {
+        clearTimeout(passTimerRef.current);
+      }
+      passTimerRef.current = setTimeout(() => {
         setIsChangingPassword(false);
         setPassMessage(null);
+        passTimerRef.current = null;
       }, 2000);
     } else {
       setPassMessage({ type: 'error', text: res.message });
     }
   };
 
-  // Handle toggle notifications
-  const handleToggleNotif = (key: keyof NotificationSettings) => {
-    const updated = {
+  // Centralized Notification Preference Updater (takes effect immediately & persists per user)
+  const updateNotifPatch = (patch: Partial<NotificationSettings>) => {
+    triggerLightHaptic();
+    const next = normalizeNotificationSettings({
       ...notifSettings,
-      [key]: !notifSettings[key],
-    };
-    setNotifSettings(updated);
-    db.saveNotificationSettings(updated, currentUser?.id);
-  };
-
-  // Handle Daily Attendance Reminder Toggle
-  const handleToggleDailyAttendanceReminder = async () => {
-    const nextVal = notifSettings.enableDailyAttendanceReminder === false;
-    if (nextVal) {
-      await requestNotificationPermission();
+      ...patch,
+    });
+    if (patch.enableStudentAbsenceAlerts !== undefined) {
+      next.enableAbsenceReminders = patch.enableStudentAbsenceAlerts;
+    } else if (patch.enableAbsenceReminders !== undefined) {
+      next.enableStudentAbsenceAlerts = patch.enableAbsenceReminders;
     }
-    const updated = {
-      ...notifSettings,
-      enableDailyAttendanceReminder: nextVal,
-    };
-    setNotifSettings(updated);
-    db.saveNotificationSettings(updated, currentUser?.id);
-    await scheduleDailyAttendanceReminder({ userId: currentUser?.id, isEn });
+    setNotifSettings(next);
+    db.saveNotificationSettings(next, currentUser?.id);
   };
 
-  // Handle Daily Attendance Reminder Time Change
-  const handleReminderTimeChange = async (newTime: string) => {
-    const updated = {
-      ...notifSettings,
-      dailyAttendanceReminderTime: newTime,
-    };
-    setNotifSettings(updated);
-    db.saveNotificationSettings(updated, currentUser?.id);
-    await scheduleDailyAttendanceReminder({ userId: currentUser?.id, isEn });
+  const handleRequestOsPermission = async () => {
+    triggerLightHaptic();
+    const res = await requestPlatformNotificationPermission();
+    setPermStatus(res);
+    if (res === 'granted') {
+      resetPermissionAlertDismissal(currentUser?.id);
+      showToast(
+        isEn
+          ? 'Device notification permission enabled.'
+          : 'تم تفعيل صلاحية إشعارات الجهاز بنجاح.',
+        'success'
+      );
+    } else if (res === 'denied') {
+      showToast(
+        isEn
+          ? 'Permission blocked by system settings. Enable notifications in your device/browser settings.'
+          : 'الصلاحية محجوبة من إعدادات النظام. يرجى تفعيل الإشعارات من إعدادات الهاتف أو المتصفح.',
+        'info'
+      );
+    }
+  };
+
+  const handleToggleMobileAlerts = async (nextVal: boolean) => {
+    if (nextVal && permStatus !== 'granted') {
+      const res = await requestPlatformNotificationPermission();
+      setPermStatus(res);
+      if (res === 'granted') {
+        resetPermissionAlertDismissal(currentUser?.id);
+      }
+    }
+    updateNotifPatch({ enableMobileNotifications: nextVal });
+  };
+
+  const handleToggleQuietDay = (dayKey: string) => {
+    const currentDays = notifSettings.quietHoursDays || [];
+    const exists = currentDays.includes(dayKey);
+    const nextDays = exists
+      ? currentDays.filter((d) => d !== dayKey)
+      : [...currentDays, dayKey];
+    updateNotifPatch({ quietHoursDays: nextDays });
   };
 
   // Handle Notification Sound Change
   const handleSoundChange = async (soundUri: string) => {
-    const selectedOption = AVAILABLE_NOTIFICATION_SOUNDS.find((s) => s.uri === soundUri);
+    const selectedOption = VERIFIED_NOTIFICATION_SOUNDS.find((s) => s.uri === soundUri);
     const soundName = selectedOption ? (isEn ? selectedOption.nameEn : selectedOption.nameAr) : soundUri;
+    const isSilent = soundUri === 'silent';
 
-    const updated = {
+    const next = normalizeNotificationSettings({
       ...notifSettings,
+      soundPreset: (selectedOption?.id || 'default') as NotificationSettings['soundPreset'],
       notificationSoundUri: soundUri,
       notificationSoundName: soundName,
-    };
-    setNotifSettings(updated);
+      enableNotificationSound: !isSilent,
+    });
+    setNotifSettings(next);
     await updateNotificationSoundPreference(soundUri, soundName, currentUser?.id, isEn);
   };
 
-  // Test Notification Trigger
+  // Test Device Notification Trigger
   const handleSendTestNotification = async () => {
-    const success = await sendTestAttendanceReminderNotification(isEn);
+    triggerLightHaptic();
+    const success = await sendTestAttendanceReminderNotification(isEn, notifSettings.soundPreset);
+    setPermStatus(getPermissionStatusSync());
     if (success) {
-      showToast(isEn ? 'Test alert sent to notification tray.' : 'تم إرسال التنبيه التجريبي للإشعارات.', 'info');
+      showToast(
+        isEn ? 'Test alert dispatched successfully.' : 'تم إرسال التنبيه التجريبي بنجاح.',
+        'info'
+      );
     } else {
-      showToast(isEn ? 'Could not send test notification.' : 'تعذر إرسال التنبيه.', 'error');
+      showToast(
+        isEn
+          ? 'Enable notification permission to receive device alerts.'
+          : 'فعّل صلاحية الإشعارات لاستلام تنبيهات الجهاز.',
+        'info'
+      );
     }
   };
 
-  // Test Sound Trigger
+  // Test Sound Preview Trigger
   const handleTestSound = async () => {
-    const activeSoundUri = notifSettings.notificationSoundUri || 'beep.wav';
-    const selectedOption = AVAILABLE_NOTIFICATION_SOUNDS.find((s) => s.uri === activeSoundUri);
-    const soundDisplayName = selectedOption ? (isEn ? selectedOption.nameEn : selectedOption.nameAr) : activeSoundUri;
+    triggerLightHaptic();
+    const activePreset = notifSettings.soundPreset || 'default';
+    const selectedOption =
+      VERIFIED_NOTIFICATION_SOUNDS.find((s) => s.id === activePreset) ||
+      VERIFIED_NOTIFICATION_SOUNDS[0];
+    const soundDisplayName = isEn ? selectedOption.nameEn : selectedOption.nameAr;
 
-    const success = await sendTestAttendanceReminderNotification(isEn, activeSoundUri);
-    if (success) {
-      showToast(isEn ? `Playing alert sound: "${soundDisplayName}"` : `تشغيل نغمة: "${soundDisplayName}"`, 'info');
+    if (activePreset === 'silent') {
+      showToast(
+        isEn
+          ? 'Silent preset is selected (visual alerts only, no sound).'
+          : 'الوضع الصامت محدد حالياً (إشعار مرئي بدون صوت).',
+        'info'
+      );
+      return;
+    }
+
+    const res = await playNotificationSoundTone(activePreset, {
+      isPreview: true,
+      settings: notifSettings,
+    });
+    if (res.played) {
+      showToast(
+        isEn ? `Playing sound preview: "${soundDisplayName}"` : `معاينة نغمة: "${soundDisplayName}"`,
+        'info'
+      );
     } else {
-      showToast(isEn ? 'Could not trigger sound test.' : 'تعذر اختبار الصوت.', 'error');
+      showToast(
+        isEn ? 'Audio preview unavailable on this device.' : 'تعذر تشغيل معاينة الصوت على هذا الجهاز.',
+        'error'
+      );
     }
   };
+
+  const handleConfirmClearNotifHistory = () => {
+    triggerLightHaptic();
+    clearNotificationHistoryForUser(currentUser?.id);
+    setConfirmClearNotifHistory(false);
+    onDataReset();
+    showToast(
+      isEn ? 'Notification history cleared.' : 'تم مسح سجل الإشعارات بنجاح.',
+      'info'
+    );
+  };
+
+  const handleConfirmRestoreNotifDefaults = async () => {
+    triggerLightHaptic();
+    const restored = await restoreDefaultNotificationSettings(currentUser?.id, isEn);
+    setNotifSettings(restored);
+    setConfirmRestoreNotifDefaults(false);
+    onDataReset();
+    showToast(
+      isEn
+        ? 'Default notification settings restored.'
+        : 'تمت استعادة الإعدادات الافتراضية للإشعارات.',
+      'success'
+    );
+  };
+
+  const platformCaps = getPlatformNotificationCapabilities();
 
   // Handle reset data
   const handleResetData = () => {
@@ -470,6 +689,72 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               { value: 'en-US', label: 'English (US)' },
             ]}
           />
+        </MintCard>
+      </section>
+
+      {/* =========================================================================
+          APPEARANCE / HARBOR MINT DARK THEME TOGGLE
+          ========================================================================= */}
+      <section className="space-y-2">
+        <h2 className="t-caption text-slate uppercase tracking-wider px-1">
+          {isEn ? 'Appearance' : 'المظهر'}
+        </h2>
+        <MintCard className="bg-mint-soft p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-page/70 border border-line/60">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
+                <AppIcon name={isDark ? 'moon' : 'sun'} size={20} weight="duotone" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="t-card text-navy font-bold leading-tight">
+                  {isEn ? 'Dark Theme' : 'الوضع الداكن'}
+                </h3>
+                <p className="t-meta text-slate text-xs mt-0.5 truncate">
+                  {isDark
+                    ? (isEn ? 'High-contrast Harbor Mint dark mode active' : 'وضع هاربور منت الداكن عالي التباين مفعّل')
+                    : (isEn ? 'Switch to high-contrast Harbor Mint dark mode' : 'تفعيل المظهر الداكن عالي التباين المريح للعين')}
+                </p>
+              </div>
+            </div>
+            <Toggle
+              id="settings-dark-theme-toggle"
+              checked={isDark}
+              onChange={handleToggleDarkTheme}
+              ariaLabel={isEn ? 'Dark Theme' : 'الوضع الداكن'}
+            />
+          </div>
+        </MintCard>
+      </section>
+
+      {/* =========================================================================
+          INTERACTION / HAPTIC FEEDBACK TOGGLE
+          ========================================================================= */}
+      <section className="space-y-2">
+        <h2 className="t-caption text-slate uppercase tracking-wider px-1">
+          {t('interactionSection')}
+        </h2>
+        <MintCard className="bg-mint-soft p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-page/70 border border-line/60">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
+                <AppIcon name="activity" size={20} weight="duotone" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="t-card text-navy font-bold leading-tight">
+                  {t('hapticFeedback')}
+                </h3>
+                <p className="t-meta text-slate text-xs mt-0.5 leading-snug">
+                  {t('hapticFeedbackDesc')}
+                </p>
+              </div>
+            </div>
+            <Toggle
+              id="settings-haptic-feedback-toggle"
+              checked={hapticsEnabled}
+              onChange={handleToggleHaptics}
+              ariaLabel={t('hapticFeedback')}
+            />
+          </div>
         </MintCard>
       </section>
 
@@ -638,9 +923,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <h3 className="t-card text-navy font-bold leading-tight">
                   {isEn ? 'Data Sync State' : 'حالة المزامنة السحابية'}
                 </h3>
-                <p className="t-meta text-slate text-xs mt-0.5">
-                  {syncStatus.label}
-                </p>
+                {showAsyncSyncSkeleton ? (
+                  <SettingsSyncStatusSkeleton />
+                ) : (
+                  <p className="t-meta text-slate text-xs mt-0.5">
+                    {syncStatus.label}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -748,151 +1037,1027 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </section>
 
       {/* =========================================================================
-          GROUP 4: SMART NOTIFICATIONS & REMINDERS
+          GROUP 4: PROFESSIONAL NOTIFICATIONS & MOBILE ALERTS
           ========================================================================= */}
       <section className="space-y-2">
         <h2 className="t-caption text-slate uppercase tracking-wider px-1">
-          {isEn ? 'Notifications' : 'الإشعارات والتذكيرات'}
+          {isEn ? 'Notifications & Alerts' : 'الإشعارات والتنبيهات'}
         </h2>
         <MintCard className="bg-mint-soft p-4 sm:p-5 space-y-3">
-          {/* Row 1: Daily Attendance Reminder */}
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/70 border border-line/60">
+          {/* Master Switch: Enable All Notifications */}
+          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page border border-line shadow-2xs">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
-                <AppIcon name="clock" size={20} weight="duotone" />
+              <div className="w-10 h-10 rounded-full bg-mint-soft flex items-center justify-center text-navy shrink-0 border border-line/60">
+                <AppIcon name="bell" size={20} weight="duotone" />
               </div>
               <div className="min-w-0">
                 <h4 className="t-card text-navy font-bold leading-tight">
-                  {isEn ? 'Daily Attendance Reminder' : 'تذكير الحضور اليومي'}
+                  {t('notifEnableAll')}
                 </h4>
                 <p className="t-meta text-slate text-xs mt-0.5 truncate">
-                  {formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', isEn)}
+                  {notifSettings.enableNotifications !== false
+                    ? (isEn ? 'Active across in-app center & scheduled alerts' : 'مفعلة لمركز الإشعارات والتنبيهات المجدولة')
+                    : (isEn ? 'All notifications and scheduled alarms are paused' : 'جميع الإشعارات والتنبيهات المجدولة متوقفة')}
                 </p>
               </div>
             </div>
             <Toggle
-              checked={notifSettings.enableDailyAttendanceReminder !== false}
-              onChange={handleToggleDailyAttendanceReminder}
-              ariaLabel="Daily Reminder"
+              checked={notifSettings.enableNotifications !== false}
+              onChange={(val) => updateNotifPatch({ enableNotifications: val })}
+              ariaLabel={t('notifEnableAll')}
             />
           </div>
 
-          {/* Sub-row: Time & Alert Sound */}
-          {notifSettings.enableDailyAttendanceReminder !== false && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-2xl bg-page border border-line animate-in fade-in">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate block">
-                  {isEn ? 'Reminder Time' : 'وقت التذكير'}
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={notifSettings.dailyAttendanceReminderTime || '22:00'}
-                    onChange={(e) => handleReminderTimeChange(e.target.value)}
-                    className="classy-input flex-1"
+          {notifSettings.enableNotifications !== false && (
+            <>
+              {/* OS / Browser Permission Recovery Banner */}
+              {notifSettings.enableMobileNotifications !== false && permStatus !== 'granted' && (
+                <div className="p-3 rounded-2xl bg-page border border-orange/40 flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <AppIcon name="warning" size={18} weight="fill" className="text-orange shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-navy block">
+                        {permStatus === 'denied'
+                          ? (isEn ? 'Notification Permission Blocked' : 'صلاحية الإشعارات محجوبة من النظام')
+                          : permStatus === 'unsupported'
+                          ? (isEn ? 'In-App Alerts Active (OS Tray Unsupported)' : 'تنبيهات داخل التطبيق نشطة')
+                          : (isEn ? 'Allow Device Notifications' : 'السماح بإشعارات الهاتف')}
+                      </span>
+                      <span className="text-[11px] text-slate block mt-0.5 leading-snug">
+                        {permStatus === 'denied'
+                          ? (isEn
+                              ? 'Enable notifications in system settings to receive lesson alarms outside the app.'
+                              : 'فعّل صلاحية الإشعارات من إعدادات الجهاز لاستلام تنبيهات الحصص بالخلفية.')
+                          : (isEn
+                              ? 'Grant permission to receive scheduled lesson and attendance alerts with sound.'
+                              : 'امنح الصلاحية لاستلام تذكيرات الحصص والحضور بالصوت في موعدها.')}
+                      </span>
+                    </div>
+                  </div>
+                  {permStatus !== 'unsupported' && (
+                    <button
+                      type="button"
+                      onClick={handleRequestOsPermission}
+                      className="btn-orange px-3 py-1.5 text-xs shrink-0"
+                    >
+                      {isEn ? 'Enable' : 'تفعيل'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Channel Delivery Switches (Mobile, In-App, Sound, Vibration) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/75 border border-line/60">
+                  <div className="min-w-0 pe-2">
+                    <span className="text-xs font-bold text-navy block truncate">
+                      {t('notifEnableMobile')}
+                    </span>
+                    <span className="text-[10px] text-slate block truncate">
+                      {isEn ? 'Scheduled device alarms' : 'تنبيهات مجدولة على الهاتف'}
+                    </span>
+                  </div>
+                  <Toggle
+                    checked={notifSettings.enableMobileNotifications !== false}
+                    onChange={handleToggleMobileAlerts}
+                    ariaLabel={t('notifEnableMobile')}
                   />
-                  <button
-                    type="button"
-                    onClick={handleSendTestNotification}
-                    className="btn-soft px-3 text-xs shrink-0 h-10"
-                  >
-                    {isEn ? 'Test' : 'تجربة'}
-                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/75 border border-line/60">
+                  <div className="min-w-0 pe-2">
+                    <span className="text-xs font-bold text-navy block truncate">
+                      {t('notifEnableInApp')}
+                    </span>
+                    <span className="text-[10px] text-slate block truncate">
+                      {isEn ? 'Bell badge & alert feed' : 'شارة الجرس وسجل التنبيهات'}
+                    </span>
+                  </div>
+                  <Toggle
+                    checked={notifSettings.enableInAppNotifications !== false}
+                    onChange={(val) => updateNotifPatch({ enableInAppNotifications: val })}
+                    ariaLabel={t('notifEnableInApp')}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/75 border border-line/60">
+                  <div className="min-w-0 pe-2">
+                    <span className="text-xs font-bold text-navy block truncate">
+                      {t('notifEnableSound')}
+                    </span>
+                    <span className="text-[10px] text-slate block truncate">
+                      {isEn ? 'Play alert tone' : 'تشغيل نغمة مع الإشعار'}
+                    </span>
+                  </div>
+                  <Toggle
+                    checked={
+                      notifSettings.enableNotificationSound !== false &&
+                      notifSettings.soundPreset !== 'silent'
+                    }
+                    onChange={(val) =>
+                      updateNotifPatch({
+                        enableNotificationSound: val,
+                        soundPreset: val
+                          ? notifSettings.soundPreset === 'silent'
+                            ? 'default'
+                            : notifSettings.soundPreset || 'default'
+                          : notifSettings.soundPreset,
+                      })
+                    }
+                    ariaLabel={t('notifEnableSound')}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/75 border border-line/60">
+                  <div className="min-w-0 pe-2">
+                    <span className="text-xs font-bold text-navy block truncate">
+                      {t('notifEnableVibration')}
+                    </span>
+                    <span className="text-[10px] text-slate block truncate">
+                      {!hapticsEnabled
+                        ? (isEn ? 'Muted while global Haptics is OFF' : 'متوقف طالما الاهتزاز اللمسي مغلق')
+                        : (isEn ? 'Vibrate on alert' : 'اهتزاز عند وصول التنبيه')}
+                    </span>
+                  </div>
+                  <Toggle
+                    checked={notifSettings.enableNotificationVibration !== false}
+                    onChange={(val) => updateNotifPatch({ enableNotificationVibration: val })}
+                    ariaLabel={t('notifEnableVibration')}
+                  />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate block">
-                  {isEn ? 'Alert Sound' : 'نغمة التنبيه'}
-                </label>
-                <div className="flex items-center gap-2">
+              {/* Verified Sound Preset Selector + Preview & Test Alert */}
+              <div className="p-3 rounded-2xl bg-page border border-line space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-navy flex items-center gap-1.5">
+                    <AppIcon name="volume" size={16} weight="duotone" />
+                    <span>{isEn ? 'Alert Sound Preset' : 'نغمة الإشعارات المعتمدة'}</span>
+                  </label>
+                  <span className="text-[10px] text-slate font-semibold">
+                    {isEn ? 'Verified playback' : 'صوت محقق بدون ملفات مفقودة'}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <select
-                    value={notifSettings.notificationSoundUri || 'beep.wav'}
+                    value={notifSettings.soundPreset || 'default'}
                     onChange={(e) => handleSoundChange(e.target.value)}
                     className="classy-select flex-1 min-w-0"
                   >
-                    {AVAILABLE_NOTIFICATION_SOUNDS.map((sound) => (
+                    {VERIFIED_NOTIFICATION_SOUNDS.map((sound) => (
                       <option key={sound.id} value={sound.uri}>
-                        {isEn ? sound.nameEn : sound.nameAr}
+                        {isEn ? `${sound.nameEn} — ${sound.descEn}` : `${sound.nameAr} — ${sound.descAr}`}
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    onClick={handleTestSound}
-                    className="btn-soft px-3 text-xs shrink-0 h-10"
-                  >
-                    <AppIcon name="speaker" size={14} />
-                  </button>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleTestSound}
+                      className="btn-soft px-3 text-xs h-10 flex-1 sm:flex-initial flex items-center justify-center gap-1.5"
+                      title={isEn ? 'Preview Sound' : 'معاينة النغمة'}
+                    >
+                      <AppIcon name="volume" size={15} weight="duotone" />
+                      <span>{isEn ? 'Preview' : 'معاينة'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendTestNotification}
+                      className="btn-soft px-3 text-xs h-10 flex-1 sm:flex-initial flex items-center justify-center gap-1.5"
+                      title={isEn ? 'Send Test Notification' : 'إرسال إشعار تجريبي'}
+                    >
+                      <AppIcon name="bell" size={15} weight="duotone" />
+                      <span>{isEn ? 'Test Alert' : 'تجربة إشعار'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* 1. Quiet Hours Accordion */}
+              <div className="rounded-2xl bg-page/80 border border-line/70 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedNotifGroup((prev) => (prev === 'quiet' ? null : 'quiet'))
+                  }
+                  className="w-full p-3 flex items-center justify-between gap-3 text-start cursor-pointer hover:bg-page transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-mint-soft flex items-center justify-center text-navy shrink-0">
+                      <AppIcon name="moon" size={18} weight="duotone" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-navy truncate">
+                        {t('notifQuietHours')}
+                      </h4>
+                      <p className="text-[11px] text-slate truncate">
+                        {notifSettings.quietHoursEnabled
+                          ? `${formatReminderTimeDisplay(notifSettings.quietHoursStart || '22:00', isEn)} → ${formatReminderTimeDisplay(notifSettings.quietHoursEnd || '07:00', isEn)}`
+                          : (isEn ? 'Off — alerts allowed anytime' : 'متوقفة — يسمح بالتنبيهات في أي وقت')}
+                      </p>
+                    </div>
+                  </div>
+                  <AppIcon
+                    name={expandedNotifGroup === 'quiet' ? 'chevronUp' : 'chevronDown'}
+                    size={16}
+                    className="text-slate shrink-0"
+                  />
+                </button>
+
+                {expandedNotifGroup === 'quiet' && (
+                  <div className="p-3 pt-2 border-t border-line/60 space-y-3 bg-page">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-navy">
+                        {isEn ? 'Enable Quiet Hours' : 'تفعيل ساعات الهدوء'}
+                      </span>
+                      <Toggle
+                        checked={Boolean(notifSettings.quietHoursEnabled)}
+                        onChange={(val) => updateNotifPatch({ quietHoursEnabled: val })}
+                        ariaLabel="Quiet Hours"
+                      />
+                    </div>
+
+                    {notifSettings.quietHoursEnabled && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate block">
+                              {isEn ? 'Start Time' : 'من الساعة'}
+                            </label>
+                            <input
+                              type="time"
+                              value={notifSettings.quietHoursStart || '22:00'}
+                              onChange={(e) =>
+                                updateNotifPatch({ quietHoursStart: e.target.value })
+                              }
+                              className="classy-input w-full"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate block">
+                              {isEn ? 'End Time' : 'إلى الساعة'}
+                            </label>
+                            <input
+                              type="time"
+                              value={notifSettings.quietHoursEnd || '07:00'}
+                              onChange={(e) => updateNotifPatch({ quietHoursEnd: e.target.value })}
+                              className="classy-input w-full"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate block">
+                            {isEn
+                              ? 'Active Days (leave unselected for every day):'
+                              : 'أيام التفعيل (اتركها فارغة لتشمل كل الأيام):'}
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {[
+                              { key: 'saturday', ar: 'السبت', en: 'Sat' },
+                              { key: 'sunday', ar: 'الأحد', en: 'Sun' },
+                              { key: 'monday', ar: 'الاثنين', en: 'Mon' },
+                              { key: 'tuesday', ar: 'الثلاثاء', en: 'Tue' },
+                              { key: 'wednesday', ar: 'الأربعاء', en: 'Wed' },
+                              { key: 'thursday', ar: 'الخميس', en: 'Thu' },
+                              { key: 'friday', ar: 'الجمعة', en: 'Fri' },
+                            ].map((d) => {
+                              const active = (notifSettings.quietHoursDays || []).includes(d.key);
+                              return (
+                                <button
+                                  key={d.key}
+                                  type="button"
+                                  onClick={() => handleToggleQuietDay(d.key)}
+                                  className={`chip text-[11px] ${active ? 'chip-active' : ''}`}
+                                >
+                                  {isEn ? d.en : d.ar}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                          <div className="min-w-0 pe-2">
+                            <span className="text-xs font-bold text-navy block">
+                              {isEn ? 'Allow Critical Alerts' : 'السماح بالتنبيهات الحرجة'}
+                            </span>
+                            <span className="text-[10px] text-slate block">
+                              {isEn
+                                ? 'Permit backup/data failure alerts during quiet hours'
+                                : 'السماح بتمرير تنبيهات فشل النسخ الاحتياطي الطارئة'}
+                            </span>
+                          </div>
+                          <Toggle
+                            checked={Boolean(notifSettings.allowCriticalDuringQuietHours)}
+                            onChange={(val) =>
+                              updateNotifPatch({ allowCriticalDuringQuietHours: val })
+                            }
+                            ariaLabel="Allow Critical Alerts"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Category A: Lesson Reminders Accordion */}
+              <div className="rounded-2xl bg-page/80 border border-line/70 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedNotifGroup((prev) => (prev === 'lessons' ? null : 'lessons'))
+                  }
+                  className="w-full p-3 flex items-center justify-between gap-3 text-start cursor-pointer hover:bg-page transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-mint-soft flex items-center justify-center text-navy shrink-0">
+                      <AppIcon name="clock" size={18} weight="duotone" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-navy truncate">
+                        {t('notifCatLessons')}
+                      </h4>
+                      <p className="text-[11px] text-slate truncate">
+                        {notifSettings.enableLessonReminders !== false
+                          ? (isEn
+                              ? `${notifSettings.lessonReminderLeadMinutes || 15} min before group & private lessons`
+                              : `قبل الحصص والدروس الخاصة بـ ${notifSettings.lessonReminderLeadMinutes || 15} دقيقة`)
+                          : (isEn ? 'Disabled' : 'متوقفة')}
+                      </p>
+                    </div>
+                  </div>
+                  <AppIcon
+                    name={expandedNotifGroup === 'lessons' ? 'chevronUp' : 'chevronDown'}
+                    size={16}
+                    className="text-slate shrink-0"
+                  />
+                </button>
+
+                {expandedNotifGroup === 'lessons' && (
+                  <div className="p-3 pt-2 border-t border-line/60 space-y-3 bg-page">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-navy">
+                        {isEn ? 'Upcoming Lesson Reminders' : 'تفعيل تذكيرات موعد الحصة'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableLessonReminders !== false}
+                        onChange={(val) => updateNotifPatch({ enableLessonReminders: val })}
+                        ariaLabel="Lesson Reminders"
+                      />
+                    </div>
+
+                    {notifSettings.enableLessonReminders !== false && (
+                      <>
+                        <div className="space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate block">
+                            {isEn ? 'Lead Time Before Lesson:' : 'وقت التنبيه قبل بدء الحصة:'}
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {LESSON_LEAD_TIME_OPTIONS.map((mins: LessonReminderLeadMinutes) => {
+                              const selected =
+                                (notifSettings.lessonReminderLeadMinutes || 15) === mins;
+                              return (
+                                <button
+                                  key={mins}
+                                  type="button"
+                                  onClick={() =>
+                                    updateNotifPatch({ lessonReminderLeadMinutes: mins })
+                                  }
+                                  className={`chip text-xs ${selected ? 'chip-active' : ''}`}
+                                >
+                                  {isEn ? `${mins} min` : `${mins} دقيقة`}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                          <span className="text-xs font-semibold text-navy">
+                            {isEn ? 'Group Session Reminders' : 'تذكيرات حصص المجموعات'}
+                          </span>
+                          <Toggle
+                            checked={notifSettings.enableGroupLessonReminders !== false}
+                            onChange={(val) =>
+                              updateNotifPatch({ enableGroupLessonReminders: val })
+                            }
+                            ariaLabel="Group Reminders"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-navy">
+                            {isEn ? 'Private Lesson Reminders' : 'تذكيرات الدروس الخاصة'}
+                          </span>
+                          <Toggle
+                            checked={notifSettings.enablePrivateLessonReminders !== false}
+                            onChange={(val) =>
+                              updateNotifPatch({ enablePrivateLessonReminders: val })
+                            }
+                            ariaLabel="Private Lesson Reminders"
+                          />
+                        </div>
+
+                        <div className="pt-1 border-t border-line/50 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="min-w-0 pe-2">
+                              <span className="text-xs font-semibold text-navy block">
+                                {isEn ? 'Morning Schedule Summary' : 'ملخص جدول حصص اليوم صباحاً'}
+                              </span>
+                              <span className="text-[10px] text-slate block">
+                                {isEn
+                                  ? 'Daily summary on days with scheduled classes'
+                                  : 'تذكير صباحي بعدد حصص اليوم المجدولة'}
+                              </span>
+                            </div>
+                            <Toggle
+                              checked={Boolean(notifSettings.enableDayOfLessonReminder)}
+                              onChange={(val) =>
+                                updateNotifPatch({ enableDayOfLessonReminder: val })
+                              }
+                              ariaLabel="Morning Summary"
+                            />
+                          </div>
+
+                          {notifSettings.enableDayOfLessonReminder && (
+                            <input
+                              type="time"
+                              value={notifSettings.dayOfLessonReminderTime || '08:00'}
+                              onChange={(e) =>
+                                updateNotifPatch({ dayOfLessonReminderTime: e.target.value })
+                              }
+                              className="classy-input w-40"
+                            />
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Category B: Attendance & Missed Lessons Accordion */}
+              <div className="rounded-2xl bg-page/80 border border-line/70 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedNotifGroup((prev) =>
+                      prev === 'attendance' ? null : 'attendance'
+                    )
+                  }
+                  className="w-full p-3 flex items-center justify-between gap-3 text-start cursor-pointer hover:bg-page transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-mint-soft flex items-center justify-center text-navy shrink-0">
+                      <AppIcon name="calendarCheck" size={18} weight="duotone" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-navy truncate">
+                        {t('notifCatAttendance')}
+                      </h4>
+                      <p className="text-[11px] text-slate truncate">
+                        {isEn
+                          ? `Daily sweep (${formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', true)}) & absence tracking`
+                          : `مراجعة الحضور (${formatReminderTimeDisplay(notifSettings.dailyAttendanceReminderTime || '22:00', false)}) ومتابعة الغياب`}
+                      </p>
+                    </div>
+                  </div>
+                  <AppIcon
+                    name={expandedNotifGroup === 'attendance' ? 'chevronUp' : 'chevronDown'}
+                    size={16}
+                    className="text-slate shrink-0"
+                  />
+                </button>
+
+                {expandedNotifGroup === 'attendance' && (
+                  <div className="p-3 pt-2 border-t border-line/60 space-y-3 bg-page">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0 pe-2">
+                        <span className="text-xs font-semibold text-navy block">
+                          {isEn ? 'Pending Attendance Alerts' : 'تنبيهات الحصص غير المرصودة'}
+                        </span>
+                        <span className="text-[10px] text-slate block">
+                          {isEn
+                            ? 'Highlight today’s classes awaiting attendance'
+                            : 'إظهار الحصص التي لم يُسجل حضورها بعد'}
+                        </span>
+                      </div>
+                      <Toggle
+                        checked={notifSettings.enableAttendanceReminders !== false}
+                        onChange={(val) => updateNotifPatch({ enableAttendanceReminders: val })}
+                        ariaLabel="Attendance Alerts"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <div className="min-w-0 pe-2">
+                        <span className="text-xs font-semibold text-navy block">
+                          {isEn ? 'Post-Lesson Completion Reminder' : 'تذكير استكمال الحضور بعد الحصة'}
+                        </span>
+                        <span className="text-[10px] text-slate block">
+                          {isEn
+                            ? `${notifSettings.postLessonReminderDelayMinutes || 30} min after lesson ends`
+                            : `بعد انتهاء موعد الحصة بـ ${notifSettings.postLessonReminderDelayMinutes || 30} دقيقة`}
+                        </span>
+                      </div>
+                      <Toggle
+                        checked={notifSettings.enablePostLessonCompletionReminder !== false}
+                        onChange={(val) =>
+                          updateNotifPatch({ enablePostLessonCompletionReminder: val })
+                        }
+                        ariaLabel="Post-Lesson Reminder"
+                      />
+                    </div>
+
+                    <div className="pt-1 border-t border-line/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 pe-2">
+                          <span className="text-xs font-semibold text-navy block">
+                            {isEn ? 'Daily End-of-Day Sweep' : 'تذكير الحضور اليومي المسائي'}
+                          </span>
+                          <span className="text-[10px] text-slate block">
+                            {isEn
+                              ? 'Alerts only if unrecorded lessons remain today'
+                              : 'ينبهك فقط عند وجود حصص لم يُسجل حضورها اليوم'}
+                          </span>
+                        </div>
+                        <Toggle
+                          checked={notifSettings.enableDailyAttendanceReminder !== false}
+                          onChange={(val) =>
+                            updateNotifPatch({ enableDailyAttendanceReminder: val })
+                          }
+                          ariaLabel="Daily Attendance Sweep"
+                        />
+                      </div>
+
+                      {notifSettings.enableDailyAttendanceReminder !== false && (
+                        <input
+                          type="time"
+                          value={notifSettings.dailyAttendanceReminderTime || '22:00'}
+                          onChange={(e) =>
+                            updateNotifPatch({ dailyAttendanceReminderTime: e.target.value })
+                          }
+                          className="classy-input w-40"
+                        />
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <div className="min-w-0 pe-2">
+                        <span className="text-xs font-semibold text-navy block">
+                          {isEn ? 'Student & Consecutive Absence Alerts' : 'تنبيهات غياب الطلاب والغياب المتكرر'}
+                        </span>
+                        <span className="text-[10px] text-slate block">
+                          {isEn
+                            ? 'Distinguishes excused/uncharged vs charged absences'
+                            : 'يميز بدقة بين الغياب المعفي والغياب المحسوب'}
+                        </span>
+                      </div>
+                      <Toggle
+                        checked={notifSettings.enableStudentAbsenceAlerts !== false}
+                        onChange={(val) => updateNotifPatch({ enableStudentAbsenceAlerts: val })}
+                        ariaLabel="Absence Alerts"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Category C: Student Financial Alerts Accordion */}
+              <div className="rounded-2xl bg-page/80 border border-line/70 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedNotifGroup((prev) =>
+                      prev === 'financial' ? null : 'financial'
+                    )
+                  }
+                  className="w-full p-3 flex items-center justify-between gap-3 text-start cursor-pointer hover:bg-page transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-mint-soft flex items-center justify-center text-navy shrink-0">
+                      <AppIcon name="wallet" size={18} weight="duotone" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-navy truncate">
+                        {t('notifCatFinancial')}
+                      </h4>
+                      <p className="text-[11px] text-slate truncate">
+                        {isEn
+                          ? 'Overdue balances, today’s lesson dues & thresholds'
+                          : 'المتأخرات، مديونيات حصص اليوم، وحد الرصيد'}
+                      </p>
+                    </div>
+                  </div>
+                  <AppIcon
+                    name={expandedNotifGroup === 'financial' ? 'chevronUp' : 'chevronDown'}
+                    size={16}
+                    className="text-slate shrink-0"
+                  />
+                </button>
+
+                {expandedNotifGroup === 'financial' && (
+                  <div className="p-3 pt-2 border-t border-line/60 space-y-3 bg-page">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Overdue Tuition Alerts' : 'تنبيهات المستحقات المتأخرة'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableOverdueReminders !== false}
+                        onChange={(val) => updateNotifPatch({ enableOverdueReminders: val })}
+                        ariaLabel="Overdue Alerts"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <div className="min-w-0 pe-2">
+                        <span className="text-xs font-semibold text-navy block">
+                          {isEn ? 'Today’s Lesson Student Debt' : 'تنبيهات مديونية طلاب حصص اليوم'}
+                        </span>
+                        <span className="text-[10px] text-slate block">
+                          {isEn
+                            ? 'Alert when a student scheduled today has unpaid dues'
+                            : 'تنبيه عندما يكون لطالب مجدول اليوم رصيد متبقٍ'}
+                        </span>
+                      </div>
+                      <Toggle
+                        checked={notifSettings.enableTodayLessonDebtAlerts !== false}
+                        onChange={(val) => updateNotifPatch({ enableTodayLessonDebtAlerts: val })}
+                        ariaLabel="Today Debt Alerts"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Payment Recorded Confirmation' : 'إشعار تأكيد عند تسجيل دفعة'}
+                      </span>
+                      <Toggle
+                        checked={Boolean(notifSettings.enablePaymentRecordedAlerts)}
+                        onChange={(val) => updateNotifPatch({ enablePaymentRecordedAlerts: val })}
+                        ariaLabel="Payment Confirmation"
+                      />
+                    </div>
+
+                    <div className="pt-1 border-t border-line/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-navy">
+                          {isEn ? 'High Balance Threshold Alert' : 'تنبيه تجاوز حد المديونية'}
+                        </span>
+                        <Toggle
+                          checked={Boolean(notifSettings.enableBalanceThresholdAlert)}
+                          onChange={(val) =>
+                            updateNotifPatch({ enableBalanceThresholdAlert: val })
+                          }
+                          ariaLabel="Balance Threshold"
+                        />
+                      </div>
+
+                      {notifSettings.enableBalanceThresholdAlert && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={50}
+                            step={50}
+                            value={notifSettings.balanceThresholdAmount || 500}
+                            onChange={(e) =>
+                              updateNotifPatch({
+                                balanceThresholdAmount: Math.max(
+                                  50,
+                                  Number(e.target.value) || 500
+                                ),
+                              })
+                            }
+                            className="classy-input w-32"
+                          />
+                          <span className="text-xs text-slate font-bold">{t('currency')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 5. Category D: Packages & Subscriptions Accordion */}
+              <div className="rounded-2xl bg-page/80 border border-line/70 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedNotifGroup((prev) =>
+                      prev === 'packages' ? null : 'packages'
+                    )
+                  }
+                  className="w-full p-3 flex items-center justify-between gap-3 text-start cursor-pointer hover:bg-page transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-mint-soft flex items-center justify-center text-navy shrink-0">
+                      <AppIcon name="receipt" size={18} weight="duotone" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-navy truncate">
+                        {t('notifCatPackages')}
+                      </h4>
+                      <p className="text-[11px] text-slate truncate">
+                        {isEn
+                          ? 'Package cycle completion, 1-session-left & prepaid credits'
+                          : 'اكتمال الباقة، تبقي حصة أخيرة، ونفاد الرصيد المسبق'}
+                      </p>
+                    </div>
+                  </div>
+                  <AppIcon
+                    name={expandedNotifGroup === 'packages' ? 'chevronUp' : 'chevronDown'}
+                    size={16}
+                    className="text-slate shrink-0"
+                  />
+                </button>
+
+                {expandedNotifGroup === 'packages' && (
+                  <div className="p-3 pt-2 border-t border-line/60 space-y-3 bg-page">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Package Completed / Renewal Due' : 'اكتمال الباقة واستحقاق التجديد'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enablePackageCompletedAlerts !== false}
+                        onChange={(val) => updateNotifPatch({ enablePackageCompletedAlerts: val })}
+                        ariaLabel="Package Completed"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Final 1 Session Remaining Alert' : 'تنبيه تبقي حصة واحدة أخيرة'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableOneSessionRemainingAlert !== false}
+                        onChange={(val) =>
+                          updateNotifPatch({ enableOneSessionRemainingAlert: val })
+                        }
+                        ariaLabel="One Session Remaining"
+                      />
+                    </div>
+
+                    <div className="pt-1 border-t border-line/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-navy">
+                          {isEn ? 'Early Package Warning' : 'التنبيه المبكر قبل انتهاء الباقة'}
+                        </span>
+                        <Toggle
+                          checked={notifSettings.enableEarlyPackageWarning !== false}
+                          onChange={(val) => updateNotifPatch({ enableEarlyPackageWarning: val })}
+                          ariaLabel="Early Package Warning"
+                        />
+                      </div>
+
+                      {notifSettings.enableEarlyPackageWarning !== false && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {[1, 2, 3, 4].map((cnt) => {
+                            const active =
+                              (notifSettings.earlyWarningLessonThreshold || 2) === cnt;
+                            return (
+                              <button
+                                key={cnt}
+                                type="button"
+                                onClick={() =>
+                                  updateNotifPatch({ earlyWarningLessonThreshold: cnt })
+                                }
+                                className={`chip text-xs ${active ? 'chip-active' : ''}`}
+                              >
+                                {isEn
+                                  ? `≤ ${cnt} ${cnt === 1 ? 'lesson' : 'lessons'}`
+                                  : `≤ ${cnt} ${cnt === 1 ? 'حصة' : 'حصص'}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Prepaid Credit Exhausted' : 'نفاد رصيد الحصص المسبقة الدفع'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enablePrepaidCreditExhaustedAlerts !== false}
+                        onChange={(val) =>
+                          updateNotifPatch({ enablePrepaidCreditExhaustedAlerts: val })
+                        }
+                        ariaLabel="Prepaid Exhausted"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 6. Categories E, F, G: Follow-ups, Sync & System Accordion */}
+              <div className="rounded-2xl bg-page/80 border border-line/70 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedNotifGroup((prev) =>
+                      prev === 'system_sync' ? null : 'system_sync'
+                    )
+                  }
+                  className="w-full p-3 flex items-center justify-between gap-3 text-start cursor-pointer hover:bg-page transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-mint-soft flex items-center justify-center text-navy shrink-0">
+                      <AppIcon name="shieldCheck" size={18} weight="duotone" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-navy truncate">
+                        {isEn ? 'Follow-ups, Sync & System' : 'المتابعة والمزامنة والنظام'}
+                      </h4>
+                      <p className="text-[11px] text-slate truncate">
+                        {isEn
+                          ? 'Incomplete records, cloud sync status & backup alerts'
+                          : 'السجلات غير المكتملة، حالة المزامنة، والنسخ الاحتياطي'}
+                      </p>
+                    </div>
+                  </div>
+                  <AppIcon
+                    name={expandedNotifGroup === 'system_sync' ? 'chevronUp' : 'chevronDown'}
+                    size={16}
+                    className="text-slate shrink-0"
+                  />
+                </button>
+
+                {expandedNotifGroup === 'system_sync' && (
+                  <div className="p-3 pt-2 border-t border-line/60 space-y-3 bg-page">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Multi-Session Debt Follow-up (≥3)' : 'متابعة تراكم الحصص غير المسددة (3+)'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableFinancialFollowUpAlerts !== false}
+                        onChange={(val) =>
+                          updateNotifPatch({ enableFinancialFollowUpAlerts: val })
+                        }
+                        ariaLabel="Financial Follow-up"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Incomplete Lesson Records' : 'تنبيهات سجلات الحصص غير المكتملة'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableIncompleteLessonAlerts !== false}
+                        onChange={(val) =>
+                          updateNotifPatch({ enableIncompleteLessonAlerts: val })
+                        }
+                        ariaLabel="Incomplete Records"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Cloud Sync Failure & Recovery' : 'تنبيهات تعذر واستعادة المزامنة السحابية'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableSyncFailureAlerts !== false}
+                        onChange={(val) => updateNotifPatch({ enableSyncFailureAlerts: val })}
+                        ariaLabel="Sync Failure Alerts"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Backup / Restore Error Alerts' : 'تنبيهات فشل النسخ أو الاستعادة'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableBackupFailureAlerts !== false}
+                        onChange={(val) => updateNotifPatch({ enableBackupFailureAlerts: val })}
+                        ariaLabel="Backup Error Alerts"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'Backup Export Completion' : 'إشعار اكتمال تصدير النسخة الاحتياطية'}
+                      </span>
+                      <Toggle
+                        checked={Boolean(notifSettings.enableBackupCompletionAlerts)}
+                        onChange={(val) =>
+                          updateNotifPatch({ enableBackupCompletionAlerts: val })
+                        }
+                        ariaLabel="Backup Completion"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                      <span className="text-xs font-semibold text-navy">
+                        {isEn ? 'OS Permission Recovery Prompts' : 'تنبيهات استعادة صلاحية إشعارات النظام'}
+                      </span>
+                      <Toggle
+                        checked={notifSettings.enableSystemPermissionAlerts !== false}
+                        onChange={(val) => updateNotifPatch({ enableSystemPermissionAlerts: val })}
+                        ariaLabel="Permission Prompts"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
-          {/* Row 2: In-App Attendance Alerts */}
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/70 border border-line/60">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
-                <AppIcon name="calendarCheck" size={20} weight="duotone" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="t-card text-navy font-bold leading-tight">
-                  {isEn ? 'Attendance In-App Alerts' : 'تنبيهات استكمال الحصص'}
-                </h4>
-                <p className="t-meta text-slate text-xs mt-0.5 truncate">
-                  {isEn ? 'Highlight pending sessions in app' : 'تنبيه بالحصص التي لم يُرصد حضورها'}
-                </p>
+          {/* Retention, Clear History & Restore Defaults */}
+          <div className="p-3 rounded-2xl bg-page/75 border border-line/60 space-y-3">
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate block">
+                {isEn ? 'Notification History Retention:' : 'مدة الاحتفاظ بسجل الإشعارات:'}
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {HISTORY_RETENTION_OPTIONS.map((days: NotificationHistoryRetentionDays) => {
+                  const selected = (notifSettings.historyRetentionDays || 30) === days;
+                  return (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => updateNotifPatch({ historyRetentionDays: days })}
+                      className={`chip text-xs ${selected ? 'chip-active' : ''}`}
+                    >
+                      {days === 365
+                        ? (isEn ? '1 Year' : 'سنة')
+                        : (isEn ? `${days} Days` : `${days} يوم`)}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <Toggle
-              checked={!!notifSettings.enableAttendanceReminders}
-              onChange={() => handleToggleNotif('enableAttendanceReminders')}
-              ariaLabel="Session Alerts"
-            />
-          </div>
 
-          {/* Row 3: Overdue Payment Reminders */}
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/70 border border-line/60">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
-                <AppIcon name="wallet" size={20} weight="duotone" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="t-card text-navy font-bold leading-tight">
-                  {isEn ? 'Overdue Payment Alerts' : 'تنبيهات المستحقات المتأخرة'}
-                </h4>
-                <p className="t-meta text-slate text-xs mt-0.5 truncate">
-                  {isEn ? 'Notify for delayed student tuition dues' : 'إشعار بالطلاب المتأخرين في السداد'}
-                </p>
-              </div>
-            </div>
-            <Toggle
-              checked={!!notifSettings.enableOverdueReminders}
-              onChange={() => handleToggleNotif('enableOverdueReminders')}
-              ariaLabel="Overdue Dues"
-            />
-          </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-line/60">
+              {/* Two-step inline Clear History */}
+              {!confirmClearNotifHistory ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmRestoreNotifDefaults(false);
+                    setConfirmClearNotifHistory(true);
+                  }}
+                  className="btn-soft px-3 py-2 text-xs flex items-center justify-center gap-1.5"
+                >
+                  <AppIcon name="trash" size={14} />
+                  <span>{t('notifClearHistory')}</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleConfirmClearNotifHistory}
+                    className="btn-orange px-3 py-2 text-xs font-bold"
+                  >
+                    {isEn ? 'Confirm Clear' : 'تأكيد المسح'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClearNotifHistory(false)}
+                    className="btn-soft px-2.5 py-2 text-xs"
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+              )}
 
-          {/* Row 4: Repeated Absence Tracking */}
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page/70 border border-line/60">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
-                <AppIcon name="warning" size={20} weight="duotone" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="t-card text-navy font-bold leading-tight">
-                  {isEn ? 'Repeated Absence Tracking' : 'متابعة الغياب المتكرر'}
-                </h4>
-                <p className="t-meta text-slate text-xs mt-0.5 truncate">
-                  {isEn ? 'Track students missing multiple lessons' : 'تنبيه فوري عند تكرار غياب الطالب'}
-                </p>
-              </div>
+              {/* Two-step inline Restore Default Settings */}
+              {!confirmRestoreNotifDefaults ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmClearNotifHistory(false);
+                    setConfirmRestoreNotifDefaults(true);
+                  }}
+                  className="btn-soft px-3 py-2 text-xs flex items-center justify-center gap-1.5"
+                >
+                  <AppIcon name="restore" size={14} />
+                  <span>{isEn ? 'Restore Defaults' : 'استعادة الافتراضي'}</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleConfirmRestoreNotifDefaults}
+                    className="btn-navy px-3 py-2 text-xs font-bold"
+                  >
+                    {isEn ? 'Confirm Reset' : 'تأكيد الاستعادة'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRestoreNotifDefaults(false)}
+                    className="btn-soft px-2.5 py-2 text-xs"
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+              )}
             </div>
-            <Toggle
-              checked={!!notifSettings.enableAbsenceReminders}
-              onChange={() => handleToggleNotif('enableAbsenceReminders')}
-              ariaLabel="Absence Alerts"
-            />
+
+            <p className="text-[10px] text-slate leading-relaxed pt-1 border-t border-line/40">
+              {isEn ? platformCaps.remotePushStatusNoteEn : platformCaps.remotePushStatusNoteAr}
+            </p>
           </div>
         </MintCard>
       </section>

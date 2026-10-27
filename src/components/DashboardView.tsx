@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { ScreenHeader } from './ui/ScreenHeader';
 import { NavyCard } from './ui/NavyCard';
 import { ProgressRing } from './ui/ProgressRing';
@@ -14,18 +14,13 @@ import { WalletCoins } from './illustrations/WalletCoins';
 import { CalendarCheck } from './illustrations/CalendarCheck';
 import { EmptyBox } from './illustrations/EmptyBox';
 import { Toast } from './ui/Toast';
-import { Student, Group, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, ActiveTab, AutoSyncConfig } from '../types';
+import { Student, Group, Enrollment, Session, Payment, TeacherProfile, Attendance, AttendanceStatus, ActiveTab, AutoSyncConfig } from '../types';
 import {
   db,
-  roundMoney,
-  multiplyMoney,
-  addMoney,
   formatSessionQuantityDisplay,
-  getEffectiveSessionPrice,
   getAutoSyncConfig,
   performFullSync,
   subscribeToSyncUpdates,
-  calculateWorkloadSummary,
 } from '../utils/storage';
 import {
   subscribeToNetworkStatus,
@@ -38,6 +33,7 @@ import {
   formatTimeDisplay,
   getLocalizedWeekdayName,
   parseTimeToMinutes,
+  isExplicitPrivateSessionOperationalOnDate,
 } from '../utils/schedule';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { parseLocalTimeToStandard } from '../utils/localDate';
@@ -45,13 +41,18 @@ import { getSmartReminders } from '../utils/reminders';
 import { useTranslation } from '../utils/i18n';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
 import { AppIcon } from './ui/AppIcon';
+import { useDelayedLoading } from './ui/Skeleton';
+import { DashboardContentSkeleton } from './skeletons/ClassySkeletons';
 
 interface DashboardViewProps {
   students: Student[];
   groups: Group[];
+  enrollments?: Enrollment[];
   sessions: Session[];
+  allAttendance?: Attendance[];
   payments: Payment[];
   teacherProfile: TeacherProfile;
+  isLoading?: boolean;
   onOpenAddStudent: () => void;
   onOpenAddGroup: () => void;
   onOpenAddSession: () => void;
@@ -60,6 +61,7 @@ interface DashboardViewProps {
   onOpenGroupProfile: (group: Group) => void;
   onOpenAttendanceModal: (session: Session) => void;
   onOpenNotificationsModal?: () => void;
+  unreadNotificationsCount?: number;
   onNavigateToTab: (tab: ActiveTab) => void;
   onDataChanged?: () => void;
 }
@@ -67,9 +69,12 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   students,
   groups,
+  enrollments: enrollmentsProp,
   sessions,
+  allAttendance: allAttendanceProp,
   payments,
   teacherProfile,
+  isLoading = false,
   onOpenAddStudent,
   onOpenAddGroup,
   onOpenAddSession,
@@ -78,6 +83,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenGroupProfile,
   onOpenAttendanceModal,
   onOpenNotificationsModal,
+  unreadNotificationsCount,
   onNavigateToTab,
   onDataChanged,
 }) => {
@@ -86,17 +92,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const { todayStr, canonicalWeekday, parts } = useCurrentLocalDate();
   const todayArabicDay = useMemo(() => getLocalizedWeekdayName(canonicalWeekday, isRTL), [canonicalWeekday, isRTL]);
-  const currentMonth = parts.month;
-  const currentYear = parts.year;
 
   // State for expanded quick attendance cards
   const [expandedAttendanceCardId, setExpandedAttendanceCardId] = useState<string | null>(null);
   const [quickSuccessMsg, setQuickSuccessMsg] = useState<string | null>(null);
+  const quickFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showQuickFeedback = (msg: string) => {
+  useEffect(() => {
+    return () => {
+      if (quickFeedbackTimerRef.current !== null) {
+        clearTimeout(quickFeedbackTimerRef.current);
+        quickFeedbackTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const showQuickFeedback = useCallback((msg: string) => {
+    if (quickFeedbackTimerRef.current !== null) {
+      clearTimeout(quickFeedbackTimerRef.current);
+    }
     setQuickSuccessMsg(msg);
-    setTimeout(() => setQuickSuccessMsg(null), 3000);
-  };
+    quickFeedbackTimerRef.current = setTimeout(() => {
+      quickFeedbackTimerRef.current = null;
+      setQuickSuccessMsg(null);
+    }, 3000);
+  }, []);
 
   // Filter and order today's sessions chronologically by time (earliest to latest) within the day
   const todaySessions = useMemo(() => {
@@ -110,8 +130,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
   }, [sessions, todayStr]);
 
-  const enrollments = useMemo(() => db.getEnrollments(), [students, groups]);
-  const allAttendance = useMemo(() => db.getAttendance(), [sessions]);
+  const enrollments = useMemo(
+    () => enrollmentsProp ?? db.getEnrollments(),
+    [enrollmentsProp, students, groups]
+  );
+  const allAttendance = useMemo(
+    () => allAttendanceProp ?? db.getAttendance(),
+    [allAttendanceProp, sessions]
+  );
+
+  const studentsById = useMemo(() => {
+    const map = new Map<string, Student>();
+    students.forEach((st) => map.set(st.id, st));
+    return map;
+  }, [students]);
+
+  const recordedSessionIds = useMemo(() => {
+    const set = new Set<string>();
+    allAttendance.forEach((a) => set.add(a.sessionId));
+    return set;
+  }, [allAttendance]);
+
+  const operationalTodaySessions = useMemo(() => {
+    return todaySessions.filter((s) =>
+      isExplicitPrivateSessionOperationalOnDate(
+        s,
+        todayStr,
+        enrollments,
+        studentsById,
+        recordedSessionIds.has(s.id)
+      )
+    );
+  }, [todaySessions, todayStr, enrollments, studentsById, recordedSessionIds]);
 
   // Network & Sync State
   const [networkStatus, setNetworkStatus] = useState<DetailedNetworkStatus>(() => getCachedNetworkStatus());
@@ -133,13 +183,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const isOffline = !networkStatus.isOnline || !networkStatus.deviceConnected || syncConfig.status === 'offline_deferred';
   const isSyncing = syncConfig.status === 'syncing' || isManualSyncing;
+  const rawDashboardLoading =
+    (isLoading || isSyncing) &&
+    students.length === 0 &&
+    groups.length === 0 &&
+    sessions.length === 0 &&
+    payments.length === 0;
+  const showDashboardSkeleton = useDelayedLoading(rawDashboardLoading, 90);
 
-  // Attendance rate calculation
-  const overallAttendanceRate = useMemo(() => {
-    if (allAttendance.length === 0) return 100;
-    const positive = allAttendance.filter((a) => a.status === 'present' || a.status === 'late').length;
-    return Math.round((positive / allAttendance.length) * 100);
-  }, [allAttendance]);
 
   const handleTriggerSync = async () => {
     setIsManualSyncing(true);
@@ -163,66 +214,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Scheduled classes for today
   const scheduledToday = useMemo(() => {
-    return getScheduledClassesForDate(new Date(), groups, enrollments, students);
-  }, [groups, enrollments, students]);
+    return getScheduledClassesForDate(todayStr, groups, enrollments, students);
+  }, [todayStr, groups, enrollments, students]);
 
   // Count of completed sessions today
   const completedTodaySessionsCount = useMemo(() => {
-    return todaySessions.filter((s) => s.status === 'completed').length;
-  }, [todaySessions]);
-
-  const todayWorkload = useMemo(() => {
-    return calculateWorkloadSummary(todaySessions, allAttendance, isRTL);
-  }, [todaySessions, allAttendance, isRTL]);
+    return operationalTodaySessions.filter((s) => s.status === 'completed').length;
+  }, [operationalTodaySessions]);
 
   const totalTodayClassesCount = useMemo(() => {
-    return Math.max(scheduledToday.length, todaySessions.length);
-  }, [scheduledToday.length, todaySessions.length]);
-
-  const remainingTodaySessionsCount = useMemo(() => {
-    return Math.max(0, totalTodayClassesCount - completedTodaySessionsCount);
-  }, [totalTodayClassesCount, completedTodaySessionsCount]);
-
-  // Revenue stats
-  const { totalMonthRevenue, totalTodayRevenue } = useMemo(() => {
-    const finHistory = db.calculateFinancialHistory();
-    const currentMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-    const curMonthRecord = finHistory.months.find((m) => m.monthYear === currentMonthKey);
-    const mRev = curMonthRecord ? curMonthRecord.totalCollected : 0;
-
-    const tPayments = payments.filter((p) => p.date === todayStr);
-    let tRev = tPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-
-    const todayCompletedSessions = todaySessions.filter((s) => s.status === 'completed');
-    todayCompletedSessions.forEach((s) => {
-      const atts = db.getSessionAttendance(s.id);
-      const grp = groups.find((g) => g.id === s.groupId);
-      atts.forEach((a) => {
-        const isCharged = a.status === 'present' || a.status === 'late' || a.status === 'absent_charged' || (a.status === 'absent' && a.isCharged !== false);
-        if (isCharged) {
-          const enr = enrollments.find((e) => e.id === a.enrollmentId || (e.studentId === a.studentId && e.groupId === s.groupId));
-          const isHourly = enr?.billingType === 'hourly' || enr?.billingMode === 'hourly' || grp?.billingType === 'hourly' || grp?.billingMode === 'hourly';
-          const isPackage = !isHourly && (enr?.billingMode === 'package' || enr?.billingType === 'package' || grp?.billingType === 'package');
-          const isPrepaid = !isHourly && !isPackage && (enr?.billingMode === 'prepaid' || enr?.billingType === 'prepaid' || (enr?.billingType === 'per_session' && enr?.billingMode !== 'postpaid') || grp?.billingType === 'prepaid' || (!enr?.billingMode && !enr?.billingType));
-          const isUnpaid = a.paymentStatus === 'unpaid' || a.paymentOverride === 'unpaid' || a.isPaid === false;
-          if (isPrepaid && !isUnpaid) {
-            let sessionVal = 0;
-            if (isHourly) {
-              const hours = a.hours !== undefined && a.hours !== null ? Number(a.hours) : (s.hours !== undefined && s.hours !== null ? Number(s.hours) : 1);
-              const rate = a.hourlyRate || s.hourlyRate || enr?.hourlyRate || grp?.hourlyRate || enr?.customPrice || grp?.defaultPrice || 100;
-              sessionVal = roundMoney(multiplyMoney(hours, rate), 2);
-            } else {
-              const sRate = a.sessionPriceSnapshot || (enr ? getEffectiveSessionPrice(enr, grp) : (grp?.defaultPrice || 100));
-              sessionVal = roundMoney(sRate, 2);
-            }
-            tRev = addMoney(tRev, sessionVal);
-          }
-        }
-      });
-    });
-
-    return { totalMonthRevenue: mRev, totalTodayRevenue: tRev };
-  }, [payments, sessions, groups, enrollments, currentMonth, currentYear, todayStr, todaySessions]);
+    return Math.max(scheduledToday.length, operationalTodaySessions.length);
+  }, [scheduledToday.length, operationalTodaySessions.length]);
 
   // Outstanding balances
   const { totalOutstandingDues, overdueStudentsCount } = useMemo(() => {
@@ -246,7 +248,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       totalOutstandingDues: outDues,
       overdueStudentsCount: overdueCount,
     };
-  }, [students]);
+  }, [students, groups, enrollments, sessions, payments, allAttendance]);
 
   // Smart Reminders
   const smartReminders = useMemo(() => {
@@ -471,9 +473,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       return;
     }
 
-    // Standard Group Logic (100% untouched)
+    // Standard Group Logic (filtering roster to students active today)
     const session = getOrCreateSessionForSchedule(item);
-    const groupStudents = db.getGroupStudents(item.groupId);
+    const groupStudents = db.getGroupStudents(item.groupId, todayStr);
 
     const attendanceRecords: Attendance[] = groupStudents.map((st) => {
       const enr = enrollments.find(
@@ -500,7 +502,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         : `تم رصد حضور جميع طلاب ${item.groupName} بنجاح`
     );
     onDataChanged?.();
-  }, [isAppointmentPrivate, handleSessionCardClick, getOrCreateSessionForSchedule, enrollments, isEn, onDataChanged]);
+  }, [isAppointmentPrivate, handleSessionCardClick, getOrCreateSessionForSchedule, enrollments, isEn, onDataChanged, todayStr]);
 
   const handleQuickStudentAttendance = (
     item: ScheduledClassItem,
@@ -627,7 +629,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       representedOccurrences.add(occKey);
     });
 
-    todaySessions.forEach((s) => {
+    operationalTodaySessions.forEach((s) => {
       if (s.status === 'cancelled') return;
       const sMins = parseTimeToMinutes(s.startTime || '16:00');
       const isPrivate = !s.groupId || !!s.studentId;
@@ -664,92 +666,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     list.sort((a, b) => a.sortMinutes - b.sortMinutes);
     return list;
-  }, [scheduledToday, todaySessions, groups, students, isRTL, isEn, todayArabicDay]);
+  }, [scheduledToday, operationalTodaySessions, groups, students, isRTL, isEn, todayArabicDay]);
 
-  // Today's Private Lessons Summary for students with private appointments today (Feature 1)
-  const todayPrivateStudentsSummary = useMemo(() => {
-    const map = new Map<string, {
-      studentId: string;
-      studentName: string;
-      items: { session: Session; attendance?: Attendance; time: string; units: number; hours: number; val: number; isHourly: boolean }[];
-      totalUnits: number;
-      totalHours: number;
-      totalValue: number;
-      recordedSessionsCount: number;
-      hasIncomplete: boolean;
-    }>();
-
-    allTodayDisplayItems.filter((item) => item.isPrivate && item.studentId).forEach((item) => {
-      const stuId = item.studentId;
-      const matching = findSessionForScheduleItem(item);
-      const att = matching ? allAttendance.find((a) => a.sessionId === matching.id && a.studentId === stuId) : undefined;
-      const isPresent = att?.status === 'present' || att?.status === 'late';
-      const enr = enrollments.find((e) => e.studentId === stuId && (e.groupId === item.groupId || e.id === item.enrollmentId));
-      const isHourly = enr?.billingMode === 'hourly' || enr?.billingType === 'hourly' || item.group?.billingMode === 'hourly';
-      const units = att?.sessionUnits !== undefined ? att.sessionUnits : (matching?.sessionUnits !== undefined ? matching.sessionUnits : 0);
-      const hours = att?.hours !== undefined ? att.hours : (matching?.hours !== undefined ? matching.hours : 0);
-      const rate = enr?.customPrice || item.group?.defaultPrice || 100;
-      const val = att?.pricePerStudent || matching?.pricePerStudent || (isHourly ? multiplyMoney(hours, rate) : multiplyMoney(units, rate));
-      const isIncomplete = isPresent && (isHourly ? hours <= 0 : units <= 0);
-
-      const existing = map.get(stuId) || {
-        studentId: stuId,
-        studentName: item.studentName,
-        items: [],
-        totalUnits: 0,
-        totalHours: 0,
-        totalValue: 0,
-        recordedSessionsCount: 0,
-        hasIncomplete: false,
-      };
-
-      if (matching) {
-        existing.items.push({
-          session: matching,
-          attendance: att,
-          time: item.time,
-          units,
-          hours,
-          val,
-          isHourly,
-        });
-      }
-
-      if (att && isPresent) {
-        existing.recordedSessionsCount++;
-        existing.totalUnits = roundMoney(existing.totalUnits + units, 2);
-        existing.totalHours = roundMoney(existing.totalHours + hours, 2);
-        existing.totalValue = addMoney(existing.totalValue, val);
-      }
-      if (isIncomplete) {
-        existing.hasIncomplete = true;
-      }
-
-      map.set(stuId, existing);
-    });
-
-    return Array.from(map.values()).map((s) => ({
-      ...s,
-      totalUnitsOrHoursText:
-        s.totalHours > 0
-          ? formatSessionQuantityDisplay({ hours: s.totalHours, isHourly: true }, isRTL)
-          : formatSessionQuantityDisplay({ sessionUnits: s.totalUnits, isHourly: false }, isRTL),
-    }));
-  }, [allTodayDisplayItems, allAttendance, sessions, enrollments, isEn, todayStr]);
-
-  // Greeting dynamic text based on current hour
-  const greetingText = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return isEn ? 'Good morning ☀️' : 'صباح الهمة والنشاط ☀️';
-    if (hour < 17) return isEn ? 'Good afternoon 🌿' : 'طاب يومك بكل خير 🌿';
-    return isEn ? 'Good evening ✨' : 'مساء التميز والإنجاز ✨';
-  }, [isEn]);
-
-  const activeStudentsList = useMemo(() => students.filter((s) => s.status !== 'archived'), [students]);
 
   // Next pending session for the "Start session" quick action (PURE - ZERO DB SIDE EFFECTS DURING RENDER)
   const nextPendingSession = useMemo(() => {
-    const scheduledExisting = todaySessions.find((s) => s.status === 'scheduled');
+    const scheduledExisting = operationalTodaySessions.find((s) => s.status === 'scheduled');
     if (scheduledExisting) return scheduledExisting;
 
     const pendingItem = allTodayDisplayItems.find((item) => {
@@ -763,7 +685,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
 
     return null;
-  }, [todaySessions, allTodayDisplayItems, groups, students, parts, todayStr]);
+  }, [operationalTodaySessions, allTodayDisplayItems, groups, students, parts, todayStr]);
 
   const handleStartNextSession = () => {
     if (!nextPendingSession) return;
@@ -823,7 +745,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const att = db.getSessionAttendance(matching.id);
       return att.length === 0 || matching.status === 'scheduled';
     });
-  }, [allTodayDisplayItems, sessions]);
+  }, [allTodayDisplayItems, sessions, allAttendance]);
 
   const handleAttendanceToRecordClick = () => {
     if (unrecordedTodaySessions.length > 0) {
@@ -849,7 +771,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           studentIdsWithLessonsToday.add(item.student.id);
         }
       } else if (item.groupId) {
-        const groupStudents = db.getGroupStudents(item.groupId);
+        const groupStudents = db.getGroupStudents(item.groupId, todayStr);
         groupStudents.forEach((st) => {
           if (st.status !== 'archived') {
             studentIdsWithLessonsToday.add(st.id);
@@ -858,12 +780,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }
     });
 
-    todaySessions.forEach((s) => {
+    operationalTodaySessions.forEach((s) => {
       if (s.status === 'cancelled') return;
       if (s.studentId) {
         studentIdsWithLessonsToday.add(s.studentId);
       } else if (s.groupId) {
-        const groupStudents = db.getGroupStudents(s.groupId);
+        const groupStudents = db.getGroupStudents(s.groupId, todayStr);
         groupStudents.forEach((st) => {
           if (st.status !== 'archived') {
             studentIdsWithLessonsToday.add(st.id);
@@ -891,7 +813,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     results.sort((a, b) => b.remaining - a.remaining);
     return results;
-  }, [allTodayDisplayItems, todaySessions, students, enrollments, payments, allAttendance]);
+  }, [allTodayDisplayItems, operationalTodaySessions, todayStr, students, groups, enrollments, sessions, payments, allAttendance]);
 
   return (
     <div
@@ -903,49 +825,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         title={t('dashboardGreetingPrefix') || (isEn ? 'Your teaching day starts' : 'يومك التعليمي يبدأ')}
         accentWord={t('dashboardGreetingAccent') || (isEn ? 'Now' : 'الآن')}
         hasUnreadNotifications={hasUnreadNotifications}
+        unreadCount={unreadNotificationsCount ?? smartReminders.filter((r) => !r.isRead).length}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />
-
-      {/* 2. Today's Progress NavyCard (Daily Goal Card) */}
-      <NavyCard className="relative">
-        <div className="flex items-center justify-between gap-4 relative z-10">
-          <div className="flex-1 min-w-0 space-y-2.5">
-            <div>
-              <h2 className="text-[16px] font-semibold text-white leading-tight">
-                {t('todaysProgress') || (isEn ? "Today's progress" : 'إنجاز اليوم')}
-              </h2>
-              <p className="text-[13px] text-white/80 mt-1 leading-snug">
-                {isEn
-                  ? `${completedTodaySessionsCount} of ${totalTodayClassesCount} sessions completed`
-                  : `اكتملت ${completedTodaySessionsCount} من ${totalTodayClassesCount} حصة`}
-              </p>
-            </div>
-
-            {nextPendingSession && (
-              <button
-                type="button"
-                onClick={handleStartNextSession}
-                className="btn-orange px-3.5 py-1.5 text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-transform"
-              >
-                <AppIcon name="sessions" weight="fill" size={14} />
-                <span>{t('startSession') || (isEn ? 'Start session' : 'بدء الحصة')}</span>
-              </button>
-            )}
-          </div>
-
-          <div className="shrink-0">
-            <ProgressRing
-              value={todayProgressPercent}
-              size={88}
-              stroke={10}
-              variant="navy"
-              trackColor="navy-soft"
-              arcColor="orange"
-            />
-          </div>
-        </div>
-      </NavyCard>
 
       {/* Quick Success Toast */}
       <Toast
@@ -955,8 +838,52 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onClose={() => setQuickSuccessMsg(null)}
       />
 
-      {/* 1. Today's Focus Section Header */}
-      <div className="space-y-3 pt-1">
+      {showDashboardSkeleton ? (
+        <DashboardContentSkeleton />
+      ) : (
+        <>
+          {/* 2. Today's Progress NavyCard (Daily Goal Card) */}
+          <NavyCard className="relative">
+            <div className="flex items-center justify-between gap-4 relative z-10">
+              <div className="flex-1 min-w-0 space-y-2.5">
+                <div>
+                  <h2 className="text-[16px] font-semibold text-white leading-tight">
+                    {t('todaysProgress') || (isEn ? "Today's progress" : 'إنجاز اليوم')}
+                  </h2>
+                  <p className="text-[13px] text-white/80 mt-1 leading-snug">
+                    {isEn
+                      ? `${completedTodaySessionsCount} of ${totalTodayClassesCount} sessions completed`
+                      : `اكتملت ${completedTodaySessionsCount} من ${totalTodayClassesCount} حصة`}
+                  </p>
+                </div>
+
+                {nextPendingSession && (
+                  <button
+                    type="button"
+                    onClick={handleStartNextSession}
+                    className="btn-orange px-3.5 py-1.5 text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-transform"
+                  >
+                    <AppIcon name="sessions" weight="fill" size={14} />
+                    <span>{t('startSession') || (isEn ? 'Start session' : 'بدء الحصة')}</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="shrink-0">
+                <ProgressRing
+                  value={todayProgressPercent}
+                  size={88}
+                  stroke={10}
+                  variant="navy"
+                  trackColor="navy-soft"
+                  arcColor="orange"
+                />
+              </div>
+            </div>
+          </NavyCard>
+
+          {/* 1. Today's Focus Section Header */}
+          <div className="space-y-3 pt-1">
         <SectionHeader
           title={t('todaysFocus') || (isEn ? "Today's Focus" : 'تركيزك اليوم')}
         />
@@ -1260,6 +1187,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
       </div>
+        </>
+      )}
 
       {/* Private Class Intake Modal */}
       {privateIntakeTarget && (

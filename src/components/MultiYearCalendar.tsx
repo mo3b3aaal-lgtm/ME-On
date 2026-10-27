@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
-import { Session, Group, Student } from '../types';
+import { Session, Group, Student, Enrollment, Attendance } from '../types';
 import { db } from '../utils/storage';
 import {
   MONTH_NAMES_ARABIC,
@@ -10,7 +10,9 @@ import {
   CALENDAR_WEEKDAY_INITIALS_ARABIC,
   CALENDAR_WEEKDAY_HEADERS_ARABIC,
   CalendarDayCell,
+  buildRecurringSlotsByWeekday,
   generateMonthGrid,
+  getMonthClassStatsMap,
   getYearClassStatsMap,
   getDetailedAgendaForDate,
   DetailedDateAgenda,
@@ -27,6 +29,8 @@ interface MultiYearCalendarProps {
   sessions: Session[];
   groups: Group[];
   students?: Student[];
+  enrollments?: Enrollment[];
+  allAttendance?: Attendance[];
   onOpenAddSession: (defaultGroupId?: string, defaultDate?: string) => void;
   onEditSession: (session: Session) => void;
   onOpenAttendanceModal: (session: Session) => void;
@@ -34,10 +38,16 @@ interface MultiYearCalendarProps {
   onDataChanged?: () => void;
 }
 
+const EMPTY_STUDENTS: Student[] = [];
+const EMPTY_CALENDAR_CELLS: CalendarDayCell[] = [];
+const EMPTY_MONTHS_GRIDS: Record<number, CalendarDayCell[]> = {};
+
 export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
   sessions,
   groups,
-  students = [],
+  students = EMPTY_STUDENTS,
+  enrollments: enrollmentsProp,
+  allAttendance: allAttendanceProp,
   onOpenAddSession,
   onEditSession,
   onOpenAttendanceModal,
@@ -58,10 +68,14 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
   const [isYearPickerOpen, setIsYearPickerOpen] = useState<boolean>(false);
 
-  // Enrollments from db
+  // Enrollments & Attendance snapshots (prefer reactive props when provided)
   const enrollments = useMemo(() => {
-    return db.getEnrollments();
-  }, [sessions, groups]);
+    return enrollmentsProp ?? db.getEnrollments();
+  }, [enrollmentsProp, sessions, groups, students]);
+
+  const allAttendance = useMemo(() => {
+    return allAttendanceProp ?? db.getAttendance();
+  }, [allAttendanceProp, sessions, groups, students]);
 
   // Filtered sessions and groups if a group is chosen
   const filteredSessions = useMemo(() => {
@@ -74,65 +88,166 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
     return groups.filter((g) => g.id === selectedGroupId);
   }, [groups, selectedGroupId]);
 
-  // Pre-calculated stats for the selected year
+  // Shared recurring weekday slots (independent of selected year/month/week)
+  const recurringSlotsByWeekday = useMemo(() => {
+    return buildRecurringSlotsByWeekday(filteredGroups, enrollments, students);
+  }, [filteredGroups, enrollments, students]);
+
+  // Month-scoped stats & single month grid (computed ONLY when viewMode === 'month')
+  const activeMonthStatsMap = useMemo(() => {
+    if (viewMode !== 'month') return null;
+    return getMonthClassStatsMap(
+      selectedYear,
+      selectedMonthIdx,
+      filteredSessions,
+      filteredGroups,
+      enrollments,
+      students,
+      {
+        recurringSlotsByWeekday,
+        todayStr,
+      }
+    );
+  }, [
+    viewMode,
+    selectedYear,
+    selectedMonthIdx,
+    filteredSessions,
+    filteredGroups,
+    enrollments,
+    students,
+    recurringSlotsByWeekday,
+    todayStr,
+  ]);
+
+  const activeMonthGrid = useMemo(() => {
+    if (viewMode !== 'month') return EMPTY_CALENDAR_CELLS;
+    return generateMonthGrid(selectedYear, selectedMonthIdx, activeMonthStatsMap ?? undefined);
+  }, [viewMode, selectedYear, selectedMonthIdx, activeMonthStatsMap, todayStr]);
+
+  // Full-year stats & 12 month grids (computed ONLY when viewMode === 'year')
   const yearStatsMap = useMemo(() => {
+    if (viewMode !== 'year') return null;
     return getYearClassStatsMap(
       selectedYear,
       filteredSessions,
       filteredGroups,
       enrollments,
-      students
+      students,
+      recurringSlotsByWeekday
     );
-  }, [selectedYear, filteredSessions, filteredGroups, enrollments, students]);
+  }, [
+    viewMode,
+    selectedYear,
+    filteredSessions,
+    filteredGroups,
+    enrollments,
+    students,
+    recurringSlotsByWeekday,
+    todayStr,
+  ]);
 
-  // Pre-generate grids for all 12 months of the year
   const monthsGrids = useMemo(() => {
+    if (viewMode !== 'year' || !yearStatsMap) return EMPTY_MONTHS_GRIDS;
     const grids: Record<number, CalendarDayCell[]> = {};
     for (let m = 0; m < 12; m++) {
       grids[m] = generateMonthGrid(selectedYear, m, yearStatsMap);
     }
     return grids;
-  }, [selectedYear, yearStatsMap]);
+  }, [viewMode, selectedYear, yearStatsMap, todayStr]);
 
-  // Detailed Agenda for selected date
+  // Stable Saturday start-of-week ISO key for the visible 7-day strip
+  const weekStartDateStr = useMemo(() => {
+    const selectedDate = parseLocalDateStr(selectedDateStr);
+    const dayOfWeek = selectedDate.getDay();
+    const distFromSaturday = (dayOfWeek + 1) % 7;
+    const startOfWeek = new Date(selectedDate);
+    startOfWeek.setDate(selectedDate.getDate() - distFromSaturday);
+    return toLocalISODate(startOfWeek);
+  }, [selectedDateStr]);
+
+  const weekDateStrings = useMemo(() => {
+    const startOfWeek = parseLocalDateStr(weekStartDateStr);
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      dates.push(toLocalISODate(d));
+    }
+    return dates;
+  }, [weekStartDateStr]);
+
+  // 7-day agendas computed ONLY in 'week' mode and cached across intra-week day taps
+  const weekAgendasByDate = useMemo(() => {
+    if (viewMode !== 'week') return null;
+    const map = new Map<string, DetailedDateAgenda>();
+    for (const dStr of weekDateStrings) {
+      map.set(
+        dStr,
+        getDetailedAgendaForDate(
+          dStr,
+          filteredSessions,
+          filteredGroups,
+          enrollments,
+          students,
+          true,
+          allAttendance
+        )
+      );
+    }
+    return map;
+  }, [
+    viewMode,
+    weekDateStrings,
+    filteredSessions,
+    filteredGroups,
+    enrollments,
+    students,
+    allAttendance,
+    todayStr,
+  ]);
+
+  // Detailed Agenda for selected date (reuses weekAgendasByDate in 'week' mode)
   const selectedDateAgenda: DetailedDateAgenda = useMemo(() => {
+    const cachedWeekAgenda = weekAgendasByDate?.get(selectedDateStr);
+    if (cachedWeekAgenda) return cachedWeekAgenda;
     return getDetailedAgendaForDate(
       selectedDateStr,
       filteredSessions,
       filteredGroups,
       enrollments,
       students,
-      true
+      true,
+      allAttendance
     );
-  }, [selectedDateStr, filteredSessions, filteredGroups, enrollments, students]);
+  }, [
+    weekAgendasByDate,
+    selectedDateStr,
+    filteredSessions,
+    filteredGroups,
+    enrollments,
+    students,
+    allAttendance,
+    todayStr,
+  ]);
 
   // Weekdays localized
   const currentWeekDays = useMemo(() => {
-    const selectedDate = parseLocalDateStr(selectedDateStr);
-    const dayOfWeek = selectedDate.getDay();
-    const distFromSaturday = (dayOfWeek + 1) % 7;
-    const startOfWeek = new Date(selectedDate);
-    startOfWeek.setDate(selectedDate.getDate() - distFromSaturday);
-
-    const week: { dateStr: string; dayName: string; dayNumber: number; isToday: boolean; isSelected: boolean }[] = [];
     const arabicDays = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
     const englishDays = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     const dayList = isEn ? englishDays : arabicDays;
 
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + i);
-      const dStr = toLocalISODate(d);
-      week.push({
+    return weekDateStrings.map((dStr, i) => {
+      const dayNumber = parseInt(dStr.split('-')[2], 10);
+      return {
         dateStr: dStr,
         dayName: dayList[i],
-        dayNumber: d.getDate(),
+        dayNumber,
         isToday: dStr === todayStr,
         isSelected: dStr === selectedDateStr,
-      });
-    }
-    return week;
-  }, [selectedDateStr, todayStr, isEn]);
+      };
+    });
+  }, [weekDateStrings, selectedDateStr, todayStr, isEn]);
 
   const monthNames = isEn ? MONTH_NAMES_ENGLISH : MONTH_NAMES_ARABIC;
 
@@ -408,15 +523,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
           <div className="bg-[#FFFFFF] rounded-2xl p-2.5 border border-[#E1EBEC]/80 shadow-xs">
             <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
               {currentWeekDays.map((wDay, idx) => {
-                const dAgenda = getDetailedAgendaForDate(
-                  wDay.dateStr,
-                  filteredSessions,
-                  filteredGroups,
-                  enrollments,
-                  students,
-                  true
-                );
-                const count = dAgenda.items.length;
+                const count = weekAgendasByDate?.get(wDay.dateStr)?.items.length ?? 0;
 
                 return (
                   <button
@@ -653,7 +760,7 @@ export const MultiYearCalendar: React.FC<MultiYearCalendarProps> = ({
 
             {/* Grid */}
             <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-              {(monthsGrids[selectedMonthIdx] || []).map((cell, idx) => {
+              {activeMonthGrid.map((cell, idx) => {
                 const isSelected = cell.dateStr === selectedDateStr;
                 const hasClasses = cell.classCount > 0;
 

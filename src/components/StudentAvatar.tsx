@@ -2,7 +2,7 @@ import React from 'react';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
 import { AchievementFrame } from '../types';
 import { AchievementFrameSVG } from './AchievementFramesSVG';
-import { getAppLanguage } from '../utils/i18n';
+import { useTranslation } from '../utils/i18n';
 
 export interface StudentAvatarProps {
   student?: {
@@ -326,7 +326,28 @@ export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
   },
 };
 
-export const StudentAvatar: React.FC<StudentAvatarProps> = ({
+function areStudentAvatarPropsEqual(
+  prev: StudentAvatarProps,
+  next: StudentAvatarProps
+): boolean {
+  return (
+    prev.student?.id === next.student?.id &&
+    prev.student?.name === next.student?.name &&
+    prev.student?.avatarColor === next.student?.avatarColor &&
+    prev.student?.profilePhoto === next.student?.profilePhoto &&
+    prev.student?.achievementFrame === next.student?.achievementFrame &&
+    prev.name === next.name &&
+    prev.avatarColor === next.avatarColor &&
+    prev.profilePhoto === next.profilePhoto &&
+    prev.achievementFrame === next.achievementFrame &&
+    prev.size === next.size &&
+    prev.className === next.className &&
+    prev.showBadge === next.showBadge &&
+    prev.showFrame === next.showFrame
+  );
+}
+
+const StudentAvatarInner: React.FC<StudentAvatarProps> = ({
   student,
   name: propName,
   avatarColor: propColor,
@@ -337,7 +358,7 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
   showBadge = false,
   showFrame = true,
 }) => {
-  const currentLang = getAppLanguage();
+  const { language: currentLang } = useTranslation();
   const isEn = currentLang.startsWith('en');
 
   const finalName = student?.name || propName || (isEn ? 'Student' : 'طالب');
@@ -421,3 +442,5 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = ({
     </div>
   );
 };
+
+export const StudentAvatar = React.memo(StudentAvatarInner, areStudentAvatarPropsEqual);

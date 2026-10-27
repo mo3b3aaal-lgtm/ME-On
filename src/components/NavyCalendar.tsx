@@ -1,18 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { NavyCard } from './ui/NavyCard';
 import { AppIcon } from './ui/AppIcon';
 import { useTranslation } from '../utils/i18n';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
-import { useModalLayer } from '../contexts/ModalContext';
-import { Session, Group, Student } from '../types';
+import { Session, Group, Student, Enrollment } from '../types';
 import { db } from '../utils/storage';
 import {
   MONTH_NAMES_ARABIC,
   MONTH_NAMES_ENGLISH,
   CALENDAR_WEEKDAY_HEADERS_ARABIC,
   CalendarDayCell,
+  buildRecurringSlotsByWeekday,
   generateMonthGrid,
-  getYearClassStatsMap,
+  getMonthClassStatsMap,
 } from '../utils/schedule';
 import { parseLocalDateStr } from '../utils/localDate';
 import { BottomSheet } from './ui/BottomSheet';
@@ -23,18 +23,22 @@ export interface NavyCalendarProps {
   sessions: Session[];
   groups: Group[];
   students?: Student[];
+  enrollments?: Enrollment[];
   onOpenAddSession: (defaultGroupId?: string, defaultDate?: string) => void;
   viewMode?: 'week' | 'month';
   onViewModeChange?: (mode: 'week' | 'month') => void;
   className?: string;
 }
 
+const EMPTY_STUDENTS: Student[] = [];
+
 export const NavyCalendar: React.FC<NavyCalendarProps> = ({
   selectedDateStr,
   onSelectDate,
   sessions,
   groups,
-  students = [],
+  students = EMPTY_STUDENTS,
+  enrollments: enrollmentsProp,
   onOpenAddSession,
   viewMode: controlledViewMode,
   onViewModeChange,
@@ -55,8 +59,7 @@ export const NavyCalendar: React.FC<NavyCalendarProps> = ({
 
   const viewMode = controlledViewMode ?? internalViewMode;
   const setViewMode = onViewModeChange ?? setInternalViewMode;
-
-  useModalLayer('year-month-picker', isPickerOpen, () => setIsPickerOpen(false));
+  const handleClosePicker = useCallback(() => setIsPickerOpen(false), []);
 
   // Sync year and month with selectedDateStr whenever selectedDateStr updates externally
   useEffect(() => {
@@ -70,23 +73,77 @@ export const NavyCalendar: React.FC<NavyCalendarProps> = ({
     ? ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     : CALENDAR_WEEKDAY_HEADERS_ARABIC;
 
-  // Enrollments and stats map
-  const enrollments = useMemo(() => db.getEnrollments(), [sessions, groups]);
+  // Enrollments snapshot (prefers reactive prop from parent when available)
+  const enrollments = useMemo(
+    () => enrollmentsProp ?? db.getEnrollments(),
+    [enrollmentsProp, sessions, groups, students]
+  );
 
-  const yearStatsMap = useMemo(() => {
-    return getYearClassStatsMap(
+  // Recurring weekday slots depend only on groups, enrollments, and students (reused across month/week navigation)
+  const recurringSlotsByWeekday = useMemo(
+    () => buildRecurringSlotsByWeekday(groups, enrollments, students),
+    [groups, enrollments, students]
+  );
+
+  // Compute exact visible in-month day range [rangeStartDay, rangeEndDay]
+  // - 'month' mode: all days (1..daysInMonth) of selectedMonthIdx
+  // - 'week' mode: only the 1..7 in-month days of the Sat-Fri row containing selectedDateStr
+  const daysInSelectedMonth = useMemo(
+    () => new Date(selectedYear, selectedMonthIdx + 1, 0).getDate(),
+    [selectedYear, selectedMonthIdx]
+  );
+
+  const { rangeStartDay, rangeEndDay } = useMemo(() => {
+    if (viewMode === 'month') {
+      return { rangeStartDay: 1, rangeEndDay: daysInSelectedMonth };
+    }
+    if (
+      isNaN(selectedDateObj.getTime()) ||
+      selectedDateObj.getFullYear() !== selectedYear ||
+      selectedDateObj.getMonth() !== selectedMonthIdx
+    ) {
+      return { rangeStartDay: 1, rangeEndDay: 0 };
+    }
+    const selectedDay = selectedDateObj.getDate();
+    const colIndex = (selectedDateObj.getDay() + 1) % 7; // 0 = Sat .. 6 = Fri
+    return {
+      rangeStartDay: Math.max(1, selectedDay - colIndex),
+      rangeEndDay: Math.min(daysInSelectedMonth, selectedDay + (6 - colIndex)),
+    };
+  }, [viewMode, selectedDateObj, selectedYear, selectedMonthIdx, daysInSelectedMonth]);
+
+  const visibleStatsMap = useMemo(() => {
+    return getMonthClassStatsMap(
       selectedYear,
+      selectedMonthIdx,
       sessions,
       groups,
       enrollments,
-      students
+      students,
+      {
+        startDay: rangeStartDay,
+        endDay: rangeEndDay,
+        recurringSlotsByWeekday,
+        todayStr,
+      }
     );
-  }, [selectedYear, sessions, groups, enrollments, students]);
+  }, [
+    selectedYear,
+    selectedMonthIdx,
+    rangeStartDay,
+    rangeEndDay,
+    sessions,
+    groups,
+    enrollments,
+    students,
+    recurringSlotsByWeekday,
+    todayStr,
+  ]);
 
-  // Current month's grid
+  // Current month's grid populated with visible-range statistics
   const monthGrid = useMemo(() => {
-    return generateMonthGrid(selectedYear, selectedMonthIdx, yearStatsMap);
-  }, [selectedYear, selectedMonthIdx, yearStatsMap]);
+    return generateMonthGrid(selectedYear, selectedMonthIdx, visibleStatsMap);
+  }, [selectedYear, selectedMonthIdx, visibleStatsMap, todayStr]);
 
   // Break monthGrid into 7-day rows (weeks)
   const weeks = useMemo(() => {
@@ -321,7 +378,7 @@ export const NavyCalendar: React.FC<NavyCalendarProps> = ({
       <BottomSheet
         id="calendar-month-year-picker"
         isOpen={isPickerOpen}
-        onClose={() => setIsPickerOpen(false)}
+        onClose={handleClosePicker}
         title={isEn ? 'Select Month & Year' : 'اختيار الشهر والسنة'}
         maxWidthClass="sm:max-w-md"
         bodyClassName="p-5 space-y-4 text-start"

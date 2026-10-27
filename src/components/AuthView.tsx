@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserAccount } from '../types';
 import { db } from '../utils/storage';
 import { useTranslation } from '../utils/i18n';
@@ -44,7 +44,22 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
 
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current !== null) {
+        clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const clearMessages = () => {
+    if (resetTimerRef.current !== null) {
+      clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
     setErrorMessage(null);
     setSuccessMessage(null);
   };
@@ -159,7 +174,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLoginSuccess }) => {
         setSuccessMessage(isEn ? 'Password reset successfully! You can now log in.' : 'تمت إعادة تعيين كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.');
         setLoginIdentifier(resetIdentifier);
         setLoginPassword(resetNewPassword);
-        setTimeout(() => {
+        if (resetTimerRef.current !== null) {
+          clearTimeout(resetTimerRef.current);
+        }
+        resetTimerRef.current = setTimeout(() => {
+          resetTimerRef.current = null;
           setMode('login');
           setSuccessMessage(null);
         }, 1500);

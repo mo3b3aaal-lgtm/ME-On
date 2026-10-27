@@ -22,6 +22,7 @@ interface AddEditSessionModalProps {
 }
 
 const ARABIC_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const EMPTY_STUDENTS: Student[] = [];
 
 export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   isOpen,
@@ -32,7 +33,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   defaultStudentId,
   isExtraSessionDefault = false,
   allGroups,
-  allStudents = [],
+  allStudents = EMPTY_STUDENTS,
   onSaveComplete,
 }) => {
   const { t, isRTL, language } = useTranslation();

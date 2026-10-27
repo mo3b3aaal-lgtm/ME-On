@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppIcon } from './ui/AppIcon';
 import { useTranslation } from '../utils/i18n';
 
@@ -18,18 +18,55 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   const isEn = language.startsWith('en');
   const [isFadingOut, setIsFadingOut] = useState(false);
 
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedRef = useRef(false);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
+    autoTimerRef.current = setTimeout(() => {
+      autoTimerRef.current = null;
       setIsFadingOut(true);
-      setTimeout(onComplete, 400);
+      fadeTimerRef.current = setTimeout(() => {
+        fadeTimerRef.current = null;
+        if (!completedRef.current) {
+          completedRef.current = true;
+          onCompleteRef.current();
+        }
+      }, 400);
     }, autoDismissMs);
 
-    return () => clearTimeout(timer);
-  }, [autoDismissMs, onComplete]);
+    return () => {
+      if (autoTimerRef.current !== null) {
+        clearTimeout(autoTimerRef.current);
+        autoTimerRef.current = null;
+      }
+      if (fadeTimerRef.current !== null) {
+        clearTimeout(fadeTimerRef.current);
+        fadeTimerRef.current = null;
+      }
+    };
+  }, [autoDismissMs]);
 
   const handleSkip = () => {
+    if (completedRef.current) return;
+    if (autoTimerRef.current !== null) {
+      clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
+    if (fadeTimerRef.current !== null) {
+      clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = null;
+    }
     setIsFadingOut(true);
-    setTimeout(onComplete, 200);
+    fadeTimerRef.current = setTimeout(() => {
+      fadeTimerRef.current = null;
+      if (!completedRef.current) {
+        completedRef.current = true;
+        onCompleteRef.current();
+      }
+    }, 200);
   };
 
   return (

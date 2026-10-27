@@ -266,7 +266,12 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
         </div>
       }
     >
-      <form id="add-group-form" onSubmit={handleSubmit} className="space-y-4 text-xs text-navy text-start">
+      <form
+        id="add-group-form"
+        data-tutorial-id="group-modal-form"
+        onSubmit={handleSubmit}
+        className="space-y-4 text-xs text-navy text-start"
+      >
         {/* Section 1: Basic Info */}
         <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
           <div className="space-y-1">

@@ -843,7 +843,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ) : (
         <>
           {/* 2. Today's Progress NavyCard (Daily Goal Card) */}
-          <NavyCard className="relative">
+          <NavyCard data-tutorial-id="dashboard-progress-card" className="relative">
             <div className="flex items-center justify-between gap-4 relative z-10">
               <div className="flex-1 min-w-0 space-y-2.5">
                 <div>
@@ -889,7 +889,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
 
         {/* 2. 2x2 Grid of MintCards */}
-        <div className="grid grid-cols-2 gap-4">
+        <div data-tutorial-id="dashboard-focus-grid" className="grid grid-cols-2 gap-4">
           {/* Row 1, Card 1: First pending/next session */}
           {focusSession1 ? (
             <MintCard

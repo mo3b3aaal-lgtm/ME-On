@@ -406,7 +406,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       {/* 1. Header SegmentedControl (Students | Groups) + Add Action at the end of header */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
+        <div data-tutorial-id="students-segment-control" className="flex-1 min-w-0">
           <SegmentedControl<'students' | 'groups'>
             value={selectedSegment}
             onChange={handleSegmentChange}
@@ -428,6 +428,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         {selectedSegment === 'students' ? (
           <button
             type="button"
+            data-tutorial-id="students-add-btn"
             onClick={onOpenAddStudent}
             className="btn-orange shrink-0 !h-10 !min-h-10 !px-3.5 !text-xs !font-bold flex items-center gap-1.5 shadow-orange"
           >
@@ -437,6 +438,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         ) : (
           <button
             type="button"
+            data-tutorial-id="groups-add-btn"
             onClick={onOpenAddGroup}
             className="btn-orange shrink-0 !h-10 !min-h-10 !px-3.5 !text-xs !font-bold flex items-center gap-1.5 shadow-orange"
           >
@@ -588,7 +590,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           )}
 
           {/* 2. Search Pill (height 52px, white, 1px line, shadow-white, AppIcon search start side) */}
-          <div className="relative h-[52px] bg-page border border-line rounded-full shadow-white flex items-center px-4 gap-3">
+          <div
+            data-tutorial-id="students-search-bar"
+            className="relative h-[52px] bg-page border border-line rounded-full shadow-white flex items-center px-4 gap-3"
+          >
             <AppIcon
               name="search"
               weight="duotone"
@@ -702,6 +707,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           </div>
 
           {/* 3. Student Cards List, Loading Skeleton, or Empty State */}
+          <div data-tutorial-id="students-list-section">
           {showStudentsSkeleton ? (
             <StudentCardsSkeleton count={4} />
           ) : students.length === 0 ? (
@@ -1020,6 +1026,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
               })}
             </div>
           )}
+          </div>
 
           {/* Floating Bottom Action Bar when students are selected in bulk mode */}
           {isSelectionMode && selectedCount > 0 && activeTabType === 'active' && (

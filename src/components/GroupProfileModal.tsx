@@ -276,6 +276,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                 )}
                 <button
                   type="button"
+                  data-tutorial-id="group-profile-enroll-btn"
                   onClick={() => onAddExistingStudent(group)}
                   className="btn-navy px-2.5 py-1 text-[11px] flex items-center gap-1"
                 >

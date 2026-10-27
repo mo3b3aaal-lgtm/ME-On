@@ -332,6 +332,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
       </div>
 
       {/* 2. Group Cards List, Loading Skeleton, or Empty State */}
+      <div data-tutorial-id="groups-list-section">
       {showGroupsSkeleton ? (
         <GroupCardsSkeleton count={3} />
       ) : groups.length === 0 ? (
@@ -574,6 +575,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           })}
         </div>
       )}
+      </div>
     </div>
   );
 };

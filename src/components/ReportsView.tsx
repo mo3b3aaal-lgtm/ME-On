@@ -112,6 +112,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   >('overview');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'group' | 'private'>('all');
 
+  useEffect(() => {
+    const handleTutorialReportsNav = (ev: Event) => {
+      const detail = (ev as CustomEvent)?.detail;
+      if (!detail || typeof detail !== 'object') return;
+      if (
+        detail.reportType === 'teacher_overview' ||
+        detail.reportType === 'overdue_list' ||
+        detail.reportType === 'group_report' ||
+        detail.reportType === 'student_report'
+      ) {
+        setReportType(detail.reportType);
+      }
+      if (typeof detail.subTab === 'string') {
+        setFinancialSubTab(detail.subTab as any);
+      }
+    };
+    window.addEventListener('classy_tutorial_reports_nav', handleTutorialReportsNav);
+    return () => {
+      window.removeEventListener('classy_tutorial_reports_nav', handleTutorialReportsNav);
+    };
+  }, []);
+
   // Selected Student / Group for dedicated reports
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
   const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || '');
@@ -578,7 +600,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       ) : (
         <>
           {/* 2. Top Summary = NavyCard with main number (.t-display white) and ProgressRing for collection rate */}
-          <NavyCard className="relative">
+          <NavyCard data-tutorial-id="reports-collection-card" className="relative">
         <div className="flex items-center justify-between gap-4 relative z-10">
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center gap-2">
@@ -629,16 +651,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       </NavyCard>
 
       {/* 3. Main Navigation: SegmentedControl */}
-      <SegmentedControl<'teacher_overview' | 'overdue_list' | 'group_report' | 'student_report'>
-        value={reportType}
-        onChange={(val) => setReportType(val)}
-        options={[
-          { value: 'teacher_overview', label: isEn ? 'Overview' : 'شامل' },
-          { value: 'overdue_list', label: isEn ? 'Dues' : 'المستحقات' },
-          { value: 'group_report', label: isEn ? 'Groups' : 'المجموعات' },
-          { value: 'student_report', label: isEn ? 'Students' : 'الطلاب' },
-        ]}
-      />
+      <div data-tutorial-id="reports-type-control">
+        <SegmentedControl<'teacher_overview' | 'overdue_list' | 'group_report' | 'student_report'>
+          value={reportType}
+          onChange={(val) => setReportType(val)}
+          options={[
+            { value: 'teacher_overview', label: isEn ? 'Overview' : 'شامل' },
+            { value: 'overdue_list', label: isEn ? 'Dues' : 'المستحقات' },
+            { value: 'group_report', label: isEn ? 'Groups' : 'المجموعات' },
+            { value: 'student_report', label: isEn ? 'Students' : 'الطلاب' },
+          ]}
+        />
+      </div>
 
       {/* 4. Period Selector = chips; horizontally scrollable */}
       {reportType !== 'overdue_list' && (
@@ -748,6 +772,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <button
                 key={sub.key}
                 type="button"
+                data-tutorial-id={`reports-subtab-${sub.key}`}
+                data-tutorial-active={financialSubTab === sub.key ? 'true' : 'false'}
                 onClick={() => setFinancialSubTab(sub.key as any)}
                 className={`chip shrink-0 ${financialSubTab === sub.key ? 'chip-active' : ''}`}
               >

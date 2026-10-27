@@ -379,17 +379,19 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       />
 
       {/* 2. NavyCalendar Card */}
-      <NavyCalendar
-        selectedDateStr={selectedDateStr}
-        onSelectDate={setSelectedDateStr}
-        sessions={sessions}
-        groups={groups}
-        students={students}
-        enrollments={enrollments}
-        onOpenAddSession={onOpenAddSession}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
+      <div data-tutorial-id="sessions-navy-calendar">
+        <NavyCalendar
+          selectedDateStr={selectedDateStr}
+          onSelectDate={setSelectedDateStr}
+          sessions={sessions}
+          groups={groups}
+          students={students}
+          enrollments={enrollments}
+          onOpenAddSession={onOpenAddSession}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+      </div>
 
       {/* 3. Below the card: Selected date heading (.t-title) + Quick Search Toggle */}
       <div className="space-y-3 pt-1">
@@ -448,23 +450,25 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
         )}
 
         {/* 4. SessionTimeline */}
-        <SessionTimeline
-          items={timelineItems}
-          sessions={sessions}
-          students={students}
-          groups={groups}
-          allAttendance={allAttendance}
-          selectedDateStr={selectedDateStr}
-          isToday={selectedDateStr === todayStr}
-          isLoading={Boolean(isLoading) && sessions.length === 0 && groups.length === 0 && students.length === 0}
-          findSessionForScheduleItem={findSessionForScheduleItem}
-          onTapSession={handleSessionCardClick}
-          onRecordAttendance={handleStartRecurringClass}
-          onOpenAttendanceModal={onOpenAttendanceModal}
-          onOpenStudentProfile={onOpenStudentProfile}
-          onOpenGroupProfile={onOpenGroupProfile}
-          onOpenAddSession={onOpenAddSession}
-        />
+        <div data-tutorial-id="sessions-timeline-area">
+          <SessionTimeline
+            items={timelineItems}
+            sessions={sessions}
+            students={students}
+            groups={groups}
+            allAttendance={allAttendance}
+            selectedDateStr={selectedDateStr}
+            isToday={selectedDateStr === todayStr}
+            isLoading={Boolean(isLoading) && sessions.length === 0 && groups.length === 0 && students.length === 0}
+            findSessionForScheduleItem={findSessionForScheduleItem}
+            onTapSession={handleSessionCardClick}
+            onRecordAttendance={handleStartRecurringClass}
+            onOpenAttendanceModal={onOpenAttendanceModal}
+            onOpenStudentProfile={onOpenStudentProfile}
+            onOpenGroupProfile={onOpenGroupProfile}
+            onOpenAddSession={onOpenAddSession}
+          />
+        </div>
       </div>
 
       {/* Private Class Intake Modal */}

@@ -877,7 +877,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
         }
       >
         {/* Quick Batch Actions & Stats Bar */}
-        <div className="p-3 bg-mist rounded-2xl border border-line flex items-center justify-between gap-2 flex-wrap text-xs mb-3">
+        <div
+          data-tutorial-id="attendance-modal-controls"
+          className="p-3 bg-mist rounded-2xl border border-line flex items-center justify-between gap-2 flex-wrap text-xs mb-3"
+        >
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"

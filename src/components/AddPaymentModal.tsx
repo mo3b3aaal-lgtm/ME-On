@@ -192,6 +192,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
+            data-tutorial-id="payment-cancel-btn"
             onClick={onClose}
             className="btn-soft flex-1"
           >
@@ -211,7 +212,12 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       }
     >
       {/* Scrollable Form Body */}
-      <form id="add-payment-form" onSubmit={handleSubmit} className="space-y-4 text-xs text-navy">
+      <form
+        id="add-payment-form"
+        data-tutorial-id="payment-modal-body"
+        onSubmit={handleSubmit}
+        className="space-y-4 text-xs text-navy"
+      >
           
           {/* 1. Student Picker (if not fixed) */}
           {!targetStudent && (
@@ -299,7 +305,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           )}
 
           {/* 3. Payment Target Type Selector (4 Types) */}
-          <div className="classy-card p-3.5 space-y-2.5">
+          <div data-tutorial-id="payment-modal-types" className="classy-card p-3.5 space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="font-bold text-xs text-navy flex items-center gap-1.5">
                 <AppIcon name="coins" size={16} className="text-navy" />

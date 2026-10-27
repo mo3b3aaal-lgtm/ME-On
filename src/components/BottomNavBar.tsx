@@ -101,6 +101,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       <button
         key={tab.id}
         type="button"
+        data-tutorial-id={`bottom-nav-${tab.id}`}
         onClick={() => handleTabClick(tab.id)}
         aria-label={tab.label}
         className="flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer select-none group"
@@ -118,6 +119,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
 
   return (
     <nav
+      data-tutorial-id="bottom-nav-bar"
       aria-label="Bottom Navigation"
       dir={isRTL ? 'rtl' : 'ltr'}
       className="absolute bottom-[calc(12px+env(safe-area-inset-bottom,0px))] inset-x-3 h-[72px] bg-page border border-line rounded-[32px] shadow-nav z-40 px-2 flex items-center justify-between select-none"
@@ -131,6 +133,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       <div className="w-[72px] flex items-center justify-center shrink-0 relative">
         <button
           type="button"
+          data-tutorial-id="bottom-nav-quick-add"
           onClick={() => {
             triggerLightHaptic();
             onOpenQuickAdd();

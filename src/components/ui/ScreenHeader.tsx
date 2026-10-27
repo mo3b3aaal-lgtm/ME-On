@@ -60,6 +60,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {onOpenNotifications && (
           <button
             type="button"
+            data-tutorial-id="header-notifications-btn"
             onClick={onOpenNotifications}
             aria-label={
               effectiveUnreadCount > 0
@@ -89,6 +90,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {onOpenSettings && (
           <button
             type="button"
+            data-tutorial-id="header-settings-btn"
             onClick={onOpenSettings}
             aria-label={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}
             title={t('navSettings') || (isEn ? 'Settings' : 'الإعدادات')}

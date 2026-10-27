@@ -954,6 +954,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             1. STUDENT PROFILE HERO
             ========================================================================= */}
         <div
+          data-tutorial-id="student-profile-summary"
           {...headerSwipeDownGestures}
           className="p-5 border-b border-line bg-page text-navy relative overflow-hidden shrink-0 select-none cursor-grab active:cursor-grabbing"
         >

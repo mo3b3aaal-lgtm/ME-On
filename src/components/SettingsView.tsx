@@ -53,6 +53,15 @@ import {
   restoreDefaultNotificationSettings,
   subscribeToNotifications,
 } from '../utils/notificationCenter';
+import {
+  cleanupPracticeEntities,
+  getActivePracticeEntitiesCount,
+  openTutorialChapterHub,
+  resumeTutorial,
+  startFullTutorial,
+  useTutorialState,
+} from '../utils/tutorialProgress';
+import { TUTORIAL_CHAPTERS } from './tutorial/tutorialSteps';
 
 interface SettingsViewProps {
   teacherProfile: TeacherProfile;
@@ -79,6 +88,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { isDark, setTheme } = useTheme();
   const { hapticsEnabled, setHapticsEnabled } = useHapticsPreference();
   const isEn = language.startsWith('en');
+  const { persisted: tutorialPersisted } = useTutorialState(currentUser?.id);
+  const practiceEntitiesInfo = getActivePracticeEntitiesCount(currentUser?.id);
 
   // Profile Form state
   const [name, setName] = useState(teacherProfile.name);
@@ -633,6 +644,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
+            data-tutorial-id="settings-back-btn"
             onClick={() => (onBack ? onBack() : onNavigateToTab ? onNavigateToTab('dashboard') : undefined)}
             aria-label={t('back') || (isEn ? 'Back' : 'رجوع')}
             title={t('back') || (isEn ? 'Back' : 'رجوع')}
@@ -654,13 +666,132 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </header>
 
       {/* =========================================================================
+          INTERACTIVE ONBOARDING TUTORIAL & CHAPTER HUB
+          ========================================================================= */}
+      <section className="space-y-2">
+        <h2 className="t-caption text-slate uppercase tracking-wider px-1">
+          {isEn ? 'Interactive Guide & Help' : 'الجولة التفاعلية والمساعدة'}
+        </h2>
+        <MintCard
+          data-tutorial-id="settings-tutorial-card"
+          className="bg-mint-soft p-4 sm:p-5 space-y-3.5"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-orange shrink-0 shadow-xs">
+                <AppIcon name="sparkles" size={20} weight="fill" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="t-card text-navy font-bold leading-tight">
+                  {isEn ? 'Interactive Hands-On Tour' : 'الجولة التفاعلية خطوة بخطوة'}
+                </h3>
+                <p className="t-meta text-slate text-xs mt-0.5 leading-snug">
+                  {tutorialPersisted.status === 'in_progress'
+                    ? isEn
+                      ? `Saved progress (${tutorialPersisted.completedChapterIds.length}/${TUTORIAL_CHAPTERS.length} chapters completed)`
+                      : `لديك جولة محفوظة (${tutorialPersisted.completedChapterIds.length}/${TUTORIAL_CHAPTERS.length} فصول مكتملة)`
+                    : isEn
+                    ? 'Learn Students, Groups, Attendance, Billing & Reports directly on real screens'
+                    : 'تعلّم استخدام الطلاب والمجموعات والتحضير والمحاسبة والتقارير عملياً'}
+                </p>
+              </div>
+            </div>
+
+            <span className="text-[11px] font-bold text-slate tabular-nums shrink-0 pt-0.5">
+              {tutorialPersisted.completedChapterIds.length}/{TUTORIAL_CHAPTERS.length}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {tutorialPersisted.status === 'in_progress' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerLightHaptic();
+                  resumeTutorial(currentUser?.id);
+                }}
+                className="btn-orange h-10 min-h-[40px] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <AppIcon name="sparkles" size={15} weight="fill" />
+                <span>{isEn ? 'Resume Saved Tour' : 'متابعة الجولة المحفوظة'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerLightHaptic();
+                  startFullTutorial(currentUser?.id, false);
+                }}
+                className="btn-orange h-10 min-h-[40px] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <AppIcon name="sparkles" size={15} weight="fill" />
+                <span>
+                  {tutorialPersisted.completedChapterIds.length > 0
+                    ? isEn
+                      ? 'Restart Interactive Tour'
+                      : 'إعادة تشغيل الجولة التفاعلية'
+                    : isEn
+                    ? 'Start Interactive Tour'
+                    : 'ابدأ الجولة التفاعلية'}
+                </span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerLightHaptic();
+                openTutorialChapterHub();
+              }}
+              className="btn-soft h-10 min-h-[40px] text-xs font-bold flex items-center justify-center gap-1.5 bg-page border border-line cursor-pointer"
+            >
+              <AppIcon name="list" size={15} />
+              <span>{isEn ? 'Choose a Specific Chapter' : 'اختيار فصل محدد (7 فصول)'}</span>
+            </button>
+          </div>
+
+          {practiceEntitiesInfo.totalCount > 0 && (
+            <div className="pt-2.5 border-t border-line/70 flex items-center justify-between gap-2.5">
+              <span className="text-[11px] font-semibold text-slate">
+                {isEn
+                  ? `${practiceEntitiesInfo.totalCount} [Practice] sample item(s) present`
+                  : `يوجد ${practiceEntitiesInfo.totalCount} سجل تجريبي بوسم [تجريبي]`}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerLightHaptic();
+                  const res = cleanupPracticeEntities(currentUser?.id);
+                  onDataReset();
+                  const removed = res.removedStudents + res.removedGroups;
+                  showToast(
+                    isEn
+                      ? `Removed ${removed} [Practice] sample item(s). Real data preserved.`
+                      : `تم مسح ${removed} سجل تجريبي [تجريبي] بأمان تام.`,
+                    'success'
+                  );
+                }}
+                className="px-3 py-1.5 rounded-xl bg-page border border-line hover:bg-mist text-navy text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+              >
+                <AppIcon name="trash" size={13} />
+                <span>{isEn ? 'Clean Up Practice Data' : 'مسح البيانات التجريبية'}</span>
+              </button>
+            </div>
+          )}
+        </MintCard>
+      </section>
+
+      {/* =========================================================================
           GROUP 1: APPLICATION LANGUAGE (SegmentedControl)
           ========================================================================= */}
       <section className="space-y-2">
         <h2 className="t-caption text-slate uppercase tracking-wider px-1">
           {isEn ? 'Language' : 'اللغة'}
         </h2>
-        <MintCard className="bg-mint-soft p-4 sm:p-5 space-y-3.5">
+        <MintCard
+          data-tutorial-id="settings-language-card"
+          className="bg-mint-soft p-4 sm:p-5 space-y-3.5"
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
@@ -912,7 +1043,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <h2 className="t-caption text-slate uppercase tracking-wider px-1">
           {isEn ? 'Cloud & Backup' : 'المزامنة والنسخ'}
         </h2>
-        <MintCard className="bg-mint-soft p-4 sm:p-5 space-y-3.5">
+        <MintCard
+          data-tutorial-id="settings-cloud-sync-card"
+          className="bg-mint-soft p-4 sm:p-5 space-y-3.5"
+        >
           {/* Header row with status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1043,7 +1177,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <h2 className="t-caption text-slate uppercase tracking-wider px-1">
           {isEn ? 'Notifications & Alerts' : 'الإشعارات والتنبيهات'}
         </h2>
-        <MintCard className="bg-mint-soft p-4 sm:p-5 space-y-3">
+        <MintCard
+          data-tutorial-id="settings-notifications-card"
+          className="bg-mint-soft p-4 sm:p-5 space-y-3"
+        >
           {/* Master Switch: Enable All Notifications */}
           <div className="flex items-center justify-between p-2.5 rounded-2xl bg-page border border-line shadow-2xs">
             <div className="flex items-center gap-3 min-w-0">

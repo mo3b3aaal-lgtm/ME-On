@@ -76,6 +76,7 @@ const loadRecordAttendanceModal = () => import('./components/RecordAttendanceMod
 const loadAddPaymentModal = () => import('./components/AddPaymentModal');
 const loadNotificationsModal = () => import('./components/NotificationsModal');
 const loadPrivateClassIntakeModal = () => import('./components/PrivateClassIntakeModal');
+const loadGuidedTutorial = () => import('./components/tutorial/GuidedTutorial');
 
 const StudentsView = lazy(() => loadStudentsView().then((m) => ({ default: m.StudentsView })));
 const SessionsView = lazy(() => loadSessionsView().then((m) => ({ default: m.SessionsView })));
@@ -114,6 +115,9 @@ const NotificationsModal = lazy(() =>
 );
 const PrivateClassIntakeModal = lazy(() =>
   loadPrivateClassIntakeModal().then((m) => ({ default: m.PrivateClassIntakeModal }))
+);
+const GuidedTutorial = lazy(() =>
+  loadGuidedTutorial().then((m) => ({ default: m.GuidedTutorial }))
 );
 
 function useDetailModalState<T>(exitDurationMs = 150) {
@@ -878,6 +882,7 @@ export default function App() {
         loadGroupProfileModal(),
         loadRecordAttendanceModal(),
         loadAddPaymentModal(),
+        loadGuidedTutorial(),
       ]).catch(() => {});
     }, 80);
 
@@ -1727,6 +1732,52 @@ export default function App() {
               enrollment={appPrivateIntakeTarget.enrollment}
               session={appPrivateIntakeTarget.session}
               onConfirm={handleConfirmAppPrivateIntake}
+            />
+          )}
+
+          {/* Interactive Hands-On Onboarding Tutorial Engine */}
+          {currentUser && (
+            <GuidedTutorial
+              userId={currentUser.id}
+              isAppReady={!showSplash && Boolean(currentUser) && !isHydratingEmptyStore}
+              activeTab={activeTab}
+              studentsSegment={resolvedStudentsSegment}
+              students={students}
+              groups={groups}
+              sessions={sessions}
+              isQuickAddOpen={isQuickAddOpen}
+              isNotificationsOpen={isNotificationsModalOpen}
+              isAddStudentOpen={isAddStudentOpen}
+              isStudentProfileOpen={studentProfileModal.isOpen}
+              isAddGroupOpen={isAddGroupOpen}
+              isGroupProfileOpen={groupProfileModal.isOpen}
+              isAttendanceOpen={attendanceModal.isOpen}
+              isAddPaymentOpen={isAddPaymentOpen}
+              isEnrollOpen={isEnrollModalOpen}
+              onNavigateToTab={handleTabChange}
+              onSetStudentsSegment={setStudentsSegment}
+              onCloseQuickAdd={() => setIsQuickAddOpen(false)}
+              onOpenNotifications={handleOpenNotificationsModal}
+              onCloseNotifications={() => setIsNotificationsModalOpen(false)}
+              onOpenAddStudent={handleOpenAddStudent}
+              onCloseAddStudent={() => setIsAddStudentOpen(false)}
+              onOpenStudentProfile={studentProfileModal.open}
+              onCloseStudentProfile={studentProfileModal.close}
+              onOpenAddGroup={handleOpenAddGroup}
+              onCloseAddGroup={() => setIsAddGroupOpen(false)}
+              onOpenGroupProfile={groupProfileModal.open}
+              onCloseGroupProfile={groupProfileModal.close}
+              onOpenAttendance={attendanceModal.open}
+              onCloseAttendance={attendanceModal.close}
+              onOpenAddPayment={(st) => handleOpenAddPayment(st)}
+              onCloseAddPayment={() => {
+                setIsAddPaymentOpen(false);
+                setTargetStudentForPayment(null);
+                setTargetEnrollmentIdForPayment(undefined);
+              }}
+              onCloseEnroll={() => setIsEnrollModalOpen(false)}
+              onDataChanged={refreshData}
+              onShowToast={(message) => setNavToast({ message, type: 'info' })}
             />
           )}
         </Suspense>

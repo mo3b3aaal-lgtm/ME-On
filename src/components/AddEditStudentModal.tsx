@@ -604,7 +604,12 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         </div>
       }
     >
-      <form id="add-student-form" onSubmit={handleSave} className="space-y-4 text-xs text-navy text-start">
+      <form
+        id="add-student-form"
+        data-tutorial-id="student-modal-form"
+        onSubmit={handleSave}
+        className="space-y-4 text-xs text-navy text-start"
+      >
         {/* Profile Photo & Frame */}
         <div className="p-4 rounded-2xl bg-page border border-line space-y-3.5 shadow-2xs">
           <div className="flex items-center justify-between">

@@ -3,58 +3,58 @@ import { AppIcon } from './ui/AppIcon';
 import { AchievementFrame } from '../types';
 import { StudentAvatar, ACHIEVEMENT_FRAME_INFO, FrameInfoItem } from './StudentAvatar';
 import { useTranslation } from '../utils/i18n';
+import {
+  getStudentProgression,
+  normalizeManualOrLegacyFrame,
+} from '../utils/studentProgression';
 
 interface AchievementFrameSelectorProps {
   selectedFrame?: AchievementFrame;
   onSelectFrame: (frame: AchievementFrame) => void;
+  studentId?: string;
   studentName?: string;
   profilePhoto?: string | null;
   avatarColor?: string;
   className?: string;
 }
 
-// 8 Distinct Premium Gaming Frame Tiers + Default No-Frame
+// Automatic Level & Behavior Progression + 10 Custom Uploaded Frames (Level 1 -> Level MAX)
 const SELECTABLE_FRAMES: AchievementFrame[] = [
-  'none',
-  'silver',
-  'gold',
-  'platinum',
-  'vip',
-  'story',
-  'challenge',
-  'nature',
-  'cosmic',
+  'auto',
+  'level_1',
+  'level_2',
+  'level_3',
+  'level_4',
+  'level_5',
+  'level_6',
+  'level_7',
+  'level_8',
+  'level_9',
+  'level_10',
 ];
 
-const TIER_PILL_MAP: Record<string, string> = {
-  silver: 'frame-tier-pill-silver',
-  gold: 'frame-tier-pill-gold',
-  platinum: 'frame-tier-pill-platinum',
-  vip: 'frame-tier-pill-vip',
-  story: 'frame-tier-pill-story',
-  challenge: 'frame-tier-pill-challenge',
-  nature: 'frame-tier-pill-nature',
-  cosmic: 'frame-tier-pill-cosmic',
-};
-
-// Helper to determine if a frame ID matches the active selection (including legacy aliases)
-export function isFrameActive(frameId: AchievementFrame, current: AchievementFrame | string | undefined): boolean {
-  const normCurrent = current || 'none';
-  if (frameId === normCurrent) return true;
-  if ((frameId === 'none' || frameId === 'default') && (normCurrent === 'none' || normCurrent === 'default')) return true;
-  if (frameId === 'silver' && normCurrent === 'silver_scholar') return true;
-  if (frameId === 'gold' && normCurrent === 'gold_champion') return true;
-  if (frameId === 'vip' && (normCurrent === 'crown' || normCurrent === 'champion')) return true;
-  if (frameId === 'story' && normCurrent === 'diamond_elite') return true;
-  if (frameId === 'challenge' && normCurrent === 'bronze_star') return true;
-  if (frameId === 'nature' && normCurrent === 'emerald_honor') return true;
-  if (frameId === 'cosmic' && normCurrent === 'star') return true;
-  return false;
+export function isFrameActive(
+  frameId: AchievementFrame,
+  current: AchievementFrame | string | undefined
+): boolean {
+  const raw = current || 'auto';
+  if (
+    frameId === 'auto' &&
+    (raw === 'auto' || raw === 'none' || raw === 'default')
+  ) {
+    return true;
+  }
+  const normalizedCurrent = normalizeManualOrLegacyFrame(raw);
+  if (normalizedCurrent && frameId === normalizedCurrent) {
+    return true;
+  }
+  return frameId === raw;
 }
 
 export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> = ({
-  selectedFrame = 'none',
+  selectedFrame = 'auto',
   onSelectFrame,
+  studentId,
   studentName,
   profilePhoto,
   avatarColor = '#17375E',
@@ -68,13 +68,28 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const currentFrameKey: AchievementFrame = (selectedFrame || 'none') as AchievementFrame;
+  const isAutoSelected =
+    !selectedFrame ||
+    selectedFrame === 'auto' ||
+    selectedFrame === 'none' ||
+    selectedFrame === 'default';
+
+  const normalizedManualKey = !isAutoSelected
+    ? normalizeManualOrLegacyFrame(selectedFrame)
+    : null;
+
+  const currentFrameKey: AchievementFrame = isAutoSelected
+    ? 'auto'
+    : normalizedManualKey || 'auto';
+
   const activeFrameInfo: FrameInfoItem =
-    ACHIEVEMENT_FRAME_INFO[currentFrameKey] || ACHIEVEMENT_FRAME_INFO.none;
+    ACHIEVEMENT_FRAME_INFO[currentFrameKey] || ACHIEVEMENT_FRAME_INFO.auto;
 
-  const isNoFrame = currentFrameKey === 'none' || currentFrameKey === 'default';
+  const liveProgression = getStudentProgression(studentId || 'temp');
+  const autoPreviewLabel = isEn
+    ? `${liveProgression.frameDef.shortLabelEn} · ${liveProgression.totalXp} XP`
+    : `${liveProgression.frameDef.shortLabelAr} · ${liveProgression.totalXp} نقطة`;
 
-  // Handle outside click & Escape key to close popover
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -109,19 +124,17 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
   return (
     <div ref={containerRef} className={`relative space-y-1.5 ${className}`}>
       {/* Field Label Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <label className="font-bold text-navy text-xs sm:text-sm flex items-center gap-1.5">
           <AppIcon name="award" size={14} className="text-navy" />
-          <span>{isEn ? 'Student Frame' : 'إطار الطالب'}</span>
+          <span>{isEn ? 'Level & Avatar Frame' : 'إطار المستوى والتميز'}</span>
         </label>
-        {!isNoFrame && (
-          <span className={`frame-tier-pill ${TIER_PILL_MAP[currentFrameKey] || 'bg-navy/10 text-navy'}`}>
-            {activeFrameInfo.tierLabel[langKey]}
-          </span>
-        )}
+        <span className="text-[11px] font-semibold text-slate tabular-nums">
+          {isAutoSelected ? autoPreviewLabel : activeFrameInfo.tierLabel[langKey]}
+        </span>
       </div>
 
-      {/* Compact Selector Field Button */}
+      {/* Compact Selector Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -130,18 +143,20 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
         className={`w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer shadow-2xs ${
           isOpen
             ? 'bg-mint-soft/30 border-navy ring-2 ring-navy/20'
-            : isNoFrame
-            ? 'bg-white border-line hover:border-navy hover:bg-mint-soft/10'
-            : 'bg-gradient-to-r from-mint-soft/40 via-white to-white border-navy/40 hover:border-navy shadow-xs'
+            : 'bg-gradient-to-r from-mint-soft/40 via-white to-white border-navy/30 hover:border-navy shadow-xs'
         }`}
       >
-        {/* Left/Start: Frame Icon Preview + Name */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center">
+          <div className="shrink-0 w-11 h-11 flex items-center justify-center">
             <StudentAvatar
-              name={effectiveStudentName}
-              avatarColor={avatarColor}
-              profilePhoto={profilePhoto}
+              student={{
+                id: studentId || 'temp',
+                name: effectiveStudentName,
+                avatarColor,
+                profilePhoto,
+                avatarFrameMode: isAutoSelected ? 'auto' : 'manual',
+                achievementFrame: currentFrameKey,
+              }}
               achievementFrame={currentFrameKey}
               size="sm"
               showFrame={true}
@@ -153,14 +168,11 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
               {activeFrameInfo.name[langKey]}
             </p>
             <p className="text-[11px] text-slate truncate">
-              {isNoFrame
-                ? (isEn ? 'Standard appearance without extra frame' : 'المظهر الافتراضي بدون إطار إضافي')
-                : activeFrameInfo.desc[langKey]}
+              {activeFrameInfo.desc[langKey]}
             </p>
           </div>
         </div>
 
-        {/* Right/End: Caret Arrow */}
         <div className="shrink-0 flex items-center gap-1 text-slate">
           <AppIcon
             name="chevron-down"
@@ -170,26 +182,24 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
         </div>
       </button>
 
-      {/* Polished Dropdown Popover */}
+      {/* Dropdown Popover */}
       {isOpen && (
         <div
           role="listbox"
-          aria-label={isEn ? 'Select Student Frame' : 'اختر إطار الطالب'}
-          className="absolute z-50 start-0 end-0 mt-1.5 p-1.5 rounded-2xl bg-white border border-line shadow-2xl space-y-1 max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+          aria-label={isEn ? 'Select Student Level Frame' : 'اختر إطار مستوى الطالب'}
+          className="absolute z-50 start-0 end-0 mt-1.5 p-1.5 rounded-2xl bg-page border border-line shadow-2xl space-y-1 max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
         >
-          {/* Header Note */}
           <div className="px-3 py-1.5 border-b border-line flex items-center justify-between text-[11px] font-bold text-slate">
-            <span>{isEn ? 'Available Achievement Frames' : 'مجموعة إطارات التميز المتاحة'}</span>
-            <span className="text-[10px] text-slate/70">
-              {SELECTABLE_FRAMES.length - 1} {isEn ? 'exclusive tiers' : 'إطارات حصرية'}
+            <span>{isEn ? 'Level 1 to Level MAX Progression' : 'تدرج المستويات (من المستوى 1 حتى MAX)'}</span>
+            <span className="text-[10px] text-slate/80 tabular-nums">
+              {isEn ? '10 Levels' : '10 مستويات'}
             </span>
           </div>
 
-          {/* List of Frame Options */}
           {SELECTABLE_FRAMES.map((frameId) => {
-            const info = ACHIEVEMENT_FRAME_INFO[frameId] || ACHIEVEMENT_FRAME_INFO.none;
+            const info = ACHIEVEMENT_FRAME_INFO[frameId] || ACHIEVEMENT_FRAME_INFO.auto;
             const isSelected = isFrameActive(frameId, currentFrameKey);
-            const isOptionNone = frameId === 'none';
+            const isOptionAuto = frameId === 'auto';
 
             return (
               <button
@@ -201,32 +211,37 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
                 className={`w-full flex items-center justify-between gap-3 p-2.5 rounded-xl border text-start transition-all cursor-pointer frame-dropdown-option ${
                   isSelected
                     ? 'bg-mint-soft border-navy ring-1 ring-navy/30 shadow-xs frame-dropdown-option-active'
-                    : 'bg-white border-transparent hover:border-line hover:bg-mint-soft/30'
+                    : 'bg-page border-transparent hover:border-line hover:bg-mint-soft/30'
                 }`}
               >
-                {/* Frame Mini Preview + Info */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="shrink-0 w-10 h-10 flex items-center justify-center">
+                  <div className="shrink-0 w-12 h-11 flex items-center justify-center">
                     <StudentAvatar
-                      name={effectiveStudentName}
-                      avatarColor={avatarColor}
-                      profilePhoto={profilePhoto}
+                      student={{
+                        id: studentId || 'temp',
+                        name: effectiveStudentName,
+                        avatarColor,
+                        profilePhoto,
+                        avatarFrameMode: isOptionAuto ? 'auto' : 'manual',
+                        achievementFrame: frameId,
+                      }}
                       achievementFrame={frameId}
-                      size="md"
+                      size="sm"
                       showFrame={true}
                     />
                   </div>
 
                   <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-xs sm:text-sm font-black text-navy truncate">
                         {info.name[langKey]}
                       </span>
-                      {!isOptionNone && (
-                        <span className={`frame-tier-pill ${TIER_PILL_MAP[frameId] || 'bg-navy/10 text-navy'}`}>
-                          {info.tierLabel[langKey]}
-                        </span>
-                      )}
+                      <span aria-hidden="true" className="text-slate/50 text-xs shrink-0">
+                        ·
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate shrink-0 tabular-nums">
+                        {isOptionAuto ? autoPreviewLabel : info.tierLabel[langKey]}
+                      </span>
                     </div>
                     <p className="text-[11px] text-slate line-clamp-1 leading-snug">
                       {info.desc[langKey]}
@@ -234,7 +249,6 @@ export const AchievementFrameSelector: React.FC<AchievementFrameSelectorProps> =
                   </div>
                 </div>
 
-                {/* Selection Checkmark */}
                 <div className="shrink-0 flex items-center justify-center">
                   {isSelected ? (
                     <div className="w-6 h-6 rounded-full bg-navy text-white flex items-center justify-center shadow-xs">

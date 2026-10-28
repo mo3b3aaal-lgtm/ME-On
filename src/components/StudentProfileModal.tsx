@@ -28,6 +28,7 @@ import {
   formatSessionQuantityDisplay,
 } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
+import { getStudentProgression, getProgressWidthClass } from '../utils/studentProgression';
 import { RecordPrivateSessionModal } from './RecordPrivateSessionModal';
 import { parseLocalDateStr } from '../utils/localDate';
 import { QuickBehaviorLogModal } from './QuickBehaviorLogModal';
@@ -432,6 +433,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     [studentId, isOpen, profileDataVersion, domainRevision]
   );
   const behaviorStats = useMemo(() => calculateStudentBehaviorStats(studentBehaviorLogs), [studentBehaviorLogs]);
+  const progression = useMemo(
+    () => getStudentProgression(student),
+    [student, attendanceList, studentBehaviorLogs, profileDataVersion, domainRevision]
+  );
   const serviceType = useMemo(
     () => (studentId ? db.getStudentServiceType(studentId) : 'none'),
     [studentId, isOpen, profileDataVersion, domainRevision]
@@ -965,7 +970,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                   student={student}
                   size="xl"
                   showFrame={true}
-                  className="shrink-0 shadow-md"
+                  className="shrink-0"
                 />
 
                 <div className="space-y-1 min-w-0 text-start">
@@ -1006,12 +1011,34 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-slate font-medium flex-wrap">
-                    <span className="font-bold bg-mint-soft px-2.5 py-0.5 rounded-lg border border-line text-navy">
+                  <div className="flex items-center gap-1.5 text-xs text-slate font-medium flex-wrap tabular-nums">
+                    <span className="font-bold text-navy">
+                      {isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {progression.totalXp} {isEn ? 'XP' : 'نقطة'}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {isEn ? progression.behaviorStandingEn : progression.behaviorStandingAr}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
                       {getLocalizedStageName(student.gradeLevel) || (isEn ? 'Grade Not Set' : 'الصف غير محدد')}
                     </span>
-                    {student.school && <span>• {isEn ? `School: ${student.school}` : `مدرسة ${student.school}`}</span>}
-                    {student.city && <span>• {student.city}</span>}
+                    {student.school && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>{isEn ? `School: ${student.school}` : `مدرسة ${student.school}`}</span>
+                      </>
+                    )}
+                    {student.city && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>{student.city}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1165,6 +1192,102 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 ------------------------------------------------------------- */}
             {activeSubTab === 'overview' && (
               <div className="space-y-4">
+                {/* Level & Behavior Progression Summary */}
+                <WhiteCard className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <StudentAvatar
+                        student={student}
+                        size="lg"
+                        showFrame={true}
+                        className="shrink-0"
+                      />
+                      <div className="min-w-0 space-y-0.5 text-start">
+                        <h3 className="font-bold text-sm text-navy truncate">
+                          {isEn ? progression.frameDef.titleEn : progression.frameDef.titleAr}
+                        </h3>
+                        <p className="text-xs text-slate tabular-nums">
+                          {isEn ? progression.behaviorStandingEn : progression.behaviorStandingAr}
+                          {' · '}
+                          {progression.totalXp} {isEn ? 'XP' : 'نقطة خبرة'}
+                          {student.avatarFrameMode === 'manual' && (
+                            <span>
+                              {' · '}
+                              {isEn ? 'Manual Frame' : 'إطار يدوي'}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickBehaviorModalOpen(true)}
+                      className="btn-soft px-3 py-1.5 text-xs flex items-center gap-1.5 shrink-0 whitespace-nowrap"
+                    >
+                      <AppIcon name="award" size={14} weight="bold" />
+                      <span>{isEn ? '+ Rate Behavior' : '+ تقييم سلوك'}</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-slate font-medium tabular-nums">
+                      <span>
+                        {progression.isMaxLevel
+                          ? isEn
+                            ? 'Maximum Level Reached (MAX)'
+                            : 'تم بلوغ المستوى الأقصى (MAX)'
+                          : isEn
+                          ? `Progress to Level ${progression.level + 1}`
+                          : `التقدم نحو المستوى ${progression.level + 1}`}
+                      </span>
+                      <span>
+                        {progression.isMaxLevel
+                          ? `${progression.totalXp} XP`
+                          : isEn
+                          ? `${progression.xpRemainingToNextLevel} XP remaining`
+                          : `متبقي ${progression.xpRemainingToNextLevel} نقطة`}
+                      </span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-mint-soft overflow-hidden">
+                      <div
+                        className={`h-full rounded-full bg-navy transition-all duration-300 ${getProgressWidthClass(
+                          progression.progressPercent
+                        )}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-line flex items-center gap-2 flex-wrap text-[11px] text-slate tabular-nums">
+                    <span>
+                      {isEn ? 'Attendance:' : 'الحضور:'}{' '}
+                      <strong className="text-navy">
+                        {progression.attendanceXp >= 0
+                          ? `+${progression.attendanceXp}`
+                          : progression.attendanceXp}
+                      </strong>
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {isEn ? 'Behavior:' : 'السلوك:'}{' '}
+                      <strong className="text-navy">
+                        {progression.behaviorXp >= 0
+                          ? `+${progression.behaviorXp}`
+                          : progression.behaviorXp}
+                      </strong>
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {isEn ? 'Homework:' : 'الواجبات:'}{' '}
+                      <strong className="text-navy">
+                        {progression.homeworkXp >= 0
+                          ? `+${progression.homeworkXp}`
+                          : progression.homeworkXp}
+                      </strong>
+                    </span>
+                  </div>
+                </WhiteCard>
+
                 {/* Today's Private Lessons Summary (Feature 1 & Feature 3) */}
                 {todayPrivateSummary && todayPrivateSummary.visitsCount > 0 && (
                   <div className="classy-card p-4 bg-gradient-to-r from-[#FFFFFF] via-[#FFFFFF] to-[#FFFFFF] border-[#E1EBEC] space-y-3 shadow-xs">
@@ -2835,18 +2958,48 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 ------------------------------------------------------------- */}
             {activeSubTab === 'behavior' && (
               <div className="space-y-3.5">
+                <WhiteCard className="p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <StudentAvatar
+                        student={student}
+                        size="md"
+                        showFrame={true}
+                        className="shrink-0"
+                      />
+                      <div className="min-w-0 space-y-0.5 text-start">
+                        <strong className="font-bold text-xs text-navy block truncate">
+                          {isEn ? progression.frameDef.titleEn : progression.frameDef.titleAr}
+                        </strong>
+                        <span className="text-[11px] text-slate block tabular-nums">
+                          {isEn ? progression.behaviorStandingEn : progression.behaviorStandingAr}
+                          {' · '}
+                          {progression.totalXp} {isEn ? 'XP' : 'نقطة خبرة'}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickBehaviorModalOpen(true)}
+                      className="btn-navy px-3 py-1.5 text-xs flex items-center gap-1 shrink-0 whitespace-nowrap"
+                    >
+                      <AppIcon name="plus" size={14} />
+                      <span>{isEn ? 'New Behavior Rating' : 'تقييم سلوكي جديد'}</span>
+                    </button>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-mint-soft overflow-hidden">
+                    <div
+                      className={`h-full rounded-full bg-navy transition-all duration-300 ${getProgressWidthClass(
+                        progression.progressPercent
+                      )}`}
+                    />
+                  </div>
+                </WhiteCard>
+
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-[#0F2A4A]">
+                  <span className="font-black text-xs text-[#0F2A4A] tabular-nums">
                     {isEn ? `Behavior & Engagement Logs (${studentBehaviorLogs.length})` : `سجل التقييم السلوكي والتفاعل (${studentBehaviorLogs.length})`}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickBehaviorModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#17375E] to-[#17375E] text-[#FFFFFF] font-black text-xs flex items-center gap-1 shadow-xs active:scale-95"
-                  >
-                    <AppIcon name="plus" size={14} />
-                    <span>{isEn ? 'New Behavior Rating' : 'تقييم سلوكي جديد'}</span>
-                  </button>
                 </div>
 
                 {studentBehaviorLogs.length === 0 ? (

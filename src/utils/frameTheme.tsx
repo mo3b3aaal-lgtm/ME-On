@@ -1,9 +1,15 @@
 import React from 'react';
-import { AchievementFrame } from '../types';
+import { AchievementFrame, LevelFrameId } from '../types';
+import {
+  frameIdToLevel,
+  LEVEL_FRAME_DEFINITIONS,
+  normalizeManualOrLegacyFrame,
+  resolveStudentLevelFrame,
+} from './studentProgression';
 
 export interface FrameCardTheme {
-  frameKey: AchievementFrame;
-  icon: string;
+  frameKey: LevelFrameId;
+  level: number;
   nameAr: string;
   nameEn: string;
   tierAr: string;
@@ -15,183 +21,157 @@ export interface FrameCardTheme {
   patternType: 'platinum' | 'gold' | 'vip' | 'story' | 'challenge' | 'nature' | 'cosmic' | 'silver';
 }
 
+type StudentFrameThemeInput =
+  | {
+      id?: string;
+      achievementFrame?: AchievementFrame | null;
+      avatarFrameMode?: 'auto' | 'manual';
+    }
+  | AchievementFrame
+  | string
+  | null
+  | undefined;
+
 /**
- * Derives a subtle background theme and label identity from the student's existing achievement frame.
- * Strict adherence: Reuses existing frames and metadata only. Returns null if no frame is assigned.
+ * Derives a subtle card accent theme for higher progression tiers (Level 4 -> Level MAX),
+ * while keeping Levels 1–3 on the crisp default Harbor Mint card surface so visual hierarchy stays calm.
  */
-export function getStudentFrameCardTheme(rawFrame?: string | null): FrameCardTheme | null {
-  if (!rawFrame || rawFrame === 'none' || rawFrame === 'default') {
+export function getStudentFrameCardTheme(input?: StudentFrameThemeInput): FrameCardTheme | null {
+  if (!input) return null;
+
+  let resolvedFrameId: LevelFrameId | null = null;
+  if (typeof input === 'object') {
+    resolvedFrameId = resolveStudentLevelFrame(input);
+  } else {
+    resolvedFrameId = normalizeManualOrLegacyFrame(input);
+  }
+
+  if (!resolvedFrameId) return null;
+
+  const level = frameIdToLevel(resolvedFrameId);
+  const def = LEVEL_FRAME_DEFINITIONS[level];
+
+  // Levels 1–3 keep the calm Harbor Mint surface so cards never feel visually noisy
+  if (level <= 3) {
     return null;
   }
 
-  const clean = rawFrame.trim().toLowerCase();
-
-  // 1. Platinum (بلاتينيوم) — Icy crystalline highlights & silver-blue
-  if (clean === 'platinum') {
+  if (level === 4 || level === 5) {
     return {
-      frameKey: 'platinum',
-      icon: '💎',
-      nameAr: 'إطار بلاتينيوم',
-      nameEn: 'Platinum Frame',
-      tierAr: 'بلاتينيوم',
-      tierEn: 'Platinum',
+      frameKey: resolvedFrameId,
+      level,
+      nameAr: def.titleAr,
+      nameEn: def.titleEn,
+      tierAr: def.shortLabelAr,
+      tierEn: def.shortLabelEn,
       cardBgClass:
-        'bg-gradient-to-br from-[#F0F9FF]/95 via-white/95 to-[#E0F2FE]/75 dark:from-[#0F2942]/95 dark:via-[#112338]/95 dark:to-[#133654]/90',
-      cardBorderClass:
-        'border-[#BAE6FD] hover:border-[#7DD3FC] dark:border-[#38BDF8]/40 dark:hover:border-[#7DD3FC]/65 shadow-xs',
-      pillClass:
-        'bg-[#F0F9FF] border-[#BAE6FD] text-[#0369A1] dark:bg-[#0C2D48] dark:border-[#38BDF8]/45 dark:text-[#BAE6FD]',
-      glowColor: 'rgba(56, 189, 248, 0.35)',
-      patternType: 'platinum',
-    };
-  }
-
-  // 2. Gold (ذهبي) — Rich metallic gold & warm reflections
-  if (clean === 'gold' || clean === 'gold_champion') {
-    return {
-      frameKey: 'gold',
-      icon: '👑',
-      nameAr: 'إطار ذهبي',
-      nameEn: 'Gold Frame',
-      tierAr: 'ذهبي',
-      tierEn: 'Gold',
-      cardBgClass:
-        'bg-gradient-to-br from-[#FFFDF5]/95 via-white/95 to-[#FEF3C7]/65 dark:from-[#2B2212]/95 dark:via-[#142336]/95 dark:to-[#332611]/90',
+        'bg-gradient-to-br from-[#FFFDF5]/95 via-white/95 to-[#FEF3C7]/60 dark:from-[#2B2212]/95 dark:via-[#142336]/95 dark:to-[#332611]/90',
       cardBorderClass:
         'border-[#FDE68A] hover:border-[#FCD34D] dark:border-[#F59E0B]/45 dark:hover:border-[#FBBF24]/70 shadow-xs',
       pillClass:
         'bg-[#FFFDF5] border-[#FDE68A] text-[#B45309] dark:bg-[#362812] dark:border-[#F59E0B]/50 dark:text-[#FDE68A]',
-      glowColor: 'rgba(245, 158, 11, 0.35)',
+      glowColor: 'rgba(245, 158, 11, 0.3)',
       patternType: 'gold',
     };
   }
 
-  // 3. VIP (VIP) — Obsidian luxury & amber glow
-  if (clean === 'vip' || clean === 'crown' || clean === 'champion') {
+  if (level === 6) {
     return {
-      frameKey: 'vip',
-      icon: '⭐',
-      nameAr: 'إطار VIP',
-      nameEn: 'VIP Frame',
-      tierAr: 'VIP',
-      tierEn: 'VIP',
+      frameKey: resolvedFrameId,
+      level,
+      nameAr: def.titleAr,
+      nameEn: def.titleEn,
+      tierAr: def.shortLabelAr,
+      tierEn: def.shortLabelEn,
+      cardBgClass:
+        'bg-gradient-to-br from-[#FAF5FF]/95 via-white/95 to-[#F3E8FF]/65 dark:from-[#23193E]/95 dark:via-[#122338]/95 dark:to-[#2C1D4B]/90',
+      cardBorderClass:
+        'border-[#E9D5FF] hover:border-[#D8B4FE] dark:border-[#C084FC]/45 dark:hover:border-[#D8B4FE]/70 shadow-xs',
+      pillClass:
+        'bg-[#FAF5FF] border-[#E9D5FF] text-[#7E22CE] dark:bg-[#2D1E4A] dark:border-[#C084FC]/50 dark:text-[#E9D5FF]',
+      glowColor: 'rgba(168, 85, 247, 0.3)',
+      patternType: 'story',
+    };
+  }
+
+  if (level === 7) {
+    return {
+      frameKey: resolvedFrameId,
+      level,
+      nameAr: def.titleAr,
+      nameEn: def.titleEn,
+      tierAr: def.shortLabelAr,
+      tierEn: def.shortLabelEn,
       cardBgClass:
         'bg-gradient-to-br from-[#FFFBEB]/95 via-white/95 to-[#FEF08A]/50 dark:from-[#2E2310]/95 dark:via-[#132235]/95 dark:to-[#382910]/90',
       cardBorderClass:
         'border-[#FCD34D] hover:border-[#F59E0B] dark:border-[#FBBF24]/50 dark:hover:border-[#FCD34D]/75 shadow-xs',
       pillClass:
         'bg-[#FEF3C7] border-[#FCD34D] text-[#92400E] dark:bg-[#3B2B11] dark:border-[#FBBF24]/55 dark:text-[#FEF08A]',
-      glowColor: 'rgba(217, 119, 6, 0.35)',
+      glowColor: 'rgba(217, 119, 6, 0.32)',
       patternType: 'vip',
     };
   }
 
-  // 4. Story (ستوري) — Electric purple, magenta & cyber cyan
-  if (clean === 'story' || clean === 'diamond_elite') {
+  if (level === 8) {
     return {
-      frameKey: 'story',
-      icon: '⚡',
-      nameAr: 'إطار ستوري',
-      nameEn: 'Story Frame',
-      tierAr: 'ستوري',
-      tierEn: 'Story',
+      frameKey: resolvedFrameId,
+      level,
+      nameAr: def.titleAr,
+      nameEn: def.titleEn,
+      tierAr: def.shortLabelAr,
+      tierEn: def.shortLabelEn,
       cardBgClass:
-        'bg-gradient-to-br from-[#FAF5FF]/95 via-white/95 to-[#F3E8FF]/70 dark:from-[#23193E]/95 dark:via-[#122338]/95 dark:to-[#2C1D4B]/90',
+        'bg-gradient-to-br from-[#F0F9FF]/95 via-white/95 to-[#FEF3C7]/45 dark:from-[#0F2942]/95 dark:via-[#112338]/95 dark:to-[#1E2E3B]/90',
       cardBorderClass:
-        'border-[#E9D5FF] hover:border-[#D8B4FE] dark:border-[#C084FC]/45 dark:hover:border-[#D8B4FE]/70 shadow-xs',
+        'border-[#BAE6FD] hover:border-[#7DD3FC] dark:border-[#38BDF8]/40 dark:hover:border-[#7DD3FC]/65 shadow-xs',
       pillClass:
-        'bg-[#FAF5FF] border-[#E9D5FF] text-[#7E22CE] dark:bg-[#2D1E4A] dark:border-[#C084FC]/50 dark:text-[#E9D5FF]',
-      glowColor: 'rgba(168, 85, 247, 0.35)',
-      patternType: 'story',
+        'bg-[#F0F9FF] border-[#BAE6FD] text-[#0369A1] dark:bg-[#0C2D48] dark:border-[#38BDF8]/45 dark:text-[#BAE6FD]',
+      glowColor: 'rgba(56, 189, 248, 0.32)',
+      patternType: 'platinum',
     };
   }
 
-  // 5. Challenge (تحدي) — Fiery red, molten-orange & sharp armor
-  if (clean === 'challenge' || clean === 'bronze_star') {
+  if (level === 9) {
     return {
-      frameKey: 'challenge',
-      icon: '🔥',
-      nameAr: 'إطار تحدي',
-      nameEn: 'Challenge Frame',
-      tierAr: 'تحدي',
-      tierEn: 'Challenge',
+      frameKey: resolvedFrameId,
+      level,
+      nameAr: def.titleAr,
+      nameEn: def.titleEn,
+      tierAr: def.shortLabelAr,
+      tierEn: def.shortLabelEn,
       cardBgClass:
-        'bg-gradient-to-br from-[#FFF5F5]/95 via-white/95 to-[#FEE2E2]/65 dark:from-[#331820]/95 dark:via-[#132337]/95 dark:to-[#3B1B22]/90',
+        'bg-gradient-to-br from-[#F5F3FF]/95 via-white/95 to-[#FEF3C7]/50 dark:from-[#1B1F47]/95 dark:via-[#112338]/95 dark:to-[#2A2046]/90',
       cardBorderClass:
-        'border-[#FECACA] hover:border-[#FCA5A5] dark:border-[#F87171]/45 dark:hover:border-[#FCA5A5]/70 shadow-xs',
+        'border-[#DDD6FE] hover:border-[#C4B5FD] dark:border-[#A78BFA]/45 dark:hover:border-[#C4B5FD]/70 shadow-xs',
       pillClass:
-        'bg-[#FFF5F5] border-[#FECACA] text-[#B91C1C] dark:bg-[#3D1C24] dark:border-[#F87171]/50 dark:text-[#FECACA]',
-      glowColor: 'rgba(239, 68, 68, 0.35)',
-      patternType: 'challenge',
-    };
-  }
-
-  // 6. Nature (طبيعة) — Emerald jade & brushed-gold laurel accents
-  if (clean === 'nature' || clean === 'emerald_honor') {
-    return {
-      frameKey: 'nature',
-      icon: '🍃',
-      nameAr: 'إطار طبيعة',
-      nameEn: 'Nature Frame',
-      tierAr: 'طبيعة',
-      tierEn: 'Nature',
-      cardBgClass:
-        'bg-gradient-to-br from-[#F0FDF4]/95 via-white/95 to-[#DCFCE7]/65 dark:from-[#0F2E2A]/95 dark:via-[#112338]/95 dark:to-[#133830]/90',
-      cardBorderClass:
-        'border-[#BBF7D0] hover:border-[#86EFAC] dark:border-[#34D399]/45 dark:hover:border-[#6EE7B7]/70 shadow-xs',
-      pillClass:
-        'bg-[#F0FDF4] border-[#BBF7D0] text-[#15803D] dark:bg-[#11362E] dark:border-[#34D399]/50 dark:text-[#A7F3D0]',
-      glowColor: 'rgba(16, 185, 129, 0.35)',
-      patternType: 'nature',
-    };
-  }
-
-  // 7. Cosmic (كوني) — Celestial space navy, violet & orbital stars
-  if (clean === 'cosmic' || clean === 'star') {
-    return {
-      frameKey: 'cosmic',
-      icon: '🌠',
-      nameAr: 'إطار كوني',
-      nameEn: 'Cosmic Frame',
-      tierAr: 'كوني',
-      tierEn: 'Cosmic',
-      cardBgClass:
-        'bg-gradient-to-br from-[#EEF2FF]/95 via-white/95 to-[#E0E7FF]/70 dark:from-[#172146]/95 dark:via-[#112338]/95 dark:to-[#1E2756]/90',
-      cardBorderClass:
-        'border-[#C7D2FE] hover:border-[#A5B4FC] dark:border-[#818CF8]/45 dark:hover:border-[#A5B4FC]/70 shadow-xs',
-      pillClass:
-        'bg-[#EEF2FF] border-[#C7D2FE] text-[#4338CA] dark:bg-[#1D2854] dark:border-[#818CF8]/50 dark:text-[#C7D2FE]',
-      glowColor: 'rgba(99, 102, 241, 0.35)',
+        'bg-[#F5F3FF] border-[#DDD6FE] text-[#6D28D9] dark:bg-[#1D2854] dark:border-[#A78BFA]/50 dark:text-[#DDD6FE]',
+      glowColor: 'rgba(109, 40, 217, 0.34)',
       patternType: 'cosmic',
     };
   }
 
-  // 8. Silver (فضي) — Polished steel, cool highlights & silver laurel
-  if (clean === 'silver' || clean === 'silver_scholar') {
-    return {
-      frameKey: 'silver',
-      icon: '💎',
-      nameAr: 'إطار فضي',
-      nameEn: 'Silver Frame',
-      tierAr: 'فضي',
-      tierEn: 'Silver',
-      cardBgClass:
-        'bg-gradient-to-br from-[#F8FAFC]/95 via-white/95 to-[#F1F5F9]/85 dark:from-[#182B40]/95 dark:via-[#112338]/95 dark:to-[#1E344D]/90',
-      cardBorderClass:
-        'border-[#CBD5E1] hover:border-[#94A3B8] dark:border-[#94A3B8]/45 dark:hover:border-[#CBD5E1]/70 shadow-xs',
-      pillClass:
-        'bg-[#F8FAFC] border-[#CBD5E1] text-[#334155] dark:bg-[#1B3047] dark:border-[#94A3B8]/50 dark:text-[#E2E8F0]',
-      glowColor: 'rgba(148, 163, 184, 0.35)',
-      patternType: 'silver',
-    };
-  }
-
-  return null;
+  // Level 10 — Level MAX (Celestial Winged Sunburst)
+  return {
+    frameKey: 'level_10',
+    level: 10,
+    nameAr: def.titleAr,
+    nameEn: def.titleEn,
+    tierAr: def.shortLabelAr,
+    tierEn: def.shortLabelEn,
+    cardBgClass:
+      'bg-gradient-to-br from-[#F0F9FF]/95 via-[#FFFDF7]/95 to-[#E0F2FE]/70 dark:from-[#102A45]/95 dark:via-[#16263B]/95 dark:to-[#2B2518]/90',
+    cardBorderClass:
+      'border-[#7DD3FC] hover:border-[#38BDF8] dark:border-[#38BDF8]/50 dark:hover:border-[#FBBF24]/70 shadow-xs',
+    pillClass:
+      'bg-[#F0F9FF] border-[#7DD3FC] text-[#0369A1] dark:bg-[#0C2D48] dark:border-[#38BDF8]/55 dark:text-[#E0F2FE]',
+    glowColor: 'rgba(56, 189, 248, 0.38)',
+    patternType: 'platinum',
+  };
 }
 
 /**
- * Extremely low-opacity (5-8%) edge/corner decorative watermark inspired by the existing frame's design.
- * Positioned absolute at the corner, pointer-events-none, never covers text or interferes with contrast.
+ * Subtle corner geometric accent (5-8% opacity) for high-level student cards.
  */
 export const FrameCornerWatermark: React.FC<{
   patternType: FrameCardTheme['patternType'];
@@ -202,19 +182,18 @@ export const FrameCornerWatermark: React.FC<{
       return (
         <svg
           viewBox="0 0 120 120"
-          className={`absolute top-0 end-0 w-28 h-28 pointer-events-none opacity-[0.08] select-none text-sky-500 ${className}`}
+          className={`absolute top-0 end-0 w-28 h-28 pointer-events-none opacity-[0.07] select-none text-sky-500 ${className}`}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path d="M120 0 L60 0 L120 60 Z" fill="currentColor" />
           <path d="M120 60 L80 20 L120 0 Z" stroke="currentColor" strokeWidth="1.5" />
           <polygon points="100,15 115,30 100,45 85,30" stroke="currentColor" strokeWidth="1.2" />
-          <line x1="60" y1="0" x2="120" y2="60" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" />
-          <line x1="40" y1="0" x2="120" y2="80" stroke="currentColor" strokeWidth="0.8" />
         </svg>
       );
 
     case 'gold':
+    case 'vip':
       return (
         <svg
           viewBox="0 0 120 120"
@@ -224,30 +203,12 @@ export const FrameCornerWatermark: React.FC<{
         >
           <circle cx="120" cy="0" r="70" stroke="currentColor" strokeWidth="1.5" />
           <circle cx="120" cy="0" r="90" stroke="currentColor" strokeWidth="0.8" strokeDasharray="4 4" />
-          <path d="M120 20 C100 20 85 35 85 55" stroke="currentColor" strokeWidth="1.2" />
-          <path d="M105 10 C90 25 80 45 80 70" stroke="currentColor" strokeWidth="1" />
-          <polygon points="110,35 115,45 105,45" fill="currentColor" />
-          <polygon points="95,50 100,60 90,60" fill="currentColor" />
-        </svg>
-      );
-
-    case 'vip':
-      return (
-        <svg
-          viewBox="0 0 120 120"
-          className={`absolute top-0 end-0 w-28 h-28 pointer-events-none opacity-[0.08] select-none text-amber-600 ${className}`}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M120 0 L80 0 L120 40 Z" fill="currentColor" />
-          <path d="M120 25 Q95 25 95 0" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M120 50 Q70 50 70 0" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" />
-          <polygon points="105,10 115,20 105,30 95,20" stroke="currentColor" strokeWidth="1.2" />
-          <circle cx="105" cy="20" r="2" fill="currentColor" />
+          <polygon points="105,15 115,25 105,35 95,25" stroke="currentColor" strokeWidth="1.2" />
         </svg>
       );
 
     case 'story':
+    case 'cosmic':
       return (
         <svg
           viewBox="0 0 120 120"
@@ -255,74 +216,8 @@ export const FrameCornerWatermark: React.FC<{
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path d="M120 15 L95 15 L120 40 Z" fill="currentColor" />
-          <line x1="70" y1="0" x2="120" y2="50" stroke="currentColor" strokeWidth="1.5" />
-          <line x1="90" y1="0" x2="120" y2="30" stroke="currentColor" strokeWidth="1" />
-          <polygon points="105,25 110,35 100,35" fill="currentColor" />
-          <polygon points="90,40 95,50 85,50" fill="currentColor" />
-          <circle cx="85" cy="25" r="3" stroke="currentColor" strokeWidth="1" />
-        </svg>
-      );
-
-    case 'challenge':
-      return (
-        <svg
-          viewBox="0 0 120 120"
-          className={`absolute top-0 end-0 w-28 h-28 pointer-events-none opacity-[0.07] select-none text-red-500 ${className}`}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M120 0 L85 0 L120 35 Z" fill="currentColor" />
-          <path d="M120 20 L95 45 L120 70" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M100 0 L75 25 L100 50" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" />
-          <polygon points="105,15 115,25 105,35" fill="currentColor" />
-        </svg>
-      );
-
-    case 'nature':
-      return (
-        <svg
-          viewBox="0 0 120 120"
-          className={`absolute top-0 end-0 w-28 h-28 pointer-events-none opacity-[0.08] select-none text-emerald-500 ${className}`}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M120 0 C95 10 80 30 75 60 C90 45 110 35 120 35 Z" fill="currentColor" />
-          <path d="M110 0 C90 20 80 40 85 70" stroke="currentColor" strokeWidth="1.2" />
-          <path d="M95 15 C80 25 70 40 70 60" stroke="currentColor" strokeWidth="0.8" />
-          <circle cx="95" cy="35" r="2.5" fill="currentColor" />
-          <circle cx="80" cy="55" r="2" fill="currentColor" />
-        </svg>
-      );
-
-    case 'cosmic':
-      return (
-        <svg
-          viewBox="0 0 120 120"
-          className={`absolute top-0 end-0 w-28 h-28 pointer-events-none opacity-[0.08] select-none text-indigo-500 ${className}`}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
           <ellipse cx="120" cy="0" rx="80" ry="35" transform="rotate(-30 120 0)" stroke="currentColor" strokeWidth="1.2" />
-          <ellipse cx="120" cy="0" rx="100" ry="45" transform="rotate(-30 120 0)" stroke="currentColor" strokeWidth="0.8" strokeDasharray="3 3" />
-          <circle cx="85" cy="30" r="3" fill="currentColor" />
-          <circle cx="105" cy="50" r="2" fill="currentColor" />
-          <polygon points="75,20 78,25 83,26 79,30 80,35 75,32 70,35 71,30 67,26 72,25" fill="currentColor" />
-        </svg>
-      );
-
-    case 'silver':
-      return (
-        <svg
-          viewBox="0 0 120 120"
-          className={`absolute top-0 end-0 w-28 h-28 pointer-events-none opacity-[0.08] select-none text-slate-500 ${className}`}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path d="M120 0 L70 0 L120 50 Z" fill="currentColor" />
-          <circle cx="120" cy="0" r="60" stroke="currentColor" strokeWidth="1.5" />
-          <circle cx="120" cy="0" r="80" stroke="currentColor" strokeWidth="0.8" strokeDasharray="4 4" />
-          <polygon points="100,20 110,30 100,40 90,30" stroke="currentColor" strokeWidth="1" />
+          <circle cx="85" cy="30" r="2.5" fill="currentColor" />
         </svg>
       );
 

@@ -21,6 +21,8 @@ import { toLocalISODate } from '../utils/localDate';
 import { BottomSheet } from './ui/BottomSheet';
 import { AttendanceChoiceTiles } from './ui/AttendanceChoiceTiles';
 import { AppIcon, AppIconName } from './ui/AppIcon';
+import { StudentAvatar } from './StudentAvatar';
+import { getStudentProgression } from '../utils/studentProgression';
 import { triggerSelectionHaptic } from '../utils/haptics';
 
 const STUDIO_BEHAVIOR_OPTIONS: {
@@ -413,17 +415,24 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
 
   if (!isOpen || !student) return null;
 
+  const progression = getStudentProgression(student);
+
   return (
     <BottomSheet
       id="record-private-session"
       isOpen={isOpen && !!student}
       onClose={onClose}
       title={isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
-      subtitle={isEn ? `Student: ${student.name}` : `الطالب: ${student.name}`}
+      subtitle={`${isEn ? `Student: ${student.name}` : `الطالب: ${student.name}`} · ${
+        isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr
+      }`}
       headerLeading={
-        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
-          <AppIcon name="zap" size={20} weight="fill" className="text-orange" />
-        </div>
+        <StudentAvatar
+          student={student}
+          size="sm"
+          showFrame={true}
+          className="shrink-0"
+        />
       }
       headerTrailing={
         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">

@@ -6,6 +6,7 @@ import { db } from '../utils/storage';
 import { Avatar } from './ui/Avatar';
 import { StudentAvatar } from './StudentAvatar';
 import { getStudentFrameCardTheme, FrameCornerWatermark } from '../utils/frameTheme';
+import { getStudentProgression } from '../utils/studentProgression';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { AppIcon } from './ui/AppIcon';
@@ -786,14 +787,15 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                 const isSelected = selectedStudentIds.has(student.id);
                 const isStudentArchived = student.status === 'archived';
 
-                // Frame theme derived directly from the student's existing achievement frame assignment
-                const frameTheme = getStudentFrameCardTheme(student.achievementFrame);
+                // Frame theme & live progression derived from student's level and behavior
+                const progression = getStudentProgression(student);
+                const frameTheme = getStudentFrameCardTheme(student);
                 const hasAchievementFrame = Boolean(frameTheme);
 
                 // Featured / first card gets solid mint #B9DAD6, others get mint-soft
-                // When an achievement frame is assigned, derive subtle themed background & border
+                // Higher levels derive subtle metal/gem card accents
                 const isFeatured = index === 0 || isSelected;
-                const bgClass = hasAchievementFrame
+                const bgClass = hasAchievementFrame && frameTheme
                   ? `${frameTheme.cardBgClass} ${frameTheme.cardBorderClass}`
                   : isFeatured
                   ? 'bg-mint border-mint shadow-mint'
@@ -829,13 +831,22 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     : (isEn ? 'Per session' : 'بالحصة')
                   : null;
 
+                const levelMetaLabel = isEn
+                  ? progression.frameDef.shortLabelEn
+                  : progression.frameDef.shortLabelAr;
+                const standingLabel = isEn
+                  ? progression.behaviorStandingEn
+                  : progression.behaviorStandingAr;
+
                 const metaText = [
+                  levelMetaLabel,
+                  standingLabel,
                   serviceLabel,
                   billingLabel,
                   student.gradeLevel ? getLocalizedStageName(student.gradeLevel) : null,
                 ]
                   .filter(Boolean)
-                  .join(' • ');
+                  .join(' · ');
 
                 // Financial or archived StatusBadge
                 const badgeStatus = isStudentArchived
@@ -892,46 +903,24 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           </button>
                         )}
 
-                        {/* Avatar with Achievement Frame if present, or standard 48px Avatar */}
-                        {hasAchievementFrame ? (
-                          <div className="shrink-0 gaming-frame-interactive transition-transform hover:scale-105">
-                            <StudentAvatar
-                              student={student}
-                              name={student.name}
-                              profilePhoto={student.profilePhoto}
-                              avatarColor={student.avatarColor}
-                              achievementFrame={student.achievementFrame}
-                              size="md"
-                              showFrame={true}
-                              className="shrink-0"
-                            />
-                          </div>
-                        ) : (
-                          <Avatar
-                            size={48}
-                            name={student.name}
-                            profilePhoto={student.profilePhoto}
+                        {/* Avatar with custom Level 1..Max frame */}
+                        <div className="shrink-0 gaming-frame-interactive transition-transform hover:scale-105">
+                          <StudentAvatar
+                            student={student}
+                            size="md"
+                            showFrame={true}
                             className="shrink-0"
                           />
-                        )}
+                        </div>
 
-                        {/* Name .t-card + Optional Tier Badge + Meta line 13px */}
+                        {/* Name .t-card + unboxed progression & service metadata */}
                         <div className="min-w-0 space-y-0.5">
                           <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                             <h3 className="t-card text-navy truncate font-semibold">
                               {student.name}
                             </h3>
-                            {frameTheme && (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${frameTheme.pillClass} shrink-0 select-none`}
-                                title={isEn ? frameTheme.nameEn : frameTheme.nameAr}
-                              >
-                                <span>{frameTheme.icon}</span>
-                                <span>{isEn ? frameTheme.tierEn : frameTheme.tierAr}</span>
-                              </span>
-                            )}
                           </div>
-                          <p className="text-[13px] text-slate truncate font-normal">
+                          <p className="text-[13px] text-slate truncate font-normal tabular-nums">
                             {metaText}
                           </p>
                         </div>

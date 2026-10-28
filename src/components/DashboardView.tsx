@@ -7,6 +7,7 @@ import { SectionHeader } from './ui/SectionHeader';
 import { Avatar } from './ui/Avatar';
 import { StudentAvatar } from './StudentAvatar';
 import { getStudentFrameCardTheme, FrameCornerWatermark } from '../utils/frameTheme';
+import { getStudentProgression } from '../utils/studentProgression';
 import { SessionTimeline } from './SessionTimeline';
 import { TeacherBoard } from './illustrations/TeacherBoard';
 import { StudentReading } from './illustrations/StudentReading';
@@ -727,15 +728,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return focusSession2.student || null;
   }, [focusSession2, students]);
 
+  const focusProgression1 = useMemo(
+    () => (focusStudent1 ? getStudentProgression(focusStudent1) : null),
+    [focusStudent1, allAttendance, sessions]
+  );
+
+  const focusProgression2 = useMemo(
+    () => (focusStudent2 ? getStudentProgression(focusStudent2) : null),
+    [focusStudent2, allAttendance, sessions]
+  );
+
   const focusFrameTheme1 = useMemo(() => {
     if (!focusSession1?.isPrivate || !focusStudent1) return null;
-    return getStudentFrameCardTheme(focusStudent1.achievementFrame);
-  }, [focusSession1, focusStudent1]);
+    return getStudentFrameCardTheme(focusStudent1);
+  }, [focusSession1, focusStudent1, allAttendance, sessions]);
 
   const focusFrameTheme2 = useMemo(() => {
     if (!focusSession2?.isPrivate || !focusStudent2) return null;
-    return getStudentFrameCardTheme(focusStudent2.achievementFrame);
-  }, [focusSession2, focusStudent2]);
+    return getStudentFrameCardTheme(focusStudent2);
+  }, [focusSession2, focusStudent2, allAttendance, sessions]);
 
   // Unrecorded sessions today for Today's Focus Row 2
   const unrecordedTodaySessions = useMemo(() => {
@@ -916,37 +927,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="shrink-0 gaming-frame-interactive transition-transform group-hover:scale-108 hover:scale-115">
                       <StudentAvatar
                         student={focusStudent1}
-                        name={focusStudent1.name}
-                        profilePhoto={focusStudent1.profilePhoto}
-                        achievementFrame={focusStudent1.achievementFrame}
-                        avatarColor={focusStudent1.avatarColor}
                         size="sm"
                         showFrame={true}
-                        className="shadow-2xs"
+                        className="shrink-0"
                       />
                     </div>
                   )}
                   <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                      <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
-                        {focusSession1.isPrivate
-                          ? (focusSession1.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
-                          : focusSession1.groupName}
-                      </h3>
-                      {focusFrameTheme1 && (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${focusFrameTheme1.pillClass} shrink-0 select-none`}
-                          title={isEn ? focusFrameTheme1.nameEn : focusFrameTheme1.nameAr}
-                        >
-                          <span>{focusFrameTheme1.icon}</span>
-                          <span>{isEn ? focusFrameTheme1.tierEn : focusFrameTheme1.tierAr}</span>
-                        </span>
-                      )}
-                    </div>
+                    <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                      {focusSession1.isPrivate
+                        ? (focusSession1.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                        : focusSession1.groupName}
+                    </h3>
                   </div>
                 </div>
-                <p className="text-[13px] text-slate font-medium">
+                <p className="text-[13px] text-slate font-medium tabular-nums">
                   {focusSession1.time}
+                  {focusSession1.isPrivate && focusProgression1 && (
+                    <span>
+                      {' · '}
+                      {isEn
+                        ? focusProgression1.frameDef.shortLabelEn
+                        : focusProgression1.frameDef.shortLabelAr}
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -1001,37 +1005,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="shrink-0 gaming-frame-interactive transition-transform group-hover:scale-108 hover:scale-115">
                       <StudentAvatar
                         student={focusStudent2}
-                        name={focusStudent2.name}
-                        profilePhoto={focusStudent2.profilePhoto}
-                        achievementFrame={focusStudent2.achievementFrame}
-                        avatarColor={focusStudent2.avatarColor}
                         size="sm"
                         showFrame={true}
-                        className="shadow-2xs"
+                        className="shrink-0"
                       />
                     </div>
                   )}
                   <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                      <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
-                        {focusSession2.isPrivate
-                          ? (focusSession2.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
-                          : focusSession2.groupName}
-                      </h3>
-                      {focusFrameTheme2 && (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${focusFrameTheme2.pillClass} shrink-0 select-none`}
-                          title={isEn ? focusFrameTheme2.nameEn : focusFrameTheme2.nameAr}
-                        >
-                          <span>{focusFrameTheme2.icon}</span>
-                          <span>{isEn ? focusFrameTheme2.tierEn : focusFrameTheme2.tierAr}</span>
-                        </span>
-                      )}
-                    </div>
+                    <h3 className="t-card text-navy font-bold line-clamp-2 leading-snug">
+                      {focusSession2.isPrivate
+                        ? (focusSession2.studentName || (isEn ? 'Private Lesson' : 'درس خاص'))
+                        : focusSession2.groupName}
+                    </h3>
                   </div>
                 </div>
-                <p className="text-[13px] text-slate font-medium">
+                <p className="text-[13px] text-slate font-medium tabular-nums">
                   {focusSession2.time}
+                  {focusSession2.isPrivate && focusProgression2 && (
+                    <span>
+                      {' · '}
+                      {isEn
+                        ? focusProgression2.frameDef.shortLabelEn
+                        : focusProgression2.frameDef.shortLabelAr}
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -1159,25 +1156,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {todayDebtors.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-            {todayDebtors.map(({ student, remaining }, idx) => (
-              <button
-                key={student.id}
-                type="button"
-                onClick={() => onOpenStudentProfile(student)}
-                style={{ animationDelay: `${Math.min(idx, 6) * 18}ms` }}
-                className="animate-tile-stagger p-3 rounded-2xl bg-mint-soft hover:bg-mint border border-line shadow-2xs flex flex-col justify-center items-start text-start cursor-pointer active:scale-[0.985] transition-transform duration-120 select-none group min-h-[72px] w-full will-change-transform"
-              >
-                <span className="text-[13px] font-black text-navy truncate w-full block group-hover:text-navy/80 transition-colors">
-                  {student.name}
-                </span>
-                <span className="text-sm font-black text-navy mt-1 tracking-tight block">
-                  {remaining}{' '}
-                  <span className="text-[11px] font-bold text-slate">
-                    {t('currency') || 'ج.م'}
-                  </span>
-                </span>
-              </button>
-            ))}
+            {todayDebtors.map(({ student, remaining }) => {
+              const stProg = getStudentProgression(student);
+              return (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => onOpenStudentProfile(student)}
+                  className="animate-tile-stagger p-3 rounded-2xl bg-mint-soft hover:bg-mint border border-line shadow-2xs flex items-center gap-2.5 text-start cursor-pointer active:scale-[0.985] transition-transform duration-120 select-none group min-h-[72px] w-full will-change-transform"
+                >
+                  <StudentAvatar
+                    student={student}
+                    size="xs"
+                    showFrame={true}
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[13px] font-black text-navy truncate w-full block group-hover:text-navy/80 transition-colors">
+                      {student.name}
+                    </span>
+                    <span className="text-[11px] font-medium text-slate truncate block mt-0.5 tabular-nums">
+                      {isEn ? stProg.frameDef.shortLabelEn : stProg.frameDef.shortLabelAr}
+                      {' · '}
+                      <strong className="text-xs font-black text-navy">{remaining}</strong>{' '}
+                      {t('currency') || 'ج.م'}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         ) : (
           <div className="p-3.5 rounded-2xl bg-mint-soft/40 border border-line text-center">

@@ -11,8 +11,9 @@ import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
 import { useDelayedLoading } from './ui/Skeleton';
 import { LessonStudioRosterSkeleton } from './skeletons/ClassySkeletons';
-import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
+import { triggerLightHaptic, triggerSuccessHaptic, triggerSelectionHaptic } from '../utils/haptics';
 import { isEnrollmentActiveOnDate } from '../utils/schedule';
+import { getStudentProgression } from '../utils/studentProgression';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -43,6 +44,17 @@ const DEFAULT_ATTENDANCE_RECORD: StudentAttendanceRecord = {
   notes: '',
 };
 
+const GROUP_ATTENDANCE_BEHAVIOR_OPTIONS: {
+  value: BehaviorRating;
+  labelAr: string;
+  labelEn: string;
+}[] = [
+  { value: 'excellent', labelAr: 'ممتاز', labelEn: 'Excellent' },
+  { value: 'very_good', labelAr: 'جيد جدًا', labelEn: 'Very Good' },
+  { value: 'good', labelAr: 'جيد', labelEn: 'Good' },
+  { value: 'needs_improvement', labelAr: 'متابعة', labelEn: 'Follow-up' },
+];
+
 interface AttendanceStudentRowProps {
   student: Student;
   index: number;
@@ -55,6 +67,7 @@ interface AttendanceStudentRowProps {
   currencyLabel: string;
   editLabel: string;
   onToggleHomework: (studentId: string) => void;
+  onSetBehaviorRating: (studentId: string, rating: BehaviorRating | undefined) => void;
   onMarkPresent: (studentId: string) => void;
   onMarkLate: (studentId: string) => void;
   onOpenAbsenceModal: (student: Student) => void;
@@ -74,12 +87,14 @@ const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
     currencyLabel,
     editLabel,
     onToggleHomework,
+    onSetBehaviorRating,
     onMarkPresent,
     onMarkLate,
     onOpenAbsenceModal,
     onOpenPrivateIntake,
   }) => {
     const credit = enr?.sessionCredit || 0;
+    const progression = getStudentProgression(student);
     const isAbsent =
       currentRecord.status === 'absent_charged' ||
       currentRecord.status === 'absent_free' ||
@@ -88,17 +103,14 @@ const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
 
     return (
       <div
-        style={{ animationDelay: `${index * 40}ms` }}
         className={`p-3.5 rounded-2xl bg-page border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${
           isAbsent
-            ? currentRecord.isCharged
-              ? 'border-line bg-mist'
-              : 'border-line bg-mist'
+            ? 'border-line bg-mist'
             : 'border-line'
         }`}
       >
-        {/* Top Row: Name + Credit Badge + Homework Checkbox */}
-        <div className="flex items-center justify-between">
+        {/* Top Row: Name + Level & Credit Metadata + Homework Toggle */}
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <StudentAvatar
               student={student}
@@ -108,14 +120,12 @@ const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
             />
             <div className="min-w-0">
               <h4 className="font-bold text-navy text-xs leading-tight truncate">{student.name}</h4>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                    credit <= 0
-                      ? 'bg-coral/10 text-coral border border-coral/20'
-                      : 'bg-mint-soft text-navy'
-                  }`}
-                >
+              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate tabular-nums flex-wrap">
+                <span className="font-bold text-navy">
+                  {isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span className={credit <= 0 ? 'font-bold text-coral' : 'font-medium text-slate'}>
                   {isEn ? `Credit: ${credit} sessions` : `رصيد: ${credit} حصص`}
                 </span>
               </div>
@@ -189,6 +199,36 @@ const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
             <span>{isEn ? 'Absent' : 'غائب'}</span>
           </button>
         </div>
+
+        {/* In-Session Behavior Rating Strip (Present / Late) */}
+        {!isAbsent && !isPrivateSession && (
+          <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-line/60">
+            <span className="text-[11px] font-semibold text-slate shrink-0">
+              {isEn ? 'Behavior:' : 'السلوك:'}
+            </span>
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+              {GROUP_ATTENDANCE_BEHAVIOR_OPTIONS.map((opt) => {
+                const isSelectedRating = currentRecord.behaviorRating === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      onSetBehaviorRating(student.id, isSelectedRating ? undefined : opt.value)
+                    }
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      isSelectedRating
+                        ? 'bg-navy text-white'
+                        : 'bg-mint-soft/70 text-navy hover:bg-mint'
+                    }`}
+                  >
+                    {isEn ? opt.labelEn : opt.labelAr}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Zero credit warning for prepaid charged students */}
         {enr &&
@@ -661,6 +701,24 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     });
   }, []);
 
+  // Set in-session behavior rating
+  const setBehaviorRating = useCallback(
+    (studentId: string, rating: BehaviorRating | undefined) => {
+      triggerSelectionHaptic();
+      setRecords((prev) => {
+        const existing = prev[studentId] || DEFAULT_ATTENDANCE_RECORD;
+        return {
+          ...prev,
+          [studentId]: {
+            ...existing,
+            behaviorRating: rating,
+          },
+        };
+      });
+    },
+    []
+  );
+
   // Mark all present
   const setAllPresent = useCallback(() => {
     setRecords((prev) => {
@@ -945,6 +1003,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 currencyLabel={t('currency')}
                 editLabel={t('edit')}
                 onToggleHomework={toggleHomework}
+                onSetBehaviorRating={setBehaviorRating}
                 onMarkPresent={markPresent}
                 onMarkLate={markLate}
                 onOpenAbsenceModal={openAbsenceModal}
@@ -968,9 +1027,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
               {/* Header */}
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full bg-mint-soft text-navy flex items-center justify-center shrink-0">
-                    <AppIcon name="student" size={20} weight="duotone" />
-                  </div>
+                  <StudentAvatar
+                    student={confirmingStudent}
+                    size="sm"
+                    showFrame={true}
+                    className="shrink-0"
+                  />
                   <div>
                     <h3 className="font-bold text-sm text-navy">
                       {isEn ? 'Record Student Absence' : 'تسجيل غياب الطالب'}

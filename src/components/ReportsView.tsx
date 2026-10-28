@@ -6,6 +6,7 @@ import { useTranslation } from '../utils/i18n';
 import { toLocalISODate } from '../utils/localDate';
 import { useCurrentLocalDate } from '../utils/useCurrentLocalDate';
 import { StudentAvatar } from './StudentAvatar';
+import { getStudentProgression } from '../utils/studentProgression';
 import { AppIcon } from './ui/AppIcon';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { ScreenHeader } from './ui/ScreenHeader';
@@ -17,6 +18,17 @@ import { ProgressRing, useCountUp } from './ui/ProgressRing';
 import { DelayedFallback, useDelayedLoading } from './ui/Skeleton';
 import { ReportChartSkeleton, ReportsContentSkeleton } from './skeletons/ClassySkeletons';
 import { EmptyBox } from './illustrations/EmptyBox';
+import { BottomSheet } from './ui/BottomSheet';
+import {
+  buildAttendanceExportDataset,
+  canNativeShareFile,
+  generateAttendanceReportCSV,
+  generateAttendanceReportPDFBlob,
+  ReportExportFormat,
+  ReportExportScope,
+  shareReportBlobWithParent,
+  triggerBlobDownload,
+} from '../utils/reportExport';
 
 const loadAttendanceTrendsChart = () => import('./AttendanceTrendsChart');
 const loadBillingStreamsProgressChart = () => import('./BillingStreamsProgressChart');
@@ -142,6 +154,37 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const deferredPaymentSearchQuery = useDeferredValue(paymentSearchQuery);
   const deferredOverdueSearchQuery = useDeferredValue(overdueSearchQuery);
   const [methodFilter] = useState<string>('all');
+
+  // Download Report (PDF / CSV) Sheet State
+  const [isExportSheetOpen, setIsExportSheetOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<ReportExportScope>('student');
+  const [exportFormat, setExportFormat] = useState<ReportExportFormat>('pdf');
+  const [exportStudentId, setExportStudentId] = useState<string>(students[0]?.id || '');
+  const [exportGroupId, setExportGroupId] = useState<string>(groups[0]?.id || '');
+  const [includeFinancialsInExport, setIncludeFinancialsInExport] = useState<boolean>(true);
+  const [isExportingReport, setIsExportingReport] = useState<boolean>(false);
+  const [exportFeedback, setExportFeedback] = useState<{
+    tone: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!selectedStudentId && students.length > 0) {
+      setSelectedStudentId(students[0].id);
+    }
+    if (!exportStudentId && students.length > 0) {
+      setExportStudentId(students[0].id);
+    }
+  }, [students, selectedStudentId, exportStudentId]);
+
+  useEffect(() => {
+    if (!selectedGroupId && groups.length > 0) {
+      setSelectedGroupId(groups[0].id);
+    }
+    if (!exportGroupId && groups.length > 0) {
+      setExportGroupId(groups[0].id);
+    }
+  }, [groups, selectedGroupId, exportGroupId]);
 
   const studentsById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
   const groupsById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
@@ -551,6 +594,195 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     t,
   ]);
 
+  const openExportSheet = (preferredScope?: ReportExportScope) => {
+    setExportFeedback(null);
+    if (preferredScope) {
+      setExportScope(preferredScope);
+      if (preferredScope === 'student' && selectedStudentId) {
+        setExportStudentId(selectedStudentId);
+      } else if (preferredScope === 'group' && selectedGroupId) {
+        setExportGroupId(selectedGroupId);
+      }
+    } else if (reportType === 'student_report' && students.length > 0) {
+      setExportScope('student');
+      setExportStudentId(selectedStudentId || students[0]?.id || '');
+    } else if (reportType === 'group_report' && groups.length > 0) {
+      setExportScope('group');
+      setExportGroupId(selectedGroupId || groups[0]?.id || '');
+    } else if (students.length > 0 && reportType === 'overdue_list') {
+      setExportScope('student');
+      setExportStudentId(overdueStudentsList[0]?.student.id || selectedStudentId || students[0].id);
+    } else {
+      setExportScope('overview');
+    }
+    setIsExportSheetOpen(true);
+  };
+
+  const exportStudentFinancials = useMemo(() => {
+    if (!isExportSheetOpen || exportScope !== 'student' || !exportStudentId) return null;
+    if (exportStudentId === selectedStudentId && selectedStudentGrandFin) {
+      return selectedStudentGrandFin;
+    }
+    return db.calculateStudentGrandFinancials(exportStudentId);
+  }, [
+    isExportSheetOpen,
+    exportScope,
+    exportStudentId,
+    selectedStudentId,
+    selectedStudentGrandFin,
+    students,
+    groups,
+    activeEnrollments,
+    sessions,
+    allAttendanceRecords,
+    payments,
+  ]);
+
+  const exportGroupFinancials = useMemo(() => {
+    if (!isExportSheetOpen || exportScope !== 'group' || !exportGroupId) return null;
+    if (exportGroupId === selectedGroupId && selectedGroupFin) {
+      return selectedGroupFin;
+    }
+    return db.calculateGroupFinancials(exportGroupId);
+  }, [
+    isExportSheetOpen,
+    exportScope,
+    exportGroupId,
+    selectedGroupId,
+    selectedGroupFin,
+    groups,
+    students,
+    activeEnrollments,
+    sessions,
+    allAttendanceRecords,
+    payments,
+  ]);
+
+  const exportDataset = useMemo(() => {
+    if (!isExportSheetOpen) return null;
+    const teacherProfile = db.getTeacherProfile();
+    return buildAttendanceExportDataset({
+      scope: exportScope,
+      periodFilter,
+      periodLabel: currentPeriodLabel,
+      todayStr,
+      currentMonth,
+      currentYear,
+      selectedSpecificMonth,
+      selectedSpecificYear,
+      customStartDate,
+      customEndDate,
+      serviceTypeFilter,
+      studentId: exportStudentId || students[0]?.id,
+      groupId: exportGroupId || groups[0]?.id,
+      includeFinancials: includeFinancialsInExport,
+      isEn,
+      currencyLabel: t('currency'),
+      students,
+      groups,
+      sessions,
+      enrollments: activeEnrollments,
+      attendance: allAttendanceRecords,
+      teacherProfile,
+      studentFinancials: exportStudentFinancials,
+      groupFinancials: exportGroupFinancials,
+      overviewFinancials: {
+        totalDue: Number(teacherSummary.totalDue ?? teacherSummary.totalDues) || 0,
+        totalCollected: Number(periodRevenue) || 0,
+        totalRemaining: Number(teacherSummary.totalRemaining) || 0,
+      },
+    });
+  }, [
+    isExportSheetOpen,
+    exportScope,
+    periodFilter,
+    currentPeriodLabel,
+    todayStr,
+    currentMonth,
+    currentYear,
+    selectedSpecificMonth,
+    selectedSpecificYear,
+    customStartDate,
+    customEndDate,
+    serviceTypeFilter,
+    exportStudentId,
+    exportGroupId,
+    includeFinancialsInExport,
+    isEn,
+    t,
+    students,
+    groups,
+    sessions,
+    activeEnrollments,
+    allAttendanceRecords,
+    exportStudentFinancials,
+    exportGroupFinancials,
+    teacherSummary,
+    periodRevenue,
+  ]);
+
+  const canShareCurrentFormat = useMemo(() => {
+    const mime = exportFormat === 'pdf' ? 'application/pdf' : 'text/csv;charset=utf-8';
+    return canNativeShareFile(mime, exportFormat);
+  }, [exportFormat]);
+
+  const handleExecuteExport = async (mode: 'download' | 'share') => {
+    if (!exportDataset || isExportingReport) return;
+    setIsExportingReport(true);
+    setExportFeedback(null);
+
+    try {
+      const ext = exportFormat === 'pdf' ? 'pdf' : 'csv';
+      const filename = `${exportDataset.suggestedBaseFilename}.${ext}`;
+
+      let blob: Blob;
+      if (exportFormat === 'csv') {
+        const csvContent = generateAttendanceReportCSV(exportDataset);
+        blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      } else {
+        blob = await generateAttendanceReportPDFBlob(exportDataset);
+      }
+
+      if (mode === 'share') {
+        const shared = await shareReportBlobWithParent(
+          blob,
+          filename,
+          exportDataset.reportTitle,
+          `${exportDataset.targetTitle} — ${exportDataset.periodLabel}`
+        );
+        if (!shared) {
+          triggerBlobDownload(blob, filename);
+        }
+        setExportFeedback({
+          tone: 'success',
+          message: isEn
+            ? `Report ready to share (${filename})`
+            : `تم تجهيز التقرير للمشاركة (${filename})`,
+        });
+      } else {
+        triggerBlobDownload(blob, filename);
+        setExportFeedback({
+          tone: 'success',
+          message: isEn
+            ? `Downloaded ${exportFormat.toUpperCase()} report successfully`
+            : `تم تحميل التقرير بصيغة ${exportFormat.toUpperCase()} بنجاح`,
+        });
+      }
+    } catch (err: any) {
+      const isAbort = err?.name === 'AbortError';
+      if (!isAbort) {
+        setExportFeedback({
+          tone: 'error',
+          message: isEn
+            ? 'Could not generate report file. Please try again.'
+            : 'تعذر إنشاء ملف التقرير، يرجى المحاولة مرة أخرى.',
+        });
+      }
+    } finally {
+      setIsExportingReport(false);
+    }
+  };
+
   // ProgressRing collection rate value (guarded 0..100)
   const collectionRate = useMemo(() => {
     const due = Number(teacherSummary.totalDue ?? teacherSummary.totalDues) || 0;
@@ -617,21 +849,33 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 <span className="text-sm font-semibold text-page/80">{t('currency')}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3 pt-0.5">
-              <span className="text-[12px] text-page/80">
+            <div className="flex items-center flex-wrap gap-2.5 pt-1">
+              <span className="text-[12px] text-page/80 tabular-nums">
                 {isEn
                   ? `Due: ${teacherSummary.totalDue ?? teacherSummary.totalDues} ${t('currency')}`
                   : `المستحق: ${teacherSummary.totalDue ?? teacherSummary.totalDues} ${t('currency')}`}
               </span>
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="ms-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-page/15 hover:bg-page/25 text-page text-xs font-semibold transition-colors cursor-pointer"
-                title={isEn ? 'Print Statement' : 'طباعة التقرير'}
-              >
-                <AppIcon name="printer" size={14} />
-                <span>{isEn ? 'Print' : 'طباعة'}</span>
-              </button>
+              <div className="ms-auto flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  data-testid="download-report-button"
+                  onClick={() => openExportSheet()}
+                  className="inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-1.5 rounded-full bg-orange hover:bg-orange-deep text-on-orange text-xs font-semibold shadow-orange transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  title={isEn ? 'Download Report (PDF / CSV)' : 'تحميل التقرير (PDF / CSV)'}
+                >
+                  <AppIcon name="download" size={15} weight="fill" />
+                  <span>{isEn ? 'Download Report' : 'تحميل التقرير'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="inline-flex items-center justify-center min-h-[38px] min-w-[38px] px-3 py-1.5 rounded-full bg-page/15 hover:bg-page/25 text-page text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  title={isEn ? 'Print Statement' : 'طباعة التقرير'}
+                >
+                  <AppIcon name="printer" size={15} />
+                  <span className="hidden sm:inline ms-1.5">{isEn ? 'Print' : 'طباعة'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -878,6 +1122,42 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </MintCard>
               </div>
 
+              {/* Student Attendance Consistency Line Chart (Primary Overview Visualization) */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Student Attendance Consistency' : 'منحنى انتظام وحضور الطلاب'}
+                  subtitle={
+                    isEn
+                      ? 'Attendance rate & consistency trend over time'
+                      : 'نسبة الالتزام ومتوسط الانتظام عبر الزمن'
+                  }
+                  actionLabel={isEn ? 'Full Analysis' : 'التحليل الكامل'}
+                  onAction={() => setFinancialSubTab('attendance_trends')}
+                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceTrendsChart
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    enrollments={activeEnrollments}
+                    serviceTypeFilter={serviceTypeFilter}
+                    periodFilter={periodFilter}
+                    selectedSpecificMonth={selectedSpecificMonth}
+                    selectedSpecificYear={selectedSpecificYear}
+                    customStartDate={customStartDate}
+                    customEndDate={customEndDate}
+                    compact
+                  />
+                </Suspense>
+              </WhiteCard>
+
               {/* Payment Methods Breakdown */}
               <WhiteCard className="p-4 space-y-3">
                 <SectionHeader
@@ -913,7 +1193,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </div>
               </WhiteCard>
 
-              {/* Chart 1 Container = WhiteCard with 16px padding and SectionHeader */}
+              {/* Billing Streams Comparison Chart */}
               <WhiteCard className="p-4 space-y-3">
                 <SectionHeader
                   title={isEn ? 'Billing Streams' : 'مسارات المحاسبة'}
@@ -933,32 +1213,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     groups={groups}
                     enrollments={activeEnrollments}
                     payments={payments}
-                    periodFilter={periodFilter}
-                    customStartDate={customStartDate}
-                    customEndDate={customEndDate}
-                    compact
-                  />
-                </Suspense>
-              </WhiteCard>
-
-              {/* Chart 2 Container = WhiteCard with 16px padding and SectionHeader */}
-              <WhiteCard className="p-4 space-y-3">
-                <SectionHeader
-                  title={isEn ? 'Attendance Trends' : 'منحنيات الحضور'}
-                  subtitle={isEn ? 'Student commitment over time' : 'معدل التزام الطلاب عبر الوقت'}
-                />
-                <Suspense
-                  fallback={
-                    <DelayedFallback delayMs={75}>
-                      <ReportChartSkeleton compact />
-                    </DelayedFallback>
-                  }
-                >
-                  <AttendanceTrendsChart
-                    sessions={sessions}
-                    allAttendance={allAttendanceRecords}
-                    students={students}
-                    groups={groups}
                     periodFilter={periodFilter}
                     customStartDate={customStartDate}
                     customEndDate={customEndDate}
@@ -1003,8 +1257,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <div className="space-y-4">
               <WhiteCard className="p-4 space-y-3">
                 <SectionHeader
-                  title={isEn ? 'Attendance Trends' : 'منحنيات الحضور'}
-                  subtitle={isEn ? 'Commitment trends across sessions' : 'منحنيات التزام الطلاب عبر الحصص'}
+                  title={isEn ? 'Student Attendance Consistency' : 'منحنيات انتظام وحضور الطلاب'}
+                  subtitle={
+                    isEn
+                      ? 'Line chart analysis of commitment consistency across sessions'
+                      : 'تحليل خطي لثبات وانتظام حضور الطلاب عبر الحصص'
+                  }
                 />
                 <Suspense
                   fallback={
@@ -1018,7 +1276,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     allAttendance={allAttendanceRecords}
                     students={students}
                     groups={groups}
+                    enrollments={activeEnrollments}
+                    serviceTypeFilter={serviceTypeFilter}
                     periodFilter={periodFilter}
+                    selectedSpecificMonth={selectedSpecificMonth}
+                    selectedSpecificYear={selectedSpecificYear}
                     customStartDate={customStartDate}
                     customEndDate={customEndDate}
                   />
@@ -1328,22 +1590,26 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </div>
 
                 {/* Table Rows */}
-                {overdueStudentsList.map(({ student, grandRemaining, grandTotalDue, grandTotalPaid }) => (
-                  <div
-                    key={student.id}
-                    className="py-3.5 flex items-center justify-between gap-3 flex-wrap"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <StudentAvatar student={student} size="sm" showBadge={false} />
-                      <div className="min-w-0">
-                        <h4 className="font-semibold text-xs sm:text-sm text-navy truncate">
-                          {student.name}
-                        </h4>
-                        <span className="t-caption text-slate block mt-0.5">
-                          {student.phone || student.parentPhone || (isEn ? 'No phone' : 'بدون هاتف')}
-                        </span>
+                {overdueStudentsList.map(({ student, grandRemaining, grandTotalDue, grandTotalPaid }) => {
+                  const stProg = getStudentProgression(student);
+                  return (
+                    <div
+                      key={student.id}
+                      className="py-3.5 flex items-center justify-between gap-3 flex-wrap"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <StudentAvatar student={student} size="sm" showFrame={true} className="shrink-0" />
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-xs sm:text-sm text-navy truncate">
+                            {student.name}
+                          </h4>
+                          <span className="t-caption text-slate block mt-0.5 tabular-nums">
+                            {isEn ? stProg.frameDef.shortLabelEn : stProg.frameDef.shortLabelAr}
+                            {' · '}
+                            {student.phone || student.parentPhone || (isEn ? 'No phone' : 'بدون هاتف')}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
                     <div className="flex items-center gap-3 ms-auto">
                       <div className="text-end">
@@ -1366,9 +1632,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                           {isEn ? 'Collect' : 'تحصيل'}
                         </button>
                       )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </WhiteCard>
           )}
@@ -1380,14 +1647,26 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           ========================================================================= */}
       {reportType === 'group_report' && (
         <div className="space-y-4">
-          <WhiteCard className="p-4 space-y-2">
-            <label className="t-caption text-slate block ms-1">
-              {isEn ? 'Select Group / Service:' : 'اختر المجموعة أو الخدمة للتحليل:'}
-            </label>
+          <WhiteCard className="p-4 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <label className="t-caption text-slate block ms-1">
+                {isEn ? 'Select Group / Service:' : 'اختر المجموعة أو الخدمة للتحليل:'}
+              </label>
+              {groups.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => openExportSheet('group')}
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1 rounded-full bg-mint-soft hover:bg-mint text-navy text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <AppIcon name="download" size={14} />
+                  <span>{isEn ? 'Download Report' : 'تحميل التقرير'}</span>
+                </button>
+              )}
+            </div>
             <select
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="w-full bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
+              className="w-full min-h-[44px] bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -1459,8 +1738,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     allAttendance={allAttendanceRecords}
                     students={students}
                     groups={groups}
+                    enrollments={activeEnrollments}
                     selectedGroupId={selectedGroupId}
                     periodFilter={periodFilter}
+                    selectedSpecificMonth={selectedSpecificMonth}
+                    selectedSpecificYear={selectedSpecificYear}
                     customStartDate={customStartDate}
                     customEndDate={customEndDate}
                     compact
@@ -1497,28 +1779,45 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           {selectedStudentGrandFin && selectedStudentObj && (
             <div className="space-y-4">
               {/* Student Header Card */}
-              <WhiteCard className="p-4 flex items-center justify-between gap-3">
+              <WhiteCard className="p-4 flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3 min-w-0">
-                  <StudentAvatar student={selectedStudentObj} size="md" />
+                  <StudentAvatar student={selectedStudentObj} size="md" showFrame={true} className="shrink-0" />
                   <div className="min-w-0">
                     <h3 className="t-card font-semibold text-navy truncate">
                       {selectedStudentObj.name}
                     </h3>
-                    <span className="t-meta text-slate block truncate mt-0.5">
-                      {getLocalizedStageName(selectedStudentObj.gradeLevel)}
+                    <span className="t-meta text-slate block truncate mt-0.5 tabular-nums">
+                      {(() => {
+                        const selProg = getStudentProgression(selectedStudentObj);
+                        return `${
+                          isEn ? selProg.frameDef.shortLabelEn : selProg.frameDef.shortLabelAr
+                        } · ${
+                          isEn ? selProg.behaviorStandingEn : selProg.behaviorStandingAr
+                        } · ${getLocalizedStageName(selectedStudentObj.gradeLevel)}`;
+                      })()}
                     </span>
                   </div>
                 </div>
 
-                {onOpenStudentProfile && (
+                <div className="flex items-center gap-2 ms-auto shrink-0">
                   <button
                     type="button"
-                    onClick={() => onOpenStudentProfile(selectedStudentObj)}
-                    className="btn-orange btn-sm text-xs shrink-0"
+                    onClick={() => openExportSheet('student')}
+                    className="inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-1.5 rounded-full bg-mint-soft hover:bg-mint text-navy text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   >
-                    {t('profile')}
+                    <AppIcon name="download" size={14} />
+                    <span>{isEn ? 'Download Report' : 'تحميل التقرير'}</span>
                   </button>
-                )}
+                  {onOpenStudentProfile && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenStudentProfile(selectedStudentObj)}
+                      className="btn-orange btn-sm text-xs whitespace-nowrap shrink-0"
+                    >
+                      {t('profile')}
+                    </button>
+                  )}
+                </div>
               </WhiteCard>
 
               {/* Student KPIs (2-column MintCards) */}
@@ -1586,8 +1885,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     allAttendance={allAttendanceRecords}
                     students={students}
                     groups={groups}
+                    enrollments={activeEnrollments}
                     selectedStudentId={selectedStudentId}
                     periodFilter={periodFilter}
+                    selectedSpecificMonth={selectedSpecificMonth}
+                    selectedSpecificYear={selectedSpecificYear}
                     customStartDate={customStartDate}
                     customEndDate={customEndDate}
                     compact
@@ -1600,6 +1902,277 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       )}
         </>
       )}
+
+      {/* Download Session & Attendance Report Sheet (PDF / CSV for Parents) */}
+      <BottomSheet
+        id="download-report-sheet"
+        isOpen={isExportSheetOpen}
+        onClose={() => {
+          if (!isExportingReport) {
+            setIsExportSheetOpen(false);
+          }
+        }}
+        title={isEn ? 'Download Report' : 'تحميل التقرير'}
+        subtitle={
+          isEn
+            ? 'Export session & attendance records to share with parents'
+            : 'تصدير سجل الحصص والحضور بصيغة PDF أو CSV للمشاركة مع ولي الأمر'
+        }
+        primaryAction={{
+          label: isExportingReport
+            ? isEn
+              ? 'Generating File...'
+              : 'جارٍ تجهيز الملف...'
+            : exportFormat === 'pdf'
+            ? isEn
+              ? 'Download PDF'
+              : 'تحميل ملف PDF'
+            : isEn
+            ? 'Download CSV'
+            : 'تحميل ملف CSV',
+          onClick: () => handleExecuteExport('download'),
+          loading: isExportingReport,
+          disabled:
+            isExportingReport ||
+            (exportScope === 'student' && students.length === 0) ||
+            (exportScope === 'group' && groups.length === 0),
+        }}
+        secondaryAction={
+          canShareCurrentFormat
+            ? {
+                label: isEn ? 'Share with Parent' : 'مشاركة مع ولي الأمر',
+                onClick: () => handleExecuteExport('share'),
+                disabled:
+                  isExportingReport ||
+                  (exportScope === 'student' && students.length === 0) ||
+                  (exportScope === 'group' && groups.length === 0),
+              }
+            : {
+                label: isEn ? 'Cancel' : 'إلغاء',
+                onClick: () => setIsExportSheetOpen(false),
+                disabled: isExportingReport,
+              }
+        }
+      >
+        <div className="space-y-4">
+          {/* 1. Scope Selection */}
+          <div className="space-y-1.5">
+            <span className="t-caption text-slate block ms-1">
+              {isEn ? 'Report Scope' : 'نطاق التقرير'}
+            </span>
+            <SegmentedControl<ReportExportScope>
+              value={exportScope}
+              onChange={(val) => {
+                setExportScope(val);
+                setExportFeedback(null);
+              }}
+              options={[
+                { value: 'student', label: isEn ? 'Student' : 'طالب (لولي الأمر)' },
+                { value: 'group', label: isEn ? 'Group' : 'مجموعة' },
+                { value: 'overview', label: isEn ? 'All Sessions' : 'شامل الحصص' },
+              ]}
+            />
+          </div>
+
+          {/* 2. Contextual Student or Group Picker */}
+          {exportScope === 'student' && (
+            <div className="space-y-1.5">
+              <label className="t-caption text-slate block ms-1">
+                {isEn ? 'Student' : 'اختر الطالب'}
+              </label>
+              {students.length === 0 ? (
+                <div className="p-3.5 rounded-[var(--radius-tile)] bg-mist border border-line text-xs text-slate">
+                  {isEn
+                    ? 'No students registered yet. Switch scope to All Sessions or add a student first.'
+                    : 'لا يوجد طلاب مسجلون حاليًا. اختر نطاق "شامل الحصص" أو أضف طالبًا أولًا.'}
+                </div>
+              ) : (
+                <select
+                  value={exportStudentId}
+                  onChange={(e) => {
+                    setExportStudentId(e.target.value);
+                    setExportFeedback(null);
+                  }}
+                  className="w-full min-h-[46px] bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
+                >
+                  {students.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.name}
+                      {st.gradeLevel ? ` (${getLocalizedStageName(st.gradeLevel)})` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {exportScope === 'group' && (
+            <div className="space-y-1.5">
+              <label className="t-caption text-slate block ms-1">
+                {isEn ? 'Group / Service' : 'اختر المجموعة'}
+              </label>
+              {groups.length === 0 ? (
+                <div className="p-3.5 rounded-[var(--radius-tile)] bg-mist border border-line text-xs text-slate">
+                  {isEn
+                    ? 'No groups created yet. Switch scope to Student or All Sessions.'
+                    : 'لا توجد مجموعات مسجلة حاليًا. يمكنك التبديل إلى تقرير طالب أو شامل الحصص.'}
+                </div>
+              ) : (
+                <select
+                  value={exportGroupId}
+                  onChange={(e) => {
+                    setExportGroupId(e.target.value);
+                    setExportFeedback(null);
+                  }}
+                  className="w-full min-h-[46px] bg-page border border-line text-navy rounded-full px-4 py-2 text-xs font-semibold focus:outline-none focus:border-navy cursor-pointer"
+                >
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.subject})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {/* 3. File Format Selection (PDF vs CSV) */}
+          <div className="space-y-1.5">
+            <span className="t-caption text-slate block ms-1">
+              {isEn ? 'File Format' : 'صيغة التصدير'}
+            </span>
+            <SegmentedControl<ReportExportFormat>
+              value={exportFormat}
+              onChange={(val) => {
+                setExportFormat(val);
+                setExportFeedback(null);
+              }}
+              options={[
+                { value: 'pdf', label: isEn ? 'PDF Statement' : 'PDF (لولي الأمر)' },
+                { value: 'csv', label: isEn ? 'CSV Spreadsheet' : 'CSV (إكسل)' },
+              ]}
+            />
+            <p className="t-caption text-slate ms-1">
+              {exportFormat === 'pdf'
+                ? isEn
+                  ? 'Formatted A4 report with attendance rate, homework, behavior, and session log.'
+                  : 'بيان منسق وجاهز للإرسال لولي الأمر يتضمن نسبة الحضور، الواجبات، السلوك، وسجل الحصص.'
+                : isEn
+                ? 'UTF-8 spreadsheet compatible with Excel, Google Sheets, and Apple Numbers.'
+                : 'جدول بيانات متوافق مع Excel و Google Sheets يدعم اللغة العربية بالكامل.'}
+            </p>
+          </div>
+
+          {/* 4. Option to Include Financial Summary */}
+          <button
+            type="button"
+            onClick={() => {
+              setIncludeFinancialsInExport((prev) => !prev);
+              setExportFeedback(null);
+            }}
+            className="w-full min-h-[52px] px-4 py-3 rounded-[var(--radius-tile)] bg-mist border border-line flex items-center justify-between gap-3 text-start cursor-pointer transition-colors hover:border-mint"
+          >
+            <div className="min-w-0">
+              <span className="text-xs font-semibold text-navy block">
+                {isEn
+                  ? 'Include fee & payment summary'
+                  : 'تضمين ملخص المصروفات والرصيد المتبقي'}
+              </span>
+              <span className="t-caption text-slate block mt-0.5">
+                {isEn
+                  ? 'Uncheck to share attendance, homework, and behavior only'
+                  : 'يمكنك إلغاء التحديد لمشاركة الحضور والواجبات والسلوك فقط مع ولي الأمر'}
+              </span>
+            </div>
+            <div
+              className={`w-6 h-6 rounded-md flex items-center justify-center border transition-colors shrink-0 ${
+                includeFinancialsInExport
+                  ? 'bg-navy border-navy text-page'
+                  : 'bg-page border-line text-transparent'
+              }`}
+            >
+              <AppIcon name="check" size={14} />
+            </div>
+          </button>
+
+          {/* 5. Live Export Preview Summary */}
+          {exportDataset && (
+            <div className="p-4 rounded-[var(--radius-tile)] bg-page border border-line space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-navy block truncate">
+                    {exportDataset.targetTitle}
+                  </span>
+                  <span className="t-caption text-slate block mt-0.5 tabular-nums">
+                    {exportDataset.periodLabel}
+                    {' · '}
+                    {isEn
+                      ? `${exportDataset.summary.totalSessions} sessions`
+                      : `${exportDataset.summary.totalSessions} حصة`}
+                    {' · '}
+                    {isEn
+                      ? `${exportDataset.summary.commitmentRate}% attendance`
+                      : `${exportDataset.summary.commitmentRate}% التزام`}
+                  </span>
+                </div>
+                <AppIcon name="fileText" size={20} weight="duotone" className="text-navy shrink-0" />
+              </div>
+
+              {exportDataset.rows.length === 0 ? (
+                <p className="t-caption text-slate border-t border-line pt-2.5">
+                  {isEn
+                    ? 'No sessions recorded in this period yet. You can change the period chip behind this sheet (e.g., All Time) or export an empty summary.'
+                    : 'لا توجد حصص مسجلة خلال هذه الفترة بعد. يمكنك تغيير الفترة الزمنية في شاشة التقارير (مثل: كل الوقت) أو تصدير ملخص الفترة الحالية.'}
+                </p>
+              ) : (
+                <div className="border-t border-line pt-2.5 divide-y divide-line">
+                  {exportDataset.rows.slice(0, 3).map((row) => (
+                    <div
+                      key={row.id}
+                      className="py-1.5 flex items-center justify-between gap-2 text-xs tabular-nums"
+                    >
+                      <div className="min-w-0 truncate text-navy font-medium">
+                        {row.date}
+                        {' · '}
+                        {exportScope === 'student' ? row.serviceName : row.studentName}
+                      </div>
+                      <span className="text-slate shrink-0">
+                        {row.attendanceStatusLabel}
+                      </span>
+                    </div>
+                  ))}
+                  {exportDataset.rows.length > 3 && (
+                    <div className="pt-2 text-[11px] text-slate tabular-nums">
+                      {isEn
+                        ? `+ ${exportDataset.rows.length - 3} more session records included in file`
+                        : `+ ${exportDataset.rows.length - 3} سجلات حصص إضافية مشمولة في الملف`}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 6. Inline Non-Blocking Feedback */}
+          {exportFeedback && (
+            <div
+              role="status"
+              className={`p-3.5 rounded-[var(--radius-tile)] border flex items-center gap-2.5 text-xs font-medium ${
+                exportFeedback.tone === 'success'
+                  ? 'bg-mint-soft border-mint text-navy'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}
+            >
+              <AppIcon
+                name={exportFeedback.tone === 'success' ? 'checkCircle' : 'warningCircle'}
+                size={18}
+                weight="fill"
+              />
+              <span>{exportFeedback.message}</span>
+            </div>
+          )}
+        </div>
+      </BottomSheet>
     </div>
   );
 };

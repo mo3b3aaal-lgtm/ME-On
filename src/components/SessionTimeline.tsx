@@ -10,6 +10,7 @@ import { MintCard } from './ui/MintCard';
 import { EmptyBox } from './illustrations/EmptyBox';
 import { db } from '../utils/storage';
 import { getStudentFrameCardTheme, FrameCornerWatermark } from '../utils/frameTheme';
+import { getStudentProgression } from '../utils/studentProgression';
 import { useDelayedLoading } from './ui/Skeleton';
 import { SessionTimelineSkeleton } from './skeletons/ClassySkeletons';
 
@@ -186,9 +187,12 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
               : null) || item.student
           : null;
 
-        // Subtle frame-inspired card theme derived from student's actual achievement frame
+        // Subtle frame-inspired card theme & live progression derived from student's level and behavior
+        const privateProgression = isPrivate && privateStudent
+          ? getStudentProgression(privateStudent)
+          : null;
         const frameTheme = isPrivate && privateStudent
-          ? getStudentFrameCardTheme(privateStudent.achievementFrame)
+          ? getStudentFrameCardTheme(privateStudent)
           : null;
 
         const groupStudents = !isPrivate && item.groupId
@@ -267,11 +271,10 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
                         student={privateStudent}
                         name={privateStudent?.name || item.studentName || title}
                         profilePhoto={privateStudent?.profilePhoto}
-                        achievementFrame={privateStudent?.achievementFrame}
                         avatarColor={privateStudent?.avatarColor}
                         size="sm"
                         showFrame={true}
-                        className="shadow-2xs"
+                        className="shrink-0"
                       />
                     </div>
                   ) : groupStudents.length > 0 ? (
@@ -290,18 +293,14 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
                         >
                           <StudentAvatar
                             student={st}
-                            name={st.name}
-                            profilePhoto={st.profilePhoto}
-                            achievementFrame={st.achievementFrame}
-                            avatarColor={st.avatarColor}
                             size="sm"
                             showFrame={true}
-                            className="shadow-2xs"
+                            className="shrink-0"
                           />
                         </div>
                       ))}
                       {groupStudents.length > 3 && (
-                        <span className="w-7 h-7 rounded-full bg-page border border-line text-navy text-[11px] font-bold flex items-center justify-center shadow-xs">
+                        <span className="w-7 h-7 rounded-full bg-page border border-line text-navy text-[11px] font-bold flex items-center justify-center shadow-xs tabular-nums">
                           +{groupStudents.length - 3}
                         </span>
                       )}
@@ -311,27 +310,22 @@ const SessionTimelineComponent: React.FC<SessionTimelineProps> = ({
                   {/* Title & Time Range */}
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: item.accentColor || 'var(--color-navy)' }}
-                      />
                       <h4 className="t-card text-navy font-bold truncate">
                         {title}
                       </h4>
-                      {frameTheme && (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${frameTheme.pillClass} shrink-0 select-none`}
-                          title={isEn ? frameTheme.nameEn : frameTheme.nameAr}
-                        >
-                          <span>{frameTheme.icon}</span>
-                          <span>{isEn ? frameTheme.tierEn : frameTheme.tierAr}</span>
-                        </span>
-                      )}
                     </div>
 
-                    <p className="text-[13px] text-slate font-medium truncate">
+                    <p className="text-[13px] text-slate font-medium truncate tabular-nums">
                       {timeRange}
-                      {item.location && <span> • {item.location}</span>}
+                      {privateProgression && (
+                        <span>
+                          {' · '}
+                          {isEn
+                            ? privateProgression.frameDef.shortLabelEn
+                            : privateProgression.frameDef.shortLabelAr}
+                        </span>
+                      )}
+                      {item.location && <span> · {item.location}</span>}
                     </p>
                   </div>
                 </div>

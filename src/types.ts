@@ -14,7 +14,24 @@ export type PaymentMethod = 'cash' | 'vodafone_cash' | 'instapay' | 'bank_transf
 export type MonthBillStatus = 'unpaid' | 'partially_paid' | 'fully_paid';
 export type BillStatus = 'paid' | 'partial' | 'unpaid';
 
+export type StudentProgressionLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+export type LevelFrameId =
+  | 'level_1'
+  | 'level_2'
+  | 'level_3'
+  | 'level_4'
+  | 'level_5'
+  | 'level_6'
+  | 'level_7'
+  | 'level_8'
+  | 'level_9'
+  | 'level_10';
+
 export type AchievementFrame =
+  | 'auto'
+  | LevelFrameId
+  | 'level_max'
   | 'none'
   | 'default'
   | 'silver'
@@ -118,7 +135,9 @@ export interface Student {
   status: StudentStatus;
   avatarColor: string;
   profilePhoto?: string; // Lightweight base64 image data URL (< 30KB)
-  achievementFrame?: AchievementFrame; // إطار التميز (none, gold, silver, platinum, crown, star, champion)
+  achievementFrame?: AchievementFrame; // إطار التميز والمستوى (auto, level_1..level_10, أو القيم السابقة للتوافق)
+  avatarFrameMode?: 'auto' | 'manual'; // وضع اختيار الإطار: تلقائي حسب المستوى والسلوك أو يدوي
+  levelBonusPoints?: number; // نقاط إضافية اختيارية من المعلم لدعم تقدم الطالب
   scheduleDays?: string[]; // أيام الحصص المخصصة للطالب
   scheduleTime?: string; // وقت الحصة
   scheduleTimes?: Record<string, string | string[]>; // مواعيد الطالب المحددة لكل يوم

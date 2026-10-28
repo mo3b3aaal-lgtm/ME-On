@@ -6,6 +6,8 @@ import { getLocalizedStageName } from '../utils/stages';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { StudentAvatar } from './StudentAvatar';
+import { getStudentProgression } from '../utils/studentProgression';
 import {
   CanonicalWeekday,
   normalizeScheduleTimesList,
@@ -333,6 +335,7 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                 filteredStudents.map((st) => {
                   const alreadyEnrolled = enrollmentKind === 'group' && isAlreadyEnrolled(st.id, selectedGroupId);
                   const isSelected = selectedStudentIds.includes(st.id);
+                  const stProg = getStudentProgression(st);
 
                   return (
                     <button
@@ -348,9 +351,9 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                           : 'bg-page hover:bg-mint-soft/50 border border-line'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <div
-                          className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
+                          className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0 ${
                             isSelected
                               ? 'bg-navy border-navy text-white'
                               : 'border-line bg-page'
@@ -358,9 +361,19 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
                         >
                           {isSelected && <AppIcon name="check" size={12} weight="bold" />}
                         </div>
-                        <div className={isRTL ? 'text-right' : 'text-left'}>
-                          <p className="font-black text-navy text-xs">{st.name}</p>
-                          <p className="text-[10px] text-slate">{getLocalizedStageName(st.gradeLevel, language)}</p>
+                        <StudentAvatar
+                          student={st}
+                          size="xs"
+                          showFrame={true}
+                          className="shrink-0"
+                        />
+                        <div className={`min-w-0 ${isRTL ? 'text-right' : 'text-left'}`}>
+                          <p className="font-black text-navy text-xs truncate">{st.name}</p>
+                          <p className="text-[10px] text-slate truncate tabular-nums">
+                            {isEn ? stProg.frameDef.shortLabelEn : stProg.frameDef.shortLabelAr}
+                            {' · '}
+                            {getLocalizedStageName(st.gradeLevel, language)}
+                          </p>
                         </div>
                       </div>
 

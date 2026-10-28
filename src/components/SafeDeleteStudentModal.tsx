@@ -3,6 +3,7 @@ import { Student } from '../types';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
 import { AppIcon } from './ui/AppIcon';
+import { StudentAvatar } from './StudentAvatar';
 
 interface SafeDeleteStudentModalProps {
   isOpen: boolean;
@@ -71,19 +72,18 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
           {/* Header */}
           <div className="p-5 border-b border-line flex items-center justify-between shrink-0 bg-page">
             <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border border-line ${
-                  selectedMode === 'permanent' && step === 'confirm'
-                    ? 'bg-coral-soft text-coral'
-                    : 'bg-mint-soft text-navy'
-                }`}
-              >
-                {selectedMode === 'permanent' && step === 'confirm' ? (
+              {selectedMode === 'permanent' && step === 'confirm' ? (
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border border-line bg-coral-soft text-coral">
                   <AppIcon name="warning" size={20} weight="fill" />
-                ) : (
-                  <AppIcon name="trash" size={20} weight="bold" />
-                )}
-              </div>
+                </div>
+              ) : (
+                <StudentAvatar
+                  student={student}
+                  size="sm"
+                  showFrame={true}
+                  className="shrink-0"
+                />
+              )}
 
               <div className="min-w-0 text-start">
                 <h2 className="t-title text-navy font-bold text-base truncate">

@@ -1,8 +1,13 @@
 import React from 'react';
 import { AppIcon, type AppIconName } from './ui/AppIcon';
-import { AchievementFrame } from '../types';
+import { AchievementFrame, LevelFrameId, StudentProgressionLevel } from '../types';
 import { AchievementFrameSVG } from './AchievementFramesSVG';
 import { useTranslation } from '../utils/i18n';
+import {
+  frameIdToLevel,
+  LEVEL_FRAME_DEFINITIONS,
+  resolveStudentLevelFrame,
+} from '../utils/studentProgression';
 
 export interface StudentAvatarProps {
   student?: {
@@ -11,6 +16,8 @@ export interface StudentAvatarProps {
     avatarColor?: string;
     profilePhoto?: string | null;
     achievementFrame?: AchievementFrame | null;
+    avatarFrameMode?: 'auto' | 'manual';
+    levelBonusPoints?: number;
   } | null;
   name?: string;
   avatarColor?: string;
@@ -22,48 +29,108 @@ export interface StudentAvatarProps {
   showFrame?: boolean;
 }
 
-const SIZE_CONFIGS = {
+type AvatarSizeKey = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+
+interface LevelSizeGeometry {
+  container: string;
+  inner: string;
+  frame: string;
+}
+
+const NO_FRAME_CONTAINER_BY_SIZE: Record<AvatarSizeKey, string> = {
+  xs: 'w-7 h-7 text-[11px]',
+  sm: 'w-9 h-9 text-xs',
+  md: 'w-11 h-11 text-sm font-bold',
+  lg: 'w-14 h-14 text-base font-bold',
+  xl: 'w-20 h-20 text-xl font-bold',
+  '2xl': 'w-24 h-24 text-2xl font-black',
+};
+
+const BADGE_CONFIG_BY_SIZE: Record<AvatarSizeKey, { badge: string; iconSize: string }> = {
+  xs: { badge: 'w-3 h-3 -top-0.5 -right-0.5 text-[8px]', iconSize: 'w-2 h-2' },
+  sm: { badge: 'w-4 h-4 -top-1 -right-1 text-[9px]', iconSize: 'w-2.5 h-2.5' },
+  md: { badge: 'w-5 h-5 -top-1 -right-1 text-[10px]', iconSize: 'w-3 h-3' },
+  lg: { badge: 'w-6 h-6 -top-1.5 -right-1.5 text-xs', iconSize: 'w-3.5 h-3.5' },
+  xl: { badge: 'w-7 h-7 -top-2 -right-2 text-xs', iconSize: 'w-4 h-4' },
+  '2xl': { badge: 'w-8 h-8 -top-2.5 -right-2.5 text-sm', iconSize: 'w-4.5 h-4.5' },
+};
+
+/**
+ * Exact pixel-calibrated geometry per avatar size and Level 1..10 transparent inner hole ratio,
+ * ensuring zero gap and zero outside clipping using pure static Tailwind utility classes.
+ */
+const FRAMED_GEOMETRY: Record<AvatarSizeKey, Record<StudentProgressionLevel, LevelSizeGeometry>> = {
   xs: {
-    noFrameContainer: 'w-7 h-7 text-[11px]',
-    framedContainer: 'w-8 h-8 text-[9px]',
-    photoFramed: 'w-[64%] h-[64%]',
-    badge: 'w-3 h-3 -top-0.5 -right-0.5 text-[8px]',
-    iconSize: 'w-2 h-2',
+    1: { container: 'w-8 h-8 text-[9px]', inner: 'w-[22px] h-[22px]', frame: 'w-[29px] h-[29px]' },
+    2: { container: 'w-8 h-8 text-[9px]', inner: 'w-[21px] h-[21px]', frame: 'w-[30px] h-[30px]' },
+    3: { container: 'w-8 h-8 text-[9px]', inner: 'w-5 h-5', frame: 'w-[30px] h-[30px]' },
+    4: { container: 'w-8 h-8 text-[9px]', inner: 'w-5 h-5', frame: 'w-[30px] h-[30px]' },
+    5: { container: 'w-8 h-8 text-[9px]', inner: 'w-[18px] h-[18px]', frame: 'w-[31px] h-[31px]' },
+    6: { container: 'w-8 h-8 text-[9px]', inner: 'w-[17px] h-[17px]', frame: 'w-8 h-8' },
+    7: { container: 'w-8 h-8 text-[8px]', inner: 'w-4 h-4', frame: 'w-[31px] h-[31px]' },
+    8: { container: 'w-[34px] h-8 text-[8px]', inner: 'w-[15px] h-[15px]', frame: 'w-[33px] h-[33px]' },
+    9: { container: 'w-9 h-8 text-[8px]', inner: 'w-[15px] h-[15px]', frame: 'w-[34px] h-[34px]' },
+    10: { container: 'w-[42px] h-9 text-[8px]', inner: 'w-[13px] h-[13px]', frame: 'w-[42px] h-[42px]' },
   },
   sm: {
-    noFrameContainer: 'w-9 h-9 text-xs',
-    framedContainer: 'w-11 h-11 text-xs',
-    photoFramed: 'w-[64%] h-[64%]',
-    badge: 'w-4 h-4 -top-1 -right-1 text-[9px]',
-    iconSize: 'w-2.5 h-2.5',
+    1: { container: 'w-11 h-11 text-xs', inner: 'w-[30px] h-[30px]', frame: 'w-[39px] h-[39px]' },
+    2: { container: 'w-11 h-11 text-xs', inner: 'w-7 h-7', frame: 'w-[41px] h-[41px]' },
+    3: { container: 'w-11 h-11 text-xs', inner: 'w-7 h-7', frame: 'w-[42px] h-[42px]' },
+    4: { container: 'w-11 h-11 text-xs', inner: 'w-7 h-7', frame: 'w-[42px] h-[42px]' },
+    5: { container: 'w-11 h-11 text-[11px]', inner: 'w-[25px] h-[25px]', frame: 'w-[43px] h-[43px]' },
+    6: { container: 'w-11 h-11 text-[11px]', inner: 'w-[23px] h-[23px]', frame: 'w-[43px] h-[43px]' },
+    7: { container: 'w-11 h-11 text-[11px]', inner: 'w-[23px] h-[23px]', frame: 'w-[45px] h-[45px]' },
+    8: { container: 'w-[46px] h-11 text-[10px]', inner: 'w-[21px] h-[21px]', frame: 'w-[46px] h-[46px]' },
+    9: { container: 'w-12 h-11 text-[10px]', inner: 'w-[21px] h-[21px]', frame: 'w-[47px] h-[47px]' },
+    10: { container: 'w-14 h-11 text-[9px]', inner: 'w-[17px] h-[17px]', frame: 'w-14 h-14' },
   },
   md: {
-    noFrameContainer: 'w-11 h-11 text-sm font-bold',
-    framedContainer: 'w-14 h-14 text-sm font-bold',
-    photoFramed: 'w-[64%] h-[64%]',
-    badge: 'w-5 h-5 -top-1 -right-1 text-[10px]',
-    iconSize: 'w-3 h-3',
+    1: { container: 'w-14 h-14 text-sm font-bold', inner: 'w-[38px] h-[38px]', frame: 'w-[50px] h-[50px]' },
+    2: { container: 'w-14 h-14 text-sm font-bold', inner: 'w-9 h-9', frame: 'w-[52px] h-[52px]' },
+    3: { container: 'w-14 h-14 text-sm font-bold', inner: 'w-[35px] h-[35px]', frame: 'w-[53px] h-[53px]' },
+    4: { container: 'w-14 h-14 text-sm font-bold', inner: 'w-[35px] h-[35px]', frame: 'w-[53px] h-[53px]' },
+    5: { container: 'w-14 h-14 text-xs font-bold', inner: 'w-8 h-8', frame: 'w-[55px] h-[55px]' },
+    6: { container: 'w-14 h-14 text-xs font-bold', inner: 'w-[30px] h-[30px]', frame: 'w-14 h-14' },
+    7: { container: 'w-14 h-14 text-xs font-bold', inner: 'w-[29px] h-[29px]', frame: 'w-14 h-14' },
+    8: { container: 'w-[58px] h-14 text-xs font-bold', inner: 'w-[26px] h-[26px]', frame: 'w-[57px] h-[57px]' },
+    9: { container: 'w-[60px] h-14 text-xs font-bold', inner: 'w-[26px] h-[26px]', frame: 'w-[58px] h-[58px]' },
+    10: { container: 'w-[70px] h-14 text-[11px] font-bold', inner: 'w-[21px] h-[21px]', frame: 'w-[69px] h-[69px]' },
   },
   lg: {
-    noFrameContainer: 'w-14 h-14 text-base font-bold',
-    framedContainer: 'w-20 h-20 text-lg font-bold',
-    photoFramed: 'w-[64%] h-[64%]',
-    badge: 'w-6 h-6 -top-1.5 -right-1.5 text-xs',
-    iconSize: 'w-3.5 h-3.5',
+    1: { container: 'w-20 h-20 text-lg font-bold', inner: 'w-[54px] h-[54px]', frame: 'w-[71px] h-[71px]' },
+    2: { container: 'w-20 h-20 text-lg font-bold', inner: 'w-[52px] h-[52px]', frame: 'w-[75px] h-[75px]' },
+    3: { container: 'w-20 h-20 text-base font-bold', inner: 'w-[50px] h-[50px]', frame: 'w-[76px] h-[76px]' },
+    4: { container: 'w-20 h-20 text-base font-bold', inner: 'w-[50px] h-[50px]', frame: 'w-[76px] h-[76px]' },
+    5: { container: 'w-20 h-20 text-base font-bold', inner: 'w-[46px] h-[46px]', frame: 'w-[79px] h-[79px]' },
+    6: { container: 'w-20 h-20 text-sm font-bold', inner: 'w-[42px] h-[42px]', frame: 'w-[79px] h-[79px]' },
+    7: { container: 'w-20 h-20 text-sm font-bold', inner: 'w-[41px] h-[41px]', frame: 'w-20 h-20' },
+    8: { container: 'w-[82px] h-20 text-sm font-bold', inner: 'w-[37px] h-[37px]', frame: 'w-[81px] h-[81px]' },
+    9: { container: 'w-[84px] h-20 text-sm font-bold', inner: 'w-[37px] h-[37px]', frame: 'w-[83px] h-[83px]' },
+    10: { container: 'w-[100px] h-20 text-xs font-bold', inner: 'w-[30px] h-[30px]', frame: 'w-[99px] h-[99px]' },
   },
   xl: {
-    noFrameContainer: 'w-20 h-20 text-xl font-bold',
-    framedContainer: 'w-28 h-28 text-2xl font-black',
-    photoFramed: 'w-[64%] h-[64%]',
-    badge: 'w-7 h-7 -top-2 -right-2 text-xs',
-    iconSize: 'w-4 h-4',
+    1: { container: 'w-28 h-28 text-2xl font-black', inner: 'w-[76px] h-[76px]', frame: 'w-[100px] h-[100px]' },
+    2: { container: 'w-28 h-28 text-2xl font-black', inner: 'w-[72px] h-[72px]', frame: 'w-[104px] h-[104px]' },
+    3: { container: 'w-28 h-28 text-xl font-black', inner: 'w-[70px] h-[70px]', frame: 'w-[106px] h-[106px]' },
+    4: { container: 'w-28 h-28 text-xl font-black', inner: 'w-[70px] h-[70px]', frame: 'w-[106px] h-[106px]' },
+    5: { container: 'w-28 h-28 text-xl font-black', inner: 'w-16 h-16', frame: 'w-[110px] h-[110px]' },
+    6: { container: 'w-28 h-28 text-lg font-black', inner: 'w-[59px] h-[59px]', frame: 'w-[111px] h-[111px]' },
+    7: { container: 'w-[114px] h-28 text-lg font-black', inner: 'w-[58px] h-[58px]', frame: 'w-[113px] h-[113px]' },
+    8: { container: 'w-[114px] h-28 text-base font-black', inner: 'w-[52px] h-[52px]', frame: 'w-[114px] h-[114px]' },
+    9: { container: 'w-[118px] h-28 text-base font-black', inner: 'w-[52px] h-[52px]', frame: 'w-[117px] h-[117px]' },
+    10: { container: 'w-[138px] h-28 text-sm font-black', inner: 'w-[42px] h-[42px]', frame: 'w-[138px] h-[138px]' },
   },
   '2xl': {
-    noFrameContainer: 'w-24 h-24 text-2xl font-black',
-    framedContainer: 'w-36 h-36 text-3xl font-black',
-    photoFramed: 'w-[64%] h-[64%]',
-    badge: 'w-8 h-8 -top-2.5 -right-2.5 text-sm',
-    iconSize: 'w-4.5 h-4.5',
+    1: { container: 'w-36 h-36 text-3xl font-black', inner: 'w-[98px] h-[98px]', frame: 'w-[129px] h-[129px]' },
+    2: { container: 'w-36 h-36 text-3xl font-black', inner: 'w-[94px] h-[94px]', frame: 'w-[136px] h-[136px]' },
+    3: { container: 'w-36 h-36 text-2xl font-black', inner: 'w-[90px] h-[90px]', frame: 'w-[137px] h-[137px]' },
+    4: { container: 'w-36 h-36 text-2xl font-black', inner: 'w-[90px] h-[90px]', frame: 'w-[137px] h-[137px]' },
+    5: { container: 'w-36 h-36 text-2xl font-black', inner: 'w-[82px] h-[82px]', frame: 'w-[141px] h-[141px]' },
+    6: { container: 'w-36 h-36 text-xl font-black', inner: 'w-[76px] h-[76px]', frame: 'w-[143px] h-[143px]' },
+    7: { container: 'w-36 h-36 text-xl font-black', inner: 'w-[74px] h-[74px]', frame: 'w-36 h-36' },
+    8: { container: 'w-[146px] h-36 text-lg font-black', inner: 'w-[66px] h-[66px]', frame: 'w-[145px] h-[145px]' },
+    9: { container: 'w-[148px] h-36 text-lg font-black', inner: 'w-[66px] h-[66px]', frame: 'w-[148px] h-[148px]' },
+    10: { container: 'w-[178px] h-36 text-base font-black', inner: 'w-[54px] h-[54px]', frame: 'w-[178px] h-[178px]' },
   },
 };
 
@@ -87,16 +154,27 @@ export const LUXURY_AVATAR_PALETTE = [
 ];
 
 const ALLOWED_LUXURY_HEX_SET = new Set([
-  '#17375E',
-  '#0F2A4A'.toLowerCase(),
-  '#5F7083',
-  '#E1EBEC',
-  '#FFFFFF',
+  '#17375e',
+  '#0f2a4a',
+  '#5f7083',
+  '#e1ebec',
+  '#ffffff',
 ]);
+
+const AVATAR_BG_CLASS_MAP: Record<string, string> = {
+  '#17375E': 'bg-[#17375E]',
+  '#0F2A4A': 'bg-[#0F2A4A]',
+  '#5F7083': 'bg-[#5F7083]',
+  '#E1EBEC': 'bg-[#E1EBEC]',
+  '#FFFFFF': 'bg-[#FFFFFF]',
+};
 
 export function normalizeLuxuryColor(color?: string | null, fallback: string = '#17375E'): string {
   if (!color || typeof color !== 'string') return fallback;
   const clean = color.trim().toLowerCase();
+  if (clean === 'navy') return '#0F2A4A';
+  if (clean === 'teal') return '#17375E';
+  if (clean === 'slate') return '#5F7083';
   if (ALLOWED_LUXURY_HEX_SET.has(clean)) {
     return color.trim().toUpperCase();
   }
@@ -107,235 +185,131 @@ export function normalizeLuxuryColor(color?: string | null, fallback: string = '
   return LUXURY_AVATAR_PALETTE[Math.abs(hash) % LUXURY_AVATAR_PALETTE.length];
 }
 
-export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
-  none: {
-    id: 'none',
-    name: { ar: 'افتراضي بدون إطار', 'en-GB': 'No Frame (Default)', 'en-US': 'No Frame (Default)' },
-    desc: { ar: 'المظهر الافتراضي البسيط بدون إطار إضافي', 'en-GB': 'Clean default circular avatar with no extra frame', 'en-US': 'Clean default circular avatar with no extra frame' },
-    tierLabel: { ar: 'افتراضي', 'en-GB': 'Standard', 'en-US': 'Standard' },
-    tierNumber: 0,
-    themeColor: '#5F7083',
-    bgClass: '',
-    badgeBg: '',
-    icon: 'user',
-    iconColor: 'text-[#5F7083]',
-  },
-  default: {
-    id: 'default',
-    name: { ar: 'افتراضي بدون إطار', 'en-GB': 'No Frame (Default)', 'en-US': 'No Frame (Default)' },
-    desc: { ar: 'المظهر الافتراضي البسيط', 'en-GB': 'Default simple appearance', 'en-US': 'Default simple appearance' },
-    tierLabel: { ar: 'افتراضي', 'en-GB': 'Standard', 'en-US': 'Standard' },
-    tierNumber: 0,
-    themeColor: '#5F7083',
-    bgClass: '',
-    badgeBg: '',
-    icon: 'user',
-    iconColor: 'text-[#5F7083]',
-  },
-  silver: {
-    id: 'silver',
-    name: { ar: 'فضي — Silver', 'en-GB': 'Silver', 'en-US': 'Silver' },
-    desc: { ar: 'معدن فضي مصقول مع إضاءات نقية وتفاصيل غار هندسية راقية', 'en-GB': 'Polished silver metal with cool white highlights and refined laurels', 'en-US': 'Polished silver metal with cool white highlights and refined laurels' },
-    tierLabel: { ar: 'فضي Silver', 'en-GB': 'Silver Tier', 'en-US': 'Silver Tier' },
-    tierNumber: 1,
-    themeColor: '#94A3B8',
-    bgClass: 'ring-[#94A3B8]',
-    badgeBg: 'bg-gradient-to-tr from-slate-600 to-slate-400 text-white shadow-md',
-    icon: 'shield',
-    iconColor: 'text-white',
-  },
-  silver_scholar: {
-    id: 'silver_scholar',
-    name: { ar: 'فضي — Silver', 'en-GB': 'Silver', 'en-US': 'Silver' },
-    desc: { ar: 'معدن فضي مصقول مع إضاءات نقية وتفاصيل غار هندسية راقية', 'en-GB': 'Polished silver metal with cool white highlights and refined laurels', 'en-US': 'Polished silver metal with cool white highlights and refined laurels' },
-    tierLabel: { ar: 'فضي Silver', 'en-GB': 'Silver Tier', 'en-US': 'Silver Tier' },
-    tierNumber: 1,
-    themeColor: '#94A3B8',
-    bgClass: 'ring-[#94A3B8]',
-    badgeBg: 'bg-gradient-to-tr from-slate-600 to-slate-400 text-white shadow-md',
-    icon: 'shield',
-    iconColor: 'text-white',
-  },
-  gold: {
-    id: 'gold',
-    name: { ar: 'ذهبي — Gold', 'en-GB': 'Gold', 'en-US': 'Gold' },
-    desc: { ar: 'ذهب معدني فاخر مع انعكاسات دافئة وأكاليل إنجاز ملكية وتفاصيل تاج', 'en-GB': 'Rich metallic gold with warm reflections and prestigious laurels', 'en-US': 'Rich metallic gold with warm reflections and prestigious laurels' },
-    tierLabel: { ar: 'ذهبي Gold', 'en-GB': 'Gold Tier', 'en-US': 'Gold Tier' },
-    tierNumber: 2,
-    themeColor: '#F59E0B',
+function buildLevelFrameInfo(
+  id: AchievementFrame,
+  level: StudentProgressionLevel
+): FrameInfoItem {
+  const def = LEVEL_FRAME_DEFINITIONS[level];
+  const icon: AppIconName =
+    level >= 10
+      ? 'crown'
+      : level >= 8
+      ? 'sparkles'
+      : level >= 6
+      ? 'gem'
+      : level >= 4
+      ? 'medal'
+      : 'award';
+  const badgeBg =
+    level >= 8
+      ? 'bg-gradient-to-tr from-sky-700 to-amber-400 text-white shadow-sm'
+      : level >= 6
+      ? 'bg-gradient-to-tr from-purple-700 to-amber-400 text-white shadow-sm'
+      : 'bg-gradient-to-tr from-amber-700 to-yellow-400 text-white shadow-sm';
+
+  return {
+    id,
+    name: { ar: def.titleAr, 'en-GB': def.titleEn, 'en-US': def.titleEn },
+    desc: { ar: def.descAr, 'en-GB': def.descEn, 'en-US': def.descEn },
+    tierLabel: { ar: def.shortLabelAr, 'en-GB': def.shortLabelEn, 'en-US': def.shortLabelEn },
+    tierNumber: level,
+    themeColor: def.accentHex,
     bgClass: 'ring-[#F59E0B]',
-    badgeBg: 'bg-gradient-to-tr from-amber-600 to-yellow-400 text-white shadow-md',
-    icon: 'award',
+    badgeBg,
+    icon,
     iconColor: 'text-white',
+  };
+}
+
+const AUTO_FRAME_INFO: FrameInfoItem = {
+  id: 'auto',
+  name: {
+    ar: 'تلقائي حسب المستوى والسلوك',
+    'en-GB': 'Auto by Level & Behavior',
+    'en-US': 'Auto by Level & Behavior',
   },
-  gold_champion: {
-    id: 'gold_champion',
-    name: { ar: 'ذهبي — Gold', 'en-GB': 'Gold', 'en-US': 'Gold' },
-    desc: { ar: 'ذهب معدني فاخر مع انعكاسات دافئة وأكاليل إنجاز ملكية وتفاصيل تاج', 'en-GB': 'Rich metallic gold with warm reflections and prestigious laurels', 'en-US': 'Rich metallic gold with warm reflections and prestigious laurels' },
-    tierLabel: { ar: 'ذهبي Gold', 'en-GB': 'Gold Tier', 'en-US': 'Gold Tier' },
-    tierNumber: 2,
-    themeColor: '#F59E0B',
-    bgClass: 'ring-[#F59E0B]',
-    badgeBg: 'bg-gradient-to-tr from-amber-600 to-yellow-400 text-white shadow-md',
-    icon: 'award',
-    iconColor: 'text-white',
+  desc: {
+    ar: 'يبدأ من المستوى 1 ويتطور تلقائيًا حتى المستوى MAX حسب الحضور والسلوك والواجبات',
+    'en-GB': 'Starts at Level 1 and progresses automatically to Level MAX based on attendance & behavior',
+    'en-US': 'Starts at Level 1 and progresses automatically to Level MAX based on attendance & behavior',
   },
-  platinum: {
-    id: 'platinum',
-    name: { ar: 'بلاتينيوم — Platinum', 'en-GB': 'Platinum', 'en-US': 'Platinum' },
-    desc: { ar: 'بلاتين مشع فائق مع لمسات كريستالية فضية ثلجية وأوجه هندسية براقة', 'en-GB': 'Luminous platinum with icy silver-blue facets and crystalline detailing', 'en-US': 'Luminous platinum with icy silver-blue facets and crystalline detailing' },
-    tierLabel: { ar: 'بلاتينيوم Platinum', 'en-GB': 'Platinum Tier', 'en-US': 'Platinum Tier' },
-    tierNumber: 3,
-    themeColor: '#0284C7',
-    bgClass: 'ring-[#38BDF8]',
-    badgeBg: 'bg-gradient-to-tr from-sky-600 to-cyan-300 text-white shadow-md',
-    icon: 'sparkles',
-    iconColor: 'text-white',
-  },
-  vip: {
-    id: 'vip',
-    name: { ar: 'VIP — النخبة الملكية', 'en-GB': 'VIP Elite', 'en-US': 'VIP Elite' },
-    desc: { ar: 'أوبسيديان فاحم فاخر مع ذهب ملكي نقي وأحجار عنبر متوهجة', 'en-GB': 'Dark obsidian with luxurious gold tracery and amber highlights', 'en-US': 'Dark obsidian with luxurious gold tracery and amber highlights' },
-    tierLabel: { ar: 'VIP نخبة', 'en-GB': 'VIP Elite', 'en-US': 'VIP Elite' },
-    tierNumber: 4,
-    themeColor: '#D97706',
-    bgClass: 'ring-[#F59E0B]',
-    badgeBg: 'bg-gradient-to-tr from-zinc-950 via-amber-800 to-amber-500 text-amber-200 shadow-lg',
-    icon: 'crown',
-    iconColor: 'text-amber-300',
-  },
-  crown: {
-    id: 'crown',
-    name: { ar: 'VIP — النخبة الملكية', 'en-GB': 'VIP Elite', 'en-US': 'VIP Elite' },
-    desc: { ar: 'أوبسيديان فاحم فاخر مع ذهب ملكي نقي وأحجار عنبر متوهجة', 'en-GB': 'Dark obsidian with luxurious gold tracery and amber highlights', 'en-US': 'Dark obsidian with luxurious gold tracery and amber highlights' },
-    tierLabel: { ar: 'VIP نخبة', 'en-GB': 'VIP Elite', 'en-US': 'VIP Elite' },
-    tierNumber: 4,
-    themeColor: '#D97706',
-    bgClass: 'ring-[#F59E0B]',
-    badgeBg: 'bg-gradient-to-tr from-zinc-950 via-amber-800 to-amber-500 text-amber-200 shadow-lg',
-    icon: 'crown',
-    iconColor: 'text-amber-300',
-  },
-  champion: {
-    id: 'champion',
-    name: { ar: 'VIP — النخبة الملكية', 'en-GB': 'VIP Elite', 'en-US': 'VIP Elite' },
-    desc: { ar: 'أوبسيديان فاحم فاخر مع ذهب ملكي نقي وأحجار عنبر متوهجة', 'en-GB': 'Dark obsidian with luxurious gold tracery and amber highlights', 'en-US': 'Dark obsidian with luxurious gold tracery and amber highlights' },
-    tierLabel: { ar: 'VIP نخبة', 'en-GB': 'VIP Elite', 'en-US': 'VIP Elite' },
-    tierNumber: 4,
-    themeColor: '#D97706',
-    bgClass: 'ring-[#F59E0B]',
-    badgeBg: 'bg-gradient-to-tr from-zinc-950 via-amber-800 to-amber-500 text-amber-200 shadow-lg',
-    icon: 'crown',
-    iconColor: 'text-amber-300',
-  },
-  story: {
-    id: 'story',
-    name: { ar: 'ستوري — Story', 'en-GB': 'Story', 'en-US': 'Story' },
-    desc: { ar: 'أرجواني كهربائي وميجينتا وسايان بتصميم جيمنج مستقبلي وطبقات مضيئة', 'en-GB': 'Vibrant electric purple, magenta, and cyan with futuristic geometry', 'en-US': 'Vibrant electric purple, magenta, and cyan with futuristic geometry' },
-    tierLabel: { ar: 'ستوري Story', 'en-GB': 'Story Tier', 'en-US': 'Story Tier' },
-    tierNumber: 5,
-    themeColor: '#A855F7',
-    bgClass: 'ring-[#A855F7]',
-    badgeBg: 'bg-gradient-to-tr from-purple-700 via-fuchsia-600 to-pink-400 text-white shadow-md',
-    icon: 'sparkles',
-    iconColor: 'text-white',
-  },
-  diamond_elite: {
-    id: 'diamond_elite',
-    name: { ar: 'ستوري — Story', 'en-GB': 'Story', 'en-US': 'Story' },
-    desc: { ar: 'أرجواني كهربائي وميجينتا وسايان بتصميم جيمنج مستقبلي وطبقات مضيئة', 'en-GB': 'Vibrant electric purple, magenta, and cyan with futuristic geometry', 'en-US': 'Vibrant electric purple, magenta, and cyan with futuristic geometry' },
-    tierLabel: { ar: 'ستوري Story', 'en-GB': 'Story Tier', 'en-US': 'Story Tier' },
-    tierNumber: 5,
-    themeColor: '#A855F7',
-    bgClass: 'ring-[#A855F7]',
-    badgeBg: 'bg-gradient-to-tr from-purple-700 via-fuchsia-600 to-pink-400 text-white shadow-md',
-    icon: 'sparkles',
-    iconColor: 'text-white',
-  },
-  challenge: {
-    id: 'challenge',
-    name: { ar: 'تحدي — Challenge', 'en-GB': 'Challenge', 'en-US': 'Challenge' },
-    desc: { ar: 'درع ناري هجومي بأحمر حارق ولهب ذهبي وزوايا حادة للإنجازات الكبرى', 'en-GB': 'Fiery red, molten orange, and aggressive angular battle armor', 'en-US': 'Fiery red, molten orange, and aggressive angular battle armor' },
-    tierLabel: { ar: 'تحدي Challenge', 'en-GB': 'Challenge Tier', 'en-US': 'Challenge Tier' },
-    tierNumber: 6,
-    themeColor: '#EF4444',
-    bgClass: 'ring-[#EF4444]',
-    badgeBg: 'bg-gradient-to-tr from-red-700 to-orange-500 text-white shadow-md',
-    icon: 'flame',
-    iconColor: 'text-white',
-  },
-  bronze_star: {
-    id: 'bronze_star',
-    name: { ar: 'تحدي — Challenge', 'en-GB': 'Challenge', 'en-US': 'Challenge' },
-    desc: { ar: 'درع ناري هجومي بأحمر حارق ولهب ذهبي وزوايا حادة للإنجازات الكبرى', 'en-GB': 'Fiery red, molten orange, and aggressive angular battle armor', 'en-US': 'Fiery red, molten orange, and aggressive angular battle armor' },
-    tierLabel: { ar: 'تحدي Challenge', 'en-GB': 'Challenge Tier', 'en-US': 'Challenge Tier' },
-    tierNumber: 6,
-    themeColor: '#EF4444',
-    bgClass: 'ring-[#EF4444]',
-    badgeBg: 'bg-gradient-to-tr from-red-700 to-orange-500 text-white shadow-md',
-    icon: 'flame',
-    iconColor: 'text-white',
-  },
-  nature: {
-    id: 'nature',
-    name: { ar: 'طبيعة — Nature', 'en-GB': 'Nature', 'en-US': 'Nature' },
-    desc: { ar: 'زمرد أخضر ملكي ويشم نقي متداخل مع أوراق غار ذهبية عريقة', 'en-GB': 'Emerald green and pure jade with antique brushed-gold laurel leaves', 'en-US': 'Emerald green and pure jade with antique brushed-gold laurel leaves' },
-    tierLabel: { ar: 'طبيعة Nature', 'en-GB': 'Nature Tier', 'en-US': 'Nature Tier' },
-    tierNumber: 7,
-    themeColor: '#10B981',
-    bgClass: 'ring-[#10B981]',
-    badgeBg: 'bg-gradient-to-tr from-emerald-800 to-emerald-500 text-white shadow-md',
-    icon: 'gem',
-    iconColor: 'text-white',
-  },
-  emerald_honor: {
-    id: 'emerald_honor',
-    name: { ar: 'طبيعة — Nature', 'en-GB': 'Nature', 'en-US': 'Nature' },
-    desc: { ar: 'زمرد أخضر ملكي ويشم نقي متداخل مع أوراق غار ذهبية عريقة', 'en-GB': 'Emerald green and pure jade with antique brushed-gold laurel leaves', 'en-US': 'Emerald green and pure jade with antique brushed-gold laurel leaves' },
-    tierLabel: { ar: 'طبيعة Nature', 'en-GB': 'Nature Tier', 'en-US': 'Nature Tier' },
-    tierNumber: 7,
-    themeColor: '#10B981',
-    bgClass: 'ring-[#10B981]',
-    badgeBg: 'bg-gradient-to-tr from-emerald-800 to-emerald-500 text-white shadow-md',
-    icon: 'gem',
-    iconColor: 'text-white',
-  },
-  cosmic: {
-    id: 'cosmic',
-    name: { ar: 'كوني — Cosmic', 'en-GB': 'Cosmic', 'en-US': 'Cosmic' },
-    desc: { ar: 'أزرق كحلي نفاث مع كريستال أزرق كهربائي ونجوم ومدارات فلكية ساطعة', 'en-GB': 'Deep space navy, electric cyan crystals, and glowing orbital rings', 'en-US': 'Deep space navy, electric cyan crystals, and glowing orbital rings' },
-    tierLabel: { ar: 'كوني Cosmic', 'en-GB': 'Cosmic Tier', 'en-US': 'Cosmic Tier' },
-    tierNumber: 8,
-    themeColor: '#6366F1',
-    bgClass: 'ring-[#6366F1]',
-    badgeBg: 'bg-gradient-to-tr from-indigo-900 to-cyan-500 text-white shadow-md',
-    icon: 'star',
-    iconColor: 'text-white',
-  },
-  star: {
-    id: 'star',
-    name: { ar: 'كوني — Cosmic', 'en-GB': 'Cosmic', 'en-US': 'Cosmic' },
-    desc: { ar: 'أزرق كحلي نفاث مع كريستال أزرق كهربائي ونجوم ومدارات فلكية ساطعة', 'en-GB': 'Deep space navy, electric cyan crystals, and glowing orbital rings', 'en-US': 'Deep space navy, electric cyan crystals, and glowing orbital rings' },
-    tierLabel: { ar: 'كوني Cosmic', 'en-GB': 'Cosmic Tier', 'en-US': 'Cosmic Tier' },
-    tierNumber: 8,
-    themeColor: '#6366F1',
-    bgClass: 'ring-[#6366F1]',
-    badgeBg: 'bg-gradient-to-tr from-indigo-900 to-cyan-500 text-white shadow-md',
-    icon: 'star',
-    iconColor: 'text-white',
-  },
+  tierLabel: { ar: 'تلقائي ذكي', 'en-GB': 'Auto Level', 'en-US': 'Auto Level' },
+  tierNumber: 0,
+  themeColor: '#D97706',
+  bgClass: 'ring-[#F59E0B]',
+  badgeBg: 'bg-navy text-white shadow-sm',
+  icon: 'sparkles',
+  iconColor: 'text-white',
 };
+
+export const ACHIEVEMENT_FRAME_INFO: Record<AchievementFrame, FrameInfoItem> = {
+  auto: AUTO_FRAME_INFO,
+  none: { ...AUTO_FRAME_INFO, id: 'none' },
+  default: { ...AUTO_FRAME_INFO, id: 'default' },
+  level_1: buildLevelFrameInfo('level_1', 1),
+  level_2: buildLevelFrameInfo('level_2', 2),
+  level_3: buildLevelFrameInfo('level_3', 3),
+  level_4: buildLevelFrameInfo('level_4', 4),
+  level_5: buildLevelFrameInfo('level_5', 5),
+  level_6: buildLevelFrameInfo('level_6', 6),
+  level_7: buildLevelFrameInfo('level_7', 7),
+  level_8: buildLevelFrameInfo('level_8', 8),
+  level_9: buildLevelFrameInfo('level_9', 9),
+  level_10: buildLevelFrameInfo('level_10', 10),
+  level_max: buildLevelFrameInfo('level_max', 10),
+  // Legacy frame aliases mapped cleanly to corresponding custom uploaded levels
+  silver: buildLevelFrameInfo('silver', 2),
+  silver_scholar: buildLevelFrameInfo('silver_scholar', 2),
+  bronze_star: buildLevelFrameInfo('bronze_star', 3),
+  gold: buildLevelFrameInfo('gold', 4),
+  gold_champion: buildLevelFrameInfo('gold_champion', 4),
+  story: buildLevelFrameInfo('story', 5),
+  diamond_elite: buildLevelFrameInfo('diamond_elite', 5),
+  platinum: buildLevelFrameInfo('platinum', 6),
+  nature: buildLevelFrameInfo('nature', 7),
+  emerald_honor: buildLevelFrameInfo('emerald_honor', 7),
+  challenge: buildLevelFrameInfo('challenge', 8),
+  cosmic: buildLevelFrameInfo('cosmic', 9),
+  star: buildLevelFrameInfo('star', 9),
+  vip: buildLevelFrameInfo('vip', 10),
+  crown: buildLevelFrameInfo('crown', 10),
+  champion: buildLevelFrameInfo('champion', 10),
+};
+
+function resolveEffectiveAvatarFrame(
+  student?: StudentAvatarProps['student'],
+  propFrame?: AchievementFrame | null
+): LevelFrameId {
+  // If caller passed both student and achievementFrame={student.achievementFrame} while student is in 'auto' mode,
+  // defer to student's auto progression rather than treating propFrame as a manual override.
+  const effectivePropFrame =
+    student && student.avatarFrameMode === 'auto' && propFrame === student.achievementFrame
+      ? undefined
+      : propFrame;
+  return resolveStudentLevelFrame(student, effectivePropFrame);
+}
 
 function areStudentAvatarPropsEqual(
   prev: StudentAvatarProps,
   next: StudentAvatarProps
 ): boolean {
+  const prevResolved =
+    prev.showFrame === false
+      ? 'none'
+      : resolveEffectiveAvatarFrame(prev.student, prev.achievementFrame);
+  const nextResolved =
+    next.showFrame === false
+      ? 'none'
+      : resolveEffectiveAvatarFrame(next.student, next.achievementFrame);
+
   return (
+    prevResolved === nextResolved &&
     prev.student?.id === next.student?.id &&
     prev.student?.name === next.student?.name &&
     prev.student?.avatarColor === next.student?.avatarColor &&
     prev.student?.profilePhoto === next.student?.profilePhoto &&
     prev.student?.achievementFrame === next.student?.achievementFrame &&
+    prev.student?.avatarFrameMode === next.student?.avatarFrameMode &&
     prev.name === next.name &&
     prev.avatarColor === next.avatarColor &&
     prev.profilePhoto === next.profilePhoto &&
@@ -365,14 +339,26 @@ const StudentAvatarInner: React.FC<StudentAvatarProps> = ({
   const finalColor = normalizeLuxuryColor(student?.avatarColor || propColor, '#17375E');
   const isLightAvatarBg = finalColor === '#FFFFFF' || finalColor === '#E1EBEC';
   const finalPhoto = student?.profilePhoto !== undefined ? student?.profilePhoto : propPhoto;
-  const rawFrame = (student?.achievementFrame || propFrame || 'none') as AchievementFrame;
 
-  const hasFrame = showFrame && rawFrame && rawFrame !== 'none' && rawFrame !== 'default';
-  const frameInfo = hasFrame ? ACHIEVEMENT_FRAME_INFO[rawFrame] || ACHIEVEMENT_FRAME_INFO.gold_champion : null;
+  const resolvedLevelFrame: LevelFrameId = resolveEffectiveAvatarFrame(student, propFrame);
+  const resolvedLevel = frameIdToLevel(resolvedLevelFrame);
+  const hasFrame = showFrame !== false;
+  const frameInfo = hasFrame ? ACHIEVEMENT_FRAME_INFO[resolvedLevelFrame] : null;
 
-  const sizeConfig = SIZE_CONFIGS[size] || SIZE_CONFIGS.md;
+  const sizeKey: AvatarSizeKey =
+    size === 'xs' ||
+    size === 'sm' ||
+    size === 'md' ||
+    size === 'lg' ||
+    size === 'xl' ||
+    size === '2xl'
+      ? size
+      : 'md';
+  const framedGeo = FRAMED_GEOMETRY[sizeKey][resolvedLevel];
+  const noFrameContainerClass = NO_FRAME_CONTAINER_BY_SIZE[sizeKey];
+  const badgeConfig = BADGE_CONFIG_BY_SIZE[sizeKey];
 
-  const initial = finalName.trim() ? finalName.trim().charAt(0).toUpperCase() : (isEn ? 'S' : 'ط');
+  const initial = finalName.trim() ? finalName.trim().charAt(0).toUpperCase() : isEn ? 'S' : 'ط';
 
   const [imgError, setImgError] = React.useState(false);
 
@@ -391,27 +377,34 @@ const StudentAvatarInner: React.FC<StudentAvatarProps> = ({
         finalPhoto.startsWith('/'))
   );
 
-  const frameTitle = frameInfo ? (frameInfo.name[currentLang] || frameInfo.name.ar) : '';
+  const bgTailwindClass = hasPhoto
+    ? 'bg-[#E1EBEC]'
+    : AVATAR_BG_CLASS_MAP[finalColor] || 'bg-[#17375E]';
+
+  const langKey = currentLang === 'en-GB' || currentLang === 'en-US' ? currentLang : 'ar';
+  const frameTitle = frameInfo ? frameInfo.name[langKey] || frameInfo.name.ar : '';
 
   return (
     <div
       className={`relative inline-flex items-center justify-center shrink-0 ${
-        hasFrame ? `${sizeConfig.framedContainer} gaming-frame-root frame-${rawFrame}` : sizeConfig.noFrameContainer
+        hasFrame
+          ? `${framedGeo.container} gaming-frame-root frame-${resolvedLevelFrame}`
+          : noFrameContainerClass
       } ${className}`}
     >
-      {/* Core Avatar Photo / Initial Circle */}
+      {/* Core Circular Student Photo / Initial */}
       <div
-        className={`rounded-full overflow-hidden flex items-center justify-center gaming-frame-avatar-inner ${
+        className={`rounded-full overflow-hidden flex items-center justify-center gaming-frame-avatar-inner ${bgTailwindClass} ${
           isLightAvatarBg ? 'text-[#0F2A4A]' : 'text-[#FFFFFF]'
-        } font-bold select-none relative shadow-inner z-0 ${
-          hasFrame ? `${sizeConfig.photoFramed} ring-1 ring-[#0F2A4A]/25` : 'w-full h-full shadow-sm'
+        } font-bold select-none relative z-0 ${
+          hasFrame ? framedGeo.inner : 'w-full h-full shadow-sm'
         }`}
-        style={{ backgroundColor: hasPhoto ? '#E1EBEC' : finalColor }}
       >
         {hasPhoto ? (
           <img
             src={finalPhoto!}
             alt={finalName}
+            referrerPolicy="no-referrer"
             className="w-full h-full object-cover rounded-full pointer-events-none"
             loading="lazy"
             onError={() => {
@@ -419,24 +412,26 @@ const StudentAvatarInner: React.FC<StudentAvatarProps> = ({
             }}
           />
         ) : (
-          <span className="drop-shadow-md select-none">{initial}</span>
+          <span className="drop-shadow-xs select-none leading-none">{initial}</span>
         )}
       </div>
 
-      {/* Luxury Gaming SVG Frame Overlay */}
+      {/* Custom Uploaded Golden Level-Up Frame Overlay (Level 1 -> Level MAX) */}
       {hasFrame && (
-        <div className="absolute inset-0 w-full h-full pointer-events-none z-10 flex items-center justify-center">
-          <AchievementFrameSVG frame={rawFrame} />
+        <div
+          className={`absolute pointer-events-none z-10 flex items-center justify-center ${framedGeo.frame}`}
+        >
+          <AchievementFrameSVG frame={resolvedLevelFrame} altText={frameTitle} />
         </div>
       )}
 
       {/* Optional Top Badge Icon */}
       {showBadge && frameInfo && (
         <div
-          className={`absolute ${sizeConfig.badge} rounded-full flex items-center justify-center ${frameInfo.badgeBg} z-20 animate-in zoom-in duration-150 motion-reduce:animate-none`}
+          className={`absolute ${badgeConfig.badge} rounded-full flex items-center justify-center ${frameInfo.badgeBg} z-20 animate-in zoom-in duration-150 motion-reduce:animate-none`}
           title={frameTitle}
         >
-          <AppIcon name={frameInfo.icon} weight="fill" className={sizeConfig.iconSize} />
+          <AppIcon name={frameInfo.icon} weight="fill" className={badgeConfig.iconSize} />
         </div>
       )}
     </div>

@@ -15,6 +15,7 @@ import { useTranslation } from '../utils/i18n';
 import { toLocalISODate, parseLocalDateStr } from '../utils/localDate';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
+import { StudentAvatar } from './StudentAvatar';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
@@ -184,9 +185,18 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       title="تسجيل دفعة مالية"
       subtitle={selectedStudent ? `للطالب: ${selectedStudent.name}` : 'سداد الاشتراكات وتجديد رصيد الحصص'}
       headerLeading={
-        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
-          <AppIcon name="wallet" size={20} weight="fill" />
-        </div>
+        selectedStudent ? (
+          <StudentAvatar
+            student={selectedStudent}
+            size="sm"
+            showFrame={true}
+            className="shrink-0"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
+            <AppIcon name="wallet" size={20} weight="fill" />
+          </div>
+        )
       }
       footer={
         <div className="flex items-center gap-2.5">

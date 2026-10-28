@@ -4,6 +4,7 @@ import { db } from '../utils/storage';
 import { compressImage } from '../utils/imageCompressor';
 import { StudentAvatar } from './StudentAvatar';
 import { AchievementFrameSelector } from './AchievementFrameSelector';
+import { normalizeManualOrLegacyFrame } from '../utils/studentProgression';
 import { GRADE_STAGES, ALL_GRADE_OPTIONS, getStageByGrade, getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { SegmentedControl } from './ui/SegmentedControl';
@@ -70,7 +71,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const [parentPhone, setParentPhone] = useState('');
   const [avatarColor, setAvatarColor] = useState('navy');
   const [profilePhoto, setProfilePhoto] = useState<string | undefined>(undefined);
-  const [achievementFrame, setAchievementFrame] = useState<AchievementFrame | undefined>('none');
+  const [achievementFrame, setAchievementFrame] = useState<AchievementFrame | undefined>('auto');
   const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -120,7 +121,17 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setParentPhone(editingStudent.parentPhone || '');
       setAvatarColor(editingStudent.avatarColor || 'navy');
       setProfilePhoto(editingStudent.profilePhoto);
-      setAchievementFrame(editingStudent.achievementFrame || 'none');
+      const isEditingAuto =
+        editingStudent.avatarFrameMode === 'auto' ||
+        !editingStudent.achievementFrame ||
+        editingStudent.achievementFrame === 'auto' ||
+        editingStudent.achievementFrame === 'none' ||
+        editingStudent.achievementFrame === 'default';
+      setAchievementFrame(
+        isEditingAuto
+          ? 'auto'
+          : normalizeManualOrLegacyFrame(editingStudent.achievementFrame) || 'auto'
+      );
       setNotes(editingStudent.notes || '');
 
       // Load enrolled groups & check private enrollments
@@ -227,7 +238,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       setParentPhone('');
       setAvatarColor('navy');
       setProfilePhoto(undefined);
-      setAchievementFrame('none');
+      setAchievementFrame('auto');
       setNotes('');
       setSubscriptionMode(defaultGroupId ? 'group' : 'group');
       setSelectedGroupIds(defaultGroupId ? [defaultGroupId] : []);
@@ -390,7 +401,20 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       parentPhone: parentPhone.trim() || undefined,
       avatarColor,
       profilePhoto,
-      achievementFrame: achievementFrame || 'none',
+      achievementFrame:
+        !achievementFrame ||
+        achievementFrame === 'auto' ||
+        achievementFrame === 'none' ||
+        achievementFrame === 'default'
+          ? 'auto'
+          : achievementFrame,
+      avatarFrameMode:
+        !achievementFrame ||
+        achievementFrame === 'auto' ||
+        achievementFrame === 'none' ||
+        achievementFrame === 'default'
+          ? 'auto'
+          : 'manual',
       notes: notes.trim() || undefined,
       scheduleDays: canonicalDays,
       scheduleTime: primaryScheduleTime,
@@ -624,12 +648,20 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             <div className="relative shrink-0 flex items-center justify-center p-2">
               <StudentAvatar
                 student={{
-                  id: 'temp',
+                  id: editingStudent?.id || 'temp',
                   name: name || t('newStudent'),
                   avatarColor,
                   profilePhoto,
-                  achievementFrame,
+                  achievementFrame: achievementFrame || 'auto',
+                  avatarFrameMode:
+                    !achievementFrame ||
+                    achievementFrame === 'auto' ||
+                    achievementFrame === 'none' ||
+                    achievementFrame === 'default'
+                      ? 'auto'
+                      : 'manual',
                 } as Student}
+                achievementFrame={achievementFrame || 'auto'}
                 size="xl"
                 showFrame={true}
               />
@@ -673,6 +705,7 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
             <AchievementFrameSelector
               selectedFrame={achievementFrame}
               onSelectFrame={(frame) => setAchievementFrame(frame)}
+              studentId={editingStudent?.id}
               studentName={name}
               profilePhoto={profilePhoto}
               avatarColor={avatarColor}

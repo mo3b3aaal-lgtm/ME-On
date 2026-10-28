@@ -20,6 +20,7 @@ import { useTranslation } from '../utils/i18n';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon, AppIconName } from './ui/AppIcon';
 import { StudentAvatar } from './StudentAvatar';
+import { getStudentProgression } from '../utils/studentProgression';
 import { triggerLightHaptic, triggerSuccessHaptic, triggerSelectionHaptic } from '../utils/haptics';
 
 export interface PrivateClassIntakeResult {
@@ -467,6 +468,8 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
 
   if (!student) return null;
 
+  const progression = getStudentProgression(student);
+
   return (
     <BottomSheet
       id="private-class-intake"
@@ -474,26 +477,18 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
       isOpen={isOpen}
       onClose={onClose}
       title={isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
-      subtitle={`${student.name} • ${activeGroup?.subject || (isEn ? 'Private Tutoring' : 'درس خاص')}`}
+      subtitle={`${student.name} · ${
+        isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr
+      } · ${activeGroup?.subject || (isEn ? 'Private Tutoring' : 'درس خاص')}`}
       headerLeading={
-        student ? (
-          <div className="shrink-0 gaming-frame-interactive transition-transform hover:scale-105">
-            <StudentAvatar
-              student={student}
-              name={student.name}
-              profilePhoto={student.profilePhoto}
-              achievementFrame={student.achievementFrame}
-              avatarColor={student.avatarColor}
-              size="sm"
-              showFrame={true}
-              className="shadow-2xs"
-            />
-          </div>
-        ) : (
-          <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
-            <AppIcon name="zap" size={20} weight="fill" className="text-orange" />
-          </div>
-        )
+        <div className="shrink-0 gaming-frame-interactive transition-transform hover:scale-105">
+          <StudentAvatar
+            student={student}
+            size="sm"
+            showFrame={true}
+            className="shrink-0"
+          />
+        </div>
       }
       headerTrailing={
         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">

@@ -3,6 +3,7 @@ import { Student, Group, BehaviorCategory, StudentBehaviorLog, PredefinedBehavio
 import { PREDEFINED_BEHAVIOR_TAGS } from '../utils/behavior';
 import { db } from '../utils/storage';
 import { StudentAvatar } from './StudentAvatar';
+import { getStudentProgression, previewBehaviorPointsImpact } from '../utils/studentProgression';
 import { useTranslation } from '../utils/i18n';
 import { toLocalISODate } from '../utils/localDate';
 import { SegmentedControl } from './ui/SegmentedControl';
@@ -160,17 +161,23 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
     return t.category === activeCategory;
   });
 
+  const progression = getStudentProgression(student);
+  const impact = previewBehaviorPointsImpact(student, points);
+
   return (
     <BottomSheet
       id="quick-behavior-log-modal"
       isOpen={isOpen}
       onClose={onClose}
       title={isEn ? 'Record Behavior & Assessment' : 'تسجيل سلوك وتفاعل سريع'}
-      subtitle={`${student.name}${student.gradeLevel ? ` • ${student.gradeLevel}` : ''}`}
+      subtitle={`${student.name} · ${isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr}${student.gradeLevel ? ` · ${student.gradeLevel}` : ''}`}
       headerLeading={
-        <div className="w-10 h-10 rounded-2xl bg-mint-soft text-navy flex items-center justify-center shrink-0 border border-line">
-          <AppIcon name="award" size={20} weight="duotone" />
-        </div>
+        <StudentAvatar
+          student={student}
+          size="sm"
+          showFrame={true}
+          className="shrink-0"
+        />
       }
       headerTrailing={
         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-mint-soft text-navy border border-line">
@@ -210,25 +217,44 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-xs text-navy">
-        {/* Student Bar */}
-        <div className="p-3 rounded-2xl bg-page border border-line flex items-center justify-between gap-2 shadow-2xs">
+        {/* Student Bar with Live XP & Level Up Preview */}
+        <div className="p-3 rounded-2xl bg-page border border-line flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2.5 min-w-0">
             <StudentAvatar
               student={student}
-              size="sm"
+              size="md"
               showFrame={true}
               className="shrink-0"
             />
-            <div className="min-w-0 text-start">
+            <div className="min-w-0 text-start space-y-0.5">
               <h4 className="text-xs font-black text-navy leading-tight truncate">{student.name}</h4>
-              <p className="text-[10px] text-slate mt-0.5">{isEn ? 'Quick feedback and class evaluation' : 'رصد فوري لتقييم الحصة والأداء'}</p>
+              <p className="text-[11px] text-slate tabular-nums truncate">
+                {isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr}
+                {' · '}
+                {progression.totalXp} {isEn ? 'XP' : 'نقطة'}
+                {impact.xpDelta !== 0 && (
+                  <span className="font-semibold text-navy">
+                    {' → '}
+                    {impact.projectedXp} {isEn ? 'XP' : 'نقطة'}
+                  </span>
+                )}
+              </p>
+              {impact.leveledUp && (
+                <p className="text-[11px] font-bold text-teal">
+                  {isEn
+                    ? `Level Up to ${impact.projectedFrameDef.shortLabelEn}!`
+                    : `ترقية إلى ${impact.projectedFrameDef.shortLabelAr}!`}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-mint-soft text-navy border border-line shrink-0">
-            <AppIcon name="award" size={14} weight="bold" />
-            <span className="text-xs font-black">
+          <div className="text-end shrink-0 tabular-nums">
+            <span className="text-sm font-black text-navy block">
               {points > 0 ? `+${points}` : points} {t('points')}
+            </span>
+            <span className="text-[10px] text-slate block">
+              {impact.xpDelta > 0 ? `+${impact.xpDelta}` : impact.xpDelta} XP
             </span>
           </div>
         </div>

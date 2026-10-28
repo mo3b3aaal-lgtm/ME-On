@@ -4,6 +4,7 @@ import { db, getBillingModeLabel } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
 import { useTranslation } from '../utils/i18n';
 import { StudentAvatar } from './StudentAvatar';
+import { getStudentProgression } from '../utils/studentProgression';
 import { BottomSheet } from './ui/BottomSheet';
 import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
@@ -306,6 +307,7 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
               <div className="space-y-2">
                 {enrolledStudents.map((st, index) => {
                   const enr = enrollments.find((e) => e.studentId === st.id);
+                  const stProg = getStudentProgression(st);
                   const isStaggerEnabled = enrolledStudents.length <= 50;
                   const staggerClass = isStaggerEnabled
                     ? `animate-tile-stagger ${index < STAGGER_DELAY_CLASSES.length ? STAGGER_DELAY_CLASSES[index] : ''}`
@@ -329,9 +331,11 @@ export const GroupProfileModal: React.FC<GroupProfileModalProps> = ({
                           <p className="font-black text-navy text-xs truncate">
                             {st.name}
                           </p>
-                          <p className="text-[10px] text-slate truncate">
-                            {getBillingModeLabel(enr?.billingType, enr?.billingMode)} • {enr?.customPrice || group.defaultPrice} {t('currency')}
-                            {st.phone ? ` • ${st.phone}` : ''}
+                          <p className="text-[10px] text-slate truncate tabular-nums">
+                            {isEn ? stProg.frameDef.shortLabelEn : stProg.frameDef.shortLabelAr}
+                            {' · '}
+                            {getBillingModeLabel(enr?.billingType, enr?.billingMode)} · {enr?.customPrice || group.defaultPrice} {t('currency')}
+                            {st.phone ? ` · ${st.phone}` : ''}
                           </p>
                         </div>
                       </div>

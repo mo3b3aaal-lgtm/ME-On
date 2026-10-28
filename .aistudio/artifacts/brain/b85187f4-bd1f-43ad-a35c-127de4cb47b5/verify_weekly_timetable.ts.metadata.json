@@ -1,0 +1,4 @@
+{
+  "summary":  "Automated verification suite validating all 13 acceptance criteria for Classy's Fixed Weekly Timetable feature (header adjacency, 7-day date-free structure, chronological sorting, collisions, dynamic schedule updates, Group vs Private separation, dated session isolation, and enrollment/vacation rules).",
+  "updatedAt":  "2026-10-28T13:40:33.539459983Z"
+}

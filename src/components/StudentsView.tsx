@@ -16,6 +16,10 @@ import { StudentsTrio, EmptyBox } from './illustrations';
 import { Toast } from './ui/Toast';
 import { useDelayedLoading } from './ui/Skeleton';
 import { StudentCardsSkeleton } from './skeletons/ClassySkeletons';
+import {
+  evaluateStudentPaymentAlerts,
+  type StudentPaymentAlertInfo,
+} from '../utils/studentPaymentAlerts';
 
 interface StudentsViewProps {
   students: Student[];
@@ -39,13 +43,11 @@ interface StudentsViewProps {
   onOpenGroupProfile?: (group: Group) => void;
   onDataChanged?: () => void;
   onNavigateToTab?: (tab: ActiveTab) => void;
+  onOpenTimetableModal?: () => void;
   onOpenNotificationsModal?: () => void;
   unreadNotificationsCount?: number;
 }
 
-const EMPTY_ATTENDANCE: Attendance[] = [];
-const EMPTY_SESSIONS: Session[] = [];
-const EMPTY_PAYMENTS: Payment[] = [];
 const STAGGER_DELAY_CLASSES = [
   'stagger-0',
   'stagger-1',
@@ -61,9 +63,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   students,
   groups,
   enrollments,
-  allAttendance = EMPTY_ATTENDANCE,
-  sessions = EMPTY_SESSIONS,
-  payments = EMPTY_PAYMENTS,
+  allAttendance,
+  sessions,
+  payments,
   isLoading = false,
   activeSegment = 'students',
   onSegmentChange,
@@ -79,6 +81,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   onOpenGroupProfile,
   onDataChanged,
   onNavigateToTab,
+  onOpenTimetableModal,
   onOpenNotificationsModal,
   unreadNotificationsCount,
 }) => {
@@ -149,7 +152,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('all');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
-  const [quickFilter, setQuickFilter] = useState<'all' | 'debtors' | 'private_only'>('all');
+  const [quickFilter, setQuickFilter] = useState<
+    'all' | 'debtors' | 'low_balance' | 'private_only'
+  >('all');
 
   // Quick feedback toast
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
@@ -180,9 +185,46 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     return Array.from(new Set(students.map((s) => s.gradeLevel).filter(Boolean)));
   }, [students]);
 
-  // Pre-index student groups, enrollments, and balances in a single memoized pass for ultra-fast rendering
+  const resolvedEnrollments = useMemo(
+    () => enrollments ?? db.getEnrollments(),
+    [enrollments]
+  );
+  const resolvedSessions = useMemo(
+    () => sessions ?? db.getSessions(),
+    [sessions]
+  );
+  const resolvedAttendance = useMemo(
+    () => allAttendance ?? db.getAttendance(),
+    [allAttendance]
+  );
+  const resolvedPayments = useMemo(
+    () => payments ?? db.getPayments(),
+    [payments]
+  );
+
+  // Pre-index student groups, enrollments, and payment/session alerts in a single memoized pass
   const studentDataMap = useMemo(() => {
     const groupsMap = new Map<string, Group>(groups.map((g) => [g.id, g]));
+    const activeEnrsByStudent = new Map<string, Enrollment[]>();
+    for (const enr of resolvedEnrollments) {
+      if (enr.status === 'stopped') continue;
+      const list = activeEnrsByStudent.get(enr.studentId);
+      if (list) list.push(enr);
+      else activeEnrsByStudent.set(enr.studentId, [enr]);
+    }
+
+    const lowSessionThreshold =
+      db.getNotificationSettings()?.earlyWarningLessonThreshold || 2;
+
+    const paymentAlertsMap = evaluateStudentPaymentAlerts({
+      students,
+      groups,
+      enrollments: resolvedEnrollments,
+      sessions: resolvedSessions,
+      allAttendance: resolvedAttendance,
+      payments: resolvedPayments,
+      lowSessionThreshold,
+    });
 
     const map = new Map<
       string,
@@ -193,11 +235,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         isPrivateOnly: boolean;
         isGroupAndPrivate: boolean;
         balance: number;
+        paymentAlert: StudentPaymentAlertInfo;
       }
     >();
 
     students.forEach((student) => {
-      const sEnrs = db.getStudentEnrollments(student.id);
+      const sEnrs = activeEnrsByStudent.get(student.id) || [];
       const sGroups: { group: Group; enrollment: Enrollment }[] = [];
       const sPriv: { group?: Group; enrollment: Enrollment }[] = [];
       const grpIds = new Set<string>();
@@ -215,11 +258,25 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         }
       });
 
-      const hasDirectPrivate = (student.privateDays && student.privateDays.length > 0) || student.serviceType === 'private';
+      const hasDirectPrivate =
+        (student.privateDays && student.privateDays.length > 0) ||
+        student.serviceType === 'private';
       const hasPrivate = sPriv.length > 0 || hasDirectPrivate;
       const hasGroup = sGroups.length > 0;
 
-      const fin = db.calculateStudentFinancials(student.id);
+      const paymentAlert = paymentAlertsMap.get(student.id) || {
+        studentId: student.id,
+        alertKind: 'none',
+        hasOutstandingPayment: false,
+        hasLowSessionBalance: false,
+        outstandingAmount: 0,
+        lowSessionRemaining: null,
+        netBalance: 0,
+      };
+
+      const effectiveBalance = paymentAlert.hasOutstandingPayment
+        ? -paymentAlert.outstandingAmount
+        : paymentAlert.netBalance;
 
       map.set(student.id, {
         studentGroups: sGroups,
@@ -227,12 +284,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
         enrollmentGroupIds: grpIds,
         isPrivateOnly: !hasGroup && hasPrivate,
         isGroupAndPrivate: hasGroup && hasPrivate,
-        balance: fin.balance,
+        balance: effectiveBalance,
+        paymentAlert,
       });
     });
 
     return map;
-  }, [students, groups, enrollments, sessions, payments, allAttendance]);
+  }, [
+    students,
+    groups,
+    resolvedEnrollments,
+    resolvedSessions,
+    resolvedPayments,
+    resolvedAttendance,
+  ]);
 
   // Counts for active vs archived
   const activeStudentsCount = useMemo(
@@ -244,14 +309,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
     [students]
   );
 
-  // Active students with debts
+  // Active students with outstanding payments
   const activeDebtorsCount = useMemo(() => {
     return students
       .filter((s) => s.status !== 'archived')
-      .filter((s) => {
-        const info = studentDataMap.get(s.id);
-        return (info?.balance ?? 0) < 0;
-      }).length;
+      .filter((s) => Boolean(studentDataMap.get(s.id)?.paymentAlert.hasOutstandingPayment))
+      .length;
+  }, [students, studentDataMap]);
+
+  // Active students with low session balances
+  const activeLowBalanceCount = useMemo(() => {
+    return students
+      .filter((s) => s.status !== 'archived')
+      .filter((s) => Boolean(studentDataMap.get(s.id)?.paymentAlert.hasLowSessionBalance))
+      .length;
   }, [students, studentDataMap]);
 
   // Active private-only students
@@ -300,7 +371,9 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
 
       // 5. Quick Filters
       if (quickFilter === 'debtors') {
-        if ((info?.balance ?? 0) >= 0) return false;
+        if (!info?.paymentAlert.hasOutstandingPayment) return false;
+      } else if (quickFilter === 'low_balance') {
+        if (!info?.paymentAlert.hasLowSessionBalance) return false;
       } else if (quickFilter === 'private_only') {
         if (!info?.isPrivateOnly) return false;
       }
@@ -401,6 +474,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             : (t('studentsTitle') || (isEn ? 'Students' : 'الطلاب'))
         }
         unreadCount={unreadNotificationsCount}
+        onOpenTimetable={onOpenTimetableModal}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />
@@ -455,10 +529,10 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
           <GroupsView
             groups={groups}
             allStudents={students}
-            enrollments={enrollments}
-            sessions={sessions}
-            allAttendance={allAttendance}
-            payments={payments}
+            enrollments={resolvedEnrollments}
+            sessions={resolvedSessions}
+            allAttendance={resolvedAttendance}
+            payments={resolvedPayments}
             isLoading={isLoading}
             onOpenAddGroup={onOpenAddGroup || (() => {})}
             onOpenGroupProfile={onOpenGroupProfile || (() => {})}
@@ -642,13 +716,31 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
             <button
               type="button"
               onClick={() => setQuickFilter(quickFilter === 'debtors' ? 'all' : 'debtors')}
-              className={`chip snap-start ${quickFilter === 'debtors' ? 'chip-active' : ''}`}
+              className={`chip snap-start whitespace-nowrap shrink-0 ${quickFilter === 'debtors' ? 'chip-active' : ''}`}
             >
               <AppIcon name="wallet" weight="duotone" size={14} />
               <span>{isEn ? 'Have Dues' : 'عليهم مستحقات'}</span>
               {activeDebtorsCount > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-current/15">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-current/15 tabular-nums">
                   {activeDebtorsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Quick Filter: Low Session Balance */}
+            <button
+              type="button"
+              data-testid="students-filter-low-balance"
+              onClick={() =>
+                setQuickFilter(quickFilter === 'low_balance' ? 'all' : 'low_balance')
+              }
+              className={`chip snap-start whitespace-nowrap shrink-0 ${quickFilter === 'low_balance' ? 'chip-active' : ''}`}
+            >
+              <AppIcon name="clock" weight="duotone" size={14} />
+              <span>{isEn ? 'Low Balance' : 'رصيد منخفض'}</span>
+              {activeLowBalanceCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-current/15 tabular-nums">
+                  {activeLowBalanceCount}
                 </span>
               )}
             </button>
@@ -848,19 +940,70 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                   .filter(Boolean)
                   .join(' · ');
 
-                // Financial or archived StatusBadge
+                const paymentAlert = data?.paymentAlert;
+                const hasOutstandingPayment = Boolean(
+                  !isStudentArchived && paymentAlert?.hasOutstandingPayment
+                );
+                const hasLowSessionBalance = Boolean(
+                  !isStudentArchived && paymentAlert?.hasLowSessionBalance
+                );
+                const outstandingAmount =
+                  paymentAlert?.outstandingAmount ?? (balance < 0 ? Math.abs(balance) : 0);
+                const lowSessionRemaining = paymentAlert?.lowSessionRemaining ?? null;
+
+                const lowBalanceText =
+                  hasLowSessionBalance && lowSessionRemaining !== null
+                    ? lowSessionRemaining === 0
+                      ? isEn
+                        ? '0 sessions left'
+                      : 'نفد رصيد الحصص'
+                      : lowSessionRemaining === 1
+                      ? isEn
+                        ? '1 session left'
+                        : 'متبقي حصة واحدة'
+                      : isEn
+                      ? `${lowSessionRemaining} sessions left`
+                      : `متبقي ${lowSessionRemaining} حصص`
+                    : null;
+
+                const lowBalanceShortBadge =
+                  hasLowSessionBalance && lowSessionRemaining !== null
+                    ? lowSessionRemaining === 0
+                      ? isEn
+                        ? '0 left'
+                        : 'نفد الرصيد'
+                      : isEn
+                      ? `${lowSessionRemaining} left`
+                      : `متبقي ${lowSessionRemaining}`
+                    : '';
+
+                const outstandingText = hasOutstandingPayment
+                  ? isEn
+                    ? `Due ${outstandingAmount} ${t('currency')}`
+                    : `مستحق ${outstandingAmount} ${t('currency')}`
+                  : null;
+
+                const indicatorSummaryLabel = [outstandingText, lowBalanceText]
+                  .filter(Boolean)
+                  .join(' · ');
+
+                // Financial, low-balance, or archived StatusBadge
                 const badgeStatus = isStudentArchived
                   ? 'archived'
-                  : balance < 0
+                  : hasOutstandingPayment
                   ? 'has_due'
+                  : hasLowSessionBalance
+                  ? 'low_credit'
                   : balance > 0
                   ? 'has_credit'
                   : 'settled';
 
                 const badgeLabel = isStudentArchived
                   ? (isEn ? 'Archived' : 'مؤرشف')
-                  : balance < 0
-                  ? `${Math.abs(balance)} ${t('currency')}`
+                  : hasOutstandingPayment
+                  ? `${outstandingAmount} ${t('currency')}`
+                  : hasLowSessionBalance
+                  ? lowBalanceShortBadge
                   : balance > 0
                   ? `+${balance} ${t('currency')}`
                   : t('settled');
@@ -887,7 +1030,7 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                     )}
 
                     <div className="relative z-10 flex items-center justify-between gap-3">
-                      {/* Start: Selection Checkbox (if in mode) + 48px Avatar + Name + Meta line */}
+                      {/* Start: Selection Checkbox (if in mode) + 48px Avatar + Name + Alert Indicator + Meta line */}
                       <div className="flex items-center gap-3 min-w-0">
                         {isSelectionMode && !isStudentArchived && (
                           <button
@@ -913,13 +1056,60 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                           />
                         </div>
 
-                        {/* Name .t-card + unboxed progression & service metadata */}
+                        {/* Name .t-card + inline payment/session alert icon + unboxed metadata */}
                         <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             <h3 className="t-card text-navy truncate font-semibold">
                               {student.name}
                             </h3>
+                            {(hasOutstandingPayment || hasLowSessionBalance) && (
+                              <span
+                                role="img"
+                                data-testid={`student-payment-indicator-${student.id}`}
+                                data-alert-kind={paymentAlert?.alertKind}
+                                aria-label={indicatorSummaryLabel}
+                                title={indicatorSummaryLabel}
+                                className="inline-flex items-center gap-1 shrink-0"
+                              >
+                                {hasOutstandingPayment && (
+                                  <AppIcon
+                                    name="warningCircle"
+                                    weight="fill"
+                                    size={15}
+                                    className="text-coral"
+                                  />
+                                )}
+                                {hasLowSessionBalance && (
+                                  <AppIcon
+                                    name="clock"
+                                    weight="fill"
+                                    size={15}
+                                    className="text-orange-deep"
+                                  />
+                                )}
+                              </span>
+                            )}
                           </div>
+
+                          {(hasOutstandingPayment || hasLowSessionBalance) && (
+                            <p
+                              data-testid={`student-payment-callout-${student.id}`}
+                              className="text-xs font-semibold tabular-nums truncate flex items-center gap-1.5"
+                            >
+                              {outstandingText && (
+                                <span className="text-coral">{outstandingText}</span>
+                              )}
+                              {outstandingText && lowBalanceText && (
+                                <span aria-hidden="true" className="text-slate font-normal">
+                                  ·
+                                </span>
+                              )}
+                              {lowBalanceText && (
+                                <span className="text-orange-deep">{lowBalanceText}</span>
+                              )}
+                            </p>
+                          )}
+
                           <p className="text-[13px] text-slate truncate font-normal tabular-nums">
                             {metaText}
                           </p>
@@ -927,12 +1117,12 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       </div>
 
                       {/* End: Trailing StatusBadge + chevron (mirrored in RTL) or restore button */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 tabular-nums">
                         {isStudentArchived ? (
                           <button
                             type="button"
                             onClick={(e) => handleRestore(student, e)}
-                            className="px-3 py-1 rounded-full bg-page border border-line text-navy text-xs font-semibold flex items-center gap-1 shadow-white hover:bg-mist transition-colors"
+                            className="px-3 py-1 rounded-full bg-page border border-line text-navy text-xs font-semibold flex items-center gap-1 shadow-white hover:bg-mist transition-colors whitespace-nowrap shrink-0"
                             title={isEn ? 'Restore student' : 'استعادة الطالب'}
                           >
                             <AppIcon name="restore" weight="regular" size={14} />
@@ -951,22 +1141,20 @@ export const StudentsView: React.FC<StudentsViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Secondary Row: groups pills & quick contact buttons */}
+                    {/* Secondary Row: unboxed group names & quick contact / payment actions */}
                     {(studentGroups.length > 0 || student.phone || student.parentPhone) && (
                       <div className="relative z-10 mt-3 pt-2.5 border-t border-navy/10 flex items-center justify-between gap-2 flex-wrap text-xs">
-                        {/* Group chips */}
-                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                          {studentGroups.map(({ group }) => (
-                            <span
-                              key={group.id}
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-page text-navy border border-line text-[11px] font-medium shadow-white"
-                            >
-                              <span
-                                className="w-1.5 h-1.5 rounded-full shrink-0"
-                                style={{ backgroundColor: group.accentColor || 'var(--color-navy)' }}
-                              />
-                              <span className="truncate max-w-[120px]">{group.name}</span>
-                            </span>
+                        {/* Group names — clean unboxed typography */}
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0 text-[11px] font-medium text-navy">
+                          {studentGroups.map(({ group }, gIdx) => (
+                            <React.Fragment key={group.id}>
+                              {gIdx > 0 && (
+                                <span aria-hidden="true" className="text-slate">
+                                  ·
+                                </span>
+                              )}
+                              <span className="truncate max-w-[140px]">{group.name}</span>
+                            </React.Fragment>
                           ))}
                         </div>
 

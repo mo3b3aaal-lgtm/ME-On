@@ -61,6 +61,7 @@ interface DashboardViewProps {
   onOpenStudentProfile: (student: Student) => void;
   onOpenGroupProfile: (group: Group) => void;
   onOpenAttendanceModal: (session: Session) => void;
+  onOpenTimetableModal?: () => void;
   onOpenNotificationsModal?: () => void;
   unreadNotificationsCount?: number;
   onNavigateToTab: (tab: ActiveTab) => void;
@@ -83,6 +84,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenStudentProfile,
   onOpenGroupProfile,
   onOpenAttendanceModal,
+  onOpenTimetableModal,
   onOpenNotificationsModal,
   unreadNotificationsCount,
   onNavigateToTab,
@@ -837,6 +839,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         accentWord={t('dashboardGreetingAccent') || (isEn ? 'Now' : 'الآن')}
         hasUnreadNotifications={hasUnreadNotifications}
         unreadCount={unreadNotificationsCount ?? smartReminders.filter((r) => !r.isRead).length}
+        onOpenTimetable={onOpenTimetableModal}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />

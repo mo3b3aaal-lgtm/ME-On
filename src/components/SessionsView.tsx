@@ -30,6 +30,7 @@ interface SessionsViewProps {
   onSessionDeleted: () => void;
   onDataChanged?: () => void;
   onNavigateToTab?: (tab: ActiveTab) => void;
+  onOpenTimetableModal?: () => void;
   onOpenNotificationsModal?: () => void;
   unreadNotificationsCount?: number;
   isLoading?: boolean;
@@ -91,6 +92,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   onOpenGroupProfile,
   onDataChanged,
   onNavigateToTab,
+  onOpenTimetableModal,
   onOpenNotificationsModal,
   unreadNotificationsCount,
   isLoading = false,
@@ -374,6 +376,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       <ScreenHeader
         title={t('sessionsTitle') || (isEn ? 'Sessions' : 'الحصص')}
         unreadCount={unreadNotificationsCount}
+        onOpenTimetable={onOpenTimetableModal}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />

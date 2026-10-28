@@ -75,6 +75,7 @@ const loadGroupProfileModal = () => import('./components/GroupProfileModal');
 const loadRecordAttendanceModal = () => import('./components/RecordAttendanceModal');
 const loadAddPaymentModal = () => import('./components/AddPaymentModal');
 const loadNotificationsModal = () => import('./components/NotificationsModal');
+const loadWeeklyTimetableModal = () => import('./components/WeeklyTimetableModal');
 const loadPrivateClassIntakeModal = () => import('./components/PrivateClassIntakeModal');
 const loadGuidedTutorial = () => import('./components/tutorial/GuidedTutorial');
 
@@ -112,6 +113,9 @@ const AddPaymentModal = lazy(() =>
 );
 const NotificationsModal = lazy(() =>
   loadNotificationsModal().then((m) => ({ default: m.NotificationsModal }))
+);
+const WeeklyTimetableModal = lazy(() =>
+  loadWeeklyTimetableModal().then((m) => ({ default: m.WeeklyTimetableModal }))
 );
 const PrivateClassIntakeModal = lazy(() =>
   loadPrivateClassIntakeModal().then((m) => ({ default: m.PrivateClassIntakeModal }))
@@ -894,6 +898,7 @@ export default function App() {
         loadBulkAddSessionModal(),
         loadEnrollExistingStudentModal(),
         loadNotificationsModal(),
+        loadWeeklyTimetableModal(),
         loadPrivateClassIntakeModal(),
       ]).catch(() => {});
       try {
@@ -990,6 +995,8 @@ export default function App() {
   const groupProfileModal = useDetailModalState<Group>(150);
   const attendanceModal = useDetailModalState<Session>(150);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+  const [isTimetableModalOpen, setIsTimetableModalOpen] = useState(false);
+  const [hasOpenedTimetable, setHasOpenedTimetable] = useState(false);
 
   // Sync profile data if updated while open
   useEffect(() => {
@@ -1179,6 +1186,11 @@ export default function App() {
     setIsNotificationsModalOpen(true);
   }, []);
 
+  const handleOpenTimetableModal = useCallback(() => {
+    setHasOpenedTimetable(true);
+    setIsTimetableModalOpen(true);
+  }, []);
+
   const handleOpenQuickAdd = useCallback(() => {
     setIsQuickAddOpen(true);
   }, []);
@@ -1244,6 +1256,7 @@ export default function App() {
     isAddPaymentOpen ||
     isEnrollModalOpen ||
     isNotificationsModalOpen ||
+    isTimetableModalOpen ||
     Boolean(appPrivateIntakeTarget);
 
   const { stageRef, swipeBind } = usePageSwipeNavigation({
@@ -1376,6 +1389,7 @@ export default function App() {
                   onOpenStudentProfile={studentProfileModal.open}
                   onOpenGroupProfile={groupProfileModal.open}
                   onOpenAttendanceModal={attendanceModal.open}
+                  onOpenTimetableModal={handleOpenTimetableModal}
                   onOpenNotificationsModal={handleOpenNotificationsModal}
                   unreadNotificationsCount={dashboardUnreadCount}
                   onNavigateToTab={handleTabChange}
@@ -1413,6 +1427,7 @@ export default function App() {
                     onSessionDeleted={refreshData}
                     onDataChanged={refreshData}
                     onNavigateToTab={handleTabChange}
+                    onOpenTimetableModal={handleOpenTimetableModal}
                     onOpenNotificationsModal={handleOpenNotificationsModal}
                     unreadNotificationsCount={sessionsUnreadCount}
                   />
@@ -1444,6 +1459,7 @@ export default function App() {
                     onOpenAddPayment={handleOpenAddPayment}
                     onOpenStudentProfile={studentProfileModal.open}
                     onNavigateToTab={handleTabChange}
+                    onOpenTimetableModal={handleOpenTimetableModal}
                     onOpenNotificationsModal={handleOpenNotificationsModal}
                     unreadNotificationsCount={reportsUnreadCount}
                   />
@@ -1486,6 +1502,7 @@ export default function App() {
                     onOpenGroupProfile={groupProfileModal.open}
                     onDataChanged={refreshData}
                     onNavigateToTab={handleTabChange}
+                    onOpenTimetableModal={handleOpenTimetableModal}
                     onOpenNotificationsModal={handleOpenNotificationsModal}
                     unreadNotificationsCount={studentsUnreadCount}
                   />
@@ -1701,6 +1718,21 @@ export default function App() {
               targetEnrollmentId={targetEnrollmentIdForPayment}
               allStudents={students}
               onPaymentSaved={refreshData}
+            />
+          )}
+
+          {/* Fixed Weekly Timetable Modal */}
+          {hasOpenedTimetable && (
+            <WeeklyTimetableModal
+              isOpen={isTimetableModalOpen}
+              onClose={() => setIsTimetableModalOpen(false)}
+              students={students}
+              groups={groups}
+              enrollments={enrollments}
+              onOpenStudentProfile={(st) => studentProfileModal.open(st)}
+              onOpenGroupProfile={(grp) => groupProfileModal.open(grp)}
+              onOpenAddStudent={handleOpenAddStudent}
+              onOpenAddGroup={handleOpenAddGroup}
             />
           )}
 

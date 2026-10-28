@@ -11,6 +11,8 @@ export interface ScreenHeaderProps {
   hasUnreadNotifications?: boolean;
   /** Unread notification count (renders compact numeric badge on bell when > 0) */
   unreadCount?: number;
+  /** Callback when timetable icon is clicked (opens Fixed Weekly Timetable) */
+  onOpenTimetable?: () => void;
   /** Callback when bell icon is clicked */
   onOpenNotifications?: () => void;
   /** Callback when gear icon is clicked (opens Settings) */
@@ -21,7 +23,8 @@ export interface ScreenHeaderProps {
 /**
  * ScreenHeader:
  * - Start side: title (.t-display navy, max 2 lines, optional accent word in orange)
- * - End side: bell (AppIcon fill, navy, 26px, no container, orange badge/dot if unread)
+ * - End side: timetable (AppIcon fill, navy, 26px, immediately adjacent to bell)
+ *             bell (AppIcon fill, navy, 26px, no container, orange badge/dot if unread)
  *             gear (AppIcon fill, navy, 26px, no container, opens Settings)
  */
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
@@ -29,6 +32,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   accentWord,
   hasUnreadNotifications = false,
   unreadCount,
+  onOpenTimetable,
   onOpenNotifications,
   onOpenSettings,
   className = '',
@@ -55,8 +59,21 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         </h1>
       </div>
 
-      {/* End side: Bell and Gear (AppIcon fill, navy, 26px, no container) */}
+      {/* End side: Timetable, Bell, and Gear (AppIcon fill, navy, 26px, no container) */}
       <div className="flex items-center gap-3.5 shrink-0">
+        {onOpenTimetable && (
+          <button
+            type="button"
+            data-testid="header-timetable-btn"
+            onClick={onOpenTimetable}
+            aria-label={isEn ? 'Fixed Weekly Timetable' : 'الجدول الأسبوعي الثابت'}
+            title={isEn ? 'Fixed Weekly Timetable' : 'الجدول الأسبوعي الثابت'}
+            className="relative w-11 h-11 text-navy hover:text-navy/80 active:scale-95 transition-transform cursor-pointer flex items-center justify-center"
+          >
+            <AppIcon name="calendarDays" weight="fill" size={26} />
+          </button>
+        )}
+
         {onOpenNotifications && (
           <button
             type="button"

@@ -14,6 +14,7 @@ import { LessonStudioRosterSkeleton } from './skeletons/ClassySkeletons';
 import { triggerLightHaptic, triggerSuccessHaptic, triggerSelectionHaptic } from '../utils/haptics';
 import { isEnrollmentActiveOnDate } from '../utils/schedule';
 import { getStudentProgression } from '../utils/studentProgression';
+import { resolveFastAttendanceAdvance } from '../utils/fastAttendance';
 
 interface RecordAttendanceModalProps {
   isOpen: boolean;
@@ -62,16 +63,22 @@ interface AttendanceStudentRowProps {
   enrollment: Enrollment | undefined;
   isPrivateSession: boolean;
   isEn: boolean;
+  isFastAttendance: boolean;
+  isFastActiveRow: boolean;
+  isFastConfirmed: boolean;
   presentLabel: string;
   lateLabel: string;
   currencyLabel: string;
   editLabel: string;
+  onFastClickStudentName: (studentId: string, index: number) => void;
   onToggleHomework: (studentId: string) => void;
   onSetBehaviorRating: (studentId: string, rating: BehaviorRating | undefined) => void;
   onMarkPresent: (studentId: string) => void;
   onMarkLate: (studentId: string) => void;
   onOpenAbsenceModal: (student: Student) => void;
   onOpenPrivateIntake: (student: Student) => void;
+  registerRowRef: (studentId: string, el: HTMLDivElement | null) => void;
+  registerNameButtonRef: (studentId: string, el: HTMLButtonElement | null) => void;
 }
 
 const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
@@ -82,16 +89,22 @@ const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
     enrollment: enr,
     isPrivateSession,
     isEn,
+    isFastAttendance,
+    isFastActiveRow,
+    isFastConfirmed,
     presentLabel,
     lateLabel,
     currencyLabel,
     editLabel,
+    onFastClickStudentName,
     onToggleHomework,
     onSetBehaviorRating,
     onMarkPresent,
     onMarkLate,
     onOpenAbsenceModal,
     onOpenPrivateIntake,
+    registerRowRef,
+    registerNameButtonRef,
   }) => {
     const credit = enr?.sessionCredit || 0;
     const progression = getStudentProgression(student);
@@ -101,48 +114,102 @@ const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
       currentRecord.status === 'absent' ||
       currentRecord.status === 'excused';
 
+    const rowBorderSurfaceClass =
+      isFastAttendance && isFastActiveRow
+        ? 'border-navy ring-2 ring-navy/15 bg-mint-soft/35'
+        : isAbsent
+        ? 'border-line bg-mist'
+        : isFastAttendance && isFastConfirmed
+        ? 'border-teal/40 bg-page'
+        : 'border-line bg-page';
+
     return (
       <div
-        className={`p-3.5 rounded-2xl bg-page border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${
-          isAbsent
-            ? 'border-line bg-mist'
-            : 'border-line'
-        }`}
+        ref={(el) => registerRowRef(student.id, el)}
+        data-student-id={student.id}
+        data-fast-active={isFastAttendance && isFastActiveRow ? 'true' : undefined}
+        className={`p-3.5 rounded-2xl border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${rowBorderSurfaceClass}`}
       >
         {/* Top Row: Name + Level & Credit Metadata + Homework Toggle */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <StudentAvatar
-              student={student}
-              size="sm"
-              showFrame={true}
-              className="shrink-0"
-            />
-            <div className="min-w-0">
-              <h4 className="font-bold text-navy text-xs leading-tight truncate">{student.name}</h4>
-              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate tabular-nums flex-wrap">
-                <span className="font-bold text-navy">
-                  {isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span className={credit <= 0 ? 'font-bold text-coral' : 'font-medium text-slate'}>
-                  {isEn ? `Credit: ${credit} sessions` : `رصيد: ${credit} حصص`}
-                </span>
+          {isFastAttendance && !isPrivateSession ? (
+            <button
+              ref={(el) => registerNameButtonRef(student.id, el)}
+              type="button"
+              data-testid={`fast-student-name-${student.id}`}
+              onClick={() => onFastClickStudentName(student.id, index)}
+              className="min-h-[44px] flex-1 min-w-0 flex items-center justify-between gap-2 text-start rounded-xl px-2 py-1 -mx-1 hover:bg-mint-soft/75 active:scale-[0.99] transition-transform cursor-pointer focus-visible:outline-2 focus-visible:outline-navy"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <StudentAvatar
+                  student={student}
+                  size="sm"
+                  showFrame={true}
+                  className="shrink-0"
+                />
+                <div className="min-w-0">
+                  <h4 className="font-bold text-navy text-xs leading-tight truncate">
+                    {student.name}
+                  </h4>
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate tabular-nums flex-wrap">
+                    <span className="font-bold text-navy">
+                      {isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <span className={credit <= 0 ? 'font-bold text-coral' : 'font-medium text-slate'}>
+                      {isEn ? `Credit: ${credit} sessions` : `رصيد: ${credit} حصص`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold whitespace-nowrap">
+                {isFastConfirmed && !isAbsent ? (
+                  <span className="inline-flex items-center gap-1 text-teal">
+                    <AppIcon name="checkCircle" size={15} weight="fill" />
+                    <span>{presentLabel}</span>
+                  </span>
+                ) : isFastActiveRow ? (
+                  <span className="text-navy">
+                    {isEn ? 'Tap · Present' : 'اضغط · حاضر'}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <StudentAvatar
+                student={student}
+                size="sm"
+                showFrame={true}
+                className="shrink-0"
+              />
+              <div className="min-w-0">
+                <h4 className="font-bold text-navy text-xs leading-tight truncate">{student.name}</h4>
+                <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate tabular-nums flex-wrap">
+                  <span className="font-bold text-navy">
+                    {isEn ? progression.frameDef.shortLabelEn : progression.frameDef.shortLabelAr}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span className={credit <= 0 ? 'font-bold text-coral' : 'font-medium text-slate'}>
+                    {isEn ? `Credit: ${credit} sessions` : `رصيد: ${credit} حصص`}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Homework toggle */}
           <button
             type="button"
             onClick={() => onToggleHomework(student.id)}
-            className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+            className={`min-h-[36px] px-3 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0 whitespace-nowrap ${
               currentRecord.homeworkDone
                 ? 'bg-mint-soft text-navy border-navy'
                 : 'bg-page text-slate border-line'
             }`}
           >
-            <AppIcon name={currentRecord.homeworkDone ? 'check' : 'minus'} size={12} weight="bold" />
+            <AppIcon name={currentRecord.homeworkDone ? 'check' : 'minus'} size={12} weight="regular" />
             <span>
               {currentRecord.homeworkDone
                 ? isEn
@@ -474,12 +541,158 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   // Subtle success feedback state
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
 
+  // Fast Attendance roll-call state & DOM refs
+  const [isFastAttendance, setIsFastAttendance] = useState(false);
+  const [activeFastIndex, setActiveFastIndex] = useState<number | null>(null);
+  const [fastConfirmedIds, setFastConfirmedIds] = useState<Set<string>>(() => new Set());
+
+  const rowElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const nameButtonElementsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const saveButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const enrolledStudentIds = useMemo(
+    () => enrolledStudents.map((st) => st.id),
+    [enrolledStudents]
+  );
+
+  const fastStateRef = useRef({
+    isFastAttendance,
+    fastConfirmedIds,
+    enrolledStudentIds,
+  });
+  fastStateRef.current = {
+    isFastAttendance,
+    fastConfirmedIds,
+    enrolledStudentIds,
+  };
+
+  const registerRowRef = useCallback((studentId: string, el: HTMLDivElement | null) => {
+    if (el) {
+      rowElementsRef.current.set(studentId, el);
+    } else {
+      rowElementsRef.current.delete(studentId);
+    }
+  }, []);
+
+  const registerNameButtonRef = useCallback(
+    (studentId: string, el: HTMLButtonElement | null) => {
+      if (el) {
+        nameButtonElementsRef.current.set(studentId, el);
+      } else {
+        nameButtonElementsRef.current.delete(studentId);
+      }
+    },
+    []
+  );
+
+  const scrollAndFocusStudentAtIndex = useCallback((targetIndex: number | null) => {
+    requestAnimationFrame(() => {
+      const ids = fastStateRef.current.enrolledStudentIds;
+      if (targetIndex === null || targetIndex < 0 || targetIndex >= ids.length) {
+        saveButtonRef.current?.focus({ preventScroll: true });
+        return;
+      }
+
+      const targetId = ids[targetIndex];
+      const rowEl = rowElementsRef.current.get(targetId);
+      const btnEl = nameButtonElementsRef.current.get(targetId);
+
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+
+      rowEl?.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+      btnEl?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  const advanceFastAttendanceFromStudent = useCallback(
+    (studentId: string, explicitIndex?: number) => {
+      const { enrolledStudentIds: ids, fastConfirmedIds: prevSet } = fastStateRef.current;
+      const idx =
+        typeof explicitIndex === 'number' && explicitIndex >= 0
+          ? explicitIndex
+          : ids.indexOf(studentId);
+      if (idx < 0) return;
+
+      const { nextIndex, updatedConfirmedIds } = resolveFastAttendanceAdvance(
+        ids,
+        idx,
+        prevSet
+      );
+      setFastConfirmedIds(updatedConfirmedIds);
+      setActiveFastIndex(nextIndex);
+      scrollAndFocusStudentAtIndex(nextIndex);
+    },
+    [scrollAndFocusStudentAtIndex]
+  );
+
+  const handleToggleFastAttendance = useCallback(() => {
+    triggerSelectionHaptic();
+    setIsFastAttendance((prev) => {
+      const nextEnabled = !prev;
+      if (nextEnabled) {
+        const ids = fastStateRef.current.enrolledStudentIds;
+        const confirmed = fastStateRef.current.fastConfirmedIds;
+        let startIdx: number | null = null;
+        for (let i = 0; i < ids.length; i++) {
+          if (!confirmed.has(ids[i])) {
+            startIdx = i;
+            break;
+          }
+        }
+        if (startIdx === null && ids.length > 0) {
+          startIdx = 0;
+        }
+        setActiveFastIndex(startIdx);
+        scrollAndFocusStudentAtIndex(startIdx);
+      } else {
+        setActiveFastIndex(null);
+      }
+      return nextEnabled;
+    });
+  }, [scrollAndFocusStudentAtIndex]);
+
+  const handleResetFastPass = useCallback(() => {
+    triggerLightHaptic();
+    const emptySet = new Set<string>();
+    setFastConfirmedIds(emptySet);
+    const startIdx = enrolledStudentIds.length > 0 ? 0 : null;
+    setActiveFastIndex(startIdx);
+    scrollAndFocusStudentAtIndex(startIdx);
+  }, [enrolledStudentIds.length, scrollAndFocusStudentAtIndex]);
+
+  const handleFastClickStudentName = useCallback(
+    (studentId: string, index: number) => {
+      triggerLightHaptic();
+      setRecords((prev) => ({
+        ...prev,
+        [studentId]: {
+          ...(prev[studentId] || DEFAULT_ATTENDANCE_RECORD),
+          status: 'present',
+          isCharged: true,
+          absenceReason: '',
+        },
+      }));
+      advanceFastAttendanceFromStudent(studentId, index);
+    },
+    [advanceFastAttendanceFromStudent]
+  );
+
   useEffect(() => {
     if (saveTimerRef.current !== null) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     setIsSavedSuccess(false);
+    setFastConfirmedIds(new Set());
+    setActiveFastIndex(
+      fastStateRef.current.isFastAttendance && enrolledStudents.length > 0 ? 0 : null
+    );
 
     const map: Record<string, StudentAttendanceRecord> = {};
 
@@ -524,27 +737,35 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   }, []);
 
   // Handle clicking "حاضر"
-  const markPresent = useCallback((studentId: string) => {
-    const ctx = privateContextRef.current;
-    if (ctx.isPrivateSession || ctx.privateStudent) {
-      const targetStudent =
-        ctx.enrolledStudents.find((s) => s.id === studentId) || ctx.privateStudent;
-      if (targetStudent) {
-        setPrivateIntakeStudent(targetStudent);
-        return;
+  const markPresent = useCallback(
+    (studentId: string) => {
+      const ctx = privateContextRef.current;
+      if (ctx.isPrivateSession || ctx.privateStudent) {
+        const targetStudent =
+          ctx.enrolledStudents.find((s) => s.id === studentId) || ctx.privateStudent;
+        if (targetStudent) {
+          setPrivateIntakeStudent(targetStudent);
+          return;
+        }
       }
-    }
 
-    setRecords((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...(prev[studentId] || DEFAULT_ATTENDANCE_RECORD),
-        status: 'present',
-        isCharged: true,
-        absenceReason: '',
-      },
-    }));
-  }, []);
+      setRecords((prev) => ({
+        ...prev,
+        [studentId]: {
+          ...(prev[studentId] || DEFAULT_ATTENDANCE_RECORD),
+          status: 'present',
+          isCharged: true,
+          absenceReason: '',
+        },
+      }));
+
+      if (fastStateRef.current.isFastAttendance) {
+        triggerLightHaptic();
+        advanceFastAttendanceFromStudent(studentId);
+      }
+    },
+    [advanceFastAttendanceFromStudent]
+  );
 
   const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
     if (!privateIntakeStudent) return;
@@ -572,17 +793,25 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   };
 
   // Handle clicking "متأخر"
-  const markLate = useCallback((studentId: string) => {
-    setRecords((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...(prev[studentId] || DEFAULT_ATTENDANCE_RECORD),
-        status: 'late',
-        isCharged: true,
-        absenceReason: '',
-      },
-    }));
-  }, []);
+  const markLate = useCallback(
+    (studentId: string) => {
+      setRecords((prev) => ({
+        ...prev,
+        [studentId]: {
+          ...(prev[studentId] || DEFAULT_ATTENDANCE_RECORD),
+          status: 'late',
+          isCharged: true,
+          absenceReason: '',
+        },
+      }));
+
+      if (fastStateRef.current.isFastAttendance) {
+        triggerLightHaptic();
+        advanceFastAttendanceFromStudent(studentId);
+      }
+    },
+    [advanceFastAttendanceFromStudent]
+  );
 
   // Open absence decision dialog
   const openAbsenceModal = useCallback((student: Student) => {
@@ -648,6 +877,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
     }));
 
     setConfirmingStudent(null);
+
+    if (fastStateRef.current.isFastAttendance) {
+      advanceFastAttendanceFromStudent(studentId);
+    }
   };
 
   // Batch mark all absent
@@ -683,6 +916,11 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       });
       return next;
     });
+
+    if (fastStateRef.current.isFastAttendance) {
+      setFastConfirmedIds(new Set(fastStateRef.current.enrolledStudentIds));
+      setActiveFastIndex(null);
+    }
 
     setIsBatchAbsentConfirmOpen(false);
   };
@@ -733,6 +971,10 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       });
       return next;
     });
+    if (fastStateRef.current.isFastAttendance) {
+      setFastConfirmedIds(new Set(fastStateRef.current.enrolledStudentIds));
+      setActiveFastIndex(null);
+    }
   }, []);
 
   const handleSave = () => {
@@ -911,6 +1153,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
               {t('cancel')}
             </button>
             <button
+              ref={saveButtonRef}
               type="button"
               onClick={() => {
                 triggerLightHaptic();
@@ -921,12 +1164,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
             >
               {isSavedSuccess ? (
                 <>
-                  <AppIcon name="checkCircle" size={16} weight="bold" className="animate-pop-in" />
+                  <AppIcon name="checkCircle" size={16} weight="fill" className="animate-pop-in" />
                   <span>{isEn ? 'Attendance Saved Successfully!' : 'تم حفظ الحضور وتحديث الأرصدة!'}</span>
                 </>
               ) : (
                 <>
-                  <AppIcon name="save" size={16} weight="bold" />
+                  <AppIcon name="save" size={16} weight="fill" />
                   <span>{isEn ? 'Save Attendance & Update Balances' : 'حفظ الحضور وتحديث الأرصدة'}</span>
                 </>
               )}
@@ -934,47 +1177,148 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
           </div>
         }
       >
-        {/* Quick Batch Actions & Stats Bar */}
+        {/* Quick Batch Actions, Fast Attendance Toggle & Stats Bar */}
         <div
           data-tutorial-id="attendance-modal-controls"
-          className="p-3 bg-mist rounded-2xl border border-line flex items-center justify-between gap-2 flex-wrap text-xs mb-3"
+          className="p-3 bg-mist rounded-2xl border border-line space-y-2.5 text-xs mb-3 tabular-nums"
         >
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={setAllPresent}
-              className="px-3 py-1.5 rounded-xl bg-page border border-navy text-navy font-bold hover:bg-navy hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <AppIcon name="userCheck" size={14} weight="bold" />
-              <span>{isEn ? 'All Present' : 'الكل حاضر'}</span>
-            </button>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={setAllPresent}
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-page border border-navy text-navy font-bold hover:bg-navy hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+              >
+                <AppIcon name="userCheck" size={14} weight="fill" />
+                <span>{isEn ? 'All Present' : 'الكل حاضر'}</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setBatchChargeDecision('charged');
-                setBatchReason(PREDEFINED_ABSENCE_REASONS[1]);
-                setBatchCustomReason('');
-                setIsBatchAbsentConfirmOpen(true);
-              }}
-              className="px-3 py-1.5 rounded-xl bg-page border border-line text-navy font-bold hover:bg-navy hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <AppIcon name="student" size={14} />
-              <span>{isEn ? 'All Absent' : 'الكل غائب'}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBatchChargeDecision('charged');
+                  setBatchReason(PREDEFINED_ABSENCE_REASONS[1]);
+                  setBatchCustomReason('');
+                  setIsBatchAbsentConfirmOpen(true);
+                }}
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-page border border-line text-navy font-bold hover:bg-navy hover:text-white transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+              >
+                <AppIcon name="student" size={14} />
+                <span>{isEn ? 'All Absent' : 'الكل غائب'}</span>
+              </button>
+
+              {/* Fast Attendance Mode Toggle */}
+              {!isPrivateSession && enrolledStudents.length > 0 && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isFastAttendance}
+                  data-testid="fast-attendance-toggle"
+                  onClick={handleToggleFastAttendance}
+                  className={`min-h-[38px] px-3 py-1.5 rounded-xl border font-bold transition-all inline-flex items-center gap-2 cursor-pointer active:scale-95 whitespace-nowrap shrink-0 ${
+                    isFastAttendance
+                      ? 'bg-navy text-page border-navy shadow-2xs'
+                      : 'bg-page text-navy border-line hover:bg-mint-soft/70'
+                  }`}
+                >
+                  <AppIcon
+                    name="zap"
+                    size={14}
+                    weight={isFastAttendance ? 'fill' : 'regular'}
+                    className={isFastAttendance ? 'text-orange' : 'text-navy'}
+                  />
+                  <span>{isEn ? 'Fast Attendance' : 'التحضير السريع'}</span>
+                  <span
+                    aria-hidden="true"
+                    className={`w-7 h-4 rounded-full p-0.5 flex items-center transition-colors ${
+                      isFastAttendance ? 'bg-teal' : 'bg-line'
+                    }`}
+                  >
+                    <span
+                      className={`w-3 h-3 rounded-full bg-page transition-transform ${
+                        isFastAttendance
+                          ? isRTL
+                            ? '-translate-x-3'
+                            : 'translate-x-3'
+                          : 'translate-x-0'
+                      }`}
+                    />
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate whitespace-nowrap">
+              <span className="text-teal">
+                {t('present')}: <strong className="font-bold">{presentCount}</strong>
+              </span>
+              <span aria-hidden="true">·</span>
+              <span className="text-coral">
+                {isEn ? 'Charged' : 'محسوبة'}:{' '}
+                <strong className="font-bold">{chargedAbsentCount}</strong>
+              </span>
+              <span aria-hidden="true">·</span>
+              <span className="text-slate">
+                {isEn ? 'Excused' : 'معفية'}:{' '}
+                <strong className="font-bold">{freeAbsentCount}</strong>
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-bold">
-            <span className="text-teal bg-teal/10 px-2 py-0.5 rounded-lg border border-teal/20">
-              {t('present')}: {presentCount}
-            </span>
-            <span className="text-coral bg-coral/10 px-2 py-0.5 rounded-lg border border-coral/20">
-              {isEn ? 'Charged' : 'محسوبة'}: {chargedAbsentCount}
-            </span>
-            <span className="text-slate bg-mint-soft px-2 py-0.5 rounded-lg border border-line">
-              {isEn ? 'Excused' : 'معفية'}: {freeAbsentCount}
-            </span>
-          </div>
+          {/* Fast Attendance Active Roll-Call Guide & Progress Strip */}
+          {isFastAttendance && !isPrivateSession && enrolledStudents.length > 0 && (
+            <div
+              data-testid="fast-attendance-status-bar"
+              className="pt-2 border-t border-line flex items-center justify-between gap-2 flex-wrap text-[11px]"
+            >
+              <div className="min-w-0 text-navy">
+                {activeFastIndex !== null && enrolledStudents[activeFastIndex] ? (
+                  <span>
+                    <strong className="font-bold">
+                      {isEn
+                        ? `Up next: ${enrolledStudents[activeFastIndex].name}`
+                        : `التالي: ${enrolledStudents[activeFastIndex].name}`}
+                    </strong>
+                    <span className="text-slate">
+                      {isEn
+                        ? ' · Tap student name to mark Present & advance'
+                        : ' · اضغط اسم الطالب لتسجيله حاضراً والانتقال للتالي'}
+                    </span>
+                  </span>
+                ) : fastConfirmedIds.size >= enrolledStudents.length ? (
+                  <span className="font-semibold text-teal inline-flex items-center gap-1.5">
+                    <AppIcon name="checkCircle" size={14} weight="fill" />
+                    <span>
+                      {isEn
+                        ? `All ${enrolledStudents.length} students confirmed — Ready to save`
+                        : `تم تأكيد جميع الطلاب (${enrolledStudents.length}) — جاهز للحفظ`}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-slate">
+                    {isEn
+                      ? 'Tap any student name to mark Present and advance automatically'
+                      : 'اضغط اسم أي طالب لتسجيله حاضراً والانتقال تلقائياً للطالب التالي'}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 ms-auto shrink-0">
+                <span className="font-bold text-navy">
+                  {fastConfirmedIds.size} / {enrolledStudents.length}
+                </span>
+                {fastConfirmedIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleResetFastPass}
+                    className="px-2 py-0.5 rounded-lg bg-page hover:bg-mint-soft border border-line text-slate hover:text-navy font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    {isEn ? 'Reset' : 'إعادة'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Students List */}
@@ -998,16 +1342,22 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 enrollment={enrollmentByStudentId.get(student.id)}
                 isPrivateSession={isPrivateSession}
                 isEn={isEn}
+                isFastAttendance={isFastAttendance}
+                isFastActiveRow={activeFastIndex === index}
+                isFastConfirmed={fastConfirmedIds.has(student.id)}
                 presentLabel={t('present')}
                 lateLabel={t('late')}
                 currencyLabel={t('currency')}
                 editLabel={t('edit')}
+                onFastClickStudentName={handleFastClickStudentName}
                 onToggleHomework={toggleHomework}
                 onSetBehaviorRating={setBehaviorRating}
                 onMarkPresent={markPresent}
                 onMarkLate={markLate}
                 onOpenAbsenceModal={openAbsenceModal}
                 onOpenPrivateIntake={handleOpenPrivateIntake}
+                registerRowRef={registerRowRef}
+                registerNameButtonRef={registerNameButtonRef}
               />
             ))
           )}

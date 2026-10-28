@@ -31,10 +31,14 @@ import {
 } from '../utils/reportExport';
 
 const loadAttendanceTrendsChart = () => import('./AttendanceTrendsChart');
+const loadAttendanceHeatmap = () => import('./AttendanceHeatmap');
 const loadBillingStreamsProgressChart = () => import('./BillingStreamsProgressChart');
 
 const AttendanceTrendsChart = lazy(() =>
   loadAttendanceTrendsChart().then((m) => ({ default: m.AttendanceTrendsChart }))
+);
+const AttendanceHeatmap = lazy(() =>
+  loadAttendanceHeatmap().then((m) => ({ default: m.AttendanceHeatmap }))
 );
 const BillingStreamsProgressChart = lazy(() =>
   loadBillingStreamsProgressChart().then((m) => ({ default: m.BillingStreamsProgressChart }))
@@ -58,6 +62,7 @@ interface ReportsViewProps {
   onOpenAddPayment?: (student?: Student, enrollmentId?: string) => void;
   onOpenStudentProfile?: (student: Student) => void;
   onNavigateToTab?: (tab: ActiveTab) => void;
+  onOpenTimetableModal?: () => void;
   onOpenNotificationsModal?: () => void;
   unreadNotificationsCount?: number;
 }
@@ -73,6 +78,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   onOpenAddPayment,
   onOpenStudentProfile,
   onNavigateToTab,
+  onOpenTimetableModal,
   onOpenNotificationsModal,
   unreadNotificationsCount,
 }) => {
@@ -91,7 +97,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     const timer = window.setTimeout(() => {
       const win = window as any;
       const warm = () => {
-        Promise.all([loadBillingStreamsProgressChart(), loadAttendanceTrendsChart()]).catch(() => {});
+        Promise.all([
+          loadBillingStreamsProgressChart(),
+          loadAttendanceTrendsChart(),
+          loadAttendanceHeatmap(),
+        ]).catch(() => {});
       };
       if (typeof win.requestIdleCallback === 'function') {
         win.requestIdleCallback(warm, { timeout: 400 });
@@ -120,7 +130,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   // Financial & Attendance Sub-Tabs
   const [financialSubTab, setFinancialSubTab] = useState<
-    'overview' | 'billing_streams' | 'attendance_trends' | 'monthly_ledger' | 'yearly_summary' | 'lifetime' | 'payments'
+    | 'overview'
+    | 'billing_streams'
+    | 'attendance_trends'
+    | 'attendance_heatmap'
+    | 'monthly_ledger'
+    | 'yearly_summary'
+    | 'lifetime'
+    | 'payments'
   >('overview');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 'group' | 'private'>('all');
 
@@ -823,6 +840,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       <ScreenHeader
         title={t('reportsTitle') || (isEn ? 'Reports' : 'التقارير')}
         unreadCount={unreadNotificationsCount}
+        onOpenTimetable={onOpenTimetableModal}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />
@@ -993,6 +1011,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               { key: 'overview', label: isEn ? 'Overview' : 'نظرة عامة' },
               { key: 'billing_streams', label: isEn ? 'Billing Streams' : 'مسارات المحاسبة' },
               { key: 'attendance_trends', label: isEn ? 'Attendance Trends' : 'منحنيات الحضور' },
+              { key: 'attendance_heatmap', label: isEn ? 'Attendance Heatmap' : 'خريطة الحضور' },
               {
                 key: 'monthly_ledger',
                 label: isEn
@@ -1153,6 +1172,40 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     selectedSpecificYear={selectedSpecificYear}
                     customStartDate={customStartDate}
                     customEndDate={customEndDate}
+                    compact
+                  />
+                </Suspense>
+              </WhiteCard>
+
+              {/* Annual Attendance Heatmap (Highlights High-Absence Days & Seasonal Dips) */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Attendance Heatmap' : 'خريطة الحضور السنوية'}
+                  subtitle={
+                    isEn
+                      ? 'Calendar-year view highlighting high-absence days & seasonal dips'
+                      : 'أنماط الحضور وأيام الغياب المرتفع عبر مدار العام'
+                  }
+                  actionLabel={isEn ? 'Seasonal Analysis' : 'التحليل الموسمي'}
+                  onAction={() => setFinancialSubTab('attendance_heatmap')}
+                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceHeatmap
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    enrollments={activeEnrollments}
+                    serviceTypeFilter={serviceTypeFilter}
+                    preferredYear={
+                      periodFilter === 'specific_month' ? selectedSpecificYear : undefined
+                    }
                     compact
                   />
                 </Suspense>
@@ -1349,7 +1402,74 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   </div>
                 </MintCard>
               </div>
+
+              {/* Annual Attendance Heatmap companion inside Attendance Trends */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Attendance Heatmap' : 'خريطة الحضور السنوية'}
+                  subtitle={
+                    isEn
+                      ? 'Spot high-absence days and seasonal consistency dips across the year'
+                      : 'رصد أيام الغياب المرتفع والتراجعات الموسمية خلال السنة'
+                  }
+                  actionLabel={isEn ? 'Seasonal Breakdown' : 'تفاصيل المواسم'}
+                  onAction={() => setFinancialSubTab('attendance_heatmap')}
+                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceHeatmap
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    enrollments={activeEnrollments}
+                    serviceTypeFilter={serviceTypeFilter}
+                    preferredYear={
+                      periodFilter === 'specific_month' ? selectedSpecificYear : undefined
+                    }
+                    compact
+                  />
+                </Suspense>
+              </WhiteCard>
             </div>
+          )}
+
+          {/* Sub-Tab 3B: Dedicated Full Calendar-Year Attendance Heatmap & Seasonal Dips */}
+          {financialSubTab === 'attendance_heatmap' && (
+            <WhiteCard className="p-4 space-y-3">
+              <SectionHeader
+                title={isEn ? 'Attendance Heatmap' : 'خريطة الحضور والغياب السنوية'}
+                subtitle={
+                  isEn
+                    ? 'Full-year absence hotspots, monthly seasonal dips & weekday consistency'
+                    : 'تحليل سنوي لأيام الغياب المرتفع، التراجعات الموسمية، وأنماط أيام الأسبوع'
+                }
+              />
+              <Suspense
+                fallback={
+                  <DelayedFallback delayMs={75}>
+                    <ReportChartSkeleton />
+                  </DelayedFallback>
+                }
+              >
+                <AttendanceHeatmap
+                  sessions={sessions}
+                  allAttendance={allAttendanceRecords}
+                  students={students}
+                  groups={groups}
+                  enrollments={activeEnrollments}
+                  serviceTypeFilter={serviceTypeFilter}
+                  preferredYear={
+                    periodFilter === 'specific_month' ? selectedSpecificYear : undefined
+                  }
+                />
+              </Suspense>
+            </WhiteCard>
           )}
 
           {/* Sub-Tab 4: Monthly Ledger Table (Rows separated by 1px line, header .t-caption slate, numeric end-aligned, no zebra) */}
@@ -1749,6 +1869,36 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   />
                 </Suspense>
               </WhiteCard>
+
+              {/* Group Annual Attendance Heatmap */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Group Attendance Heatmap' : 'خريطة حضور المجموعة السنوية'}
+                  subtitle={`${selectedGroupObj.name} • ${
+                    isEn ? 'High-absence days & seasonal dips' : 'أيام الغياب المرتفع والمواسم'
+                  }`}
+                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceHeatmap
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    enrollments={activeEnrollments}
+                    selectedGroupId={selectedGroupId}
+                    preferredYear={
+                      periodFilter === 'specific_month' ? selectedSpecificYear : undefined
+                    }
+                    compact
+                  />
+                </Suspense>
+              </WhiteCard>
             </div>
           )}
         </div>
@@ -1892,6 +2042,36 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     selectedSpecificYear={selectedSpecificYear}
                     customStartDate={customStartDate}
                     customEndDate={customEndDate}
+                    compact
+                  />
+                </Suspense>
+              </WhiteCard>
+
+              {/* Student Annual Attendance Heatmap */}
+              <WhiteCard className="p-4 space-y-3">
+                <SectionHeader
+                  title={isEn ? 'Student Attendance Heatmap' : 'خريطة حضور الطالب السنوية'}
+                  subtitle={`${selectedStudentObj.name} • ${
+                    isEn ? 'Annual consistency & absence days' : 'انتظام الطالب وأيام الغياب عبر العام'
+                  }`}
+                />
+                <Suspense
+                  fallback={
+                    <DelayedFallback delayMs={75}>
+                      <ReportChartSkeleton compact />
+                    </DelayedFallback>
+                  }
+                >
+                  <AttendanceHeatmap
+                    sessions={sessions}
+                    allAttendance={allAttendanceRecords}
+                    students={students}
+                    groups={groups}
+                    enrollments={activeEnrollments}
+                    selectedStudentId={selectedStudentId}
+                    preferredYear={
+                      periodFilter === 'specific_month' ? selectedSpecificYear : undefined
+                    }
                     compact
                   />
                 </Suspense>

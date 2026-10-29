@@ -15,9 +15,11 @@ import '@fontsource/cairo/800.css';
 import './index.css';
 import { initTheme } from './utils/theme.ts';
 import { initHapticsPreference } from './utils/haptics.ts';
+import { initMotionPreference } from './utils/motion.ts';
 
 initTheme();
 initHapticsPreference();
+initMotionPreference();
 
 // Automatically hide Status Bar on Android native app launch
 try {

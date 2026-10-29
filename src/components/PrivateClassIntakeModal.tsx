@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Student,
   Enrollment,
@@ -132,15 +132,41 @@ interface PrivateClassIntakeModalProps {
 export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = ({
   isOpen,
   onClose,
-  student,
-  enrollment,
-  group,
-  session,
+  student: studentProp,
+  enrollment: enrollmentProp,
+  group: groupProp,
+  session: sessionProp,
   initialAttendanceStatus,
   onConfirm,
 }) => {
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
+
+  const latchedTargetRef = useRef<{
+    student: Student | null;
+    enrollment?: Enrollment | null;
+    group?: Group | null;
+    session?: Session | null;
+  }>({
+    student: studentProp,
+    enrollment: enrollmentProp,
+    group: groupProp,
+    session: sessionProp,
+  });
+
+  if (studentProp) {
+    latchedTargetRef.current = {
+      student: studentProp,
+      enrollment: enrollmentProp,
+      group: groupProp,
+      session: sessionProp,
+    };
+  }
+
+  const student = studentProp ?? latchedTargetRef.current.student;
+  const enrollment = studentProp ? enrollmentProp : latchedTargetRef.current.enrollment;
+  const group = studentProp ? groupProp : latchedTargetRef.current.group;
+  const session = studentProp ? sessionProp : latchedTargetRef.current.session;
 
   // Determine effective enrollment & group if not passed directly
   const activeEnrollment = useMemo(() => {
@@ -474,7 +500,7 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
     <BottomSheet
       id="private-class-intake"
       transitionVariant="detail"
-      isOpen={isOpen}
+      isOpen={isOpen && Boolean(studentProp)}
       onClose={onClose}
       title={isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}
       subtitle={`${student.name} · ${

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { AppIcon, type AppIconName } from './AppIcon';
 import { useModalLayer, ModalPortal } from '../../contexts/ModalContext';
 import { useTranslation } from '../../utils/i18n';
+import { useAnimatedPresence } from '../../utils/motion';
 
 export interface ConfirmDialogProps {
   id?: string;
@@ -35,6 +36,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const { t, isRTL } = useTranslation();
   const modalLayer = useModalLayer(id, isOpen, onClose);
   const effectiveZIndex = zIndex ?? modalLayer.zIndex;
+  const { shouldRender, isClosing } = useAnimatedPresence(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -47,29 +49,38 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, isConfirming]);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   return (
     <ModalPortal>
       <div
-        role="alertdialog"
-        aria-modal="true"
+        role={isClosing ? 'presentation' : 'alertdialog'}
+        aria-modal={isClosing ? undefined : 'true'}
+        aria-hidden={isClosing ? 'true' : undefined}
         aria-label={title}
         style={{ zIndex: effectiveZIndex }}
-        className="fixed inset-0 flex items-center justify-center p-4 select-none-touch"
+        className={`fixed inset-0 flex items-center justify-center p-4 select-none-touch ${
+          isClosing ? 'pointer-events-none' : ''
+        }`}
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {/* Backdrop */}
         <div
-          className="fixed inset-0 bg-navy-deep/40 backdrop-blur-xs animate-backdrop-fade"
+          className={`fixed inset-0 bg-navy-deep/40 ${
+            isClosing ? 'animate-backdrop-exit' : 'animate-backdrop-fade'
+          }`}
           onClick={() => {
-            if (!isConfirming) onClose();
+            if (!isConfirming && !isClosing) onClose();
           }}
           aria-hidden="true"
         />
 
         {/* Centered card: white, radius 28px, shadow-white */}
-        <div className="relative z-10 w-full max-w-sm sm:max-w-md mx-auto bg-page rounded-[28px] p-6 shadow-white border border-line text-center space-y-4 animate-pop-in">
+        <div
+          className={`relative z-10 w-full max-w-sm sm:max-w-md mx-auto bg-page rounded-[28px] p-6 shadow-white border border-line text-center space-y-4 ${
+            isClosing ? 'animate-dialog-exit' : 'animate-pop-in'
+          }`}
+        >
           {/* Duotone icon in circle */}
           <div
             className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center ${

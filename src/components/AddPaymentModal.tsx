@@ -351,8 +351,6 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     setSavedPayment(createdPayment);
   };
 
-  if (!isOpen) return null;
-
   return (
     <BottomSheet
       id="add-payment-sheet"

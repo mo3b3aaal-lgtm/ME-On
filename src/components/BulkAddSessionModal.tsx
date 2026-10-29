@@ -134,8 +134,6 @@ export const BulkAddSessionModal: React.FC<BulkAddSessionModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <BottomSheet
       id="bulk-add-session-sheet"

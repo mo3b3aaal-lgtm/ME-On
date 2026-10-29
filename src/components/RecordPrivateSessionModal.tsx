@@ -413,13 +413,14 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     }
   };
 
-  if (!isOpen || !student) return null;
+  if (!student) return null;
 
   const progression = getStudentProgression(student);
 
   return (
     <BottomSheet
       id="record-private-session"
+      transitionVariant="detail"
       isOpen={isOpen && !!student}
       onClose={onClose}
       title={isEn ? 'Smart Session Studio' : 'استوديو رصد الحصة الذكي'}

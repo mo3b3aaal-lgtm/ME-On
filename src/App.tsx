@@ -57,6 +57,8 @@ import {
 import { parseTimeToMinutes, getLocalizedWeekdayName, DAY_INDEX_TO_CANONICAL } from './utils/schedule';
 import { parseLocalDateStr, toLocalISODate } from './utils/localDate';
 import { Toast, type ToastType } from './components/ui/Toast';
+import { AnimatedPresence } from './components/ui/AnimatedPresence';
+import { useAnimatedModalState } from './utils/motion';
 import type { PrivateClassIntakeResult } from './components/PrivateClassIntakeModal';
 
 // Lazy-loaded Views & Modals (pre-warmed in idle slices during the 2.2s splash window)
@@ -123,49 +125,6 @@ const PrivateClassIntakeModal = lazy(() =>
 const GuidedTutorial = lazy(() =>
   loadGuidedTutorial().then((m) => ({ default: m.GuidedTutorial }))
 );
-
-function useDetailModalState<T>(exitDurationMs = 150) {
-  const [item, setItem] = useState<T | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const closeTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current !== null) {
-        window.clearTimeout(closeTimerRef.current);
-      }
-    };
-  }, []);
-
-  const open = useCallback((nextItem: T) => {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setItem(nextItem);
-    setIsOpen(true);
-  }, []);
-
-  const close = useCallback(() => {
-    setIsOpen(false);
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduced || exitDurationMs <= 0) {
-      setItem(null);
-      return;
-    }
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-    }
-    closeTimerRef.current = window.setTimeout(() => {
-      setItem(null);
-      closeTimerRef.current = null;
-    }, exitDurationMs);
-  }, [exitDurationMs]);
-
-  return { item, setItem, isOpen, open, close };
-}
 
 type NavMotionClass =
   | ''
@@ -991,9 +950,9 @@ export default function App() {
   const [enrollTargetStudent, setEnrollTargetStudent] = useState<Student | null>(null);
   const [enrollTargetGroup, setEnrollTargetGroup] = useState<Group | null>(null);
 
-  const studentProfileModal = useDetailModalState<Student>(150);
-  const groupProfileModal = useDetailModalState<Group>(150);
-  const attendanceModal = useDetailModalState<Session>(150);
+  const studentProfileModal = useAnimatedModalState<Student>();
+  const groupProfileModal = useAnimatedModalState<Group>();
+  const attendanceModal = useAnimatedModalState<Session>();
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isTimetableModalOpen, setIsTimetableModalOpen] = useState(false);
   const [hasOpenedTimetable, setHasOpenedTimetable] = useState(false);
@@ -1552,7 +1511,7 @@ export default function App() {
         {/* --- MODALS --- */}
         <Suspense fallback={null}>
           {/* Add/Edit Student Modal */}
-          {isAddStudentOpen && (
+          <AnimatedPresence isOpen={isAddStudentOpen}>
             <AddEditStudentModal
               isOpen={isAddStudentOpen}
               onClose={() => setIsAddStudentOpen(false)}
@@ -1562,10 +1521,10 @@ export default function App() {
                 refreshData();
               }}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Add/Edit Group Modal */}
-          {isAddGroupOpen && (
+          <AnimatedPresence isOpen={isAddGroupOpen}>
             <AddEditGroupModal
               isOpen={isAddGroupOpen}
               onClose={() => setIsAddGroupOpen(false)}
@@ -1574,15 +1533,14 @@ export default function App() {
                 refreshData();
               }}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Add/Edit Session Modal */}
-          {isAddSessionOpen && (
+          <AnimatedPresence isOpen={isAddSessionOpen}>
             <AddEditSessionModal
               isOpen={isAddSessionOpen}
               onClose={() => {
                 setIsAddSessionOpen(false);
-                setSessionDefaultStudentId(undefined);
               }}
               editingSession={editingSession}
               defaultGroupId={sessionDefaultGroupId}
@@ -1594,10 +1552,10 @@ export default function App() {
                 refreshData();
               }}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Enroll Existing Student into Group Modal */}
-          {isEnrollModalOpen && (
+          <AnimatedPresence isOpen={isEnrollModalOpen}>
             <EnrollExistingStudentModal
               isOpen={isEnrollModalOpen}
               onClose={() => setIsEnrollModalOpen(false)}
@@ -1609,7 +1567,7 @@ export default function App() {
                 refreshData();
               }}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Student Dossier / Profile Modal */}
           {studentProfileModal.item && (
@@ -1667,13 +1625,11 @@ export default function App() {
           )}
 
           {/* Bulk Add Sessions for Multiple Students Modal */}
-          {isBulkAddSessionOpen && (
+          <AnimatedPresence isOpen={isBulkAddSessionOpen}>
             <BulkAddSessionModal
               isOpen={isBulkAddSessionOpen}
               onClose={() => {
                 setIsBulkAddSessionOpen(false);
-                setBulkAddStudents([]);
-                setBulkAddGroupId(undefined);
               }}
               selectedStudents={bulkAddStudents}
               preselectedGroupId={bulkAddGroupId}
@@ -1682,7 +1638,7 @@ export default function App() {
                 refreshData();
               }}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Record Attendance Modal (Lesson Studio) */}
           {attendanceModal.item && (
@@ -1706,20 +1662,18 @@ export default function App() {
           )}
 
           {/* Add Payment Modal */}
-          {isAddPaymentOpen && (
+          <AnimatedPresence isOpen={isAddPaymentOpen}>
             <AddPaymentModal
               isOpen={isAddPaymentOpen}
               onClose={() => {
                 setIsAddPaymentOpen(false);
-                setTargetStudentForPayment(null);
-                setTargetEnrollmentIdForPayment(undefined);
               }}
               targetStudent={targetStudentForPayment}
               targetEnrollmentId={targetEnrollmentIdForPayment}
               allStudents={students}
               onPaymentSaved={refreshData}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Fixed Weekly Timetable Modal */}
           {hasOpenedTimetable && (
@@ -1737,7 +1691,7 @@ export default function App() {
           )}
 
           {/* Notifications & Smart Alerts Modal */}
-          {isNotificationsModalOpen && (
+          <AnimatedPresence isOpen={isNotificationsModalOpen}>
             <NotificationsModal
               isOpen={isNotificationsModalOpen}
               onClose={() => setIsNotificationsModalOpen(false)}
@@ -1753,19 +1707,19 @@ export default function App() {
               onOpenNotificationSettings={() => navigateWithMotion('settings')}
               onDataChanged={refreshData}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Private Lesson Intake Modal (opened directly from Private Lesson notifications) */}
-          {appPrivateIntakeTarget && (
+          <AnimatedPresence isOpen={Boolean(appPrivateIntakeTarget)}>
             <PrivateClassIntakeModal
               isOpen={Boolean(appPrivateIntakeTarget)}
               onClose={() => setAppPrivateIntakeTarget(null)}
-              student={appPrivateIntakeTarget.student}
-              enrollment={appPrivateIntakeTarget.enrollment}
-              session={appPrivateIntakeTarget.session}
+              student={appPrivateIntakeTarget?.student ?? null}
+              enrollment={appPrivateIntakeTarget?.enrollment}
+              session={appPrivateIntakeTarget?.session}
               onConfirm={handleConfirmAppPrivateIntake}
             />
-          )}
+          </AnimatedPresence>
 
           {/* Interactive Hands-On Onboarding Tutorial Engine */}
           {currentUser && (

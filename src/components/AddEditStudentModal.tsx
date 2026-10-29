@@ -591,8 +591,6 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
   const currentStage = GRADE_STAGES.find((s) => s.id === selectedStageId) || GRADE_STAGES[2];
 
-  if (!isOpen) return null;
-
   return (
     <BottomSheet
       id="add-edit-student"

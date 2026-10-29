@@ -249,8 +249,6 @@ export const EnrollExistingStudentModal: React.FC<EnrollExistingStudentModalProp
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
     <BottomSheet
       id="enroll-existing-student"

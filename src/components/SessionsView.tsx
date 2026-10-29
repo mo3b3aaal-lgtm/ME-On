@@ -13,6 +13,7 @@ import {
   parseTimeToMinutes,
 } from '../utils/schedule';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
+import { AnimatedPresence } from './ui/AnimatedPresence';
 import { Attendance } from '../types';
 
 interface SessionsViewProps {
@@ -475,15 +476,15 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       </div>
 
       {/* Private Class Intake Modal */}
-      {privateIntakeTarget && (
+      <AnimatedPresence isOpen={Boolean(privateIntakeTarget)}>
         <PrivateClassIntakeModal
-          isOpen={!!privateIntakeTarget}
+          isOpen={Boolean(privateIntakeTarget)}
           onClose={() => setPrivateIntakeTarget(null)}
-          student={privateIntakeStudent}
-          session={privateIntakeTarget.session}
+          student={privateIntakeTarget ? privateIntakeStudent : null}
+          session={privateIntakeTarget?.session}
           onConfirm={handleConfirmPrivateIntake}
         />
-      )}
+      </AnimatedPresence>
     </div>
   );
 };

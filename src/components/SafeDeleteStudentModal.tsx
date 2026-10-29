@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Student } from '../types';
 import { useModalLayer, ModalPortal } from '../contexts/ModalContext';
 import { useTranslation } from '../utils/i18n';
+import { useAnimatedPresence } from '../utils/motion';
 import { AppIcon } from './ui/AppIcon';
 import { StudentAvatar } from './StudentAvatar';
 
@@ -16,27 +17,40 @@ interface SafeDeleteStudentModalProps {
 export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
   isOpen,
   onClose,
-  student,
+  student: studentProp,
   onConfirmArchive,
   onConfirmPermanentDelete,
 }) => {
   const { t, isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
 
+  const latchedStudentRef = useRef<Student | null>(studentProp);
+  if (studentProp) {
+    latchedStudentRef.current = studentProp;
+  }
+  const student = studentProp ?? latchedStudentRef.current;
+
   const [selectedMode, setSelectedMode] = useState<'archive' | 'permanent' | null>(null);
   const [step, setStep] = useState<'select' | 'confirm'>('select');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setStep('select');
+      setSelectedMode(null);
+      setIsProcessing(false);
+    }
+  }, [isOpen, studentProp?.id]);
+
   const handleClose = () => {
     if (isProcessing) return;
-    setStep('select');
-    setSelectedMode(null);
     onClose();
   };
 
-  const modalLayer = useModalLayer('safe-delete-student', isOpen && !!student, handleClose);
+  const modalLayer = useModalLayer('safe-delete-student', isOpen && !!studentProp, handleClose);
+  const { shouldRender, isClosing } = useAnimatedPresence(isOpen && Boolean(studentProp));
 
-  if (!isOpen || !student) return null;
+  if (!shouldRender || !student) return null;
 
   const handleProceedToConfirm = (mode: 'archive' | 'permanent') => {
     setSelectedMode(mode);
@@ -61,14 +75,30 @@ export const SafeDeleteStudentModal: React.FC<SafeDeleteStudentModalProps> = ({
   return (
     <ModalPortal>
       <div
-        role="dialog"
-        aria-modal="true"
+        role={isClosing ? 'presentation' : 'dialog'}
+        aria-modal={isClosing ? undefined : 'true'}
+        aria-hidden={isClosing ? 'true' : undefined}
         style={{ zIndex: modalLayer.zIndex }}
-        className="fixed inset-0 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-backdrop-fade select-none-touch"
+        className={`fixed inset-0 flex items-center justify-center p-4 overflow-y-auto select-none-touch ${
+          isClosing ? 'pointer-events-none' : ''
+        }`}
         dir={isRTL ? 'rtl' : 'ltr'}
       >
+        {/* Backdrop */}
+        <div
+          className={`fixed inset-0 bg-navy-deep/40 ${
+            isClosing ? 'animate-backdrop-exit' : 'animate-backdrop-fade'
+          }`}
+          onClick={isClosing ? undefined : handleClose}
+          aria-hidden="true"
+        />
+
         {/* Small centered card (white, radius 28px, shadow-white) */}
-        <div className="bg-page rounded-[28px] w-full max-w-md flex flex-col shadow-white border border-line overflow-hidden animate-pop-in">
+        <div
+          className={`relative z-10 bg-page rounded-[28px] w-full max-w-md flex flex-col shadow-white border border-line overflow-hidden ${
+            isClosing ? 'animate-dialog-exit' : 'animate-pop-in'
+          }`}
+        >
           {/* Header */}
           <div className="p-5 border-b border-line flex items-center justify-between shrink-0 bg-page">
             <div className="flex items-center gap-3 min-w-0">

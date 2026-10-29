@@ -4,6 +4,7 @@ import { AppIcon, type AppIconName } from './ui/AppIcon';
 import { useTranslation } from '../utils/i18n';
 import { useModalLayer } from '../contexts/ModalContext';
 import { triggerLightHaptic } from '../utils/haptics';
+import { useAnimatedPresence } from '../utils/motion';
 
 export interface QuickAddSheetProps {
   isOpen: boolean;
@@ -37,8 +38,9 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
   const isEn = language.startsWith('en');
 
   useModalLayer('quick-add-sheet', isOpen, onClose);
+  const { shouldRender, isClosing } = useAnimatedPresence(isOpen);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   const actions: ActionTile[] = [
     {
@@ -81,20 +83,29 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      role={isClosing ? 'presentation' : 'dialog'}
+      aria-modal={isClosing ? undefined : 'true'}
+      aria-hidden={isClosing ? 'true' : undefined}
       aria-label={isEn ? 'Quick Actions' : 'إجراءات سريعة'}
-      className="fixed inset-0 z-50 flex flex-col justify-end select-none"
+      className={`fixed inset-0 z-50 flex flex-col justify-end select-none ${
+        isClosing ? 'pointer-events-none' : ''
+      }`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-navy/35 animate-backdrop-fade"
-        onClick={onClose}
+        className={`fixed inset-0 bg-navy/35 ${
+          isClosing ? 'animate-backdrop-exit' : 'animate-backdrop-fade'
+        }`}
+        onClick={isClosing ? undefined : onClose}
       />
 
       {/* Bottom Sheet Card */}
-      <div className="relative z-10 w-full max-w-[440px] mx-auto bg-page border-t border-line rounded-t-[32px] p-5 pb-8 shadow-2xl animate-sheet-slide-up">
+      <div
+        className={`relative z-10 w-full max-w-[440px] mx-auto bg-page border-t border-line rounded-t-[32px] p-5 pb-8 shadow-2xl ${
+          isClosing ? 'animate-sheet-exit' : 'animate-sheet-slide-up'
+        }`}
+      >
         {/* Drag handle */}
         <div className="w-10 h-1 bg-line rounded-full mx-auto mb-4" />
 
@@ -129,8 +140,10 @@ export const QuickAddSheet: React.FC<QuickAddSheetProps> = ({
                 onClose();
                 action.onClick();
               }}
-              style={{ animationDelay: `${index * 40}ms` }}
-              className="animate-tile-stagger flex flex-col items-center justify-center p-4 min-h-[104px] text-center cursor-pointer transition-transform group"
+              style={isClosing ? undefined : { animationDelay: `${index * 20}ms` }}
+              className={`${
+                isClosing ? '' : 'animate-tile-stagger'
+              } flex flex-col items-center justify-center p-4 min-h-[104px] text-center cursor-pointer transition-transform group`}
             >
               <div className="w-12 h-12 rounded-full bg-page shadow-xs flex items-center justify-center text-navy mb-2.5 transition-transform group-hover:scale-105 group-active:scale-95">
                 <AppIcon name={action.icon} weight="duotone" size={24} />

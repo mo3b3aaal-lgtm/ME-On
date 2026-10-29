@@ -291,8 +291,6 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
     <BottomSheet
       id="add-edit-session"

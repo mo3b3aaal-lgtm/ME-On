@@ -7,11 +7,13 @@ import { useTranslation } from '../utils/i18n';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
 import { BottomSheet } from './ui/BottomSheet';
+import { AnimatedPresence } from './ui/AnimatedPresence';
 import { AppIcon } from './ui/AppIcon';
 import { StatusBadge } from './ui/StatusBadge';
 import { useDelayedLoading } from './ui/Skeleton';
 import { LessonStudioRosterSkeleton } from './skeletons/ClassySkeletons';
 import { triggerLightHaptic, triggerSuccessHaptic, triggerSelectionHaptic } from '../utils/haptics';
+import { useAnimatedPresence } from '../utils/motion';
 import { isEnrollmentActiveOnDate } from '../utils/schedule';
 import { getStudentProgression } from '../utils/studentProgression';
 import { resolveFastAttendanceAdvance } from '../utils/fastAttendance';
@@ -128,7 +130,7 @@ const AttendanceStudentRow = React.memo<AttendanceStudentRowProps>(
         ref={(el) => registerRowRef(student.id, el)}
         data-student-id={student.id}
         data-fast-active={isFastAttendance && isFastActiveRow ? 'true' : undefined}
-        className={`p-3.5 rounded-2xl border transition-all shadow-sm space-y-2.5 animate-slide-up-fade ${rowBorderSurfaceClass}`}
+        className={`p-3.5 rounded-2xl border transition-colors shadow-sm space-y-2.5 ${rowBorderSurfaceClass}`}
       >
         {/* Top Row: Name + Level & Credit Metadata + Homework Toggle */}
         <div className="flex items-center justify-between gap-2">
@@ -528,12 +530,20 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
   // Confirmation dialog state for individual student absence
   const [confirmingStudent, setConfirmingStudent] = useState<Student | null>(null);
+  const latchedConfirmingStudentRef = useRef<Student | null>(null);
+  if (confirmingStudent) {
+    latchedConfirmingStudentRef.current = confirmingStudent;
+  }
+  const displayConfirmingStudent = confirmingStudent ?? latchedConfirmingStudentRef.current;
+  const singleAbsencePresence = useAnimatedPresence(Boolean(confirmingStudent));
+
   const [selectedChargeDecision, setSelectedChargeDecision] = useState<'charged' | 'free' | null>(null);
   const [selectedReason, setSelectedReason] = useState<string>(PREDEFINED_ABSENCE_REASONS[0]);
   const [customReasonText, setCustomReasonText] = useState<string>('');
 
   // Batch confirmation dialog state
   const [isBatchAbsentConfirmOpen, setIsBatchAbsentConfirmOpen] = useState(false);
+  const batchAbsencePresence = useAnimatedPresence(isBatchAbsentConfirmOpen);
   const [batchChargeDecision, setBatchChargeDecision] = useState<'charged' | 'free'>('charged');
   const [batchReason, setBatchReason] = useState<string>(PREDEFINED_ABSENCE_REASONS[1]);
   const [batchCustomReason, setBatchCustomReason] = useState<string>('');
@@ -1367,18 +1377,34 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       {/* ========================================================= */}
       {/* INDIVIDUAL STUDENT ABSENCE CONFIRMATION DIALOG (centered card) */}
       {/* ========================================================= */}
-      {confirmingStudent && (
+      {singleAbsencePresence.shouldRender && displayConfirmingStudent && (
         <ModalPortal>
           <div
-            className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4 animate-backdrop-fade"
+            role={singleAbsencePresence.isClosing ? 'presentation' : 'dialog'}
+            aria-modal={singleAbsencePresence.isClosing ? undefined : 'true'}
+            aria-hidden={singleAbsencePresence.isClosing ? 'true' : undefined}
+            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${
+              singleAbsencePresence.isClosing ? 'pointer-events-none' : ''
+            }`}
             dir={isRTL ? 'rtl' : 'ltr'}
           >
-            <div className="bg-page border border-line rounded-[28px] p-5 max-w-md w-full mx-auto space-y-4 shadow-white animate-pop-in">
+            <div
+              className={`fixed inset-0 bg-navy-deep/40 ${
+                singleAbsencePresence.isClosing ? 'animate-backdrop-exit' : 'animate-backdrop-fade'
+              }`}
+              onClick={singleAbsencePresence.isClosing ? undefined : () => setConfirmingStudent(null)}
+              aria-hidden="true"
+            />
+            <div
+              className={`relative z-10 bg-page border border-line rounded-[28px] p-5 max-w-md w-full mx-auto space-y-4 shadow-white ${
+                singleAbsencePresence.isClosing ? 'animate-dialog-exit' : 'animate-pop-in'
+              }`}
+            >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2.5">
                   <StudentAvatar
-                    student={confirmingStudent}
+                    student={displayConfirmingStudent}
                     size="sm"
                     showFrame={true}
                     className="shrink-0"
@@ -1388,7 +1414,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                       {isEn ? 'Record Student Absence' : 'تسجيل غياب الطالب'}
                     </h3>
                     <p className="text-xs text-navy font-bold">
-                      {confirmingStudent.name}
+                      {displayConfirmingStudent.name}
                     </p>
                   </div>
                 </div>
@@ -1417,16 +1443,16 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedChargeDecision('charged')}
-                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
+                  className={`p-3.5 rounded-[18px] transition-colors flex items-start gap-2.5 cursor-pointer text-start ${
                     selectedChargeDecision === 'charged'
                       ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
                       : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       selectedChargeDecision === 'charged'
-                        ? 'bg-navy text-white animate-pop-in'
+                        ? 'bg-navy text-white'
                         : 'bg-page text-navy'
                     }`}
                   >
@@ -1446,16 +1472,16 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedChargeDecision('free')}
-                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
+                  className={`p-3.5 rounded-[18px] transition-colors flex items-start gap-2.5 cursor-pointer text-start ${
                     selectedChargeDecision === 'free'
                       ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
                       : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       selectedChargeDecision === 'free'
-                        ? 'bg-navy text-white animate-pop-in'
+                        ? 'bg-navy text-white'
                         : 'bg-page text-navy'
                     }`}
                   >
@@ -1474,7 +1500,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
               {/* Absence Reason Selector (Shown only if decision is 'free') */}
               {selectedChargeDecision === 'free' && (
-                <div className="p-3 bg-mist border border-line rounded-2xl space-y-2 animate-in fade-in duration-150">
+                <div className="p-3 bg-mist border border-line rounded-2xl space-y-2">
                   <label className="block font-bold text-xs text-navy">
                     {isEn ? 'Please record exemption reason: *' : 'يرجى تسجيل سبب عدم احتساب الحصة: *'}
                   </label>
@@ -1540,13 +1566,29 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       {/* ========================================================= */}
       {/* BATCH ABSENCE CONFIRMATION DIALOG (centered card) */}
       {/* ========================================================= */}
-      {isBatchAbsentConfirmOpen && (
+      {batchAbsencePresence.shouldRender && (
         <ModalPortal>
           <div
-            className="fixed inset-0 z-50 bg-navy-deep/40 backdrop-blur-xs flex items-center justify-center p-4 animate-backdrop-fade"
+            role={batchAbsencePresence.isClosing ? 'presentation' : 'dialog'}
+            aria-modal={batchAbsencePresence.isClosing ? undefined : 'true'}
+            aria-hidden={batchAbsencePresence.isClosing ? 'true' : undefined}
+            className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${
+              batchAbsencePresence.isClosing ? 'pointer-events-none' : ''
+            }`}
             dir={isRTL ? 'rtl' : 'ltr'}
           >
-            <div className="bg-page border border-line rounded-[28px] p-5 max-w-md w-full mx-auto space-y-4 shadow-white animate-pop-in">
+            <div
+              className={`fixed inset-0 bg-navy-deep/40 ${
+                batchAbsencePresence.isClosing ? 'animate-backdrop-exit' : 'animate-backdrop-fade'
+              }`}
+              onClick={batchAbsencePresence.isClosing ? undefined : () => setIsBatchAbsentConfirmOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              className={`relative z-10 bg-page border border-line rounded-[28px] p-5 max-w-md w-full mx-auto space-y-4 shadow-white ${
+                batchAbsencePresence.isClosing ? 'animate-dialog-exit' : 'animate-pop-in'
+              }`}
+            >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2.5">
@@ -1583,16 +1625,16 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setBatchChargeDecision('charged')}
-                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
+                  className={`p-3.5 rounded-[18px] transition-colors flex items-start gap-2.5 cursor-pointer text-start ${
                     batchChargeDecision === 'charged'
                       ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
                       : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       batchChargeDecision === 'charged'
-                        ? 'bg-navy text-white animate-pop-in'
+                        ? 'bg-navy text-white'
                         : 'bg-page text-navy'
                     }`}
                   >
@@ -1611,16 +1653,16 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setBatchChargeDecision('free')}
-                  className={`p-3.5 rounded-[18px] transition-all flex items-start gap-2.5 cursor-pointer text-start ${
+                  className={`p-3.5 rounded-[18px] transition-colors flex items-start gap-2.5 cursor-pointer text-start ${
                     batchChargeDecision === 'free'
                       ? 'bg-mint border-2 border-navy text-navy font-bold shadow-xs'
                       : 'bg-mint-soft border border-line text-navy hover:bg-mint/60'
                   }`}
                 >
                   <div
-                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                    className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                       batchChargeDecision === 'free'
-                        ? 'bg-navy text-white animate-pop-in'
+                        ? 'bg-navy text-white'
                         : 'bg-page text-navy'
                     }`}
                   >
@@ -1639,7 +1681,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
               {/* Reasons if free */}
               {batchChargeDecision === 'free' && (
-                <div className="p-3 bg-mist border border-line rounded-2xl space-y-2 animate-in fade-in">
+                <div className="p-3 bg-mist border border-line rounded-2xl space-y-2">
                   <label className="block font-bold text-xs text-navy">
                     {isEn ? 'Reason for batch exemption:' : 'سبب عدم احتساب الحصة للكل:'}
                   </label>
@@ -1698,16 +1740,16 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       )}
 
       {/* Private Class Intake Details Modal */}
-      {privateIntakeStudent && (
+      <AnimatedPresence isOpen={Boolean(privateIntakeStudent)}>
         <PrivateClassIntakeModal
-          isOpen={!!privateIntakeStudent}
+          isOpen={Boolean(privateIntakeStudent)}
           onClose={() => setPrivateIntakeStudent(null)}
           student={privateIntakeStudent}
           session={session}
           group={group}
           onConfirm={handleConfirmPrivateIntake}
         />
-      )}
+      </AnimatedPresence>
     </>
   );
 };

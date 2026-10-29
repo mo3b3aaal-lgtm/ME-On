@@ -3,6 +3,7 @@ import { AppIcon } from './AppIcon';
 import { useModalLayer, ModalPortal } from '../../contexts/ModalContext';
 import { useTranslation } from '../../utils/i18n';
 import { triggerLightHaptic } from '../../utils/haptics';
+import { getEffectiveExitDurationMs } from '../../utils/motion';
 
 export interface BottomSheetAction {
   label: string;
@@ -41,6 +42,7 @@ const DETAIL_SHEET_IDS = new Set([
   'group-profile',
   'record-attendance',
   'private-class-intake',
+  'record-private-session',
 ]);
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -85,15 +87,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
     if (wasOpenRef.current) {
       wasOpenRef.current = false;
-      const reducedMotion =
-        typeof window !== 'undefined' &&
-        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      if (reducedMotion) {
+      const exitMs = getEffectiveExitDurationMs();
+      if (exitMs <= 0) {
         setIsExiting(false);
         return;
       }
       setIsExiting(true);
-      const exitMs = 150;
       const timer = window.setTimeout(() => {
         setIsExiting(false);
       }, exitMs);

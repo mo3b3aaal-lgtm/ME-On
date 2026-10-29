@@ -213,8 +213,6 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
     <BottomSheet
       id="add-edit-group"

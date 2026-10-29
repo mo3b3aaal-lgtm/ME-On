@@ -30,6 +30,7 @@ import {
 import { useTranslation, Language } from '../utils/i18n';
 import { useTheme } from '../utils/theme';
 import { triggerLightHaptic, useHapticsPreference } from '../utils/haptics';
+import { useMotionPreference, type AnimationSpeed } from '../utils/motion';
 import { toLocalISODate } from '../utils/localDate';
 import {
   formatReminderTimeDisplay,
@@ -87,6 +88,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { language, setLanguage, isRTL, t } = useTranslation();
   const { isDark, setTheme } = useTheme();
   const { hapticsEnabled, setHapticsEnabled } = useHapticsPreference();
+  const { animationSpeed, setAnimationSpeed, isReducedMotion } = useMotionPreference();
   const isEn = language.startsWith('en');
   const { persisted: tutorialPersisted } = useTutorialState(currentUser?.id);
   const practiceEntitiesInfo = getActivePracticeEntitiesCount(currentUser?.id);
@@ -220,6 +222,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       nextEnabled ? t('hapticFeedbackEnabledToast') : t('hapticFeedbackDisabledToast'),
       'info'
     );
+  };
+
+  const handleAnimationSpeedChange = (nextSpeed: AnimationSpeed) => {
+    setAnimationSpeed(nextSpeed);
+    const speedLabels: Record<AnimationSpeed, string> = {
+      fast: t('animationSpeedFast'),
+      balanced: t('animationSpeedBalanced'),
+      relaxed: t('animationSpeedRelaxed'),
+    };
+    showToast(t('animationSpeedSavedToast', { speed: speedLabels[nextSpeed] }), 'info');
   };
 
   // Handle frequency schedule change
@@ -858,13 +870,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </section>
 
       {/* =========================================================================
-          INTERACTION / HAPTIC FEEDBACK TOGGLE
+          INTERACTION / HAPTIC FEEDBACK & ANIMATION SPEED
           ========================================================================= */}
       <section className="space-y-2">
         <h2 className="t-caption text-slate uppercase tracking-wider px-1">
           {t('interactionSection')}
         </h2>
         <MintCard className="bg-mint-soft p-4 sm:p-5 space-y-3">
+          {/* Row 1: Haptic Feedback Toggle */}
           <div className="flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-page/70 border border-line/60">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
@@ -885,6 +898,49 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={handleToggleHaptics}
               ariaLabel={t('hapticFeedback')}
             />
+          </div>
+
+          {/* Row 2: Global Animation Speed Preset */}
+          <div className="p-2.5 rounded-2xl bg-page/70 border border-line/60 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-page flex items-center justify-center text-navy shrink-0 shadow-xs">
+                  <AppIcon name="sliders" size={20} weight="duotone" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="t-card text-navy font-bold leading-tight">
+                    {t('animationSpeed')}
+                  </h3>
+                  <p className="t-meta text-slate text-xs mt-0.5 leading-snug">
+                    {t('animationSpeedDesc')}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-semibold text-navy shrink-0">
+                {animationSpeed === 'fast'
+                  ? t('animationSpeedFast')
+                  : animationSpeed === 'balanced'
+                  ? t('animationSpeedBalanced')
+                  : t('animationSpeedRelaxed')}
+              </span>
+            </div>
+
+            <SegmentedControl<AnimationSpeed>
+              value={animationSpeed}
+              onChange={handleAnimationSpeedChange}
+              ariaLabel={t('animationSpeed')}
+              options={[
+                { value: 'fast', label: t('animationSpeedFast') },
+                { value: 'balanced', label: t('animationSpeedBalanced') },
+                { value: 'relaxed', label: t('animationSpeedRelaxed') },
+              ]}
+            />
+
+            {isReducedMotion && (
+              <p className="t-meta text-slate text-[11px] leading-snug px-1">
+                {t('animationReducedMotionNote')}
+              </p>
+            )}
           </div>
         </MintCard>
       </section>

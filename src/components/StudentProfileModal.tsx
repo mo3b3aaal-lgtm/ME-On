@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSwipeGesture } from '../utils/useSwipeGesture';
 import { BottomSheet } from './ui/BottomSheet';
+import { AnimatedPresence } from './ui/AnimatedPresence';
 import {
   Student,
   Group,
@@ -3155,7 +3156,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       </BottomSheet>
 
       {/* Child Modals with Proper Portaling & Layering */}
-      {isRecordPrivateModalOpen && (
+      <AnimatedPresence isOpen={isRecordPrivateModalOpen}>
         <RecordPrivateSessionModal
           isOpen={isRecordPrivateModalOpen}
           onClose={() => setIsRecordPrivateModalOpen(false)}
@@ -3166,9 +3167,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             onDataChanged();
           }}
         />
-      )}
+      </AnimatedPresence>
 
-      {isQuickBehaviorModalOpen && (
+      <AnimatedPresence isOpen={isQuickBehaviorModalOpen}>
         <QuickBehaviorLogModal
           isOpen={isQuickBehaviorModalOpen}
           onClose={() => setIsQuickBehaviorModalOpen(false)}
@@ -3180,9 +3181,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             onDataChanged();
           }}
         />
-      )}
+      </AnimatedPresence>
 
-      {isSafeDeleteModalOpen && (
+      <AnimatedPresence isOpen={isSafeDeleteModalOpen}>
         <SafeDeleteStudentModal
           isOpen={isSafeDeleteModalOpen}
           onClose={() => setIsSafeDeleteModalOpen(false)}
@@ -3190,17 +3191,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           onConfirmArchive={handleConfirmArchive}
           onConfirmPermanentDelete={handleConfirmPermanentDelete}
         />
-      )}
+      </AnimatedPresence>
 
-      {selectedPrivateIntakeSession && (
+      <AnimatedPresence isOpen={Boolean(selectedPrivateIntakeSession)}>
         <PrivateClassIntakeModal
-          isOpen={!!selectedPrivateIntakeSession}
+          isOpen={Boolean(selectedPrivateIntakeSession)}
           onClose={() => setSelectedPrivateIntakeSession(null)}
-          student={student}
-          session={selectedPrivateIntakeSession.session}
+          student={selectedPrivateIntakeSession ? student : null}
+          session={selectedPrivateIntakeSession?.session}
           onConfirm={handleConfirmPrivateIntakeInProfile}
         />
-      )}
+      </AnimatedPresence>
     </>
   );
 };

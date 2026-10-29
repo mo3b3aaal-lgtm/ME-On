@@ -87,7 +87,7 @@ export const QuickBehaviorLogModal: React.FC<QuickBehaviorLogModalProps> = ({
     };
   }, [isOpen, student?.id]);
 
-  if (!isOpen || !student) return null;
+  if (!student) return null;
 
   const handleSelectPredefinedTag = (tag: PredefinedBehaviorTag) => {
     setSelectedTag(tag);

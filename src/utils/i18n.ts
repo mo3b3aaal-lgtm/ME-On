@@ -527,6 +527,13 @@ export const translations = {
     hapticFeedbackDesc: 'تشغيل أو إيقاف الاهتزاز عند التفاعل مع التطبيق.',
     hapticFeedbackEnabledToast: 'تم تفعيل الاهتزاز اللمسي.',
     hapticFeedbackDisabledToast: 'تم إيقاف الاهتزاز اللمسي.',
+    animationSpeed: 'سرعة الأنيميشن',
+    animationSpeedDesc: 'اختر سرعة حركة فتح وإغلاق النوافذ والملفات بما يريح العين.',
+    animationSpeedFast: 'سريع',
+    animationSpeedBalanced: 'متوسط',
+    animationSpeedRelaxed: 'هادئ',
+    animationSpeedSavedToast: 'تم تحديث سرعة الأنيميشن ({speed}).',
+    animationReducedMotionNote: 'وضع تقليل الحركة مفعّل في إعدادات جهازك ويتم احترامه تلقائياً.',
 
     // Extra Common Labels & Helpers
     photoOptionalTip: 'اختياري: يمكنك رفع صورة الطالب أو تركه بالأفاتار الافتراضي',
@@ -1132,6 +1139,13 @@ export const translations = {
     hapticFeedbackDesc: 'Enable or disable tactile feedback when interacting with the app.',
     hapticFeedbackEnabledToast: 'Haptic feedback enabled.',
     hapticFeedbackDisabledToast: 'Haptic feedback disabled.',
+    animationSpeed: 'Animation Speed',
+    animationSpeedDesc: 'Choose a smooth, comfortable motion speed for panels, profiles, and transitions.',
+    animationSpeedFast: 'Fast',
+    animationSpeedBalanced: 'Balanced',
+    animationSpeedRelaxed: 'Relaxed',
+    animationSpeedSavedToast: 'Animation speed set to {speed}.',
+    animationReducedMotionNote: 'System reduced motion is active on your device and automatically respected.',
 
     // Extra Common Labels & Helpers
     photoOptionalTip: 'Optional: You can upload a photo or use the standard monogram avatar',
@@ -1737,6 +1751,13 @@ export const translations = {
     hapticFeedbackDesc: 'Enable or disable tactile feedback when interacting with the app.',
     hapticFeedbackEnabledToast: 'Haptic feedback enabled.',
     hapticFeedbackDisabledToast: 'Haptic feedback disabled.',
+    animationSpeed: 'Animation Speed',
+    animationSpeedDesc: 'Choose a smooth, comfortable motion speed for panels, profiles, and transitions.',
+    animationSpeedFast: 'Fast',
+    animationSpeedBalanced: 'Balanced',
+    animationSpeedRelaxed: 'Relaxed',
+    animationSpeedSavedToast: 'Animation speed set to {speed}.',
+    animationReducedMotionNote: 'System reduced motion is active on your device and automatically respected.',
 
     // Extra Common Labels & Helpers
     photoOptionalTip: 'Optional: You can upload a photo or use the standard monogram avatar',

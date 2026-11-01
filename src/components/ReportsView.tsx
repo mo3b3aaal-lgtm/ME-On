@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState, useMemo, useEffect, useDeferredValue } from 'react';
+import React, { Suspense, lazy, useState, useMemo, useEffect, useDeferredValue, useRef } from 'react';
 import { Student, Group, Session, Payment, ReportPeriodFilter, Enrollment, Attendance, ActiveTab } from '../types';
 import { db, roundMoney, getArabicMonthName, getSessionLessonQuantity } from '../utils/storage';
 import { getLocalizedStageName } from '../utils/stages';
@@ -21,13 +21,16 @@ import { EmptyBox } from './illustrations/EmptyBox';
 import { BottomSheet } from './ui/BottomSheet';
 import {
   buildAttendanceExportDataset,
+  buildReportFilename,
   canNativeShareFile,
-  generateAttendanceReportCSV,
+  createAttendanceReportCSVBlob,
   generateAttendanceReportPDFBlob,
+  REPORT_MIME_TYPES,
   ReportExportFormat,
   ReportExportScope,
+  ReportSaveError,
+  saveReportBlob,
   shareReportBlobWithParent,
-  triggerBlobDownload,
 } from '../utils/reportExport';
 
 const loadAttendanceTrendsChart = () => import('./AttendanceTrendsChart');
@@ -180,6 +183,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [exportGroupId, setExportGroupId] = useState<string>(groups[0]?.id || '');
   const [includeFinancialsInExport, setIncludeFinancialsInExport] = useState<boolean>(true);
   const [isExportingReport, setIsExportingReport] = useState<boolean>(false);
+  const exportInFlightRef = useRef<boolean>(false);
   const [exportFeedback, setExportFeedback] = useState<{
     tone: 'success' | 'error';
     message: string;
@@ -739,63 +743,106 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   ]);
 
   const canShareCurrentFormat = useMemo(() => {
-    const mime = exportFormat === 'pdf' ? 'application/pdf' : 'text/csv;charset=utf-8';
+    const mime = REPORT_MIME_TYPES[exportFormat];
     return canNativeShareFile(mime, exportFormat);
   }, [exportFormat]);
 
   const handleExecuteExport = async (mode: 'download' | 'share') => {
-    if (!exportDataset || isExportingReport) return;
+    if (!exportDataset || isExportingReport || exportInFlightRef.current) return;
+    exportInFlightRef.current = true;
     setIsExportingReport(true);
     setExportFeedback(null);
 
     try {
-      const ext = exportFormat === 'pdf' ? 'pdf' : 'csv';
-      const filename = `${exportDataset.suggestedBaseFilename}.${ext}`;
+      const filename = buildReportFilename(exportDataset.suggestedBaseFilename, exportFormat);
+      const formatLabel = exportFormat.toUpperCase();
+      const shareSummaryText = `${exportDataset.targetTitle} — ${exportDataset.periodLabel}`;
 
-      let blob: Blob;
-      if (exportFormat === 'csv') {
-        const csvContent = generateAttendanceReportCSV(exportDataset);
-        blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      } else {
-        blob = await generateAttendanceReportPDFBlob(exportDataset);
+      const blob =
+        exportFormat === 'csv'
+          ? createAttendanceReportCSVBlob(exportDataset)
+          : await generateAttendanceReportPDFBlob(exportDataset);
+
+      const outcome =
+        mode === 'share'
+          ? await shareReportBlobWithParent(
+              blob,
+              filename,
+              exportDataset.reportTitle,
+              shareSummaryText,
+              exportFormat
+            )
+          : await saveReportBlob({
+              blob,
+              filename,
+              format: exportFormat,
+              title: exportDataset.reportTitle,
+              text: shareSummaryText,
+            });
+
+      if (outcome.status === 'cancelled') {
+        setExportFeedback(null);
+        return;
       }
 
-      if (mode === 'share') {
-        const shared = await shareReportBlobWithParent(
-          blob,
-          filename,
-          exportDataset.reportTitle,
-          `${exportDataset.targetTitle} — ${exportDataset.periodLabel}`
-        );
-        if (!shared) {
-          triggerBlobDownload(blob, filename);
-        }
+      if (outcome.status === 'saved_to_downloads') {
         setExportFeedback({
           tone: 'success',
           message: isEn
-            ? `Report ready to share (${filename})`
-            : `تم تجهيز التقرير للمشاركة (${filename})`,
+            ? `Saved ${formatLabel} report to Downloads (${outcome.filename})`
+            : `تم حفظ ملف ${formatLabel} في مجلد التنزيلات (${outcome.filename})`,
+        });
+      } else if (outcome.status === 'saved_to_device') {
+        setExportFeedback({
+          tone: 'success',
+          message: isEn
+            ? `Saved ${formatLabel} report to device (${outcome.filename})`
+            : `تم حفظ ملف ${formatLabel} على الجهاز بنجاح (${outcome.filename})`,
+        });
+      } else if (outcome.status === 'shared') {
+        setExportFeedback({
+          tone: 'success',
+          message:
+            mode === 'download'
+              ? isEn
+                ? `Opened save/share options for ${outcome.filename} — choose "Save to device" or target app`
+                : `تم فتح خيارات الحفظ والمشاركة للملف (${outcome.filename}) — اختر "حفظ في الجهاز" أو التطبيق المطلوب`
+              : isEn
+              ? `Opened share options for report (${outcome.filename})`
+              : `تم فتح نافذة مشاركة التقرير (${outcome.filename})`,
         });
       } else {
-        triggerBlobDownload(blob, filename);
         setExportFeedback({
           tone: 'success',
           message: isEn
-            ? `Downloaded ${exportFormat.toUpperCase()} report successfully`
-            : `تم تحميل التقرير بصيغة ${exportFormat.toUpperCase()} بنجاح`,
+            ? `Downloaded ${formatLabel} report (${outcome.filename})`
+            : `تم تنزيل ملف ${formatLabel} بنجاح (${outcome.filename})`,
         });
       }
     } catch (err: any) {
       const isAbort = err?.name === 'AbortError';
       if (!isAbort) {
+        let errorMessage: string;
+        if (err instanceof ReportSaveError && err.code === 'WEBVIEW_SAVE_UNSUPPORTED') {
+          errorMessage = isEn
+            ? 'Direct file saving is not supported in this WebView version. Please update the Android app or open Classy in Chrome to save the file.'
+            : 'تعذر حفظ الملف مباشرة داخل عارض الويب الحالي. يرجى تحديث تطبيق الأندرويد إلى أحدث إصدار أو فتح التطبيق في متصفح Chrome لحفظ الملف.';
+        } else if (err instanceof ReportSaveError && err.code === 'STORAGE_WRITE_FAILED') {
+          errorMessage = isEn
+            ? 'Could not save the report file to device storage. Please check available space and try again.'
+            : 'تعذر حفظ ملف التقرير على ذاكرة الجهاز. يرجى التحقق من المساحة المتاحة والمحاولة مرة أخرى.';
+        } else {
+          errorMessage = isEn
+            ? 'Could not generate or save the report file. Please try again.'
+            : 'تعذر إنشاء أو حفظ ملف التقرير على الجهاز، يرجى المحاولة مرة أخرى.';
+        }
         setExportFeedback({
           tone: 'error',
-          message: isEn
-            ? 'Could not generate report file. Please try again.'
-            : 'تعذر إنشاء ملف التقرير، يرجى المحاولة مرة أخرى.',
+          message: errorMessage,
         });
       }
     } finally {
+      exportInFlightRef.current = false;
       setIsExportingReport(false);
     }
   };

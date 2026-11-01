@@ -1,10 +1,17 @@
 package com.teachermanager.app;
 
+import android.app.DownloadManager;
+import android.content.Context;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.URLUtil;
+import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -14,8 +21,50 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AutoSyncSchedulerPlugin.class);
+        registerPlugin(ReportFileSaverPlugin.class);
         super.onCreate(savedInstanceState);
+        configureWebViewDownloads();
         applyFullscreen();
+    }
+
+    private void configureWebViewDownloads() {
+        if (getBridge() == null) return;
+        WebView webView = getBridge().getWebView();
+        if (webView == null) return;
+
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            if (url == null || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+                return;
+            }
+            try {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                if (mimeType != null && !mimeType.isEmpty()) {
+                    request.setMimeType(mimeType);
+                }
+                String cookies = CookieManager.getInstance().getCookie(url);
+                if (cookies != null && !cookies.isEmpty()) {
+                    request.addRequestHeader("cookie", cookies);
+                }
+                if (userAgent != null && !userAgent.isEmpty()) {
+                    request.addRequestHeader("User-Agent", userAgent);
+                }
+                String guessedFilename = URLUtil.guessFileName(url, contentDisposition, mimeType);
+                request.setTitle(guessedFilename);
+                request.setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                );
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    guessedFilename
+                );
+                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                if (dm != null) {
+                    dm.enqueue(request);
+                }
+            } catch (Exception ignored) {
+                // ReportFileSaverPlugin handles blob/base64 exports directly
+            }
+        });
     }
 
     @Override

@@ -719,8 +719,12 @@ export default function App() {
         const validDate = !isNaN(dObj.getTime()) ? dObj : new Date();
         const canonDay = DAY_INDEX_TO_CANONICAL[validDate.getDay()] || 'saturday';
 
-        session = db.getSessionById(deterministicId) || {
-          id: deterministicId,
+        const existingFound = db.getSessionById(deterministicId);
+        const isExistingUsed = existingFound && (existingFound.status === 'completed' || db.getSessionAttendance(existingFound.id).length > 0);
+        const targetId = isExistingUsed ? `sess_${dateStr}_stu_${student.id}_${safeMins}_${Date.now()}` : deterministicId;
+
+        session = (!isExistingUsed && existingFound) ? existingFound : {
+          id: targetId,
           groupId: '',
           enrollmentId: enrollment?.id,
           studentId: student.id,

@@ -922,6 +922,7 @@ export function formatScheduleSummary(
 
 export interface ScheduledClassItem {
   id: string;
+  sessionId?: string;
   studentId: string;
   studentName: string;
   student?: Student;

@@ -259,6 +259,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [students, groups, sessions, enrollments, allAttendance]);
 
   const findSessionForScheduleItem = useCallback((item: ScheduledClassItem): Session | undefined => {
+    // 1. Direct session reference if item was created from a concrete session
+    if (item.sessionId) {
+      const direct = sessions.find((s) => s.id === item.sessionId);
+      if (direct && direct.status !== 'cancelled') return direct;
+    }
+    if (item.id && item.id.startsWith('today_ses_')) {
+      const explicitId = item.id.replace('today_ses_', '');
+      const direct = sessions.find((s) => s.id === explicitId);
+      if (direct && direct.status !== 'cancelled') return direct;
+    }
+
     const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
     const candidates = sessions.filter((s) => {
       if (s.date !== todayStr) return false;
@@ -620,56 +631,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const allTodayDisplayItems = useMemo(() => {
     const list: ScheduledClassItem[] = [...scheduledToday];
 
-    // Track unique occurrences using deterministic occurrence identity
-    // For private: priv_${studentId}_${sortMinutes}
-    // For group: grp_${groupId}_${sortMinutes}
-    const representedOccurrences = new Set<string>();
+    // Track which sessions are already paired with a scheduled item
+    const representedSessionIds = new Set<string>();
     list.forEach((item) => {
-      const itemMins = item.sortMinutes || parseTimeToMinutes(item.rawTime || item.time);
-      const occKey = (item.isPrivate || item.studentId)
-        ? `priv_${item.studentId || 'unknown'}_${itemMins}`
-        : `grp_${item.groupId || 'unknown'}_${itemMins}`;
-      representedOccurrences.add(occKey);
+      const matched = findSessionForScheduleItem(item);
+      if (matched) {
+        representedSessionIds.add(matched.id);
+      }
     });
 
     operationalTodaySessions.forEach((s) => {
       if (s.status === 'cancelled') return;
+      if (representedSessionIds.has(s.id)) return; // Already linked to a scheduled item card
+
+      representedSessionIds.add(s.id);
       const sMins = parseTimeToMinutes(s.startTime || '16:00');
       const isPrivate = !s.groupId || !!s.studentId;
-      const occKey = isPrivate
-        ? `priv_${s.studentId || 'unknown'}_${sMins}`
-        : `grp_${s.groupId || 'unknown'}_${sMins}`;
+      const group = groups.find((g) => g.id === s.groupId);
+      const student = s.studentId ? students.find((st) => st.id === s.studentId) : undefined;
+      const formattedTime = formatTimeDisplay(s.startTime, isRTL);
 
-      if (!representedOccurrences.has(occKey)) {
-        representedOccurrences.add(occKey);
-        const group = groups.find((g) => g.id === s.groupId);
-        const student = s.studentId ? students.find((st) => st.id === s.studentId) : undefined;
-        const formattedTime = formatTimeDisplay(s.startTime, isRTL);
-
-        list.push({
-          id: `today_ses_${s.id}`,
-          studentId: s.studentId || '',
-          studentName: student?.name || s.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (group?.name || '')),
-          student,
-          groupId: s.groupId,
-          groupName: group?.name || s.title || (isEn ? 'Academic Session' : 'حصة دراسية'),
-          group,
-          enrollmentId: s.enrollmentId,
-          isPrivate,
-          subject: group?.subject || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'General' : 'عام')),
-          dayName: s.dayName || todayArabicDay,
-          time: formattedTime,
-          rawTime: s.startTime || '16:00',
-          sortMinutes: sMins,
-          location: group?.roomOrLocation,
-          accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
-        });
-      }
+      list.push({
+        id: `today_ses_${s.id}`,
+        sessionId: s.id,
+        studentId: s.studentId || '',
+        studentName: student?.name || s.title || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (group?.name || '')),
+        student,
+        groupId: s.groupId,
+        groupName: group?.name || s.title || (isEn ? 'Academic Session' : 'حصة دراسية'),
+        group,
+        enrollmentId: s.enrollmentId,
+        isPrivate,
+        subject: group?.subject || (isPrivate ? (isEn ? 'Private Lesson' : 'درس خاص') : (isEn ? 'General' : 'عام')),
+        dayName: s.dayName || todayArabicDay,
+        time: formattedTime,
+        rawTime: s.startTime || '16:00',
+        sortMinutes: sMins,
+        location: group?.roomOrLocation,
+        accentColor: group?.accentColor || (isPrivate ? '#0F2A4A' : '#17375E'),
+      });
     });
 
     list.sort((a, b) => a.sortMinutes - b.sortMinutes);
     return list;
-  }, [scheduledToday, operationalTodaySessions, groups, students, isRTL, isEn, todayArabicDay]);
+  }, [scheduledToday, operationalTodaySessions, groups, students, isRTL, isEn, todayArabicDay, findSessionForScheduleItem]);
 
 
   // Next pending session for the "Start session" quick action (PURE - ZERO DB SIDE EFFECTS DURING RENDER)

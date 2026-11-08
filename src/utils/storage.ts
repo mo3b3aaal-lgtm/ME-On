@@ -1323,33 +1323,55 @@ export function cleanupDuplicateSessions(): {
         return;
       }
 
-      // We have multiple records for the exact same occurrence (date, time, entity)
-      // Rank them to find canonical session:
-      // Priority 1: Has attendance records in tm_v2_attendance
-      // Priority 2: Status === 'completed'
-      // Priority 3: Has notes or custom intake (pricePerStudent != 100, sessionUnits, hours)
-      // Priority 4: Has deterministic ID format (starts with 'sess_')
-      // Priority 5: Oldest record (earliest createdAt)
-      const scored = groupSessions.map((s) => {
+      // Check each session in the group for legitimate data.
+      // CRITICAL DATA INTEGRITY: A session is legitimate and MUST NEVER BE DELETED if:
+      // 1. It has attendance records in tm_v2_attendance
+      // 2. Its status is 'completed' or 'cancelled'
+      // 3. It has credit logs or behavior logs referencing it
+      // 4. It has notes or custom session units / hours recorded
+      // Teachers frequently record multiple legitimate lessons for the same student on the same day.
+      const sessionData = groupSessions.map((s) => {
         const attCount = rawAttendance.filter((a) => a.sessionId === s.id).length;
-        const hasCompleted = s.status === 'completed' ? 10 : (s.status === 'cancelled' ? 5 : 0);
-        const hasNotes = (s.notes && s.notes.trim().length > 0) ? 3 : 0;
-        const hasCustomUnits = (s.sessionUnits !== undefined || s.hours !== undefined) ? 4 : 0;
-        const isDeterministic = s.id.startsWith('sess_') ? 2 : 0;
-        const createdScore = s.createdAt ? -new Date(s.createdAt).getTime() / 1e12 : 0;
-        const totalScore = (attCount * 20) + hasCompleted + hasNotes + hasCustomUnits + isDeterministic + createdScore;
-        return { session: s, score: totalScore, attCount };
+        const creditCount = rawCreditLogs.filter((c) => c.sessionId === s.id).length;
+        const behaviorCount = rawBehaviorLogs.filter((b) => b.sessionId === s.id).length;
+        const isCompleted = s.status === 'completed';
+        const isCancelled = s.status === 'cancelled';
+        const hasNotes = Boolean(s.notes && s.notes.trim().length > 0);
+        const hasCustomUnits = (s.sessionUnits !== undefined || s.hours !== undefined);
+        const hasData = attCount > 0 || creditCount > 0 || behaviorCount > 0 || isCompleted || isCancelled || hasNotes || hasCustomUnits;
+        return {
+          session: s,
+          attCount,
+          creditCount,
+          behaviorCount,
+          hasData,
+          isCompleted,
+        };
       });
 
-      scored.sort((a, b) => b.score - a.score);
-      const canonical = scored[0].session;
-      finalCleanSessions.push(canonical);
+      const legitimateSessions = sessionData.filter((item) => item.hasData);
+      const emptyPlaceholders = sessionData.filter((item) => !item.hasData);
 
-      // Remaining are duplicates to merge into canonical
-      for (let i = 1; i < scored.length; i++) {
-        const dup = scored[i].session;
-        sessionIdRemap.set(dup.id, canonical.id);
-        cleanedCount++;
+      if (legitimateSessions.length > 0) {
+        // ALL legitimate sessions MUST be preserved unconditionally!
+        legitimateSessions.forEach((item) => {
+          finalCleanSessions.push(item.session);
+        });
+
+        // Any empty placeholders are redundant duplicates of the recorded sessions
+        const canonicalId = legitimateSessions[0].session.id;
+        emptyPlaceholders.forEach((placeholder) => {
+          sessionIdRemap.set(placeholder.session.id, canonicalId);
+          cleanedCount++;
+        });
+      } else {
+        // All are empty placeholders with no data: preserve only the first one
+        finalCleanSessions.push(emptyPlaceholders[0].session);
+        const canonicalId = emptyPlaceholders[0].session.id;
+        for (let i = 1; i < emptyPlaceholders.length; i++) {
+          sessionIdRemap.set(emptyPlaceholders[i].session.id, canonicalId);
+          cleanedCount++;
+        }
       }
     });
 
@@ -6113,11 +6135,11 @@ export const db = {
         if (!item || !item.id) return false;
         const itemTimeStr = item.updatedAt || item.createdAt || "";
         const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
-        if (resetTime > 0 && itemTime <= resetTime) {
+        if (resetTime > 0 && itemTime > 0 && itemTime <= resetTime) {
           return false;
         }
         const delTimeStr = tombstoneMap.get(`${entityType}:${item.id}`);
-        if (delTimeStr && itemTime <= new Date(delTimeStr).getTime()) {
+        if (delTimeStr && itemTime > 0 && itemTime <= new Date(delTimeStr).getTime()) {
           return false;
         }
         return true;
@@ -6155,6 +6177,13 @@ export const db = {
               const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
               if (itemTime > existingTime) {
                 itemMap.set(item.id, { ...existing, ...item, userId: targetUserId });
+              } else if (entityType === 'session') {
+                // Safeguard: Never downgrade a locally completed session back to scheduled
+                const localSess = item as any;
+                const cloudSess = existing as any;
+                if (localSess.status === 'completed' && cloudSess.status !== 'completed') {
+                  itemMap.set(item.id, { ...cloudSess, ...localSess, status: 'completed', userId: targetUserId });
+                }
               }
             } else {
               itemMap.set(item.id, { ...item, userId: targetUserId });

@@ -81,6 +81,25 @@ import {
   formatMoney,
 } from './money';
 
+import {
+  StoragePersistenceError,
+  isQuotaExceededError,
+  logPersistenceDiag,
+  getPersistenceDiagLogs,
+  purgeLeakedSessionBackups,
+  stripEmbeddedSyncedDataFromAccounts,
+  pruneNotificationStateMaps,
+  reclaimLocalStorageQuota,
+  getSyncQueueState,
+  saveSyncQueueState,
+  hasPendingCloudSync,
+  markLocalMutationDirty,
+  idbMirrorUserPackage,
+  idbLoadUserPackage,
+  idbDeleteUserPackage,
+  PersistentSyncQueueState,
+} from './durableStorageHelper';
+
 export {
   getServerApiBaseUrl,
   getFullApiUrl,
@@ -93,7 +112,13 @@ export {
   calculateCoveredSessions,
   calculateMoneyRemainder,
   formatMoney,
+  StoragePersistenceError,
+  getPersistenceDiagLogs,
+  getSyncQueueState,
+  hasPendingCloudSync,
+  idbLoadUserPackage,
 };
+export type { PersistentSyncQueueState };
 
 /**
  * Universal Formatter for Session Quantity / Duration
@@ -817,14 +842,81 @@ function getList<T>(key: string, fallback: T[] = []): T[] {
 }
 
 function saveList<T>(key: string, data: T[]): void {
-  try {
-    const snapshot = data.slice();
-    rawListStore.set(key, snapshot);
-    bumpKeyRevision(key);
-    localStorage.setItem(key, JSON.stringify(snapshot));
-  } catch (err) {
-    console.error(`Error saving key ${key} to storage:`, err);
+  if (typeof localStorage === 'undefined') {
+    throw new StoragePersistenceError('STORAGE_UNAVAILABLE', key, 'localStorage is unavailable in this environment');
   }
+  const snapshot = data.slice();
+  const serialized = JSON.stringify(snapshot);
+
+  const attemptWrite = () => {
+    localStorage.setItem(key, serialized);
+    if (localStorage.getItem(key) === null) {
+      throw new StoragePersistenceError('WRITE_VERIFY_FAILED', key, `Verified readback failed for key ${key}`);
+    }
+  };
+
+  try {
+    attemptWrite();
+  } catch (err) {
+    if (isQuotaExceededError(err)) {
+      reclaimLocalStorageQuota(key, true);
+      try {
+        attemptWrite();
+      } catch (retryErr) {
+        const msg = `Persistent write failed after quota reclamation for key ${key}`;
+        logPersistenceDiag('commit_fail', msg);
+        console.error(msg, retryErr);
+        throw new StoragePersistenceError(
+          isQuotaExceededError(retryErr) ? 'QUOTA_EXCEEDED' : 'WRITE_VERIFY_FAILED',
+          key,
+          msg,
+          retryErr
+        );
+      }
+    } else if (err instanceof StoragePersistenceError) {
+      logPersistenceDiag('commit_fail', err.message);
+      throw err;
+    } else {
+      const msg = `Error saving key ${key} to storage`;
+      logPersistenceDiag('commit_fail', msg);
+      console.error(msg, err);
+      throw new StoragePersistenceError('STORAGE_UNAVAILABLE', key, msg, err);
+    }
+  }
+
+  // Only update in-memory state AFTER disk commit is verified
+  rawListStore.set(key, snapshot);
+  bumpKeyRevision(key);
+}
+
+export function resetInMemoryStorageCachesForTests(): void {
+  rawListStore.clear();
+  keyRevisions.clear();
+  activeUserIdMemo = null;
+  studentsSnapshotByUser.clear();
+  groupsSnapshotByUser.clear();
+  enrollmentsSnapshotByUser.clear();
+  sessionsSnapshotByUser.clear();
+  attendanceSnapshotByUser.clear();
+  paymentsSnapshotByUser.clear();
+  creditLogsSnapshotByUser.clear();
+  lastSyncedAccountSnapshot.clear();
+  clearDerivedFinancialCaches();
+  inFlightSyncMap.clear();
+  executedBulkBatches.clear();
+  pendingAccountSyncUsers.clear();
+  if (pendingAccountSyncTimer !== null) {
+    clearTimeout(pendingAccountSyncTimer);
+    pendingAccountSyncTimer = null;
+  }
+  if (backgroundCloudSyncTimer !== null) {
+    clearTimeout(backgroundCloudSyncTimer);
+    backgroundCloudSyncTimer = null;
+  }
+  backgroundCloudSyncUserId = null;
+  suppressMutationDirtyDepth = 0;
+  dbDomainRevision++;
+  syncDirtyCounter++;
 }
 
 // Active User Context Resolver (O(1) in-memory memoized to avoid multi-MB CURRENT_SESSION IPC reads)
@@ -1125,8 +1217,14 @@ export async function processPendingResets(targetUserId?: string): Promise<void>
 }
 
 // Legacy Data Migration: Ensures all existing pre-auth records are assigned to the master account
-function ensureDataMigrated(): void {
+export function ensureDataMigrated(): void {
+  if (typeof localStorage === 'undefined') return;
   try {
+    // Self-heal leaked backups, bloated account syncedData blobs, and unbounded notification maps BEFORE writes
+    purgeLeakedSessionBackups(false);
+    stripEmbeddedSyncedDataFromAccounts();
+    pruneNotificationStateMaps(150);
+
     const defaultUserId = 'acc_master_teacher';
 
     // Migrate students
@@ -1271,6 +1369,9 @@ export function cleanupDuplicateSessions(): {
   preservedCount: number;
   backedUp: boolean;
 } {
+  if (typeof localStorage === 'undefined') {
+    return { cleanedCount: 0, preservedCount: 0, backedUp: false };
+  }
   try {
     const rawSessionsJson = localStorage.getItem(STORAGE_KEYS.SESSIONS);
     if (!rawSessionsJson) {
@@ -1282,22 +1383,12 @@ export function cleanupDuplicateSessions(): {
       return { cleanedCount: 0, preservedCount: sessions?.length || 0, backedUp: false };
     }
 
-    // Step 1: Backup
-    const backupKey = `tm_v2_sessions_backup_${Date.now()}`;
-    try {
-      localStorage.setItem('tm_v2_sessions_pre_cleanup_backup', rawSessionsJson);
-      localStorage.setItem(backupKey, rawSessionsJson);
-    } catch (e) {
-      console.warn('[Session Cleanup] Backup warning:', e);
-    }
-
-    // Step 2: Load references to check attendance & logs
+    // Load references to check attendance & logs BEFORE creating any backup
     const rawAttendance = getList<Attendance>(STORAGE_KEYS.ATTENDANCE, []);
     const rawCreditLogs = getList<SessionCreditLog>(STORAGE_KEYS.CREDIT_LOGS, []);
     const rawBehaviorLogs = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []);
 
-    // Step 3: Group sessions by occurrence identity
-    // Key: userId | date | (studentId ? `priv_${studentId}` : `grp_${groupId || title}`) | sortMinutes
+    // Group sessions by occurrence identity
     const occurrenceMap = new Map<string, Session[]>();
     for (const ses of sessions) {
       if (!ses || !ses.date) continue;
@@ -1323,13 +1414,6 @@ export function cleanupDuplicateSessions(): {
         return;
       }
 
-      // Check each session in the group for legitimate data.
-      // CRITICAL DATA INTEGRITY: A session is legitimate and MUST NEVER BE DELETED if:
-      // 1. It has attendance records in tm_v2_attendance
-      // 2. Its status is 'completed' or 'cancelled'
-      // 3. It has credit logs or behavior logs referencing it
-      // 4. It has notes or custom session units / hours recorded
-      // Teachers frequently record multiple legitimate lessons for the same student on the same day.
       const sessionData = groupSessions.map((s) => {
         const attCount = rawAttendance.filter((a) => a.sessionId === s.id).length;
         const creditCount = rawCreditLogs.filter((c) => c.sessionId === s.id).length;
@@ -1353,19 +1437,16 @@ export function cleanupDuplicateSessions(): {
       const emptyPlaceholders = sessionData.filter((item) => !item.hasData);
 
       if (legitimateSessions.length > 0) {
-        // ALL legitimate sessions MUST be preserved unconditionally!
         legitimateSessions.forEach((item) => {
           finalCleanSessions.push(item.session);
         });
 
-        // Any empty placeholders are redundant duplicates of the recorded sessions
         const canonicalId = legitimateSessions[0].session.id;
         emptyPlaceholders.forEach((placeholder) => {
           sessionIdRemap.set(placeholder.session.id, canonicalId);
           cleanedCount++;
         });
       } else {
-        // All are empty placeholders with no data: preserve only the first one
         finalCleanSessions.push(emptyPlaceholders[0].session);
         const canonicalId = emptyPlaceholders[0].session.id;
         for (let i = 1; i < emptyPlaceholders.length; i++) {
@@ -1376,10 +1457,18 @@ export function cleanupDuplicateSessions(): {
     });
 
     if (cleanedCount > 0) {
+      // Only write a SINGLE bounded pre-cleanup snapshot when duplicates actually exist (never unbounded tm_v2_sessions_backup_*)
+      let backedUp = false;
+      try {
+        localStorage.setItem('tm_v2_sessions_pre_cleanup_backup', rawSessionsJson);
+        backedUp = true;
+      } catch (e) {
+        console.warn('[Session Cleanup] Non-fatal backup warning:', e);
+      }
+
       console.log(`[Session Cleanup] Removed ${cleanedCount} duplicate sessions. Preserved ${finalCleanSessions.length} canonical sessions.`);
       saveList(STORAGE_KEYS.SESSIONS, finalCleanSessions);
 
-      // Re-link any attendance or logs pointing to duplicate session IDs
       if (sessionIdRemap.size > 0) {
         let attUpdated = false;
         const updatedAttendance = rawAttendance.map((a) => {
@@ -1417,9 +1506,10 @@ export function cleanupDuplicateSessions(): {
           saveList(STORAGE_KEYS.BEHAVIOR_LOGS, updatedBehaviorLogs);
         }
       }
+      return { cleanedCount, preservedCount: finalCleanSessions.length, backedUp };
     }
 
-    return { cleanedCount, preservedCount: finalCleanSessions.length, backedUp: true };
+    return { cleanedCount: 0, preservedCount: finalCleanSessions.length, backedUp: false };
   } catch (err) {
     console.error('[Session Cleanup] Error occurred during safe cleanup:', err);
     return { cleanedCount: 0, preservedCount: 0, backedUp: false };
@@ -1447,6 +1537,37 @@ function flushPendingAccountSyncs(): void {
       console.warn('Deferred account backup sync warning:', err);
     }
   }
+}
+
+let backgroundCloudSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let backgroundCloudSyncUserId: string | null = null;
+
+function scheduleBackgroundCloudSync(userId?: string, delayMs = 900): void {
+  const uid = userId || getActiveUserId();
+  if (typeof localStorage === 'undefined') return;
+  const q = getSyncQueueState(uid);
+  if (q.authExpired) return;
+  const token = getAuthTokenForUser(uid);
+  if (!token) return;
+  backgroundCloudSyncUserId = uid;
+  if (backgroundCloudSyncTimer !== null) {
+    clearTimeout(backgroundCloudSyncTimer);
+  }
+  backgroundCloudSyncTimer = setTimeout(() => {
+    backgroundCloudSyncTimer = null;
+    const target = backgroundCloudSyncUserId || uid;
+    performFullSync(target, false).catch(() => {});
+  }, delayMs);
+}
+
+let suppressMutationDirtyDepth = 0;
+
+function recordMutationAndScheduleSync(userId?: string, reason?: string): void {
+  if (suppressMutationDirtyDepth > 0) return;
+  const uid = userId || getActiveUserId();
+  markLocalMutationDirty(uid, reason);
+  scheduleAutoSyncUserAccount(uid);
+  scheduleBackgroundCloudSync(uid);
 }
 
 function scheduleAutoSyncUserAccount(userId?: string): void {
@@ -1482,8 +1603,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
 /**
  * دالة مزامنة بيانات المستخدم مع حسابه تلقائياً
- * تقوم بجمع كافة الطلاب والمجموعات والحصص والاشتراكات والحضور والمدفوعات والواجبات
- * وحفظها بشكل مشفر وآمن داخل كائن الحساب ومفتاح التخزين الاحتياطي الخاص به
+ * تحافظ على حزمة النسخ الاحتياطي وتقوم بعكسها غير متزامن في IndexedDB دون تضخيم tm_v2_accounts
  */
 export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
   const targetUserId = userId || getActiveUserId();
@@ -1565,43 +1685,49 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
     },
   };
 
-  // 1. Primary persistent account backup storage (single full-package serialization)
-  let backupSavedToDedicatedKey = false;
-  try {
-    localStorage.setItem(`tm_v2_user_backup_${targetUserId}`, JSON.stringify(dataPackage));
-    localStorage.setItem(`tm_v2_last_sync_${targetUserId}`, nowIso);
-    backupSavedToDedicatedKey = true;
-  } catch (err) {
-    console.warn('Storage sync warning:', err);
+  // 1. Always mirror asynchronously to IndexedDB (higher quota resilience on Android WebView)
+  idbMirrorUserPackage(targetUserId, dataPackage).catch(() => {});
+
+  // 2. Write dedicated localStorage backup key with quota reclamation fallback (non-fatal)
+  if (typeof localStorage !== 'undefined') {
+    const backupKey = `tm_v2_user_backup_${targetUserId}`;
+    const serializedPkg = JSON.stringify(dataPackage);
+    try {
+      localStorage.setItem(backupKey, serializedPkg);
+      localStorage.setItem(`tm_v2_last_sync_${targetUserId}`, nowIso);
+    } catch (err) {
+      if (isQuotaExceededError(err)) {
+        reclaimLocalStorageQuota(backupKey, false);
+        try {
+          localStorage.setItem(backupKey, serializedPkg);
+          localStorage.setItem(`tm_v2_last_sync_${targetUserId}`, nowIso);
+        } catch (retryErr) {
+          console.warn('Storage backup skipped under tight quota (primary collections & IDB mirror intact):', retryErr);
+        }
+      } else {
+        console.warn('Storage sync warning:', err);
+      }
+    }
   }
 
-  // 2. Update UserAccount metadata inside ACCOUNTS list without duplicating multi-MB syncedData
-  //    when the dedicated backup key saved cleanly (preserving syncedData fallback only on error).
+  // 3. Keep UserAccount metadata & CURRENT_SESSION strictly lightweight (NEVER embed multi-MB syncedData!)
   try {
     const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
     const idx = accounts.findIndex((a) => a.id === targetUserId);
     if (idx >= 0) {
       const { syncedData: _prevSyncedData, ...lightweightAccount } = accounts[idx];
-      accounts[idx] = backupSavedToDedicatedKey
-        ? {
-            ...lightweightAccount,
-            lastSyncAt: nowIso,
-          }
-        : {
-            ...lightweightAccount,
-            lastSyncAt: nowIso,
-            syncedData: dataPackage,
-          };
+      accounts[idx] = {
+        ...lightweightAccount,
+        lastSyncAt: nowIso,
+      };
       saveList(STORAGE_KEYS.ACCOUNTS, accounts);
 
-      // Keep CURRENT_SESSION lightweight (auth/account metadata without multi-MB syncedData duplication)
       if (getActiveUserId() === targetUserId) {
-        const { syncedData: _omitSyncedData, ...lightweightSessionUser } = accounts[idx];
-        localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(lightweightSessionUser));
+        localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(accounts[idx]));
       }
     }
   } catch (err) {
-    console.error('Account sync error:', err);
+    console.error('Account sync metadata error:', err);
   }
 
   lastSyncedAccountSnapshot.set(targetUserId, { rev: syncDirtyCounter, pkg: dataPackage });
@@ -1664,18 +1790,26 @@ export function calculateNextSyncTime(frequency: AutoSyncFrequency, fromDate = n
 
 export function getAutoSyncConfig(userId?: string): AutoSyncConfig {
   const targetUserId = userId || getActiveUserId();
+  const q = getSyncQueueState(targetUserId);
+  const pending = q.localMutationSeq > q.lastSyncedMutationSeq;
   try {
     const raw = localStorage.getItem(`${STORAGE_KEYS.AUTO_SYNC_CONFIG}_${targetUserId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.frequency) {
+        const effectiveStatus: AutoSyncStatus =
+          q.authExpired && parsed.status !== 'syncing'
+            ? 'auth_expired'
+            : parsed.status || 'idle';
         return {
           frequency: parsed.frequency,
           lastSyncTime: parsed.lastSyncTime || db.getLastSyncTime(targetUserId),
           nextSyncTime: parsed.nextSyncTime || (parsed.frequency !== 'off' ? calculateNextSyncTime(parsed.frequency) : null),
-          status: parsed.status || 'idle',
+          status: effectiveStatus,
           statusMessage: parsed.statusMessage || 'جاهز للمزامنة المجدولة',
           autoRetryOnReconnect: parsed.autoRetryOnReconnect ?? true,
+          hasPendingChanges: pending,
+          lastErrorCode: parsed.lastErrorCode,
         };
       }
     }
@@ -1685,9 +1819,10 @@ export function getAutoSyncConfig(userId?: string): AutoSyncConfig {
     frequency: 'daily',
     lastSyncTime: db.getLastSyncTime(targetUserId),
     nextSyncTime: calculateNextSyncTime('daily'),
-    status: 'idle',
+    status: q.authExpired ? 'auth_expired' : 'idle',
     statusMessage: 'المزامنة اليومية مجدولة ونشطة',
     autoRetryOnReconnect: true,
+    hasPendingChanges: pending,
   };
 
   try {
@@ -1757,162 +1892,289 @@ export function notifySyncListeners(): void {
   });
 }
 
+function isValidIncomingCloudPackage(pkg: unknown): pkg is UserAccountDataPackage {
+  if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) return false;
+  const p = pkg as Record<string, unknown>;
+  // Reject empty objects ({}) or corrupted payloads missing core array collections
+  return (
+    Array.isArray(p.students) &&
+    Array.isArray(p.groups) &&
+    Array.isArray(p.enrollments) &&
+    Array.isArray(p.sessions) &&
+    Array.isArray(p.attendance) &&
+    Array.isArray(p.payments)
+  );
+}
+
+const inFlightSyncMap = new Map<
+  string,
+  Promise<{
+    success: boolean;
+    message: string;
+    dataPackage: UserAccountDataPackage;
+    isOffline?: boolean;
+    isAuthExpired?: boolean;
+    error?: string;
+  }>
+>();
+
 /**
- * تنفيذ المزامنة الكاملة (السحابية والمحلية)
- * تجمع جميع بيانات المستخدم (الطلاب، المجموعات، الاشتراكات، الدروس الخاصة، الحصص، الحضور، المدفوعات، الفواتير الشهرية، رصيد الحصص، الرصيد المالي، والملف الشخصي)
- * وتقوم بدمجها بشكل آمن وتحديث السجلات في قاعدة بيانات SQLite السحابية
+ * تنفيذ المزامنة الكاملة (السحابية والمحلية) مع Mutex لمنع التكرار وتتبع تسلسل التعديلات المحلي
  */
 export async function performFullSync(
   userId?: string,
   isManual = false
-): Promise<{ success: boolean; message: string; dataPackage: UserAccountDataPackage; isOffline?: boolean; error?: string }> {
+): Promise<{
+  success: boolean;
+  message: string;
+  dataPackage: UserAccountDataPackage;
+  isOffline?: boolean;
+  isAuthExpired?: boolean;
+  error?: string;
+}> {
   const targetUserId = userId || getActiveUserId();
-  const config = getAutoSyncConfig(targetUserId);
 
-  // Set status to syncing
-  saveAutoSyncConfig(
-    {
-      status: 'syncing',
-      statusMessage: isManual ? 'جاري تنفيذ المزامنة اليدوية الآن...' : 'جاري تنفيذ المزامنة التلقائية المجدولة...',
-    },
-    targetUserId
-  );
+  // Per-user in-flight mutex: coalesce duplicate concurrent sync triggers cleanly
+  const existingFlight = inFlightSyncMap.get(targetUserId);
+  if (existingFlight) {
+    return existingFlight;
+  }
 
-  // 1. Gather all local entities
-  const localPackage = autoSyncUserAccount(targetUserId);
+  const runSync = async () => {
+    const config = getAutoSyncConfig(targetUserId);
+    const startQueue = getSyncQueueState(targetUserId);
+    const startSeq = startQueue.localMutationSeq;
+    const nowIso = new Date().toISOString();
 
-  // 2. Check native network & reachability
-  const netStatus = await checkOverallConnectivity(true);
-  const resolvedBaseUrl = getServerApiBaseUrl();
-  const syncApiUrl = getFullApiUrl('/api/sync/merge');
+    saveSyncQueueState({
+      ...startQueue,
+      inFlightStartedAt: nowIso,
+      lastAttemptAt: nowIso,
+    });
+    logPersistenceDiag('sync_start', `manual=${isManual} seq=${startSeq}`, targetUserId);
 
-  console.log(`[Sync] performFullSync triggered (manual: ${isManual}, userId: ${targetUserId})`);
-  console.log(`[Sync] Native network status: ${netStatus.deviceConnected ? 'CONNECTED' : 'DISCONNECTED'} (type: ${netStatus.connectionType})`);
-  console.log(`[Sync] Resolved API base URL: ${resolvedBaseUrl}`);
-  console.log(`[Sync] Target Sync Endpoint: ${syncApiUrl}`);
-
-  // If the device is completely disconnected from network
-  if (!netStatus.deviceConnected) {
-    console.warn(`[Sync] Sync attempt deferred: Device has no active network connection (type: ${netStatus.connectionType})`);
-    const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
     saveAutoSyncConfig(
       {
-        status: 'offline_deferred',
-        statusMessage: 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت في الجهاز (ستتم المزامنة السحابية فور عودة الاتصال)',
-        lastSyncTime: localPackage.lastSyncTime,
-        nextSyncTime: nextSync,
-        autoRetryOnReconnect: true,
+        status: 'syncing',
+        statusMessage: isManual ? 'جاري تنفيذ المزامنة اليدوية الآن...' : 'جاري تنفيذ المزامنة التلقائية المجدولة...',
+        lastErrorCode: undefined,
       },
       targetUserId
     );
-    return {
-      success: true,
-      message: 'تم حفظ وتأمين كافة البيانات محلياً. ستتم المزامنة السحابية فور عودة الاتصال بالإنترنت.',
-      dataPackage: localPackage,
-      isOffline: true,
-    };
-  }
 
-  // 3. Dispatch cloud sync directly to standalone Cloud Run Express backend (/api/sync/merge)
-  try {
-    console.log(`[Sync] Initiating cloud sync for user ${targetUserId} to Cloud Run backend...`);
-    const token = getAuthTokenForUser(targetUserId);
+    // 1. Gather all local entities (mirrors to IDB as well)
+    const localPackage = autoSyncUserAccount(targetUserId);
 
-    const res = await universalApiFetch(syncApiUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'x-auth-token': token,
-      },
-      body: {
-        userId: targetUserId,
-        token: token,
-        dataPackage: localPackage,
-      },
-      timeoutMs: 15000,
-    });
+    // 2. Check native network & reachability
+    const netStatus = await checkOverallConnectivity(true);
+    const syncApiUrl = getFullApiUrl('/api/sync/merge');
 
-    if (res.ok && res.data && res.data.success) {
-      const resData = res.data;
-      if (resData.merged && resData.dataPackage) {
-        db.restoreAccountData(targetUserId, resData.dataPackage);
-      }
-
-      const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
-      const finalPackage = (resData.dataPackage || localPackage) as UserAccountDataPackage;
-
-      console.log(`[Sync] Sync attempt result: SUCCESS - Synced with Cloud Run Backend (${finalPackage.stats?.totalStudents || 0} students, ${finalPackage.stats?.totalGroups || 0} groups, ${finalPackage.stats?.totalSessions || 0} sessions)`);
-
+    // If the device is completely disconnected from network
+    if (!netStatus.deviceConnected) {
+      const latestQ = getSyncQueueState(targetUserId);
+      saveSyncQueueState({
+        ...latestQ,
+        inFlightStartedAt: null,
+        lastError: 'Device offline',
+      });
+      // Preserve config.nextSyncTime so offline deferral does NOT push next retry out by 24h!
       saveAutoSyncConfig(
         {
-          status: 'success',
-          statusMessage: 'تمت المزامنة السحابية بنجاح وتحديث كافة البيانات في قاعدة البيانات السحابية الدائمة',
-          lastSyncTime: finalPackage.lastSyncTime || new Date().toISOString(),
-          nextSyncTime: nextSync,
-          autoRetryOnReconnect: false,
+          status: 'offline_deferred',
+          statusMessage: 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت في الجهاز (ستتم المزامنة السحابية فور عودة الاتصال)',
+          lastSyncTime: localPackage.lastSyncTime,
+          autoRetryOnReconnect: true,
+          hasPendingChanges: latestQ.localMutationSeq > latestQ.lastSyncedMutationSeq,
+        },
+        targetUserId
+      );
+      return {
+        success: true,
+        message: 'تم حفظ وتأمين كافة البيانات محلياً. ستتم المزامنة السحابية فور عودة الاتصال بالإنترنت.',
+        dataPackage: localPackage,
+        isOffline: true,
+      };
+    }
+
+    // 3. Dispatch cloud sync directly to Cloud Run Express backend (/api/sync/merge)
+    try {
+      const token = getAuthTokenForUser(targetUserId);
+      const res = await universalApiFetch(syncApiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-auth-token': token,
+        },
+        body: {
+          userId: targetUserId,
+          token,
+          dataPackage: localPackage,
+        },
+        timeoutMs: 15000,
+      });
+
+      if (res.status === 401) {
+        const latestQ = getSyncQueueState(targetUserId);
+        saveSyncQueueState({
+          ...latestQ,
+          authExpired: true,
+          lastHttpStatus: 401,
+          lastError: 'Unauthorized (401)',
+          inFlightStartedAt: null,
+        });
+        logPersistenceDiag('sync_auth_expired', 'HTTP 401 during /api/sync/merge', targetUserId);
+        saveAutoSyncConfig(
+          {
+            status: 'auth_expired',
+            statusMessage: 'انتهت جلسة الدخول — بياناتك محفوظة محلياً وبانتظار إعادة تسجيل الدخول للمزامنة',
+            lastSyncTime: localPackage.lastSyncTime,
+            autoRetryOnReconnect: false,
+            hasPendingChanges: latestQ.localMutationSeq > latestQ.lastSyncedMutationSeq,
+            lastErrorCode: 'HTTP_401',
+          },
+          targetUserId
+        );
+        return {
+          success: false,
+          isAuthExpired: true,
+          error: 'Unauthorized (401)',
+          message: 'انتهت جلسة الدخول — البيانات محفوظة محلياً. يرجى تسجيل الدخول لتجديد المزامنة.',
+          dataPackage: localPackage,
+        };
+      }
+
+      if (res.ok && res.data && res.data.success) {
+        const resData = res.data;
+        if (resData.merged) {
+          if (!isValidIncomingCloudPackage(resData.dataPackage)) {
+            throw new Error('Malformed or partial cloud dataPackage rejected');
+          }
+          const restoreRes = db.restoreAccountData(targetUserId, resData.dataPackage);
+          if (!restoreRes.success) {
+            throw new Error(restoreRes.message || 'Local merge apply failed');
+          }
+        }
+
+        const latestQ = getSyncQueueState(targetUserId);
+        const hasConcurrentEdits = latestQ.localMutationSeq > startSeq;
+        saveSyncQueueState({
+          ...latestQ,
+          lastSyncedMutationSeq: Math.max(latestQ.lastSyncedMutationSeq, startSeq),
+          dirtySince: hasConcurrentEdits ? latestQ.dirtySince : null,
+          consecutiveFailures: 0,
+          nextRetryAt: null,
+          lastError: null,
+          lastHttpStatus: res.status || 200,
+          authExpired: false,
+          inFlightStartedAt: null,
+          lastAttemptAt: new Date().toISOString(),
+        });
+        logPersistenceDiag('sync_success', `seq=${startSeq} concurrent=${hasConcurrentEdits}`, targetUserId);
+
+        const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
+        const finalPackage = (resData.dataPackage || localPackage) as UserAccountDataPackage;
+
+        saveAutoSyncConfig(
+          {
+            status: 'success',
+            statusMessage: 'تمت المزامنة السحابية بنجاح وتحديث كافة البيانات في قاعدة البيانات السحابية الدائمة',
+            lastSyncTime: finalPackage.lastSyncTime || new Date().toISOString(),
+            nextSyncTime: nextSync,
+            autoRetryOnReconnect: false,
+            hasPendingChanges: hasConcurrentEdits,
+            lastErrorCode: undefined,
+          },
+          targetUserId
+        );
+
+        try {
+          notificationDomainHooks?.onSyncOutcome?.({
+            outcome: 'success',
+            isManual,
+            userId: targetUserId,
+          });
+        } catch {}
+
+        // If user modified data while sync was in-flight, schedule immediate follow-up push!
+        if (hasConcurrentEdits) {
+          scheduleBackgroundCloudSync(targetUserId, 120);
+        }
+
+        return {
+          success: true,
+          message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
+          dataPackage: finalPackage,
+        };
+      } else {
+        const errorDetail = res.data?.error || res.error || `HTTP ${res.status}`;
+        const errObj: any = new Error(errorDetail);
+        errObj.httpStatus = res.status;
+        throw errObj;
+      }
+    } catch (netErr: any) {
+      const isTimeout = netErr?.name === 'AbortError' || String(netErr?.message).includes('Timeout');
+      const failureReason = isTimeout ? 'Request timed out' : netErr?.message || 'Network fetch error';
+      console.warn(`[Sync] Sync failure reason: ${failureReason}. Preserving local offline backup & dirty queue.`);
+
+      const latestQ = getSyncQueueState(targetUserId);
+      const nextFailures = (latestQ.consecutiveFailures || 0) + 1;
+      const backoffMs = Math.min(300_000, 10_000 * Math.pow(2, nextFailures - 1));
+      const nextRetryAt = new Date(Date.now() + backoffMs).toISOString();
+
+      saveSyncQueueState({
+        ...latestQ,
+        consecutiveFailures: nextFailures,
+        nextRetryAt,
+        lastError: failureReason,
+        lastHttpStatus: typeof netErr?.httpStatus === 'number' ? netErr.httpStatus : null,
+        inFlightStartedAt: null,
+        lastAttemptAt: new Date().toISOString(),
+      });
+      logPersistenceDiag('sync_fail', `${failureReason} (attempt #${nextFailures})`, targetUserId);
+
+      const isServerUnreachable = netStatus.deviceConnected;
+      saveAutoSyncConfig(
+        {
+          status: 'offline_deferred',
+          statusMessage: isServerUnreachable
+            ? 'تم حفظ وتأمين البيانات محلياً - تعذر الوصول للسيرفر السحابي (سيُعاد المحاولة تلقائياً)'
+            : 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت (ستتم المزامنة السحابية فور عودة الاتصال)',
+          lastSyncTime: localPackage.lastSyncTime,
+          autoRetryOnReconnect: true,
+          hasPendingChanges: latestQ.localMutationSeq > latestQ.lastSyncedMutationSeq,
+          lastErrorCode: failureReason.slice(0, 64),
         },
         targetUserId
       );
 
-      try {
-        notificationDomainHooks?.onSyncOutcome?.({
-          outcome: 'success',
-          isManual,
-          userId: targetUserId,
-        });
-      } catch {}
+      if (isServerUnreachable) {
+        try {
+          notificationDomainHooks?.onSyncOutcome?.({
+            outcome: 'server_failure',
+            errorReason: failureReason,
+            isManual,
+            userId: targetUserId,
+          });
+        } catch {}
+      }
 
       return {
-        success: true,
-        message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
-        dataPackage: finalPackage,
+        success: false,
+        message: isServerUnreachable
+          ? 'تم حفظ وتأمين البيانات محلياً. تعذر الاتصال بالسيرفر السحابي وسيتم إعادة المحاولة تلقائياً عند استقرار الاتصال.'
+          : 'تم حفظ وتأمين البيانات محلياً، وستتم المزامنة السحابية عند استقرار الشبكة.',
+        dataPackage: localPackage,
+        isOffline: true,
+        error: failureReason,
       };
-    } else {
-      const errorDetail = res.data?.error || res.error || `HTTP ${res.status}`;
-      throw new Error(errorDetail);
     }
-  } catch (netErr: any) {
-    const isTimeout = netErr?.name === 'AbortError' || String(netErr?.message).includes('Timeout');
-    const failureReason = isTimeout ? 'Request timed out' : netErr?.message || 'Network fetch error';
-    console.warn(`[Sync] Sync failure reason: ${failureReason}. Preserving local offline backup.`);
+  };
 
-    const nextSync = config.frequency !== 'off' ? calculateNextSyncTime(config.frequency) : null;
-    const isServerUnreachable = netStatus.deviceConnected;
-
-    saveAutoSyncConfig(
-      {
-        status: 'offline_deferred',
-        statusMessage: isServerUnreachable
-          ? 'تم حفظ وتأمين البيانات محلياً - تعذر الوصول للسيرفر السحابي (سيُعاد المحاولة تلقائياً)'
-          : 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت (ستتم المزامنة السحابية فور عودة الاتصال)',
-        lastSyncTime: localPackage.lastSyncTime,
-        nextSyncTime: nextSync,
-        autoRetryOnReconnect: true,
-      },
-      targetUserId
-    );
-
-    if (isServerUnreachable) {
-      try {
-        notificationDomainHooks?.onSyncOutcome?.({
-          outcome: 'server_failure',
-          errorReason: failureReason,
-          isManual,
-          userId: targetUserId,
-        });
-      } catch {}
-    }
-
-    return {
-      success: true,
-      message: isServerUnreachable
-        ? 'تم حفظ وتأمين البيانات محلياً. تعذر الاتصال بالسيرفر السحابي وسيتم إعادة المحاولة تلقائياً عند استقرار الاتصال.'
-        : 'تم حفظ وتأمين البيانات محلياً، وستتم المزامنة السحابية عند استقرار الشبكة.',
-      dataPackage: localPackage,
-      isOffline: true,
-      error: failureReason,
-    };
-  }
+  const flight = runSync().finally(() => {
+    inFlightSyncMap.delete(targetUserId);
+  });
+  inFlightSyncMap.set(targetUserId, flight);
+  return flight;
 }
 
 /**
@@ -1937,9 +2199,18 @@ export async function pullCloudDataPackageFromServer(
       timeoutMs: 15000,
     });
 
+    if (res.status === 401) {
+      const latestQ = getSyncQueueState(targetUserId);
+      saveSyncQueueState({ ...latestQ, authExpired: true, lastHttpStatus: 401, lastError: 'Unauthorized (401)' });
+      return { success: false, error: 'Unauthorized (401)' };
+    }
+
     if (res.ok && res.data) {
       const data = res.data;
       if (data.success && data.dataPackage) {
+        if (!isValidIncomingCloudPackage(data.dataPackage)) {
+          return { success: false, error: 'Malformed or partial cloud dataPackage received from server' };
+        }
         db.restoreAccountData(targetUserId, data.dataPackage);
         return { success: true, dataPackage: data.dataPackage };
       }
@@ -1985,6 +2256,62 @@ export async function loginWithServerApi(credentials: {
   }
 }
 
+export async function runAutoSyncSchedulerTick(forceIgnoreRetryBackoff = false): Promise<boolean> {
+  if (typeof localStorage === 'undefined') return false;
+  const activeUserId = getActiveUserId();
+  const q = getSyncQueueState(activeUserId);
+  if (q.authExpired) return false;
+  if (inFlightSyncMap.has(activeUserId)) return false;
+
+  const hasDirty = q.localMutationSeq > q.lastSyncedMutationSeq;
+  const retryReady = forceIgnoreRetryBackoff || !q.nextRetryAt || Date.now() >= new Date(q.nextRetryAt).getTime();
+
+  if (hasDirty && retryReady && getAuthTokenForUser(activeUserId)) {
+    await performFullSync(activeUserId, false);
+    return true;
+  }
+
+  const config = getAutoSyncConfig(activeUserId);
+  if (config.frequency !== 'off' && config.nextSyncTime) {
+    const nextTime = new Date(config.nextSyncTime).getTime();
+    if (Date.now() >= nextTime && config.status !== 'syncing' && retryReady) {
+      await performFullSync(activeUserId, false);
+      return true;
+    }
+  }
+  return false;
+}
+
+export async function recoverUserFromIndexedDBMirror(userId?: string): Promise<boolean> {
+  const uid = userId || getActiveUserId();
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    const hasPrimary =
+      getStudentsSnapshot(uid).list.length > 0 ||
+      getGroupsSnapshot(uid).list.length > 0 ||
+      getSessionsSnapshot(uid).list.length > 0 ||
+      getAttendanceSnapshot(uid).list.length > 0;
+    if (hasPrimary) return false;
+
+    const idbPkg = await idbLoadUserPackage(uid);
+    if (!idbPkg || !isValidIncomingCloudPackage(idbPkg)) return false;
+
+    const hasMirrorData =
+      idbPkg.students.length > 0 ||
+      idbPkg.groups.length > 0 ||
+      idbPkg.sessions.length > 0 ||
+      idbPkg.attendance.length > 0;
+    if (!hasMirrorData) return false;
+
+    const res = db.restoreAccountData(uid, idbPkg);
+    if (res.success) {
+      logPersistenceDiag('idb_recovery', `Recovered ${idbPkg.sessions.length} sessions & ${idbPkg.attendance.length} attendance from IndexedDB mirror`, uid);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 /**
  * تهيئة محرك الجدولة والمزامنة في الخلفية لنظام Android والمتصفح
  */
@@ -2000,7 +2327,8 @@ export function initAutoSyncScheduler(): void {
     console.log('[Scheduler] onNetworkReconnected event fired! Checking for pending sync...');
     const activeUserId = getActiveUserId();
     const config = getAutoSyncConfig(activeUserId);
-    if (config.autoRetryOnReconnect || config.status === 'offline_deferred') {
+    const hasDirty = hasPendingCloudSync(activeUserId);
+    if (hasDirty || config.autoRetryOnReconnect || config.status === 'offline_deferred') {
       performFullSync(activeUserId, false).catch((err) => console.warn('[Scheduler] Auto sync on reconnect failed:', err));
     }
   });
@@ -2020,34 +2348,23 @@ export function initAutoSyncScheduler(): void {
     } catch {}
   }
 
-  // 2. فحص المزامنة المجدولة عند فتح التطبيق أو عودته للواجهة (Android Resume / Tab active)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      const activeUserId = getActiveUserId();
-      const config = getAutoSyncConfig(activeUserId);
-      if (config.frequency !== 'off' && config.nextSyncTime) {
-        const nextTime = new Date(config.nextSyncTime).getTime();
-        if (Date.now() >= nextTime && config.status !== 'syncing') {
-          performFullSync(activeUserId, false).catch((err) => console.warn('[Scheduler] Foreground auto sync failed:', err));
-        }
+  // Startup immediate check: flush any dirty local queue left over from process termination / restart mid-sync
+  setTimeout(() => {
+    runAutoSyncSchedulerTick(true).catch(() => {});
+  }, 800);
+
+  // 2. فحص المزامنة المجدولة أو المعلقة عند فتح التطبيق أو عودته للواجهة (Android Resume / Tab active)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        runAutoSyncSchedulerTick(false).catch((err) => console.warn('[Scheduler] Foreground auto sync failed:', err));
       }
-    }
-  });
+    });
+  }
 
   // 3. حلقة فحص مجدولة خفيفة في الخلفية (كل 20 ثانية)
   setInterval(() => {
-    try {
-      const activeUserId = getActiveUserId();
-      const config = getAutoSyncConfig(activeUserId);
-      if (config.frequency !== 'off' && config.nextSyncTime) {
-        const nextTime = new Date(config.nextSyncTime).getTime();
-        if (Date.now() >= nextTime && config.status !== 'syncing') {
-          performFullSync(activeUserId, false).catch((err) => console.warn('[Scheduler] Interval auto sync failed:', err));
-        }
-      }
-    } catch (err) {
-      console.error('[Scheduler] Auto sync scheduler tick error:', err);
-    }
+    runAutoSyncSchedulerTick(false).catch((err) => console.error('[Scheduler] Auto sync scheduler tick error:', err));
   }, 20000);
 }
 
@@ -2150,6 +2467,12 @@ export function formatSyncStatusArabic(
       return {
         label: isEn ? 'Last sync failed (Data preserved locally)' : 'فشلت المزامنة الأخيرة (البيانات مؤمنة ومحفوظة محلياً)',
         badgeClass: 'bg-[#0F2A4A]/15 text-[#0F2A4A] border border-[#0F2A4A]/35',
+        iconType: 'error',
+      };
+    case 'auth_expired':
+      return {
+        label: isEn ? 'Re-login needed for cloud sync (Data safe locally)' : 'يرجى تجديد الدخول للمزامنة السحابية (البيانات محفوظة محلياً)',
+        badgeClass: 'bg-amber-500/15 text-amber-800 border border-amber-500/35',
         iconType: 'error',
       };
     default:
@@ -2533,7 +2856,7 @@ export const db = {
       list.unshift(studentWithUser);
     }
     saveList(STORAGE_KEYS.STUDENTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -2577,7 +2900,7 @@ export const db = {
       saveList(STORAGE_KEYS.ENROLLMENTS, updatedEnrs);
     }
 
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -2614,7 +2937,7 @@ export const db = {
       saveList(STORAGE_KEYS.ENROLLMENTS, updatedEnrs);
     }
 
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -2662,7 +2985,7 @@ export const db = {
     saveList(STORAGE_KEYS.BEHAVIOR_LOGS, behaviorLogs.filter((b) => b.studentId !== id));
     saveList(STORAGE_KEYS.SESSIONS, sessions.filter((s) => s.studentId !== id));
 
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -2704,7 +3027,7 @@ export const db = {
       list.unshift(groupWithUser);
     }
     saveList(STORAGE_KEYS.GROUPS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -2738,7 +3061,7 @@ export const db = {
     saveList(STORAGE_KEYS.SESSIONS, sessions.filter((s) => s.groupId !== id));
     saveList(STORAGE_KEYS.ATTENDANCE, attendance.filter((a) => !sessionIds.has(a.sessionId)));
 
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -2942,6 +3265,7 @@ export const db = {
     const allEnrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
     allEnrollments.unshift(newEnrollment);
     saveList(STORAGE_KEYS.ENROLLMENTS, allEnrollments);
+    recordMutationAndScheduleSync(activeUserId, 'private_enrollment');
 
     if (student) {
       db.saveStudent({
@@ -3054,7 +3378,7 @@ export const db = {
     const allEnrollments = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []);
     allEnrollments.unshift(newEnrollment);
     saveList(STORAGE_KEYS.ENROLLMENTS, allEnrollments);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -3066,7 +3390,7 @@ export const db = {
     addDeletionTombstone('enrollment', enrollmentId, activeUserId);
     const list = getList<Enrollment>(STORAGE_KEYS.ENROLLMENTS, []).filter((e) => e.id !== enrollmentId);
     saveList(STORAGE_KEYS.ENROLLMENTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -3093,7 +3417,7 @@ export const db = {
       });
     }
     saveList(STORAGE_KEYS.ENROLLMENTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -3167,7 +3491,7 @@ export const db = {
       list.unshift(sessionWithUser);
     }
     saveList(STORAGE_KEYS.SESSIONS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -3608,7 +3932,7 @@ export const db = {
 
     const remainingAtt = attendance.filter((a) => a.sessionId !== id);
     saveList(STORAGE_KEYS.ATTENDANCE, remainingAtt);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onScheduleChanged?.(activeUserId);
     } catch {}
@@ -3787,7 +4111,7 @@ export const db = {
       }
     }
 
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onAttendanceBatchSaved?.({
         sessionId,
@@ -4038,7 +4362,7 @@ export const db = {
     removeDeletionTombstone('payment', paymentId, activeUserId);
     payments.unshift(newPayment);
     saveList(STORAGE_KEYS.PAYMENTS, payments);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onPaymentRecorded?.({
         payment: newPayment,
@@ -4066,7 +4390,7 @@ export const db = {
       list.unshift(paymentWithUser);
     }
     saveList(STORAGE_KEYS.PAYMENTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onFinancialsMutated?.(activeUserId);
     } catch {}
@@ -4077,7 +4401,7 @@ export const db = {
     addDeletionTombstone('payment', id, activeUserId);
     const list = getList<Payment>(STORAGE_KEYS.PAYMENTS, []).filter((p) => p.id !== id);
     saveList(STORAGE_KEYS.PAYMENTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     try {
       notificationDomainHooks?.onFinancialsMutated?.(activeUserId);
     } catch {}
@@ -4121,7 +4445,7 @@ export const db = {
         localStorage.setItem(STORAGE_KEYS.TEACHER_PROFILE, JSON.stringify(profile));
       }
       syncDirtyCounter++;
-      scheduleAutoSyncUserAccount(currentUserId);
+      recordMutationAndScheduleSync(currentUserId, 'teacher_profile');
     } catch {}
   },
 
@@ -4170,6 +4494,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
       }
+      pruneNotificationStateMaps(150);
     } catch {}
   },
 
@@ -4185,6 +4510,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
       }
+      pruneNotificationStateMaps(150);
       notificationDomainHooks?.onNotificationStateMutated?.(currentUserId);
     } catch {}
   },
@@ -4205,6 +4531,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
       }
+      pruneNotificationStateMaps(150);
       notificationDomainHooks?.onNotificationStateMutated?.(currentUserId);
     } catch {}
   },
@@ -4222,6 +4549,7 @@ export const db = {
       if (currentUserId === 'acc_master_teacher') {
         localStorage.setItem(STORAGE_KEYS.NOTIFICATION_STATES, JSON.stringify(states));
       }
+      pruneNotificationStateMaps(150);
       notificationDomainHooks?.onNotificationStateMutated?.(currentUserId);
     } catch {}
   },
@@ -4258,7 +4586,7 @@ export const db = {
       list.unshift(testWithUser);
     }
     saveList(STORAGE_KEYS.HOMEWORK_TESTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     return testWithUser;
   },
 
@@ -4267,7 +4595,7 @@ export const db = {
     addDeletionTombstone('homeworkTest', id, activeUserId);
     const list = getList<HomeworkTest>(STORAGE_KEYS.HOMEWORK_TESTS, []).filter((t) => t.id !== id);
     saveList(STORAGE_KEYS.HOMEWORK_TESTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -4307,7 +4635,7 @@ export const db = {
       list.unshift(assignmentWithUser);
     }
     saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     return assignmentWithUser;
   },
 
@@ -4335,7 +4663,7 @@ export const db = {
     }
 
     saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, Array.from(map.values()));
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     return savedItems;
   },
 
@@ -4344,7 +4672,7 @@ export const db = {
     addDeletionTombstone('homeworkAssignment', id, activeUserId);
     const list = getList<HomeworkAssignment>(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, []).filter((a) => a.id !== id);
     saveList(STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -4485,7 +4813,7 @@ export const db = {
       list.unshift(logWithUser);
     }
     saveList(STORAGE_KEYS.BEHAVIOR_LOGS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     return logWithUser;
   },
 
@@ -4494,7 +4822,7 @@ export const db = {
     addDeletionTombstone('behaviorLog', id, activeUserId);
     const list = getList<StudentBehaviorLog>(STORAGE_KEYS.BEHAVIOR_LOGS, []).filter((b) => b.id !== id);
     saveList(STORAGE_KEYS.BEHAVIOR_LOGS, list);
-    scheduleAutoSyncUserAccount(activeUserId);
+    recordMutationAndScheduleSync(activeUserId);
     performFullSync(activeUserId, false).catch(() => {});
   },
 
@@ -6131,22 +6459,28 @@ export const db = {
       saveDeletionTombstones(mergedTombstones, targetUserId);
 
       // Helper to test if an entity is alive (not wiped by resetAllBefore or tombstones)
+      const parseSafeTs = (val: unknown): number => {
+        if (!val) return 0;
+        const t = new Date(val as string).getTime();
+        return Number.isFinite(t) ? t : 0;
+      };
+
       const isEntityAlive = (entityType: string, item: any): boolean => {
         if (!item || !item.id) return false;
-        const itemTimeStr = item.updatedAt || item.createdAt || "";
-        const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+        const itemTime = parseSafeTs(item.updatedAt || item.recordedAt || item.createdAt);
         if (resetTime > 0 && itemTime > 0 && itemTime <= resetTime) {
           return false;
         }
         const delTimeStr = tombstoneMap.get(`${entityType}:${item.id}`);
-        if (delTimeStr && itemTime > 0 && itemTime <= new Date(delTimeStr).getTime()) {
+        const delTime = parseSafeTs(delTimeStr);
+        if (delTime > 0 && itemTime > 0 && itemTime <= delTime) {
           return false;
         }
         return true;
       };
 
-      // 3. Merge entity collections cleanly
-      const mergeEntityList = <T extends { id: string; userId?: string; updatedAt?: string; createdAt?: string }>(
+      // 3. Merge entity collections cleanly (strictly NaN-safe & conflict-safe)
+      const mergeEntityList = <T extends { id: string; userId?: string; updatedAt?: string; createdAt?: string; recordedAt?: string }>(
         entityType: string,
         key: string,
         incomingList: T[] = []
@@ -6162,20 +6496,20 @@ export const db = {
         const itemMap = new Map<string, T>();
 
         // Process incoming
-        for (const item of (incomingList || [])) {
+        for (const item of (Array.isArray(incomingList) ? incomingList : [])) {
           if (isEntityAlive(entityType, item)) {
             itemMap.set(item.id, { ...item, userId: targetUserId });
           }
         }
 
-        // Process local items (allowing newer local modifications to override if alive)
+        // Process local items (allowing newer or tied local modifications to override safely if alive)
         for (const item of currentLocalItems) {
           if (isEntityAlive(entityType, item)) {
             const existing = itemMap.get(item.id);
             if (existing) {
-              const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
-              const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-              if (itemTime > existingTime) {
+              const itemTime = parseSafeTs(item.updatedAt || item.recordedAt || item.createdAt);
+              const existingTime = parseSafeTs(existing.updatedAt || existing.recordedAt || existing.createdAt);
+              if (itemTime > existingTime || (itemTime === existingTime && entityType === 'attendance')) {
                 itemMap.set(item.id, { ...existing, ...item, userId: targetUserId });
               } else if (entityType === 'session') {
                 // Safeguard: Never downgrade a locally completed session back to scheduled
@@ -6196,49 +6530,54 @@ export const db = {
         return finalUserItems;
       };
 
-      const restoredStudents = mergeEntityList('student', STORAGE_KEYS.STUDENTS, dataToRestore.students);
-      const restoredGroups = mergeEntityList('group', STORAGE_KEYS.GROUPS, dataToRestore.groups);
-      const restoredEnrollments = mergeEntityList('enrollment', STORAGE_KEYS.ENROLLMENTS, dataToRestore.enrollments);
-      const restoredSessions = mergeEntityList('session', STORAGE_KEYS.SESSIONS, dataToRestore.sessions);
-      const restoredAttendance = mergeEntityList('attendance', STORAGE_KEYS.ATTENDANCE, dataToRestore.attendance);
-      const restoredPayments = mergeEntityList('payment', STORAGE_KEYS.PAYMENTS, dataToRestore.payments);
-      const restoredCreditLogs = mergeEntityList('creditLog', STORAGE_KEYS.CREDIT_LOGS, dataToRestore.creditLogs);
-      mergeEntityList('behaviorLog', STORAGE_KEYS.BEHAVIOR_LOGS, dataToRestore.behaviorLogs);
-      mergeEntityList('homeworkTest', STORAGE_KEYS.HOMEWORK_TESTS, dataToRestore.homeworkTests);
-      mergeEntityList('homeworkAssignment', STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, dataToRestore.homeworkAssignments);
-
-      if (dataToRestore.homeworkQuestionResults && dataToRestore.homeworkQuestionResults.length > 0) {
-        db.saveHomeworkQuestionResultsBatch(dataToRestore.homeworkQuestionResults);
-      }
-
-      // Restore profile
-      if (dataToRestore.teacherProfile) {
-        db.saveTeacherProfile(dataToRestore.teacherProfile, targetUserId);
-      }
-
-      console.log(`[Storage] restoreAccountData completed for ${targetUserId}:`, {
-        effectiveResetAllBefore,
-        studentsCount: restoredStudents.length,
-        groupsCount: restoredGroups.length,
-        sessionsCount: restoredSessions.length,
-        paymentsCount: restoredPayments.length,
-      });
-
-      autoSyncUserAccount(targetUserId);
+      suppressMutationDirtyDepth++;
       try {
-        notificationDomainHooks?.onScheduleChanged?.(targetUserId);
-      } catch {}
+        const restoredStudents = mergeEntityList('student', STORAGE_KEYS.STUDENTS, dataToRestore.students);
+        const restoredGroups = mergeEntityList('group', STORAGE_KEYS.GROUPS, dataToRestore.groups);
+        const restoredEnrollments = mergeEntityList('enrollment', STORAGE_KEYS.ENROLLMENTS, dataToRestore.enrollments);
+        const restoredSessions = mergeEntityList('session', STORAGE_KEYS.SESSIONS, dataToRestore.sessions);
+        const restoredAttendance = mergeEntityList('attendance', STORAGE_KEYS.ATTENDANCE, dataToRestore.attendance);
+        const restoredPayments = mergeEntityList('payment', STORAGE_KEYS.PAYMENTS, dataToRestore.payments);
+        const restoredCreditLogs = mergeEntityList('creditLog', STORAGE_KEYS.CREDIT_LOGS, dataToRestore.creditLogs);
+        mergeEntityList('behaviorLog', STORAGE_KEYS.BEHAVIOR_LOGS, dataToRestore.behaviorLogs);
+        mergeEntityList('homeworkTest', STORAGE_KEYS.HOMEWORK_TESTS, dataToRestore.homeworkTests);
+        mergeEntityList('homeworkAssignment', STORAGE_KEYS.HOMEWORK_ASSIGNMENTS, dataToRestore.homeworkAssignments);
 
-      return {
-        success: true,
-        message: 'تمت استعادة ومزامنة بيانات الحساب بنجاح وتحديث شاشات التطبيق.',
-        count: {
-          students: restoredStudents.length,
-          groups: restoredGroups.length,
-          sessions: restoredSessions.length,
-          payments: restoredPayments.length,
-        },
-      };
+        if (dataToRestore.homeworkQuestionResults && dataToRestore.homeworkQuestionResults.length > 0) {
+          db.saveHomeworkQuestionResultsBatch(dataToRestore.homeworkQuestionResults);
+        }
+
+        // Restore profile
+        if (dataToRestore.teacherProfile) {
+          db.saveTeacherProfile(dataToRestore.teacherProfile, targetUserId);
+        }
+
+        console.log(`[Storage] restoreAccountData completed for ${targetUserId}:`, {
+          effectiveResetAllBefore,
+          studentsCount: restoredStudents.length,
+          groupsCount: restoredGroups.length,
+          sessionsCount: restoredSessions.length,
+          paymentsCount: restoredPayments.length,
+        });
+
+        autoSyncUserAccount(targetUserId);
+        try {
+          notificationDomainHooks?.onScheduleChanged?.(targetUserId);
+        } catch {}
+
+        return {
+          success: true,
+          message: 'تمت استعادة ومزامنة بيانات الحساب بنجاح وتحديث شاشات التطبيق.',
+          count: {
+            students: restoredStudents.length,
+            groups: restoredGroups.length,
+            sessions: restoredSessions.length,
+            payments: restoredPayments.length,
+          },
+        };
+      } finally {
+        suppressMutationDirtyDepth = Math.max(0, suppressMutationDirtyDepth - 1);
+      }
     } catch (err) {
       console.error('Restore error:', err);
       return {
@@ -6479,6 +6818,20 @@ export const db = {
         );
 
         db.setCurrentSession(newAccount);
+        saveSyncQueueState({
+          userId: newAccount.id,
+          localMutationSeq: 0,
+          lastSyncedMutationSeq: 0,
+          dirtySince: null,
+          consecutiveFailures: 0,
+          nextRetryAt: null,
+          lastError: null,
+          lastHttpStatus: 200,
+          authExpired: false,
+          inFlightStartedAt: null,
+          lastAttemptAt: null,
+          updatedAt: new Date().toISOString(),
+        });
         autoSyncUserAccount(newAccount.id);
         return { success: true, user: newAccount };
       } else {
@@ -6634,23 +6987,12 @@ export const db = {
             diag.syncPullStatus = pullRes.status;
             console.log('[Auth -> Restore] 8. Pull Request Status:', pullRes.status, 'Ok:', pullRes.ok);
 
-            if (pullRes.ok && pullRes.data && pullRes.data.success && pullRes.data.dataPackage) {
+            if (pullRes.ok && pullRes.data && pullRes.data.success && pullRes.data.dataPackage && isValidIncomingCloudPackage(pullRes.data.dataPackage)) {
               const cloudPkg: UserAccountDataPackage = pullRes.data.dataPackage;
               diag.studentsReceived = cloudPkg.students?.length || 0;
               diag.groupsReceived = cloudPkg.groups?.length || 0;
               diag.sessionsReceived = cloudPkg.sessions?.length || 0;
               diag.paymentsReceived = cloudPkg.payments?.length || 0;
-
-              console.log('[Auth -> Restore] 9. Cloud Data Counts from Firestore:', {
-                students: diag.studentsReceived,
-                groups: diag.groupsReceived,
-                sessions: diag.sessionsReceived,
-                payments: diag.paymentsReceived,
-                enrollments: cloudPkg.enrollments?.length || 0,
-                attendance: cloudPkg.attendance?.length || 0,
-                creditLogs: cloudPkg.creditLogs?.length || 0,
-                resetAllBefore: cloudPkg.resetAllBefore,
-              });
 
               const restoreRes = db.restoreAccountData(serverUser.id, cloudPkg);
               diag.restoreSuccess = restoreRes.success;
@@ -6668,10 +7010,25 @@ export const db = {
           }
         }
 
-        // Initialize background auto-sync scheduler for this account
-        autoSyncUserAccount(serverUser.id);
-        lastAuthDiagnosticsRecord = diag;
+        // Clear authExpired state on successful re-login & push any pending local mutations immediately!
+        const prevQueue = getSyncQueueState(serverUser.id);
+        saveSyncQueueState({
+          ...prevQueue,
+          authExpired: false,
+          consecutiveFailures: 0,
+          nextRetryAt: null,
+          lastError: null,
+          lastHttpStatus: 200,
+        });
 
+        autoSyncUserAccount(serverUser.id);
+        if (prevQueue.localMutationSeq > prevQueue.lastSyncedMutationSeq && token) {
+          performFullSync(serverUser.id, false).catch(() => {});
+        } else {
+          saveAutoSyncConfig({ status: 'idle', lastErrorCode: undefined }, serverUser.id);
+        }
+
+        lastAuthDiagnosticsRecord = diag;
         return { success: true, user: userAccount, diagnostics: diag };
       }
 
@@ -6827,13 +7184,25 @@ export const db = {
     // 4. Clear local tombstones for this user since resetAllBefore clears all prior history
     saveDeletionTombstones([], targetUserId);
 
-    // 5. Clear backup and userAccount.syncedData
+    // 5. Clear backup, sync queue dirty state, and IndexedDB mirror
     lastSyncedAccountSnapshot.delete(targetUserId);
     syncDirtyCounter++;
     try {
       localStorage.removeItem(`tm_v2_user_backup_${targetUserId}`);
       localStorage.removeItem(`tm_v2_last_sync_${targetUserId}`);
     } catch {}
+    const qCur = getSyncQueueState(targetUserId);
+    saveSyncQueueState({
+      ...qCur,
+      localMutationSeq: 0,
+      lastSyncedMutationSeq: 0,
+      dirtySince: null,
+      consecutiveFailures: 0,
+      nextRetryAt: null,
+      lastError: null,
+      inFlightStartedAt: null,
+    });
+    idbDeleteUserPackage(targetUserId).catch(() => {});
 
     try {
       notificationDomainHooks?.onDataCleared?.(targetUserId);
@@ -6937,7 +7306,7 @@ export const db = {
   performFullSync: async (
     userId?: string,
     isManual = true
-  ): Promise<{ success: boolean; message: string; dataPackage: UserAccountDataPackage; isOffline?: boolean }> => {
+  ): Promise<{ success: boolean; message: string; dataPackage: UserAccountDataPackage; isOffline?: boolean; isAuthExpired?: boolean; error?: string }> => {
     return performFullSync(userId, isManual);
   },
 

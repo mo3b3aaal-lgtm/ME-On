@@ -99,6 +99,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // State for expanded quick attendance cards
   const [expandedAttendanceCardId, setExpandedAttendanceCardId] = useState<string | null>(null);
   const [quickSuccessMsg, setQuickSuccessMsg] = useState<string | null>(null);
+  const [quickFeedbackType, setQuickFeedbackType] = useState<'success' | 'error'>('success');
   const quickFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -110,15 +111,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, []);
 
-  const showQuickFeedback = useCallback((msg: string) => {
+  const showQuickFeedback = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
     if (quickFeedbackTimerRef.current !== null) {
       clearTimeout(quickFeedbackTimerRef.current);
     }
+    setQuickFeedbackType(type);
     setQuickSuccessMsg(msg);
     quickFeedbackTimerRef.current = setTimeout(() => {
       quickFeedbackTimerRef.current = null;
       setQuickSuccessMsg(null);
-    }, 3000);
+    }, type === 'error' ? 5000 : 3000);
   }, []);
 
   // Filter and order today's sessions chronologically by time (earliest to latest) within the day
@@ -487,36 +489,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       return;
     }
 
-    // Standard Group Logic (filtering roster to students active today)
-    const session = getOrCreateSessionForSchedule(item);
-    const groupStudents = db.getGroupStudents(item.groupId, todayStr);
+    try {
+      // Standard Group Logic (filtering roster to students active today)
+      const session = getOrCreateSessionForSchedule(item);
+      const groupStudents = db.getGroupStudents(item.groupId, todayStr);
 
-    const attendanceRecords: Attendance[] = groupStudents.map((st) => {
-      const enr = enrollments.find(
-        (e) => e.studentId === st.id && (e.groupId === item.groupId || e.id === item.enrollmentId)
+      const attendanceRecords: Attendance[] = groupStudents.map((st) => {
+        const enr = enrollments.find(
+          (e) => e.studentId === st.id && (e.groupId === item.groupId || e.id === item.enrollmentId)
+        );
+        return {
+          id: `att_${session.id}_${st.id}`,
+          sessionId: session.id,
+          studentId: st.id,
+          enrollmentId: enr?.id || item.enrollmentId,
+          status: 'present',
+          isCharged: true,
+          recordedAt: new Date().toISOString(),
+        };
+      });
+
+      db.saveAttendanceBatch(session.id, attendanceRecords);
+      if (session.status !== 'completed' && session.status !== 'cancelled') {
+        db.saveSession({ ...session, status: 'completed' });
+      }
+      showQuickFeedback(
+        isEn
+          ? `Marked all present for ${item.groupName}`
+          : `تم رصد حضور جميع طلاب ${item.groupName} بنجاح`
       );
-      return {
-        id: `att_${session.id}_${st.id}`,
-        sessionId: session.id,
-        studentId: st.id,
-        enrollmentId: enr?.id || item.enrollmentId,
-        status: 'present',
-        isCharged: true,
-        recordedAt: new Date().toISOString(),
-      };
-    });
-
-    db.saveAttendanceBatch(session.id, attendanceRecords);
-    if (session.status !== 'completed' && session.status !== 'cancelled') {
-      db.saveSession({ ...session, status: 'completed' });
+      onDataChanged?.();
+    } catch (err: any) {
+      console.error('[DashboardView] handleMarkAllPresent failed:', err);
+      showQuickFeedback(
+        err?.message ||
+          (isEn
+            ? 'Failed to save attendance to device storage. Please check available space.'
+            : 'تعذر حفظ الحضور في ذاكرة الجهاز. يرجى التحقق من المساحة المتاحة.'),
+        'error'
+      );
     }
-    showQuickFeedback(
-      isEn
-        ? `Marked all present for ${item.groupName}`
-        : `تم رصد حضور جميع طلاب ${item.groupName} بنجاح`
-    );
-    onDataChanged?.();
-  }, [isAppointmentPrivate, handleSessionCardClick, getOrCreateSessionForSchedule, enrollments, isEn, onDataChanged, todayStr]);
+  }, [isAppointmentPrivate, handleSessionCardClick, getOrCreateSessionForSchedule, enrollments, isEn, onDataChanged, todayStr, showQuickFeedback]);
 
   const handleQuickStudentAttendance = (
     item: ScheduledClassItem,
@@ -530,101 +543,124 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       return;
     }
 
-    const session = getOrCreateSessionForSchedule(item);
-    const enr = enrollments.find(
-      (e) => e.studentId === studentId && (e.groupId === item.groupId || e.id === item.enrollmentId)
-    );
+    try {
+      const session = getOrCreateSessionForSchedule(item);
+      const enr = enrollments.find(
+        (e) => e.studentId === studentId && (e.groupId === item.groupId || e.id === item.enrollmentId)
+      );
 
-    const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
-    const record: Attendance = {
-      ...existingAtt,
-      id: existingAtt?.id || `att_${session.id}_${studentId}`,
-      sessionId: session.id,
-      studentId,
-      enrollmentId: enr?.id || item.enrollmentId,
-      status,
-      isCharged,
-      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
-    };
+      const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
+      const record: Attendance = {
+        ...existingAtt,
+        id: existingAtt?.id || `att_${session.id}_${studentId}`,
+        sessionId: session.id,
+        studentId,
+        enrollmentId: enr?.id || item.enrollmentId,
+        status,
+        isCharged,
+        recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
+      };
 
-    db.saveAttendanceBatch(session.id, [record]);
-    if (session.status !== 'completed' && session.status !== 'cancelled') {
-      db.saveSession({ ...session, status: 'completed' });
+      db.saveAttendanceBatch(session.id, [record]);
+      if (session.status !== 'completed' && session.status !== 'cancelled') {
+        db.saveSession({ ...session, status: 'completed' });
+      }
+      showQuickFeedback(isEn ? 'Attendance status updated' : 'تم تحديث حالة الحضور');
+      onDataChanged?.();
+    } catch (err: any) {
+      console.error('[DashboardView] handleQuickStudentAttendance failed:', err);
+      showQuickFeedback(
+        err?.message ||
+          (isEn
+            ? 'Failed to save attendance to device storage. Please retry.'
+            : 'تعذر حفظ حالة الحضور في ذاكرة الجهاز. يرجى المحاولة مرة أخرى.'),
+        'error'
+      );
     }
-    showQuickFeedback(isEn ? 'Attendance status updated' : 'تم تحديث حالة الحضور');
-    onDataChanged?.();
   };
 
   const handleConfirmPrivateIntake = (result: PrivateClassIntakeResult) => {
     if (!privateIntakeTarget) return;
     const { item, session: targetSession, studentId } = privateIntakeTarget;
-    const session = targetSession || (item ? getOrCreateSessionForSchedule(item) : null);
-    if (!session) return;
-    const enr =
-      enrollments.find(
-        (e) =>
-          e.studentId === studentId &&
-          ((item && (e.groupId === item.groupId || e.id === item.enrollmentId)) ||
-           (session && (e.groupId === session.groupId || e.id === session.enrollmentId)))
-      ) ||
-      enrollments.find((e) => e.studentId === studentId && (e.serviceType === 'private' || !e.groupId)) ||
-      enrollments.find((e) => e.studentId === studentId);
+    try {
+      const session = targetSession || (item ? getOrCreateSessionForSchedule(item) : null);
+      if (!session) return;
+      const enr =
+        enrollments.find(
+          (e) =>
+            e.studentId === studentId &&
+            ((item && (e.groupId === item.groupId || e.id === item.enrollmentId)) ||
+             (session && (e.groupId === session.groupId || e.id === session.enrollmentId)))
+        ) ||
+        enrollments.find((e) => e.studentId === studentId && (e.serviceType === 'private' || !e.groupId)) ||
+        enrollments.find((e) => e.studentId === studentId);
 
-    const isHourly =
-      (item && (item.group?.billingMode === 'hourly' || item.group?.billingType === 'hourly')) ||
-      session.isHourly ||
-      enr?.billingMode === 'hourly' ||
-      enr?.billingType === 'hourly';
+      const isHourly =
+        (item && (item.group?.billingMode === 'hourly' || item.group?.billingType === 'hourly')) ||
+        session.isHourly ||
+        enr?.billingMode === 'hourly' ||
+        enr?.billingType === 'hourly';
 
-    const finalStatus = result.attendanceStatus || 'present';
-    const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
-    const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
+      const finalStatus = result.attendanceStatus || 'present';
+      const isCharged = result.isCharged !== undefined ? result.isCharged : (finalStatus !== 'absent_free');
+      const existingAtt = db.getSessionAttendance(session.id).find((a) => a.studentId === studentId);
 
-    const record: Attendance = {
-      ...existingAtt,
-      id: existingAtt?.id || `att_${session.id}_${studentId}`,
-      sessionId: session.id,
-      studentId,
-      enrollmentId: enr?.id || item?.enrollmentId || session.enrollmentId,
-      status: finalStatus,
-      isCharged,
-      sessionUnits: isHourly ? undefined : result.sessionUnits,
-      hours: isHourly ? result.hours : undefined,
-      notes: result.notes,
-      behaviorRating: result.behaviorRating,
-      homeworkRating: result.homeworkRating,
-      absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
-      recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
-    };
+      const record: Attendance = {
+        ...existingAtt,
+        id: existingAtt?.id || `att_${session.id}_${studentId}`,
+        sessionId: session.id,
+        studentId,
+        enrollmentId: enr?.id || item?.enrollmentId || session.enrollmentId,
+        status: finalStatus,
+        isCharged,
+        sessionUnits: isHourly ? undefined : result.sessionUnits,
+        hours: isHourly ? result.hours : undefined,
+        notes: result.notes,
+        behaviorRating: result.behaviorRating,
+        homeworkRating: result.homeworkRating,
+        absenceReason: finalStatus === 'absent_free' ? (result.notes || (isEn ? 'Uncharged Absence' : 'غياب غير محسوب')) : undefined,
+        recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
+      };
 
-    db.saveSession({
-      ...session,
-      status: 'completed',
-      sessionUnits: isHourly ? undefined : result.sessionUnits,
-      hours: isHourly ? result.hours : undefined,
-      pricePerStudent: result.pricePerStudent,
-      notes: result.notes !== undefined ? result.notes : session.notes,
-    });
-    db.saveAttendanceBatch(session.id, [record]);
+      db.saveAttendanceBatch(session.id, [record]);
+      db.saveSession({
+        ...session,
+        status: 'completed',
+        sessionUnits: isHourly ? undefined : result.sessionUnits,
+        hours: isHourly ? result.hours : undefined,
+        pricePerStudent: result.pricePerStudent,
+        notes: result.notes !== undefined ? result.notes : session.notes,
+      });
 
-    const qtyText = formatSessionQuantityDisplay({
-      sessionUnits: result.sessionUnits,
-      hours: result.hours,
-      isHourly,
-    }, isRTL);
+      const qtyText = formatSessionQuantityDisplay({
+        sessionUnits: result.sessionUnits,
+        hours: result.hours,
+        isHourly,
+      }, isRTL);
 
-    const studentObj = students.find((s) => s.id === studentId) || db.getStudentById(studentId);
-    const displayName = item?.studentName || studentObj?.name || session.title || '';
-    const feedbackMsg =
-      finalStatus === 'present'
-        ? (isEn ? `Recorded ${qtyText} for ${displayName}` : `تم تسجيل حضور ${qtyText} للطالب ${displayName}`)
-        : finalStatus === 'absent_charged'
-        ? (isEn ? `Recorded charged absence (${qtyText}) for ${displayName}` : `تم تسجيل غياب محسوب (${qtyText}) للطالب ${displayName}`)
-        : (isEn ? `Recorded uncharged absence for ${displayName}` : `تم تسجيل غياب غير محسوب للطالب ${displayName}`);
+      const studentObj = students.find((s) => s.id === studentId) || db.getStudentById(studentId);
+      const displayName = item?.studentName || studentObj?.name || session.title || '';
+      const feedbackMsg =
+        finalStatus === 'present'
+          ? (isEn ? `Recorded ${qtyText} for ${displayName}` : `تم تسجيل حضور ${qtyText} للطالب ${displayName}`)
+          : finalStatus === 'absent_charged'
+          ? (isEn ? `Recorded charged absence (${qtyText}) for ${displayName}` : `تم تسجيل غياب محسوب (${qtyText}) للطالب ${displayName}`)
+          : (isEn ? `Recorded uncharged absence for ${displayName}` : `تم تسجيل غياب غير محسوب للطالب ${displayName}`);
 
-    showQuickFeedback(feedbackMsg);
-    setPrivateIntakeTarget(null);
-    onDataChanged?.();
+      showQuickFeedback(feedbackMsg);
+      setPrivateIntakeTarget(null);
+      onDataChanged?.();
+    } catch (err: any) {
+      console.error('[DashboardView] handleConfirmPrivateIntake failed:', err);
+      showQuickFeedback(
+        err?.message ||
+          (isEn
+            ? 'Failed to save attendance to device storage.'
+            : 'تعذر حفظ الحصة والحضور في ذاكرة الجهاز.'),
+        'error'
+      );
+      throw err;
+    }
   };
 
   // Comprehensive list of items to display on today's schedule (scheduled recurring + explicit ad-hoc)
@@ -849,11 +885,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
       />
 
-      {/* Quick Success Toast */}
+      {/* Quick Success / Error Toast */}
       <Toast
         isOpen={Boolean(quickSuccessMsg)}
         message={quickSuccessMsg || ''}
-        type="success"
+        type={quickFeedbackType}
         onClose={() => setQuickSuccessMsg(null)}
       />
 

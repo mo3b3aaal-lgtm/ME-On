@@ -260,7 +260,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const res = await db.performFullSync(currentUser?.id, true);
       setLastSyncTime(db.getLastSyncTime(currentUser?.id));
       setAutoSyncConfig(db.getAutoSyncConfig(currentUser?.id));
-      showToast(res.message, res.isOffline ? 'info' : 'success');
+      showToast(res.message, res.success ? (res.isOffline ? 'info' : 'success') : 'error');
     } catch (err: any) {
       showToast(
         isEn ? 'Sync failed, but all data is secured locally on this device.' : 'فشلت المزامنة، ولكن تم حفظ وتأمين جميع البيانات محلياً على هذا الجهاز.',

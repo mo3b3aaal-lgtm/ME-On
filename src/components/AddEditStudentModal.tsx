@@ -105,9 +105,11 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
   const [privatePeriod, setPrivatePeriod] = useState<EnrollmentPeriodFormValue>(emptyPeriod);
   const [isPeriodTouched, setIsPeriodTouched] = useState(false);
   const [periodFormError, setPeriodFormError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     setPeriodFormError(null);
+    setSaveError(null);
     setIsPeriodTouched(false);
 
     if (editingStudent) {
@@ -427,8 +429,10 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
-    // Save Student Record
-    db.saveStudent(studentData);
+    setSaveError(null);
+    try {
+      // Save Student Record
+      db.saveStudent(studentData);
 
     // Sync Enrollments
     if (!editingStudent) {
@@ -583,9 +587,18 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
       }
     }
 
-    triggerSuccessHaptic();
-    onSaveComplete(studentData);
-    onClose();
+      triggerSuccessHaptic();
+      onSaveComplete(studentData);
+      onClose();
+    } catch (err: any) {
+      console.error('[AddEditStudentModal] Failed to save student:', err);
+      setSaveError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save student to device storage. Please free space and try again.'
+            : 'تعذر حفظ بيانات الطالب في ذاكرة الجهاز. يرجى تفريغ مساحة تخزين والمحاولة مرة أخرى.')
+      );
+    }
   };
 
   const regularGroups = allGroups.filter((g) => g.type !== 'private');
@@ -632,6 +645,12 @@ export const AddEditStudentModal: React.FC<AddEditStudentModalProps> = ({
         onSubmit={handleSave}
         className="space-y-4 text-xs text-navy text-start"
       >
+        {saveError && (
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-300 text-rose-700 font-bold flex items-start gap-2 text-start">
+            <AppIcon name="warning" size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-600" />
+            <span>{saveError}</span>
+          </div>
+        )}
         {/* Profile Photo & Frame */}
         <div className="p-4 rounded-2xl bg-page border border-line space-y-3.5 shadow-2xs">
           <div className="flex items-center justify-between">

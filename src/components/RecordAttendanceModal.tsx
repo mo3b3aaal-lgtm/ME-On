@@ -548,8 +548,9 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
   const [batchReason, setBatchReason] = useState<string>(PREDEFINED_ABSENCE_REASONS[1]);
   const [batchCustomReason, setBatchCustomReason] = useState<string>('');
 
-  // Subtle success feedback state
+  // Subtle success & error feedback state
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Fast Attendance roll-call state & DOM refs
   const [isFastAttendance, setIsFastAttendance] = useState(false);
@@ -699,6 +700,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       saveTimerRef.current = null;
     }
     setIsSavedSuccess(false);
+    setSaveError(null);
     setFastConfirmedIds(new Set());
     setActiveFastIndex(
       fastStateRef.current.isFastAttendance && enrolledStudents.length > 0 ? 0 : null
@@ -989,6 +991,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
 
   const handleSave = () => {
     if (!session || isSavedSuccess) return;
+    setSaveError(null);
     const listToSave: Attendance[] = [];
 
     Object.entries(records).forEach(([studentId, item]: [string, StudentAttendanceRecord]) => {
@@ -1014,29 +1017,42 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       });
     });
 
-    // Mark session as completed
-    const firstRec = Object.values(records)[0] as StudentAttendanceRecord | undefined;
-    if (session.status !== 'completed' && session.status !== 'cancelled') {
-      db.saveSession({
-        ...session,
-        status: 'completed',
-        sessionUnits: firstRec?.sessionUnits || session.sessionUnits,
-        hours: firstRec?.hours || session.hours,
-      });
-    }
+    try {
+      // Save attendance first so partial failure never marks session completed without attendance
+      db.saveAttendanceBatch(session.id, listToSave);
 
-    db.saveAttendanceBatch(session.id, listToSave);
-    setIsSavedSuccess(true);
-    triggerSuccessHaptic();
+      // Mark session as completed
+      const firstRec = Object.values(records)[0] as StudentAttendanceRecord | undefined;
+      if (session.status !== 'completed' && session.status !== 'cancelled') {
+        db.saveSession({
+          ...session,
+          status: 'completed',
+          sessionUnits: firstRec?.sessionUnits || session.sessionUnits,
+          hours: firstRec?.hours || session.hours,
+        });
+      }
 
-    if (saveTimerRef.current !== null) {
-      clearTimeout(saveTimerRef.current);
+      setIsSavedSuccess(true);
+      triggerSuccessHaptic();
+
+      if (saveTimerRef.current !== null) {
+        clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null;
+        onSaveComplete();
+        onClose();
+      }, 650);
+    } catch (err: any) {
+      console.error('[RecordAttendanceModal] Failed to persist attendance:', err);
+      setIsSavedSuccess(false);
+      setSaveError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save attendance to device storage. Please free storage space and try again.'
+            : 'تعذر حفظ سجل الحضور في ذاكرة الجهاز. يرجى تفريغ مساحة تخزين والمحاولة مرة أخرى.')
+      );
     }
-    saveTimerRef.current = setTimeout(() => {
-      saveTimerRef.current = null;
-      onSaveComplete();
-      onClose();
-    }, 650);
   };
 
   // Summary counts
@@ -1085,6 +1101,7 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
     };
 
+    db.saveAttendanceBatch(session.id, [record]);
     db.saveSession({
       ...session,
       status: 'completed',
@@ -1093,7 +1110,6 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
       pricePerStudent: result.pricePerStudent,
       notes: result.notes !== undefined ? result.notes : session.notes,
     });
-    db.saveAttendanceBatch(session.id, [record]);
 
     triggerSuccessHaptic();
     onSaveComplete();
@@ -1187,6 +1203,12 @@ export const RecordAttendanceModal: React.FC<RecordAttendanceModalProps> = ({
           </div>
         }
       >
+        {saveError && (
+          <div className="p-3 mb-3 rounded-2xl bg-rose-50 border border-rose-300 text-rose-700 text-xs font-bold flex items-start gap-2 text-start">
+            <AppIcon name="warning" size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-600" />
+            <span>{saveError}</span>
+          </div>
+        )}
         {/* Quick Batch Actions, Fast Attendance Toggle & Stats Bar */}
         <div
           data-tutorial-id="attendance-modal-controls"

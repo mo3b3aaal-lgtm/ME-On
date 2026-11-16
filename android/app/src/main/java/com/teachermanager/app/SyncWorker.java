@@ -44,32 +44,36 @@ public class SyncWorker extends Worker {
         Log.d(TAG, "Starting Android WorkManager scheduled sync for user: " + userId + " (interval: " + frequency + ")");
 
         try {
-            // If a serverUrl is available, attempt background ping / sync check
+            int responseCode = 0;
+            // If a serverUrl is available, perform background server reachability check
             if (serverUrl != null && !serverUrl.isEmpty()) {
                 URL url = new URL(serverUrl.endsWith("/") ? serverUrl + "api/health" : serverUrl + "/api/health");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(10000);
-                int responseCode = conn.getResponseCode();
+                responseCode = conn.getResponseCode();
                 conn.disconnect();
                 Log.d(TAG, "Sync server health check status: " + responseCode);
             }
 
-            // Record successful background worker execution timestamp
+            if (responseCode >= 500) {
+                throw new IllegalStateException("Server health check returned HTTP " + responseCode);
+            }
+
+            // Record health-check telemetry separately without overwriting real JS cloud sync status
             prefs.edit()
-                .putString("lastSyncTime_" + userId, nowIso)
-                .putString("lastSyncStatus_" + userId, "success")
-                .putString("lastSyncMessage_" + userId, "تمت المزامنة المجدولة في الخلفية بنجاح عبر Android WorkManager")
+                .putString("lastHealthCheckTime_" + userId, nowIso)
+                .putString("lastHealthCheckStatus_" + userId, responseCode >= 200 && responseCode < 400 ? "ok" : "skipped")
                 .apply();
 
-            Log.d(TAG, "Android WorkManager background sync completed successfully at " + nowIso);
+            Log.d(TAG, "Android WorkManager reachability check completed at " + nowIso);
             return Result.success();
         } catch (Exception e) {
             Log.w(TAG, "SyncWorker encountered an issue, scheduling retry with backoff: " + e.getMessage());
             prefs.edit()
-                .putString("lastSyncStatus_" + userId, "offline_deferred")
-                .putString("lastSyncMessage_" + userId, "مؤجل بانتظار استقرار الاتصال - البيانات مؤمنة ومحفوظة محلياً")
+                .putString("lastHealthCheckTime_" + userId, nowIso)
+                .putString("lastHealthCheckStatus_" + userId, "offline_deferred")
                 .apply();
             return Result.retry();
         }

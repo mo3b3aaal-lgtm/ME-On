@@ -65,6 +65,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
   const [status, setStatus] = useState<'scheduled' | 'completed' | 'cancelled'>('scheduled');
   const [isExtraSession, setIsExtraSession] = useState<boolean>(isExtraSessionDefault);
   const [notes, setNotes] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const enrollments = useMemo(() => (isOpen ? db.getEnrollments() : []), [isOpen]);
 
@@ -171,6 +172,7 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       setIsExtraSession(isExtraSessionDefault);
       setStatus('scheduled');
       setNotes('');
+      setSaveError(null);
       setStudentSearch('');
 
       if (isPriv && defaultStudentId) {
@@ -285,10 +287,21 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
-    db.saveSession(savedSession);
-    triggerSuccessHaptic();
-    onSaveComplete(savedSession);
-    onClose();
+    setSaveError(null);
+    try {
+      db.saveSession(savedSession);
+      triggerSuccessHaptic();
+      onSaveComplete(savedSession);
+      onClose();
+    } catch (err: any) {
+      console.error('[AddEditSessionModal] Failed to save session:', err);
+      setSaveError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save session to device storage. Please free space and retry.'
+            : 'تعذر حفظ الحصة في ذاكرة الجهاز. يرجى تفريغ مساحة تخزين والمحاولة مرة أخرى.')
+      );
+    }
   };
 
   return (
@@ -351,6 +364,12 @@ export const AddEditSessionModal: React.FC<AddEditSessionModalProps> = ({
       }
     >
       <form id="add-session-form" onSubmit={handleSubmit} className="space-y-3.5 text-xs text-navy text-start">
+        {saveError && (
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-300 text-rose-700 font-bold flex items-start gap-2 text-start">
+            <AppIcon name="warning" size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-600" />
+            <span>{saveError}</span>
+          </div>
+        )}
         {/* Session Type Selector: Radio Cards with Icon Badges */}
         <div className="grid grid-cols-2 gap-2.5">
           <button

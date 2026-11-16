@@ -126,7 +126,7 @@ interface PrivateClassIntakeModalProps {
   group?: Group | null;
   session?: Session | null;
   initialAttendanceStatus?: 'present' | 'absent_free' | 'absent_charged';
-  onConfirm: (result: PrivateClassIntakeResult) => void;
+  onConfirm: (result: PrivateClassIntakeResult) => void | Promise<void>;
 }
 
 export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = ({
@@ -267,6 +267,8 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   );
   const [behaviorRating, setBehaviorRating] = useState<BehaviorRating | undefined>(undefined);
   const [homeworkRating, setHomeworkRating] = useState<HomeworkRating | undefined>(undefined);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const isFreeAbsence = attendanceStatus === 'absent_free';
 
@@ -301,6 +303,8 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
   // Reset / restore exact student + session record when modal opens or session/student changes
   useEffect(() => {
     if (isOpen) {
+      setSubmitError(null);
+      setIsSaving(false);
       const existingAtt =
         session?.id && student?.id
           ? db.getSessionAttendance(session.id).find((a) => a.studentId === student.id)
@@ -464,32 +468,50 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (isSaving) return;
+    setSubmitError(null);
+    setIsSaving(true);
     const finalUnits = isHourly ? undefined : selectedUnits;
     const finalHours = isHourly ? selectedHours : undefined;
     const quantityToSave = isHourly ? selectedHours : selectedUnits;
 
-    // Save to Smart Memory
-    if (memoryStorageKey && typeof window !== 'undefined' && quantityToSave > 0) {
-      try {
-        localStorage.setItem(memoryStorageKey, String(quantityToSave));
-      } catch (e) {
-        // ignore
-      }
-    }
+    try {
+      await Promise.resolve(
+        onConfirm({
+          sessionUnits: finalUnits,
+          hours: finalHours,
+          pricePerStudent: calculatedSessionValue,
+          notes: notes.trim(),
+          attendanceStatus,
+          isCharged: attendanceStatus !== 'absent_free',
+          behaviorRating,
+          homeworkRating,
+        })
+      );
 
-    triggerSuccessHaptic();
-    onConfirm({
-      sessionUnits: finalUnits,
-      hours: finalHours,
-      pricePerStudent: calculatedSessionValue,
-      notes: notes.trim(),
-      attendanceStatus,
-      isCharged: attendanceStatus !== 'absent_free',
-      behaviorRating,
-      homeworkRating,
-    });
-    onClose();
+      // Save to Smart Memory only after durable persistence succeeds
+      if (memoryStorageKey && typeof window !== 'undefined' && quantityToSave > 0) {
+        try {
+          localStorage.setItem(memoryStorageKey, String(quantityToSave));
+        } catch {
+          // Non-fatal UI memory
+        }
+      }
+
+      triggerSuccessHaptic();
+      onClose();
+    } catch (err: any) {
+      console.error('[PrivateClassIntakeModal] Failed to persist session:', err);
+      setSubmitError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save attendance to device storage. Please free storage space and try again.'
+            : 'تعذر حفظ الحصة والحضور في ذاكرة الجهاز. يرجى تفريغ مساحة تخزين والمحاولة مرة أخرى.')
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!student) return null;
@@ -586,6 +608,12 @@ export const PrivateClassIntakeModal: React.FC<PrivateClassIntakeModalProps> = (
       }
     >
       <div className="space-y-4 text-xs text-navy">
+        {submitError && (
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-300 text-rose-700 font-bold flex items-start gap-2 text-start">
+            <AppIcon name="warning" size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-600" />
+            <span>{submitError}</span>
+          </div>
+        )}
         {/* Smart Memory Suggestion Banner */}
         {rememberedQuantity !== null && rememberedQuantity > 0 && rememberedQuantity !== (isHourly ? selectedHours : selectedUnits) && (
           <div className="p-2.5 rounded-2xl bg-page border border-line flex items-center justify-between gap-2 shadow-2xs">

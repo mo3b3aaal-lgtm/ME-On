@@ -24,12 +24,15 @@ export const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
   const { isRTL, language } = useTranslation();
   const isEn = language.startsWith('en');
 
-  const isError = syncStatus === 'error';
+  const isAuthExpired = syncStatus === 'auth_expired';
+  const isError = syncStatus === 'error' || isAuthExpired;
   const isOffline = !isOnline || syncStatus === 'offline_deferred';
   const isSyncing = syncStatus === 'syncing';
 
   let label = isEn ? 'Synced' : 'متصل ومحدث';
-  if (isError) {
+  if (isAuthExpired) {
+    label = isEn ? 'Re-login Needed' : 'يرجى تجديد الدخول';
+  } else if (isError) {
     label = isEn ? 'Sync Error' : 'تعذر المزامنة';
   } else if (isOffline) {
     label = isEn ? 'Offline' : 'غير متصل';

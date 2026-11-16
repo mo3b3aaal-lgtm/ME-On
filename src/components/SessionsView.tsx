@@ -14,6 +14,7 @@ import {
 } from '../utils/schedule';
 import { PrivateClassIntakeModal, PrivateClassIntakeResult } from './PrivateClassIntakeModal';
 import { AnimatedPresence } from './ui/AnimatedPresence';
+import { Toast } from './ui/Toast';
 import { Attendance } from '../types';
 
 interface SessionsViewProps {
@@ -107,6 +108,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const studentsById = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
   const groupsById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
@@ -239,9 +241,19 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
         updatedAt: now,
       };
 
-      db.saveSession(newSession);
-      if (onDataChanged) onDataChanged();
-      onOpenAttendanceModal(newSession);
+      try {
+        db.saveSession(newSession);
+        if (onDataChanged) onDataChanged();
+        onOpenAttendanceModal(newSession);
+      } catch (err: any) {
+        console.error('[SessionsView] handleStartRecurringClass failed:', err);
+        setActionError(
+          err?.message ||
+            (isEn
+              ? 'Failed to save session to device storage. Please check free space.'
+              : 'تعذر حفظ الحصة في ذاكرة الجهاز. يرجى التحقق من المساحة المتاحة.')
+        );
+      }
     },
     [groups, selectedDateStr, sessions, findSessionForScheduleItem, onOpenAttendanceModal, isEn, onDataChanged]
   );
@@ -349,18 +361,29 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
       recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
     };
 
-    db.saveSession({
-      ...session,
-      status: 'completed',
-      sessionUnits: isHourly ? undefined : result.sessionUnits,
-      hours: isHourly ? result.hours : undefined,
-      pricePerStudent: result.pricePerStudent,
-      notes: result.notes !== undefined ? result.notes : session.notes,
-    });
-    db.saveAttendanceBatch(session.id, [record]);
+    try {
+      db.saveAttendanceBatch(session.id, [record]);
+      db.saveSession({
+        ...session,
+        status: 'completed',
+        sessionUnits: isHourly ? undefined : result.sessionUnits,
+        hours: isHourly ? result.hours : undefined,
+        pricePerStudent: result.pricePerStudent,
+        notes: result.notes !== undefined ? result.notes : session.notes,
+      });
 
-    setPrivateIntakeTarget(null);
-    if (onDataChanged) onDataChanged();
+      setPrivateIntakeTarget(null);
+      if (onDataChanged) onDataChanged();
+    } catch (err: any) {
+      console.error('[SessionsView] handleConfirmPrivateIntake failed:', err);
+      setActionError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save attendance to device storage. Please check free space.'
+            : 'تعذر حفظ الحضور في ذاكرة الجهاز. يرجى التحقق من المساحة المتاحة.')
+      );
+      throw err;
+    }
   };
 
   const privateIntakeStudent = useMemo(() => {
@@ -380,6 +403,13 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
         onOpenTimetable={onOpenTimetableModal}
         onOpenNotifications={onOpenNotificationsModal}
         onOpenSettings={onNavigateToTab ? () => onNavigateToTab('settings') : undefined}
+      />
+
+      <Toast
+        isOpen={Boolean(actionError)}
+        message={actionError || ''}
+        type="error"
+        onClose={() => setActionError(null)}
       />
 
       {/* 2. NavyCalendar Card */}

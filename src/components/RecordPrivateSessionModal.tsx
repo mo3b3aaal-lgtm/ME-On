@@ -166,6 +166,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   const [behaviorRating, setBehaviorRating] = useState<BehaviorRating | undefined>(undefined);
   const [homeworkRating, setHomeworkRating] = useState<HomeworkRating | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Active private enrollment info
   const activeEnrollment =
@@ -252,6 +253,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
   // Reset when opening
   useEffect(() => {
     if (isOpen) {
+      setSubmitError(null);
       if (studentPrivateEnrollments.length > 0 && (!selectedEnrollmentId || !studentPrivateEnrollments.some((e) => e.id === selectedEnrollmentId))) {
         setSelectedEnrollmentId(studentPrivateEnrollments[0].id);
       }
@@ -345,6 +347,7 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
     if (!student) return;
 
     const count = isHourly ? 1 : Math.max(0.5, Number(sessionCount) || 1);
+    setSubmitError(null);
     setIsSubmitting(true);
 
     try {
@@ -406,8 +409,14 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
         onSaveComplete();
       }
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error recording private sessions:', err);
+      setSubmitError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save session to device storage. Please check free storage space and try again.'
+            : 'تعذر حفظ الحصة في ذاكرة الجهاز. يرجى التحقق من المساحة المتاحة والمحاولة مرة أخرى.')
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -509,6 +518,12 @@ export const RecordPrivateSessionModal: React.FC<RecordPrivateSessionModalProps>
         onSubmit={handleSubmit}
         className="space-y-4 text-xs text-navy"
       >
+        {submitError && (
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-300 text-rose-700 font-bold flex items-start gap-2 text-start">
+            <AppIcon name="warning" size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-600" />
+            <span>{submitError}</span>
+          </div>
+        )}
         {/* Service / Enrollment Selector */}
         {studentPrivateEnrollments.length > 1 && (
           <div className="p-3 rounded-2xl bg-page border border-line space-y-1.5 shadow-2xs">

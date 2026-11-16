@@ -62,8 +62,10 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
   const [roomOrLocation, setRoomOrLocation] = useState('');
   const [accentColor, setAccentColor] = useState('navy');
   const [notes, setNotes] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
+    setSaveError(null);
     if (editingGroup) {
       setName(editingGroup.name);
       setSubject(editingGroup.subject);
@@ -207,10 +209,21 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
-    db.saveGroup(groupToSave);
-    triggerSuccessHaptic();
-    onSaveComplete(groupToSave);
-    onClose();
+    setSaveError(null);
+    try {
+      db.saveGroup(groupToSave);
+      triggerSuccessHaptic();
+      onSaveComplete(groupToSave);
+      onClose();
+    } catch (err: any) {
+      console.error('[AddEditGroupModal] Failed to save group:', err);
+      setSaveError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save group to device storage. Please free space and retry.'
+            : 'تعذر حفظ المجموعة في ذاكرة الجهاز. يرجى تفريغ مساحة تخزين والمحاولة مرة أخرى.')
+      );
+    }
   };
 
   return (
@@ -270,6 +283,12 @@ export const AddEditGroupModal: React.FC<AddEditGroupModalProps> = ({
         onSubmit={handleSubmit}
         className="space-y-4 text-xs text-navy text-start"
       >
+        {saveError && (
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-300 text-rose-700 font-bold flex items-start gap-2 text-start">
+            <AppIcon name="warning" size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-600" />
+            <span>{saveError}</span>
+          </div>
+        )}
         {/* Section 1: Basic Info */}
         <div className="p-4 rounded-2xl bg-page border border-line space-y-3 shadow-2xs">
           <div className="space-y-1">

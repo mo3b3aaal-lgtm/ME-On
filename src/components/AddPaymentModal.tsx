@@ -86,9 +86,12 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   }, []);
 
   // Reset transient confirmation states when modal opens
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setSavedPayment(null);
+      setSaveError(null);
       setCopiedReceipt(false);
       setShowReceiptPreview(false);
     }
@@ -325,30 +328,41 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     e.preventDefault();
     if (!studentId || !activeEnrollment || customAmountInput <= 0) return;
 
+    setSaveError(null);
     let finalSessionsPurchased = 0;
     if (paymentType === 'single_session') finalSessionsPurchased = 1;
     if (paymentType === 'session_count') finalSessionsPurchased = sessionCount;
 
-    const createdPayment = db.recordPayment({
-      studentId,
-      enrollmentId: activeEnrollment.id,
-      groupId: activeEnrollment.groupId,
-      amount: Number(customAmountInput),
-      paymentType,
-      targetMonth: paymentType === 'specific_month' ? targetMonth : undefined,
-      targetYear: paymentType === 'specific_month' ? targetYear : undefined,
-      sessionsPurchased: finalSessionsPurchased,
-      paymentMethod,
-      date,
-      month: parseLocalDateStr(date).getMonth() + 1,
-      year: parseLocalDateStr(date).getFullYear(),
-      notes: notes.trim(),
-      referenceNumber: referenceNumber.trim(),
-    });
+    try {
+      const createdPayment = db.recordPayment({
+        studentId,
+        enrollmentId: activeEnrollment.id,
+        groupId: activeEnrollment.groupId,
+        amount: Number(customAmountInput),
+        paymentType,
+        targetMonth: paymentType === 'specific_month' ? targetMonth : undefined,
+        targetYear: paymentType === 'specific_month' ? targetYear : undefined,
+        sessionsPurchased: finalSessionsPurchased,
+        paymentMethod,
+        date,
+        month: parseLocalDateStr(date).getMonth() + 1,
+        year: parseLocalDateStr(date).getFullYear(),
+        notes: notes.trim(),
+        referenceNumber: referenceNumber.trim(),
+      });
 
-    triggerSuccessHaptic();
-    onPaymentSaved();
-    setSavedPayment(createdPayment);
+      triggerSuccessHaptic();
+      onPaymentSaved();
+      setSavedPayment(createdPayment);
+    } catch (err: any) {
+      console.error('[AddPaymentModal] Failed to record payment:', err);
+      setSaveError(
+        err?.message ||
+          (isEn
+            ? 'Failed to save payment to device storage. Please free space and retry.'
+            : 'تعذر حفظ الدفعة في ذاكرة الجهاز. يرجى تفريغ مساحة تخزين والمحاولة مرة أخرى.')
+      );
+    }
   };
 
   return (
@@ -504,6 +518,12 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           onSubmit={handleSubmit}
           className="space-y-4 text-xs text-navy tabular-nums"
         >
+          {saveError && (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-300 text-rose-700 font-bold flex items-start gap-2 text-start">
+              <AppIcon name="warning" size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-600" />
+              <span>{saveError}</span>
+            </div>
+          )}
           {/* 1. Student Picker (if not fixed) */}
           {!targetStudent && (
             <div className="classy-card p-3.5 space-y-2">

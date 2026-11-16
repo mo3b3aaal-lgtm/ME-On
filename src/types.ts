@@ -847,7 +847,7 @@ export type ActiveTab = 'dashboard' | 'students' | 'groups' | 'sessions' | 'repo
 export type AutoSyncFrequency = 'off' | 'hourly' | 'daily' | 'weekly' | 'monthly';
 
 // حالة عملية المزامنة الحالية
-export type AutoSyncStatus = 'idle' | 'syncing' | 'success' | 'offline_deferred' | 'error';
+export type AutoSyncStatus = 'idle' | 'syncing' | 'success' | 'offline_deferred' | 'error' | 'auth_expired';
 
 // إعدادات وبيانات المزامنة التلقائية المجدولة
 export interface AutoSyncConfig {
@@ -857,6 +857,8 @@ export interface AutoSyncConfig {
   status: AutoSyncStatus;
   statusMessage?: string;
   autoRetryOnReconnect: boolean;
+  hasPendingChanges?: boolean;
+  lastErrorCode?: string;
 }
 
 // تشخيصات تسجيل الدخول واستعادة البيانات السحابية

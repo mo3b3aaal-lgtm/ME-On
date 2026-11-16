@@ -344,13 +344,42 @@ app.post("/api/auth/sync-session", async (req, res) => {
   }
 });
 
+const SYNC_COLLECTION_ARRAY_FIELDS = [
+  "students",
+  "groups",
+  "enrollments",
+  "sessions",
+  "attendance",
+  "payments",
+  "creditLogs",
+  "behaviorLogs",
+  "homeworkTests",
+  "homeworkAssignments",
+  "homeworkQuestionResults",
+  "tombstones",
+] as const;
+
+function validateIncomingSyncPackage(pkg: unknown): string | null {
+  if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) {
+    return "Invalid dataPackage: expected an object";
+  }
+  const obj = pkg as Record<string, unknown>;
+  for (const field of SYNC_COLLECTION_ARRAY_FIELDS) {
+    if (obj[field] !== undefined && !Array.isArray(obj[field])) {
+      return `Invalid dataPackage.${field}: expected an array`;
+    }
+  }
+  return null;
+}
+
 // 1. Cloud Sync Push (Persists directly into Firebase Firestore)
 app.post("/api/sync/push", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = (req as any).user.id;
     const { dataPackage } = req.body;
-    if (!dataPackage) {
-      return res.status(400).json({ success: false, error: "Missing dataPackage" });
+    const validationError = validateIncomingSyncPackage(dataPackage);
+    if (validationError) {
+      return res.status(400).json({ success: false, error: validationError });
     }
 
     const result = await saveCloudDataPackage(authenticatedUserId, dataPackage);
@@ -398,8 +427,9 @@ app.post("/api/sync/merge", requireAuth, async (req, res) => {
   try {
     const authenticatedUserId = (req as any).user.id;
     const { dataPackage } = req.body;
-    if (!dataPackage) {
-      return res.status(400).json({ success: false, error: "Missing dataPackage" });
+    const validationError = validateIncomingSyncPackage(dataPackage);
+    if (validationError) {
+      return res.status(400).json({ success: false, error: validationError });
     }
 
     const result = await mergeCloudDataPackage(authenticatedUserId, dataPackage);

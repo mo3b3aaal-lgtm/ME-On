@@ -31,6 +31,7 @@ export interface ServerUser {
   centerOrSchool?: string;
   password_hash?: string;
   auth_token: string;
+  active_tokens?: string[];
   recovery_pin?: string;
   created_at: string;
   updated_at: string;
@@ -38,19 +39,27 @@ export interface ServerUser {
 }
 
 // -----------------------------------------------------------------------------
-// Connectivity Gate: Probes Firestore once and disables remote calls if unauthenticated
+// Connectivity Gate: Probes Firestore with cooldown retry so transient cold-start
+// timeouts do not permanently disable Firestore for the process lifetime.
 // -----------------------------------------------------------------------------
 let firestoreAccessible: boolean | null = null;
+let lastFirestoreProbeAt = 0;
+const FIRESTORE_FAILURE_RETRY_COOLDOWN_MS = 15000;
 
 export async function isFirestoreConnected(): Promise<boolean> {
-  if (firestoreAccessible !== null) {
-    return firestoreAccessible;
+  const now = Date.now();
+  if (firestoreAccessible === true) {
+    return true;
   }
+  if (firestoreAccessible === false && now - lastFirestoreProbeAt < FIRESTORE_FAILURE_RETRY_COOLDOWN_MS) {
+    return false;
+  }
+  lastFirestoreProbeAt = now;
   try {
     const testQuery = db.collection("users").limit(1);
     await Promise.race([
       testQuery.get(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 1500)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4000)),
     ]);
     firestoreAccessible = true;
     return true;
@@ -126,6 +135,11 @@ function populateCaches() {
     if (u.phone) localUserMemoryCache.set(u.phone, u);
     if (u.name) localUserMemoryCache.set(u.name, u);
     if (u.auth_token) localUserTokenCache.set(u.auth_token, u);
+    if (Array.isArray(u.active_tokens)) {
+      for (const tok of u.active_tokens) {
+        if (tok) localUserTokenCache.set(tok, u);
+      }
+    }
   }
 }
 populateCaches();
@@ -264,6 +278,14 @@ export async function authenticateUser(
 
   const token = generateRandomSessionToken();
   const now = new Date().toISOString();
+  const prevTokens = Array.isArray(userData.active_tokens) ? userData.active_tokens : [];
+  const nextActiveTokens = [
+    token,
+    ...(userData.auth_token ? [userData.auth_token] : []),
+    ...prevTokens,
+  ]
+    .filter((t, idx, arr) => Boolean(t) && arr.indexOf(t) === idx)
+    .slice(0, 5);
 
   // Update in Firestore if available
   if (matchedDoc && canUseFirestore) {
@@ -271,6 +293,7 @@ export async function authenticateUser(
       await matchedDoc.ref.set(
         {
           auth_token: token,
+          active_tokens: nextActiveTokens,
           last_login_at: now,
           updated_at: now,
         },
@@ -282,6 +305,7 @@ export async function authenticateUser(
   const updatedUser: ServerUser = {
     ...userData,
     auth_token: token,
+    active_tokens: nextActiveTokens,
     last_login_at: now,
     updated_at: now,
   };
@@ -292,7 +316,9 @@ export async function authenticateUser(
   if (updatedUser.email) localUserMemoryCache.set(updatedUser.email.toLowerCase(), updatedUser);
   if (updatedUser.phone) localUserMemoryCache.set(updatedUser.phone, updatedUser);
   if (updatedUser.name) localUserMemoryCache.set(updatedUser.name, updatedUser);
-  localUserTokenCache.set(token, updatedUser);
+  for (const t of nextActiveTokens) {
+    localUserTokenCache.set(t, updatedUser);
+  }
   persistLocalStore();
 
   return { user: updatedUser, token };
@@ -495,16 +521,24 @@ export async function invalidateUserToken(userId: string): Promise<boolean> {
   const now = new Date().toISOString();
   const canUseFirestore = await isFirestoreConnected();
 
+  // Evict old tokens from memory cache for this user
+  for (const [tok, cachedUser] of localUserTokenCache.entries()) {
+    if (cachedUser.id === userId) {
+      localUserTokenCache.delete(tok);
+    }
+  }
+
   if (canUseFirestore) {
     try {
       const userRef = db.collection("users").doc(userId);
-      await userRef.set({ auth_token: newToken, updated_at: now }, { merge: true });
+      await userRef.set({ auth_token: newToken, active_tokens: [newToken], updated_at: now }, { merge: true });
     } catch {}
   }
 
   const user = localStore.users[userId];
   if (user) {
     user.auth_token = newToken;
+    user.active_tokens = [newToken];
     user.updated_at = now;
     localStore.users[userId] = user;
     localUserTokenCache.set(newToken, user);
@@ -542,11 +576,19 @@ export async function getUserByToken(token: string): Promise<ServerUser | null> 
         localUserTokenCache.set(cleanToken, u);
         return u;
       }
+      const multiSnap = await db.collection("users").where("active_tokens", "array-contains", cleanToken).get();
+      if (!multiSnap.empty) {
+        const u = multiSnap.docs[0].data() as ServerUser;
+        localUserTokenCache.set(cleanToken, u);
+        return u;
+      }
     } catch {}
   }
 
   // Local store scan
-  const fromLocal = Object.values(localStore.users).find((u) => u.auth_token === cleanToken);
+  const fromLocal = Object.values(localStore.users).find(
+    (u) => u.auth_token === cleanToken || (Array.isArray(u.active_tokens) && u.active_tokens.includes(cleanToken))
+  );
   if (fromLocal) {
     localUserTokenCache.set(cleanToken, fromLocal);
     return fromLocal;
@@ -597,13 +639,19 @@ export async function getCloudDataPackage(userId: string): Promise<any | null> {
     return null;
   }
 
-  const resetTime = rawPkg.resetAllBefore ? new Date(rawPkg.resetAllBefore).getTime() : 0;
+  const parseSafeTime = (str?: string | null): number => {
+    if (!str) return 0;
+    const ms = new Date(str).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+
+  const resetTime = parseSafeTime(rawPkg.resetAllBefore);
   const tombstoneMap = new Map<string, string>();
   for (const t of (rawPkg.tombstones || [])) {
     if (t && t.id && t.entityType) {
       const key = `${t.entityType}:${t.id}`;
       const existing = tombstoneMap.get(key);
-      if (!existing || new Date(t.deletedAt).getTime() > new Date(existing).getTime()) {
+      if (!existing || parseSafeTime(t.deletedAt) > parseSafeTime(existing)) {
         tombstoneMap.set(key, t.deletedAt);
       }
     }
@@ -613,13 +661,12 @@ export async function getCloudDataPackage(userId: string): Promise<any | null> {
     if (!Array.isArray(list)) return [];
     return list.filter((item) => {
       if (!item || !item.id) return false;
-      const itemTimeStr = item.updatedAt || item.createdAt || "";
-      const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
-      if (resetTime > 0 && itemTime <= resetTime) {
+      const itemTime = parseSafeTime(item.updatedAt || item.createdAt || item.recordedAt);
+      if (resetTime > 0 && itemTime > 0 && itemTime <= resetTime) {
         return false;
       }
       const delTimeStr = tombstoneMap.get(`${entityType}:${item.id}`);
-      if (delTimeStr && itemTime <= new Date(delTimeStr).getTime()) {
+      if (delTimeStr && itemTime > 0 && itemTime <= parseSafeTime(delTimeStr)) {
         return false;
       }
       return true;
@@ -680,26 +727,33 @@ export async function saveCloudDataPackage(userId: string, dataPackage: any): Pr
     lastSyncTime: now,
   });
 
-  // Always update local persistent store
+  // Always update local persistent store first
   localStore.syncPackages[userId] = updatedPkg;
   persistLocalStore();
 
   const canUseFirestore = await isFirestoreConnected();
   if (canUseFirestore) {
+    // Store single canonical `package` field (do not duplicate `data_package` + `package` 2x,
+    // which previously halved Firestore's 1 MiB document budget and caused silent write drops).
+    const firestorePayload = {
+      user_id: userId,
+      version: dataPackage.version || "2.0",
+      last_sync_time: now,
+      package: updatedPkg,
+      updated_at: now,
+    };
+    const payloadBytes = Buffer.byteLength(JSON.stringify(firestorePayload), "utf8");
+    if (payloadBytes > 1000000) {
+      console.error(`[Server Sync] Payload size (${payloadBytes} bytes) approaches Firestore 1 MiB limit for user ${userId}`);
+    }
+
+    const syncDocRef = db.collection("user_sync_stores").doc(userId);
     try {
-      const syncDocRef = db.collection("user_sync_stores").doc(userId);
-      await syncDocRef.set(
-        {
-          user_id: userId,
-          version: dataPackage.version || "2.0",
-          last_sync_time: now,
-          data_package: updatedPkg,
-          package: updatedPkg,
-          updated_at: now,
-        },
-        { merge: true }
-      );
-    } catch {}
+      await syncDocRef.set(firestorePayload, { merge: false });
+    } catch (err: any) {
+      console.error(`[Server Sync] CRITICAL Firestore save failure for ${userId} (${payloadBytes} bytes):`, err?.message || err);
+      throw new Error(`Firestore sync write failed (${err?.message || "unknown error"})`);
+    }
 
     try {
       const auditRef = db.collection("sync_audit_logs").doc();
@@ -724,7 +778,7 @@ export async function saveCloudDataPackage(userId: string, dataPackage: any): Pr
 
 export interface ServerDeletionTombstone {
   id: string;
-  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog' | 'homeworkAssignment' | 'homeworkTest';
+  entityType: 'student' | 'group' | 'enrollment' | 'session' | 'attendance' | 'payment' | 'creditLog' | 'homeworkAssignment' | 'homeworkTest' | 'behaviorLog';
   userId: string;
   deletedAt: string;
 }
@@ -738,37 +792,43 @@ function mergeTombstones(
     if (!t || !t.id || !t.entityType) continue;
     const key = `${t.entityType}:${t.id}`;
     const existing = map.get(key);
-    if (!existing || new Date(t.deletedAt).getTime() > new Date(existing.deletedAt).getTime()) {
+    const tMs = new Date(t.deletedAt || 0).getTime() || 0;
+    const eMs = existing ? (new Date(existing.deletedAt || 0).getTime() || 0) : 0;
+    if (!existing || tMs > eMs) {
       map.set(key, t);
     }
   }
   return Array.from(map.values());
 }
 
-function mergeEntities<T extends { id?: string; updatedAt?: string; createdAt?: string }>(
+function mergeEntities<T extends { id?: string; updatedAt?: string; createdAt?: string; recordedAt?: string }>(
   entityType: ServerDeletionTombstone['entityType'],
   localList: T[] = [],
   cloudList: T[] = [],
   tombstoneMap: Map<string, string>,
   resetAllBefore?: string
 ): T[] {
+  const parseTs = (s?: string | null): number => {
+    if (!s) return 0;
+    const ms = new Date(s).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  };
   const map = new Map<string, T>();
-  const resetTime = resetAllBefore ? new Date(resetAllBefore).getTime() : 0;
+  const resetTime = parseTs(resetAllBefore);
 
   // 1. Process cloud items
   for (const item of (cloudList || [])) {
     if (!item || !item.id) continue;
-    const itemTimeStr = item.updatedAt || item.createdAt || "";
-    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+    const itemTime = parseTs(item.updatedAt || item.createdAt || item.recordedAt);
 
-    if (resetTime > 0 && itemTime <= resetTime) {
+    if (resetTime > 0 && itemTime > 0 && itemTime <= resetTime) {
       continue;
     }
 
     const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
     if (deletedAt) {
-      const delTime = new Date(deletedAt).getTime();
-      if (itemTime <= delTime) {
+      const delTime = parseTs(deletedAt);
+      if (itemTime > 0 && delTime > 0 && itemTime <= delTime) {
         continue;
       }
     }
@@ -779,28 +839,30 @@ function mergeEntities<T extends { id?: string; updatedAt?: string; createdAt?: 
   // 2. Process local items
   for (const item of (localList || [])) {
     if (!item || !item.id) continue;
-    const itemTimeStr = item.updatedAt || item.createdAt || "";
-    const itemTime = itemTimeStr ? new Date(itemTimeStr).getTime() : 0;
+    const itemTime = parseTs(item.updatedAt || item.createdAt || item.recordedAt);
 
-    if (resetTime > 0 && itemTime <= resetTime) {
+    if (resetTime > 0 && itemTime > 0 && itemTime <= resetTime) {
       continue;
     }
 
     const deletedAt = tombstoneMap.get(`${entityType}:${item.id}`);
     if (deletedAt) {
-      const delTime = new Date(deletedAt).getTime();
-      if (itemTime <= delTime) {
+      const delTime = parseTs(deletedAt);
+      if (itemTime > 0 && delTime > 0 && itemTime <= delTime) {
         continue;
       }
     }
 
     const existing = map.get(item.id);
     if (existing) {
-      const existingTimeStr = existing.updatedAt || existing.createdAt || "";
-      const existingTime = existingTimeStr ? new Date(existingTimeStr).getTime() : 0;
+      const existingTime = parseTs(existing.updatedAt || existing.createdAt || existing.recordedAt);
 
       if (existingTime > itemTime) {
-        map.set(item.id, { ...item, ...existing });
+        let mergedObj: any = { ...item, ...existing };
+        if (entityType === 'session' && (item as any).status === 'completed' && (existing as any).status !== 'completed') {
+          mergedObj = { ...existing, ...item, status: 'completed' };
+        }
+        map.set(item.id, mergedObj);
       } else {
         map.set(item.id, { ...existing, ...item });
       }
@@ -1022,13 +1084,15 @@ export async function resetUserCloudData(
           user_id: userId,
           version: "2.0",
           last_sync_time: now,
-          data_package: resetPackage,
           package: resetPackage,
           updated_at: now,
         },
         { merge: false }
       );
-    } catch {}
+    } catch (err: any) {
+      console.error(`[Server Sync] Firestore reset write error for ${userId}:`, err?.message || err);
+      throw new Error(`Firestore reset write failed (${err?.message || "unknown error"})`);
+    }
   }
 
   const verifiedActiveStudents = resetPackage.students?.length || 0;

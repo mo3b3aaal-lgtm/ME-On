@@ -1642,7 +1642,16 @@ function setCooldownTimestamp(cooldownKey: string, userId: string, tsMs = Date.n
   try {
     const map = getCooldownMap(userId);
     map[cooldownKey] = tsMs;
-    localStorage.setItem(`${STORAGE_KEY_COOLDOWNS_PREFIX}_${userId}`, JSON.stringify(map));
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const entries = Object.entries(map)
+      .filter(([, v]) => typeof v === 'number' && v >= cutoff)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 100);
+    const compacted: Record<string, number> = {};
+    for (const [k, v] of entries) {
+      compacted[k] = v;
+    }
+    localStorage.setItem(`${STORAGE_KEY_COOLDOWNS_PREFIX}_${userId}`, JSON.stringify(compacted));
   } catch {}
 }
 

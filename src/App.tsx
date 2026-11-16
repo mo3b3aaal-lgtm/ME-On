@@ -21,7 +21,7 @@ import {
   TeacherProfile,
   UserAccount,
 } from './types';
-import { db } from './utils/storage';
+import { db, recoverUserFromIndexedDBMirror } from './utils/storage';
 import { useTranslation } from './utils/i18n';
 import { useModalActions, useHasOpenModals } from './contexts/ModalContext';
 import {
@@ -371,6 +371,15 @@ export default function App() {
       }
     };
     window.addEventListener('storage', handleStorageEvent);
+    // Attempt automatic recovery from IndexedDB mirror if localStorage was partially evicted
+    recoverUserFromIndexedDBMirror(currentUser.id)
+      .then((recovered) => {
+        if (recovered) {
+          refreshData();
+        }
+      })
+      .catch(() => {});
+
     return () => {
       unsubSync();
       window.removeEventListener('storage', handleStorageEvent);
@@ -776,18 +785,31 @@ export default function App() {
         recordedAt: existingAtt?.recordedAt || new Date().toISOString(),
       };
 
-      db.saveSession({
-        ...session,
-        status: 'completed',
-        sessionUnits: isHourly ? undefined : result.sessionUnits,
-        hours: isHourly ? result.hours : undefined,
-        pricePerStudent: result.pricePerStudent,
-        notes: result.notes !== undefined ? result.notes : session.notes,
-      });
-      db.saveAttendanceBatch(session.id, [record]);
+      try {
+        db.saveAttendanceBatch(session.id, [record]);
+        db.saveSession({
+          ...session,
+          status: 'completed',
+          sessionUnits: isHourly ? undefined : result.sessionUnits,
+          hours: isHourly ? result.hours : undefined,
+          pricePerStudent: result.pricePerStudent,
+          notes: result.notes !== undefined ? result.notes : session.notes,
+        });
 
-      setAppPrivateIntakeTarget(null);
-      refreshData();
+        setAppPrivateIntakeTarget(null);
+        refreshData();
+      } catch (err: any) {
+        console.error('[App] handleConfirmAppPrivateIntake failed:', err);
+        setNavToast({
+          message:
+            err?.message ||
+            (isEnRef.current
+              ? 'Failed to save attendance to device storage.'
+              : 'تعذر حفظ الحصة والحضور في ذاكرة الجهاز.'),
+          type: 'error',
+        });
+        throw err;
+      }
     },
     [appPrivateIntakeTarget, refreshData]
   );

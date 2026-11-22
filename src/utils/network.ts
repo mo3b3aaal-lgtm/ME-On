@@ -90,22 +90,29 @@ export async function universalApiFetch(
     body?: any;
     timeoutMs?: number;
   } = {}
-): Promise<{ ok: boolean; status: number; data: any; rawText?: string; error?: string }> {
+): Promise<{ ok: boolean; status: number; data: any; rawText?: string; error?: string; isTimeout?: boolean }> {
   const isFullUrl = endpointOrFullUrl.startsWith('http://') || endpointOrFullUrl.startsWith('https://');
   const targetUrl = isFullUrl ? endpointOrFullUrl : getFullApiUrl(endpointOrFullUrl);
   const method = options.method || 'GET';
-  const timeoutMs = options.timeoutMs || 12000;
+  const timeoutMs = options.timeoutMs || 15000;
   const isNative = Capacitor.isNativePlatform();
+
+  const hasBody = options.body !== undefined && options.body !== null;
+  const serializedBody = hasBody
+    ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body))
+    : undefined;
 
   const reqHeaders: Record<string, string> = {
     Accept: 'application/json',
     ...(options.headers || {}),
   };
-  if (options.body && !reqHeaders['Content-Type']) {
+  if (hasBody && !reqHeaders['Content-Type']) {
     reqHeaders['Content-Type'] = 'application/json';
   }
 
   console.log(`[Universal Fetch] [${isNative ? 'Native CapacitorHttp' : 'Web Fetch'}] ${method} ${targetUrl}`);
+
+  let nativeErrMsg: string | undefined;
 
   if (isNative) {
     try {
@@ -113,7 +120,7 @@ export async function universalApiFetch(
         url: targetUrl,
         method: method,
         headers: reqHeaders,
-        data: options.body,
+        data: serializedBody,
         readTimeout: timeoutMs,
         connectTimeout: timeoutMs,
       });
@@ -137,11 +144,22 @@ export async function universalApiFetch(
         error: isOk ? undefined : `HTTP ${httpRes.status}`,
       };
     } catch (nativeErr: any) {
-      console.warn(`[Universal Fetch Native Error] ${nativeErr?.message || nativeErr}. Falling back to fetch...`);
+      nativeErrMsg = nativeErr?.message || String(nativeErr || 'Native HTTP error');
+      const isNativeTimeout = /timeout|timed out/i.test(nativeErrMsg);
+      console.warn(`[Universal Fetch Native Error] ${nativeErrMsg}`);
+      if (isNativeTimeout) {
+        return {
+          ok: false,
+          status: 0,
+          data: null,
+          error: `Timeout after ${timeoutMs}ms (${nativeErrMsg})`,
+          isTimeout: true,
+        };
+      }
     }
   }
 
-  // Web or fallback fetch
+  // Web or non-timeout fallback fetch
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -149,7 +167,7 @@ export async function universalApiFetch(
     const res = await fetch(targetUrl, {
       method: method,
       headers: reqHeaders,
-      body: options.body ? JSON.stringify(options.body) : undefined,
+      body: serializedBody,
       signal: controller.signal,
       cache: 'no-store',
     });
@@ -172,13 +190,15 @@ export async function universalApiFetch(
     };
   } catch (err: any) {
     clearTimeout(timeoutId);
-    const isTimeout = err.name === 'AbortError';
-    const msg = isTimeout ? `Timeout after ${timeoutMs}ms` : err.message || 'Network fetch error';
+    const isTimeout = err?.name === 'AbortError' || /timeout|timed out/i.test(String(err?.message || ''));
+    const fetchMsg = isTimeout ? `Timeout after ${timeoutMs}ms` : err?.message || 'Network fetch error';
+    const combinedMsg = nativeErrMsg ? `${nativeErrMsg} (fallback: ${fetchMsg})` : fetchMsg;
     return {
       ok: false,
       status: 0,
       data: null,
-      error: msg,
+      error: combinedMsg,
+      isTimeout,
     };
   }
 }

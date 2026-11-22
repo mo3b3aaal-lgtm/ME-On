@@ -2,6 +2,7 @@ import { Firestore } from "@google-cloud/firestore";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { gzipSync, gunzipSync } from "node:zlib";
 
 // Load configuration for project and named database
 let projectId = "corded-elevator-cf6jr";
@@ -32,6 +33,7 @@ export interface ServerUser {
   password_hash?: string;
   auth_token: string;
   active_tokens?: string[];
+  active_refresh_token_hashes?: string[];
   recovery_pin?: string;
   created_at: string;
   updated_at: string;
@@ -152,10 +154,60 @@ export function generateDeterministicToken(_userId: string, _salt = "teachermana
   return crypto.randomBytes(32).toString("hex");
 }
 
+function hashRefreshToken(refreshToken: string): string {
+  return crypto.createHash("sha256").update(refreshToken).digest("hex");
+}
+
+function hashPasswordScrypt(password: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derived = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `scrypt:${salt}:${derived}`;
+}
+
+function verifyPasswordRecord(password: string, userData: ServerUser): { valid: boolean; needsRehash: boolean } {
+  const storedHash = userData.password_hash || "";
+  const storedPlain = (userData as any).password || "";
+
+  if (!storedHash && !storedPlain) {
+    return { valid: true, needsRehash: false };
+  }
+
+  if (storedHash.startsWith("scrypt:")) {
+    const parts = storedHash.split(":");
+    if (parts.length === 3) {
+      const [, salt, hexDigest] = parts;
+      try {
+        const expected = Buffer.from(hexDigest, "hex");
+        const actual = crypto.scryptSync(password, salt, expected.length);
+        if (actual.length === expected.length && crypto.timingSafeEqual(actual, expected)) {
+          return { valid: true, needsRehash: false };
+        }
+      } catch {}
+    }
+    return { valid: false, needsRehash: false };
+  }
+
+  if (storedHash) {
+    try {
+      const inputHash = Buffer.from(crypto.createHash("sha256").update(password).digest("hex"), "hex");
+      const expected = Buffer.from(storedHash, "hex");
+      if (inputHash.length === expected.length && crypto.timingSafeEqual(inputHash, expected)) {
+        return { valid: true, needsRehash: true };
+      }
+    } catch {}
+  }
+
+  if (storedPlain && storedPlain === password) {
+    return { valid: true, needsRehash: true };
+  }
+
+  return { valid: false, needsRehash: false };
+}
+
 export async function authenticateUser(
   identifierOrParams: string | { identifier?: string; email?: string; phone?: string; password?: string },
   explicitPassword?: string
-): Promise<{ user: ServerUser; token: string }> {
+): Promise<{ user: ServerUser; token: string; refreshToken: string }> {
   let clean = "";
   let password = explicitPassword;
 
@@ -257,26 +309,20 @@ export async function authenticateUser(
     throw new Error("لم يتم العثور على حساب مسجل بهذا البريد الإلكتروني أو الهاتف في السيرفر السحابي");
   }
 
-  const storedHash = userData.password_hash || "";
-  const storedPlain = (userData as any).password || "";
-
-  let verificationResult = false;
+  let shouldUpgradePasswordHash = false;
 
   // Authenticate password if provided
   if (password) {
-    const inputHash = crypto.createHash("sha256").update(password).digest("hex");
-
-    verificationResult =
-      (storedHash && storedHash === inputHash) ||
-      (storedPlain && storedPlain === password) ||
-      (!storedHash && !storedPlain);
-
-    if (!verificationResult) {
+    const check = verifyPasswordRecord(password, userData);
+    if (!check.valid) {
       throw new Error("كلمة المرور غير صحيحة، يرجى التأكد والمحاولة مجدداً");
     }
+    shouldUpgradePasswordHash = check.needsRehash;
   }
 
   const token = generateRandomSessionToken();
+  const refreshToken = generateRandomSessionToken();
+  const refreshTokenHash = hashRefreshToken(refreshToken);
   const now = new Date().toISOString();
   const prevTokens = Array.isArray(userData.active_tokens) ? userData.active_tokens : [];
   const nextActiveTokens = [
@@ -285,27 +331,42 @@ export async function authenticateUser(
     ...prevTokens,
   ]
     .filter((t, idx, arr) => Boolean(t) && arr.indexOf(t) === idx)
-    .slice(0, 5);
+    .slice(0, 25);
+
+  const prevRefreshHashes = Array.isArray(userData.active_refresh_token_hashes)
+    ? userData.active_refresh_token_hashes
+    : [];
+  const nextRefreshHashes = [refreshTokenHash, ...prevRefreshHashes]
+    .filter((h, idx, arr) => Boolean(h) && arr.indexOf(h) === idx)
+    .slice(0, 25);
+
+  const upgradedHash =
+    shouldUpgradePasswordHash && password ? hashPasswordScrypt(password) : userData.password_hash;
 
   // Update in Firestore if available
   if (matchedDoc && canUseFirestore) {
     try {
-      await matchedDoc.ref.set(
-        {
-          auth_token: token,
-          active_tokens: nextActiveTokens,
-          last_login_at: now,
-          updated_at: now,
-        },
-        { merge: true }
-      );
+      const firestorePatch: Record<string, any> = {
+        auth_token: token,
+        active_tokens: nextActiveTokens,
+        active_refresh_token_hashes: nextRefreshHashes,
+        last_login_at: now,
+        updated_at: now,
+      };
+      if (upgradedHash && shouldUpgradePasswordHash) {
+        firestorePatch.password_hash = upgradedHash;
+      }
+      await matchedDoc.ref.set(firestorePatch, { merge: true });
     } catch {}
   }
 
+  const { password: _dropLegacyPlain, ...sanitizedBase } = userData as any;
   const updatedUser: ServerUser = {
-    ...userData,
+    ...sanitizedBase,
+    ...(upgradedHash ? { password_hash: upgradedHash } : {}),
     auth_token: token,
     active_tokens: nextActiveTokens,
+    active_refresh_token_hashes: nextRefreshHashes,
     last_login_at: now,
     updated_at: now,
   };
@@ -321,7 +382,7 @@ export async function authenticateUser(
   }
   persistLocalStore();
 
-  return { user: updatedUser, token };
+  return { user: updatedUser, token, refreshToken };
 }
 
 export async function registerUser(account: {
@@ -333,7 +394,7 @@ export async function registerUser(account: {
   centerOrSchool?: string;
   password?: string;
   recoveryPin?: string;
-}): Promise<{ user: ServerUser; token: string }> {
+}): Promise<{ user: ServerUser; token: string; refreshToken: string }> {
   const cleanEmail = (account.email || "").trim().toLowerCase();
   const cleanPhone = (account.phone || "").trim();
   const canUseFirestore = await isFirestoreConnected();
@@ -344,26 +405,56 @@ export async function registerUser(account: {
       const snap = await db.collection("users").where("email", "==", cleanEmail).get();
       if (!snap.empty) {
         const existing = snap.docs[0].data() as ServerUser;
-        const pwdHash = account.password
-          ? crypto.createHash("sha256").update(account.password).digest("hex")
-          : "";
-        if (pwdHash && existing.password_hash && pwdHash !== existing.password_hash) {
-          throw new Error("البريد الإلكتروني مسجل بالفعل بحساب آخر بكلمة مرور مختلفة.");
+        if (account.password && existing.password_hash) {
+          const check = verifyPasswordRecord(account.password, existing);
+          if (!check.valid) {
+            throw new Error("البريد الإلكتروني مسجل بالفعل بحساب آخر بكلمة مرور مختلفة.");
+          }
         }
         const token = generateRandomSessionToken();
+        const refreshToken = generateRandomSessionToken();
+        const refreshTokenHash = hashRefreshToken(refreshToken);
         const now = new Date().toISOString();
+        const nextActiveTokens = [
+          token,
+          ...(existing.auth_token ? [existing.auth_token] : []),
+          ...(Array.isArray(existing.active_tokens) ? existing.active_tokens : []),
+        ]
+          .filter((t, idx, arr) => Boolean(t) && arr.indexOf(t) === idx)
+          .slice(0, 25);
+        const nextRefreshHashes = [
+          refreshTokenHash,
+          ...(Array.isArray(existing.active_refresh_token_hashes) ? existing.active_refresh_token_hashes : []),
+        ]
+          .filter((h, idx, arr) => Boolean(h) && arr.indexOf(h) === idx)
+          .slice(0, 25);
+
         try {
           await snap.docs[0].ref.set(
             {
               auth_token: token,
+              active_tokens: nextActiveTokens,
+              active_refresh_token_hashes: nextRefreshHashes,
               last_login_at: now,
               updated_at: now,
             },
             { merge: true }
           );
         } catch {}
-        localUserTokenCache.set(token, existing);
-        return { user: { ...existing, auth_token: token }, token };
+        const updatedExisting: ServerUser = {
+          ...existing,
+          auth_token: token,
+          active_tokens: nextActiveTokens,
+          active_refresh_token_hashes: nextRefreshHashes,
+          last_login_at: now,
+          updated_at: now,
+        };
+        localStore.users[updatedExisting.id] = updatedExisting;
+        for (const t of nextActiveTokens) {
+          localUserTokenCache.set(t, updatedExisting);
+        }
+        persistLocalStore();
+        return { user: updatedExisting, token, refreshToken };
       }
     } catch (err: any) {
       if (err.message && err.message.includes("مسجل بالفعل")) {
@@ -378,30 +469,50 @@ export async function registerUser(account: {
       (u) => u.email && u.email.toLowerCase() === cleanEmail
     );
     if (localExisting) {
-      const pwdHash = account.password
-        ? crypto.createHash("sha256").update(account.password).digest("hex")
-        : "";
-      if (pwdHash && localExisting.password_hash && pwdHash !== localExisting.password_hash) {
-        throw new Error("البريد الإلكتروني مسجل بالفعل بحساب آخر بكلمة مرور مختلفة.");
+      if (account.password && localExisting.password_hash) {
+        const check = verifyPasswordRecord(account.password, localExisting);
+        if (!check.valid) {
+          throw new Error("البريد الإلكتروني مسجل بالفعل بحساب آخر بكلمة مرور مختلفة.");
+        }
       }
       const token = generateRandomSessionToken();
+      const refreshToken = generateRandomSessionToken();
+      const refreshTokenHash = hashRefreshToken(refreshToken);
       const now = new Date().toISOString();
+      const nextActiveTokens = [
+        token,
+        ...(localExisting.auth_token ? [localExisting.auth_token] : []),
+        ...(Array.isArray(localExisting.active_tokens) ? localExisting.active_tokens : []),
+      ]
+        .filter((t, idx, arr) => Boolean(t) && arr.indexOf(t) === idx)
+        .slice(0, 25);
+      const nextRefreshHashes = [
+        refreshTokenHash,
+        ...(Array.isArray(localExisting.active_refresh_token_hashes) ? localExisting.active_refresh_token_hashes : []),
+      ]
+        .filter((h, idx, arr) => Boolean(h) && arr.indexOf(h) === idx)
+        .slice(0, 25);
+
       localExisting.auth_token = token;
+      localExisting.active_tokens = nextActiveTokens;
+      localExisting.active_refresh_token_hashes = nextRefreshHashes;
       localExisting.last_login_at = now;
       localExisting.updated_at = now;
       localStore.users[localExisting.id] = localExisting;
-      localUserTokenCache.set(token, localExisting);
+      for (const t of nextActiveTokens) {
+        localUserTokenCache.set(t, localExisting);
+      }
       persistLocalStore();
-      return { user: localExisting, token };
+      return { user: localExisting, token, refreshToken };
     }
   }
 
   const userId = account.id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const now = new Date().toISOString();
   const token = generateRandomSessionToken();
-  const pwdHash = account.password
-    ? crypto.createHash("sha256").update(account.password).digest("hex")
-    : "";
+  const refreshToken = generateRandomSessionToken();
+  const refreshTokenHash = hashRefreshToken(refreshToken);
+  const pwdHash = account.password ? hashPasswordScrypt(account.password) : "";
 
   const newUser: ServerUser = {
     id: userId,
@@ -412,6 +523,8 @@ export async function registerUser(account: {
     centerOrSchool: account.centerOrSchool || "",
     password_hash: pwdHash,
     auth_token: token,
+    active_tokens: [token],
+    active_refresh_token_hashes: [refreshTokenHash],
     recovery_pin: account.recoveryPin || "123456",
     created_at: now,
     updated_at: now,
@@ -435,7 +548,7 @@ export async function registerUser(account: {
   localUserTokenCache.set(token, newUser);
   persistLocalStore();
 
-  return { user: newUser, token };
+  return { user: newUser, token, refreshToken };
 }
 
 export async function resetUserPasswordInFirestore(
@@ -482,9 +595,18 @@ export async function resetUserPasswordInFirestore(
     throw new Error("كود الاسترداد السري (PIN) غير صحيح.");
   }
 
-  const newHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+  const newHash = hashPasswordScrypt(newPassword);
   const newToken = generateRandomSessionToken();
+  const newRefreshToken = generateRandomSessionToken();
+  const newRefreshHash = hashRefreshToken(newRefreshToken);
   const now = new Date().toISOString();
+
+  // Evict old tokens from memory cache for this user
+  for (const [tok, cachedUser] of localUserTokenCache.entries()) {
+    if (cachedUser.id === user.id) {
+      localUserTokenCache.delete(tok);
+    }
+  }
 
   if (matchedDoc && canUseFirestore) {
     try {
@@ -492,6 +614,8 @@ export async function resetUserPasswordInFirestore(
         {
           password_hash: newHash,
           auth_token: newToken,
+          active_tokens: [newToken],
+          active_refresh_token_hashes: [newRefreshHash],
           updated_at: now,
         },
         { merge: true }
@@ -504,6 +628,8 @@ export async function resetUserPasswordInFirestore(
     ...user,
     password_hash: newHash,
     auth_token: newToken,
+    active_tokens: [newToken],
+    active_refresh_token_hashes: [newRefreshHash],
     updated_at: now,
   };
   localStore.users[updatedUser.id] = updatedUser;
@@ -531,7 +657,15 @@ export async function invalidateUserToken(userId: string): Promise<boolean> {
   if (canUseFirestore) {
     try {
       const userRef = db.collection("users").doc(userId);
-      await userRef.set({ auth_token: newToken, active_tokens: [newToken], updated_at: now }, { merge: true });
+      await userRef.set(
+        {
+          auth_token: newToken,
+          active_tokens: [newToken],
+          active_refresh_token_hashes: [],
+          updated_at: now,
+        },
+        { merge: true }
+      );
     } catch {}
   }
 
@@ -539,6 +673,7 @@ export async function invalidateUserToken(userId: string): Promise<boolean> {
   if (user) {
     user.auth_token = newToken;
     user.active_tokens = [newToken];
+    user.active_refresh_token_hashes = [];
     user.updated_at = now;
     localStore.users[userId] = user;
     localUserTokenCache.set(newToken, user);
@@ -548,6 +683,96 @@ export async function invalidateUserToken(userId: string): Promise<boolean> {
   return true;
 }
 
+export async function refreshSessionToken(
+  refreshToken: string
+): Promise<{ user: ServerUser; token: string; refreshToken: string } | null> {
+  if (!refreshToken || typeof refreshToken !== "string") return null;
+  const cleanRt = refreshToken.trim();
+  if (cleanRt.length < 16) return null;
+  const rtHash = hashRefreshToken(cleanRt);
+  const canUseFirestore = await isFirestoreConnected();
+
+  let matchedDoc: any = null;
+  let userData: ServerUser | null = null;
+
+  if (canUseFirestore) {
+    try {
+      const snap = await db
+        .collection("users")
+        .where("active_refresh_token_hashes", "array-contains", rtHash)
+        .get();
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+        userData = matchedDoc.data() as ServerUser;
+      }
+    } catch {}
+  }
+
+  if (!userData) {
+    userData =
+      Object.values(localStore.users).find(
+        (u) => Array.isArray(u.active_refresh_token_hashes) && u.active_refresh_token_hashes.includes(rtHash)
+      ) || null;
+  }
+
+  if (!userData) return null;
+
+  const newToken = generateRandomSessionToken();
+  const newRefreshToken = generateRandomSessionToken();
+  const newRtHash = hashRefreshToken(newRefreshToken);
+  const now = new Date().toISOString();
+
+  const nextActiveTokens = [
+    newToken,
+    ...(userData.auth_token ? [userData.auth_token] : []),
+    ...(Array.isArray(userData.active_tokens) ? userData.active_tokens : []),
+  ]
+    .filter((t, idx, arr) => Boolean(t) && arr.indexOf(t) === idx)
+    .slice(0, 25);
+
+  const nextRefreshHashes = [
+    newRtHash,
+    ...(Array.isArray(userData.active_refresh_token_hashes)
+      ? userData.active_refresh_token_hashes.filter((h) => h !== rtHash)
+      : []),
+  ]
+    .filter((h, idx, arr) => Boolean(h) && arr.indexOf(h) === idx)
+    .slice(0, 25);
+
+  if (matchedDoc && canUseFirestore) {
+    try {
+      await matchedDoc.ref.set(
+        {
+          auth_token: newToken,
+          active_tokens: nextActiveTokens,
+          active_refresh_token_hashes: nextRefreshHashes,
+          last_login_at: now,
+          updated_at: now,
+        },
+        { merge: true }
+      );
+    } catch {}
+  }
+
+  const updatedUser: ServerUser = {
+    ...userData,
+    auth_token: newToken,
+    active_tokens: nextActiveTokens,
+    active_refresh_token_hashes: nextRefreshHashes,
+    last_login_at: now,
+    updated_at: now,
+  };
+
+  localStore.users[updatedUser.id] = updatedUser;
+  localUserMemoryCache.set(updatedUser.id, updatedUser);
+  for (const t of nextActiveTokens) {
+    localUserTokenCache.set(t, updatedUser);
+  }
+  persistLocalStore();
+
+  return { user: updatedUser, token: newToken, refreshToken: newRefreshToken };
+}
+
 export async function registerOrAuthenticateUser(account: {
   id: string;
   email: string;
@@ -555,7 +780,7 @@ export async function registerOrAuthenticateUser(account: {
   phone?: string;
   password?: string;
   recoveryPin?: string;
-}): Promise<{ user: ServerUser; token: string }> {
+}): Promise<{ user: ServerUser; token: string; refreshToken: string }> {
   return registerUser(account);
 }
 
@@ -614,6 +839,32 @@ export async function getUserById(userId: string): Promise<ServerUser | null> {
   return null;
 }
 
+async function readRawCloudPackageFromFirestore(userId: string): Promise<any | null> {
+  const docRef = db.collection("user_sync_stores").doc(userId);
+  const snap = await docRef.get();
+  if (!snap.exists) return null;
+  const data = snap.data();
+  if (!data) return null;
+
+  if (data.storage_encoding === "gzip_chunks" && Number(data.chunk_count) > 0) {
+    const chunksSnap = await docRef.collection("chunks").orderBy("index", "asc").get();
+    if (!chunksSnap.empty) {
+      const b64 = chunksSnap.docs.map((d) => String(d.data()?.data || "")).join("");
+      if (b64) {
+        const jsonBuf = gunzipSync(Buffer.from(b64, "base64"));
+        return JSON.parse(jsonBuf.toString("utf8"));
+      }
+    }
+  }
+
+  if (typeof data.package_gzip_b64 === "string" && data.package_gzip_b64.length > 0) {
+    const jsonBuf = gunzipSync(Buffer.from(data.package_gzip_b64, "base64"));
+    return JSON.parse(jsonBuf.toString("utf8"));
+  }
+
+  return data.package || data.data_package || null;
+}
+
 export async function getCloudDataPackage(userId: string): Promise<any | null> {
   if (!userId) return null;
   let rawPkg: any = null;
@@ -621,14 +872,10 @@ export async function getCloudDataPackage(userId: string): Promise<any | null> {
   const canUseFirestore = await isFirestoreConnected();
   if (canUseFirestore) {
     try {
-      const snap = await db.collection("user_sync_stores").doc(userId).get();
-      if (snap.exists) {
-        const data = snap.data();
-        if (data) {
-          rawPkg = data.package || data.data_package || null;
-        }
-      }
-    } catch {}
+      rawPkg = await readRawCloudPackageFromFirestore(userId);
+    } catch (err: any) {
+      console.error(`[Server Sync] Failed reading Firestore cloud package for ${userId}:`, err?.message || err);
+    }
   }
 
   if (!rawPkg && localStore.syncPackages[userId]) {
@@ -680,6 +927,9 @@ export async function getCloudDataPackage(userId: string): Promise<any | null> {
   const sanitizedAttendance = filterList('attendance', rawPkg.attendance);
   const sanitizedPayments = filterList('payment', rawPkg.payments);
   const sanitizedCreditLogs = filterList('creditLog', rawPkg.creditLogs);
+  const sanitizedBehaviorLogs = filterList('behaviorLog', rawPkg.behaviorLogs);
+  const sanitizedHomeworkTests = filterList('homeworkTest', rawPkg.homeworkTests);
+  const sanitizedHomeworkAssignments = filterList('homeworkAssignment', rawPkg.homeworkAssignments);
 
   const sanitizedPkg = {
     ...rawPkg,
@@ -690,11 +940,16 @@ export async function getCloudDataPackage(userId: string): Promise<any | null> {
     attendance: sanitizedAttendance,
     payments: sanitizedPayments,
     creditLogs: sanitizedCreditLogs,
+    behaviorLogs: sanitizedBehaviorLogs,
+    homeworkTests: sanitizedHomeworkTests,
+    homeworkAssignments: sanitizedHomeworkAssignments,
+    homeworkQuestionResults: Array.isArray(rawPkg.homeworkQuestionResults) ? rawPkg.homeworkQuestionResults : [],
     stats: {
       totalStudents: sanitizedStudents.length,
       totalGroups: sanitizedGroups.length,
       totalSessions: sanitizedSessions.length,
       totalPayments: sanitizedPayments.length,
+      totalHomeworkAssignments: sanitizedHomeworkAssignments.length,
     },
   };
 
@@ -719,6 +974,127 @@ function sanitizeForFirestore(val: any): any {
   return val;
 }
 
+async function writePackageToFirestoreSafe(
+  userId: string,
+  version: string,
+  now: string,
+  pkg: any
+): Promise<void> {
+  const syncDocRef = db.collection("user_sync_stores").doc(userId);
+  const plainJson = JSON.stringify(pkg);
+  const rawBytes = Buffer.byteLength(plainJson, "utf8");
+
+  // Keep small/medium packages as plain JSON `package` for direct inspection & backwards compatibility
+  if (rawBytes <= 750_000) {
+    const firestorePayload = {
+      user_id: userId,
+      version,
+      last_sync_time: now,
+      storage_encoding: "json",
+      package: pkg,
+      updated_at: now,
+    };
+    try {
+      await syncDocRef.set(firestorePayload, { merge: false });
+      syncDocRef.collection("chunks").get().then((snap) => {
+        if (!snap.empty) {
+          const b = db.batch();
+          snap.docs.forEach((d) => b.delete(d.ref));
+          b.commit().catch(() => {});
+        }
+      }).catch(() => {});
+      return;
+    } catch (err: any) {
+      const msg = String(err?.message || err || "");
+      // If protobuf/overhead still pushed plain JSON near 1 MiB, fall through to gzip encoding
+      if (!msg.includes("maximum allowed size") && !msg.includes("INVALID_ARGUMENT")) {
+        console.error(`[Server Sync] CRITICAL Firestore save failure for ${userId} (${rawBytes} bytes):`, msg);
+        throw new Error(`Firestore sync write failed (${msg || "unknown error"})`);
+      }
+    }
+  }
+
+  // Compress large packages via gzip -> base64 (typically 6x-10x smaller)
+  const compressedB64 = gzipSync(Buffer.from(plainJson, "utf8"), { level: 6 }).toString("base64");
+  if (compressedB64.length <= 850_000) {
+    const compressedPayload = {
+      user_id: userId,
+      version,
+      last_sync_time: now,
+      storage_encoding: "gzip_base64",
+      package_gzip_b64: compressedB64,
+      raw_bytes: rawBytes,
+      stats: pkg.stats || null,
+      updated_at: now,
+    };
+    try {
+      await syncDocRef.set(compressedPayload, { merge: false });
+      syncDocRef.collection("chunks").get().then((snap) => {
+        if (!snap.empty) {
+          const b = db.batch();
+          snap.docs.forEach((d) => b.delete(d.ref));
+          b.commit().catch(() => {});
+        }
+      }).catch(() => {});
+      return;
+    } catch (err: any) {
+      console.error(`[Server Sync] CRITICAL Firestore gzip write failure for ${userId} (${compressedB64.length} b64 chars):`, err?.message || err);
+      throw new Error(`Firestore sync write failed (${err?.message || "unknown error"})`);
+    }
+  }
+
+  // Ultra-large multi-MB fallback: split compressed base64 into 400KB subcollection chunks
+  const CHUNK_SIZE = 400_000;
+  const chunks: string[] = [];
+  for (let i = 0; i < compressedB64.length; i += CHUNK_SIZE) {
+    chunks.push(compressedB64.slice(i, i + CHUNK_SIZE));
+  }
+
+  try {
+    const existingChunks = await syncDocRef.collection("chunks").get();
+    const CHUNKS_PER_BATCH = 12; // <= ~4.8 MB per WriteBatch commit (well under Firestore 10 MiB RPC limit)
+
+    for (let start = 0; start < chunks.length; start += CHUNKS_PER_BATCH) {
+      const batch = db.batch();
+      const slice = chunks.slice(start, start + CHUNKS_PER_BATCH);
+      slice.forEach((chunkData, offset) => {
+        const idx = start + offset;
+        const chunkRef = syncDocRef.collection("chunks").doc(`chunk_${String(idx).padStart(4, "0")}`);
+        batch.set(chunkRef, { index: idx, data: chunkData, updated_at: now });
+      });
+      await batch.commit();
+    }
+
+    // Delete any leftover chunks beyond the new chunk count before committing parent doc
+    const staleChunkDocs = existingChunks.docs.filter((d) => {
+      const idx = Number(d.data()?.index);
+      return !Number.isFinite(idx) || idx >= chunks.length || d.id !== `chunk_${String(idx).padStart(4, "0")}`;
+    });
+    for (let start = 0; start < staleChunkDocs.length; start += 400) {
+      const delBatch = db.batch();
+      staleChunkDocs.slice(start, start + 400).forEach((d) => delBatch.delete(d.ref));
+      await delBatch.commit();
+    }
+
+    await syncDocRef.set(
+      {
+        user_id: userId,
+        version,
+        last_sync_time: now,
+        storage_encoding: "gzip_chunks",
+        chunk_count: chunks.length,
+        raw_bytes: rawBytes,
+        stats: pkg.stats || null,
+        updated_at: now,
+      },
+      { merge: false }
+    );
+  } catch (err: any) {
+    console.error(`[Server Sync] CRITICAL Firestore chunked write failure for ${userId} (${chunks.length} chunks):`, err?.message || err);
+    throw new Error(`Firestore chunked sync write failed (${err?.message || "unknown error"})`);
+  }
+}
+
 export async function saveCloudDataPackage(userId: string, dataPackage: any): Promise<{ lastSyncTime: string; stats?: any }> {
   const now = new Date().toISOString();
   const updatedPkg = sanitizeForFirestore({
@@ -733,27 +1109,7 @@ export async function saveCloudDataPackage(userId: string, dataPackage: any): Pr
 
   const canUseFirestore = await isFirestoreConnected();
   if (canUseFirestore) {
-    // Store single canonical `package` field (do not duplicate `data_package` + `package` 2x,
-    // which previously halved Firestore's 1 MiB document budget and caused silent write drops).
-    const firestorePayload = {
-      user_id: userId,
-      version: dataPackage.version || "2.0",
-      last_sync_time: now,
-      package: updatedPkg,
-      updated_at: now,
-    };
-    const payloadBytes = Buffer.byteLength(JSON.stringify(firestorePayload), "utf8");
-    if (payloadBytes > 1000000) {
-      console.error(`[Server Sync] Payload size (${payloadBytes} bytes) approaches Firestore 1 MiB limit for user ${userId}`);
-    }
-
-    const syncDocRef = db.collection("user_sync_stores").doc(userId);
-    try {
-      await syncDocRef.set(firestorePayload, { merge: false });
-    } catch (err: any) {
-      console.error(`[Server Sync] CRITICAL Firestore save failure for ${userId} (${payloadBytes} bytes):`, err?.message || err);
-      throw new Error(`Firestore sync write failed (${err?.message || "unknown error"})`);
-    }
+    await writePackageToFirestoreSafe(userId, dataPackage.version || "2.0", now, updatedPkg);
 
     try {
       const auditRef = db.collection("sync_audit_logs").doc();
@@ -907,10 +1263,13 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
     const initialAttendance = mergeEntities('attendance', incomingPackage.attendance || [], [], tombstoneMap, effectiveResetAllBefore);
     const initialPayments = mergeEntities('payment', incomingPackage.payments || [], [], tombstoneMap, effectiveResetAllBefore);
     const initialCreditLogs = mergeEntities('creditLog', incomingPackage.creditLogs || [], [], tombstoneMap, effectiveResetAllBefore);
+    const initialBehaviorLogs = mergeEntities('behaviorLog', incomingPackage.behaviorLogs || [], [], tombstoneMap, effectiveResetAllBefore);
 
     const initialHomeworkTests = mergeEntities('homeworkTest', incomingPackage.homeworkTests || [], [], tombstoneMap, effectiveResetAllBefore);
     const initialHomeworkAssignments = mergeEntities('homeworkAssignment', incomingPackage.homeworkAssignments || [], [], tombstoneMap, effectiveResetAllBefore);
-    const initialHomeworkQuestionResults = incomingPackage.homeworkQuestionResults || [];
+    const initialHomeworkQuestionResults = Array.isArray(incomingPackage.homeworkQuestionResults)
+      ? incomingPackage.homeworkQuestionResults
+      : [];
 
     const saved = {
       ...incomingPackage,
@@ -923,6 +1282,7 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
       attendance: initialAttendance,
       payments: initialPayments,
       creditLogs: initialCreditLogs,
+      behaviorLogs: initialBehaviorLogs,
       homeworkTests: initialHomeworkTests,
       homeworkAssignments: initialHomeworkAssignments,
       homeworkQuestionResults: initialHomeworkQuestionResults,
@@ -947,6 +1307,7 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
   const mergedAttendance = mergeEntities('attendance', incomingPackage.attendance, existingCloud.attendance, tombstoneMap, effectiveResetAllBefore);
   const mergedPayments = mergeEntities('payment', incomingPackage.payments, existingCloud.payments, tombstoneMap, effectiveResetAllBefore);
   const mergedCreditLogs = mergeEntities('creditLog', incomingPackage.creditLogs || [], existingCloud.creditLogs || [], tombstoneMap, effectiveResetAllBefore);
+  const mergedBehaviorLogs = mergeEntities('behaviorLog', incomingPackage.behaviorLogs || [], existingCloud.behaviorLogs || [], tombstoneMap, effectiveResetAllBefore);
   const mergedHomeworkTests = mergeEntities('homeworkTest', incomingPackage.homeworkTests || [], existingCloud.homeworkTests || [], tombstoneMap, effectiveResetAllBefore);
   const mergedHomeworkAssignments = mergeEntities('homeworkAssignment', incomingPackage.homeworkAssignments || [], existingCloud.homeworkAssignments || [], tombstoneMap, effectiveResetAllBefore);
 
@@ -973,6 +1334,7 @@ export async function mergeCloudDataPackage(userId: string, incomingPackage: any
     attendance: mergedAttendance,
     payments: mergedPayments,
     creditLogs: mergedCreditLogs,
+    behaviorLogs: mergedBehaviorLogs,
     homeworkTests: mergedHomeworkTests,
     homeworkAssignments: mergedHomeworkAssignments,
     homeworkQuestionResults: mergedHomeworkQuestionResults,
@@ -1007,17 +1369,14 @@ export async function resetUserCloudData(
   const resetTimestamp = resetAllBefore || new Date().toISOString();
   const resetTime = new Date(resetTimestamp).getTime();
 
-  // Fetch current package
+  // Fetch current package (supports json, gzip_base64, and gzip_chunks)
   let existingPkg: any = localStore.syncPackages[userId] || {};
   const canUseFirestore = await isFirestoreConnected();
   if (canUseFirestore) {
     try {
-      const snap = await db.collection("user_sync_stores").doc(userId).get();
-      if (snap.exists) {
-        const d = snap.data();
-        if (d) {
-          existingPkg = d.package || d.data_package || existingPkg;
-        }
+      const firestorePkg = await readRawCloudPackageFromFirestore(userId);
+      if (firestorePkg) {
+        existingPkg = firestorePkg;
       }
     } catch {}
   }
@@ -1035,7 +1394,7 @@ export async function resetUserCloudData(
     if (!Array.isArray(items)) return [];
     return items.filter((it) => {
       if (!it || !it.id) return false;
-      const tStr = it.updatedAt || it.createdAt || "";
+      const tStr = it.updatedAt || it.createdAt || it.recordedAt || "";
       const t = tStr ? new Date(tStr).getTime() : 0;
       return t > effectiveResetTime;
     });
@@ -1048,6 +1407,9 @@ export async function resetUserCloudData(
   const remainingAttendance = filterPostReset(existingPkg.attendance);
   const remainingPayments = filterPostReset(existingPkg.payments);
   const remainingCreditLogs = filterPostReset(existingPkg.creditLogs);
+  const remainingBehaviorLogs = filterPostReset(existingPkg.behaviorLogs);
+  const remainingHomeworkTests = filterPostReset(existingPkg.homeworkTests);
+  const remainingHomeworkAssignments = filterPostReset(existingPkg.homeworkAssignments);
 
   const now = new Date().toISOString();
   const resetPackage = sanitizeForFirestore({
@@ -1062,6 +1424,10 @@ export async function resetUserCloudData(
     attendance: remainingAttendance,
     payments: remainingPayments,
     creditLogs: remainingCreditLogs,
+    behaviorLogs: remainingBehaviorLogs,
+    homeworkTests: remainingHomeworkTests,
+    homeworkAssignments: remainingHomeworkAssignments,
+    homeworkQuestionResults: [],
     monthlyInvoices: [],
     teacherProfile: existingPkg.teacherProfile || null,
     tombstones: [],
@@ -1070,6 +1436,7 @@ export async function resetUserCloudData(
       totalGroups: remainingGroups.length,
       totalSessions: remainingSessions.length,
       totalPayments: remainingPayments.length,
+      totalHomeworkAssignments: remainingHomeworkAssignments.length,
     },
   });
 
@@ -1079,16 +1446,7 @@ export async function resetUserCloudData(
 
   if (canUseFirestore) {
     try {
-      await db.collection("user_sync_stores").doc(userId).set(
-        {
-          user_id: userId,
-          version: "2.0",
-          last_sync_time: now,
-          package: resetPackage,
-          updated_at: now,
-        },
-        { merge: false }
-      );
+      await writePackageToFirestoreSafe(userId, "2.0", now, resetPackage);
     } catch (err: any) {
       console.error(`[Server Sync] Firestore reset write error for ${userId}:`, err?.message || err);
       throw new Error(`Firestore reset write failed (${err?.message || "unknown error"})`);

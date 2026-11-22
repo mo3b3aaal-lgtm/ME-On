@@ -1738,6 +1738,91 @@ export function autoSyncUserAccount(userId?: string): UserAccountDataPackage {
 // Auto-Sync Scheduling & Realtime Engine
 // ==========================================
 
+function sha256HexSync(input: string): string {
+  const bytes = new TextEncoder().encode(input);
+  const K = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ]);
+  const H = new Uint32Array([
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+  ]);
+  const bitLen = bytes.length * 8;
+  const padLen = ((bytes.length + 9 + 63) >> 6) << 6;
+  const padded = new Uint8Array(padLen);
+  padded.set(bytes);
+  padded[bytes.length] = 0x80;
+  const view = new DataView(padded.buffer);
+  view.setUint32(padLen - 4, bitLen >>> 0, false);
+  view.setUint32(padLen - 8, Math.floor(bitLen / 0x100000000) >>> 0, false);
+  const w = new Uint32Array(64);
+  const rotr = (x: number, n: number) => (x >>> n) | (x << (32 - n));
+  for (let off = 0; off < padLen; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = view.getUint32(off + i * 4, false);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0;
+      d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0;
+    H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0;
+    H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+  }
+  return Array.from(H).map((x) => x.toString(16).padStart(8, '0')).join('');
+}
+
+function createOfflinePasswordVerifier(password: string): string {
+  const arr = new Uint8Array(12);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(arr);
+  } else {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+  }
+  const salt = Array.from(arr).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `sha256:${salt}:${sha256HexSync(`${salt}:${password}`)}`;
+}
+
+function verifyOfflinePasswordVerifier(user: UserAccount, candidatePassword: string): boolean {
+  if (user.offlinePasswordHash && user.offlinePasswordHash.startsWith('sha256:')) {
+    const parts = user.offlinePasswordHash.split(':');
+    if (parts.length === 3) {
+      const [, salt, expected] = parts;
+      return sha256HexSync(`${salt}:${candidatePassword}`) === expected;
+    }
+  }
+  if (user.password !== undefined) {
+    return user.password === candidatePassword;
+  }
+  return false;
+}
+
+function sanitizeStoredAccount(user: UserAccount): UserAccount {
+  const { password: legacyPlain, ...rest } = user;
+  if (legacyPlain && !rest.offlinePasswordHash) {
+    rest.offlinePasswordHash = createOfflinePasswordVerifier(legacyPlain);
+  }
+  return rest;
+}
+
 export function getAuthTokenForUser(userId: string): string {
   try {
     const rawTok = localStorage.getItem(`tm_v2_auth_token_${userId}`);
@@ -1755,6 +1840,32 @@ export function getAuthTokenForUser(userId: string): string {
     }
   } catch {}
   return '';
+}
+
+export function getRefreshTokenForUser(userId: string): string {
+  try {
+    const rawRt = localStorage.getItem(`tm_v2_refresh_token_${userId}`);
+    if (rawRt && rawRt.trim()) return rawRt.trim();
+  } catch {}
+  try {
+    const accounts = db.getAccounts();
+    const acc = accounts.find((a) => a.id === userId);
+    if (acc && acc.refreshToken && acc.refreshToken.trim()) return acc.refreshToken.trim();
+  } catch {}
+  try {
+    const current = db.getCurrentSession();
+    if (current && current.id === userId && current.refreshToken && current.refreshToken.trim()) {
+      return current.refreshToken.trim();
+    }
+  } catch {}
+  return '';
+}
+
+export function setRefreshTokenForUser(userId: string, refreshToken?: string): void {
+  if (!userId || !refreshToken || !refreshToken.trim()) return;
+  try {
+    localStorage.setItem(`tm_v2_refresh_token_${userId}`, refreshToken.trim());
+  } catch {}
 }
 
 export interface AutoSyncSchedulerPlugin {
@@ -1918,6 +2029,73 @@ const inFlightSyncMap = new Map<
   }>
 >();
 
+async function trySilentTokenRefresh(userId: string): Promise<{ refreshed: boolean; token?: string; error?: string }> {
+  try {
+    const refreshToken = getRefreshTokenForUser(userId);
+    if (!refreshToken) {
+      return { refreshed: false, error: 'Missing refresh token; re-authentication required' };
+    }
+
+    const refreshUrl = getFullApiUrl('/api/auth/refresh');
+    const refreshRes = await universalApiFetch(refreshUrl, {
+      method: 'POST',
+      body: { refreshToken },
+      timeoutMs: 15000,
+    });
+
+    if (
+      refreshRes.ok &&
+      refreshRes.data?.success &&
+      typeof refreshRes.data?.token === 'string' &&
+      refreshRes.data.token.trim()
+    ) {
+      const freshToken = refreshRes.data.token.trim();
+      const nextRefreshToken =
+        typeof refreshRes.data?.refreshToken === 'string' && refreshRes.data.refreshToken.trim()
+          ? refreshRes.data.refreshToken.trim()
+          : refreshToken;
+
+      try {
+        localStorage.setItem(`tm_v2_auth_token_${userId}`, freshToken);
+        setRefreshTokenForUser(userId, nextRefreshToken);
+      } catch {}
+
+      try {
+        const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+        const updatedAccounts = accounts.map((a) =>
+          a.id === userId
+            ? sanitizeStoredAccount({
+                ...a,
+                authToken: freshToken,
+                refreshToken: nextRefreshToken,
+                lastLoginAt: new Date().toISOString(),
+              })
+            : sanitizeStoredAccount(a)
+        );
+        if (updatedAccounts.length > 0) {
+          saveList(STORAGE_KEYS.ACCOUNTS, updatedAccounts);
+        }
+        const session = db.getCurrentSession();
+        if (session && session.id === userId) {
+          const cleanSession = sanitizeStoredAccount({
+            ...session,
+            authToken: freshToken,
+            refreshToken: nextRefreshToken,
+          });
+          const { syncedData: _drop, ...lightSession } = cleanSession;
+          localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(lightSession));
+        }
+      } catch {}
+
+      return { refreshed: true, token: freshToken };
+    }
+
+    return { refreshed: false, error: refreshRes.data?.error || refreshRes.error || `HTTP ${refreshRes.status}` };
+  } catch (err: any) {
+    return { refreshed: false, error: err?.message || 'Silent token refresh failed' };
+  }
+}
+
 /**
  * تنفيذ المزامنة الكاملة (السحابية والمحلية) مع Mutex لمنع التكرار وتتبع تسلسل التعديلات المحلي
  */
@@ -1930,6 +2108,7 @@ export async function performFullSync(
   dataPackage: UserAccountDataPackage;
   isOffline?: boolean;
   isAuthExpired?: boolean;
+  httpStatus?: number;
   error?: string;
 }> {
   const targetUserId = userId || getActiveUserId();
@@ -1998,20 +2177,38 @@ export async function performFullSync(
 
     // 3. Dispatch cloud sync directly to Cloud Run Express backend (/api/sync/merge)
     try {
-      const token = getAuthTokenForUser(targetUserId);
-      const res = await universalApiFetch(syncApiUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-auth-token': token,
-        },
-        body: {
-          userId: targetUserId,
-          token,
-          dataPackage: localPackage,
-        },
-        timeoutMs: 15000,
-      });
+      let token = getAuthTokenForUser(targetUserId);
+      if (!token) {
+        const refreshAttempt = await trySilentTokenRefresh(targetUserId);
+        if (refreshAttempt.refreshed && refreshAttempt.token) {
+          token = refreshAttempt.token;
+        }
+      }
+
+      const dispatchMerge = (authTok: string) =>
+        universalApiFetch(syncApiUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${authTok}`,
+            'x-auth-token': authTok,
+          },
+          body: {
+            userId: targetUserId,
+            token: authTok,
+            dataPackage: localPackage,
+          },
+          timeoutMs: 30000,
+        });
+
+      let res = await dispatchMerge(token);
+
+      if (res.status === 401) {
+        const refreshAttempt = await trySilentTokenRefresh(targetUserId);
+        if (refreshAttempt.refreshed && refreshAttempt.token) {
+          token = refreshAttempt.token;
+          res = await dispatchMerge(token);
+        }
+      }
 
       if (res.status === 401) {
         const latestQ = getSyncQueueState(targetUserId);
@@ -2019,14 +2216,14 @@ export async function performFullSync(
           ...latestQ,
           authExpired: true,
           lastHttpStatus: 401,
-          lastError: 'Unauthorized (401)',
+          lastError: res.data?.error || 'Unauthorized (401)',
           inFlightStartedAt: null,
         });
         logPersistenceDiag('sync_auth_expired', 'HTTP 401 during /api/sync/merge', targetUserId);
         saveAutoSyncConfig(
           {
             status: 'auth_expired',
-            statusMessage: 'انتهت جلسة الدخول — بياناتك محفوظة محلياً وبانتظار إعادة تسجيل الدخول للمزامنة',
+            statusMessage: 'انتهت جلسة الدخول السحابية (401) — بياناتك محفوظة محلياً وبانتظار تجديد تسجيل الدخول للمزامنة',
             lastSyncTime: localPackage.lastSyncTime,
             autoRetryOnReconnect: false,
             hasPendingChanges: latestQ.localMutationSeq > latestQ.lastSyncedMutationSeq,
@@ -2037,8 +2234,9 @@ export async function performFullSync(
         return {
           success: false,
           isAuthExpired: true,
-          error: 'Unauthorized (401)',
-          message: 'انتهت جلسة الدخول — البيانات محفوظة محلياً. يرجى تسجيل الدخول لتجديد المزامنة.',
+          httpStatus: 401,
+          error: res.data?.error || 'Unauthorized (401)',
+          message: 'انتهت جلسة الدخول السحابية (401) — البيانات محفوظة محلياً. يرجى تسجيل الدخول لتجديد المزامنة.',
           dataPackage: localPackage,
         };
       }
@@ -2047,11 +2245,17 @@ export async function performFullSync(
         const resData = res.data;
         if (resData.merged) {
           if (!isValidIncomingCloudPackage(resData.dataPackage)) {
-            throw new Error('Malformed or partial cloud dataPackage rejected');
+            const errObj: any = new Error('Malformed or partial cloud dataPackage rejected');
+            errObj.httpStatus = res.status || 200;
+            errObj.errorCode = 'MALFORMED_CLOUD_PACKAGE';
+            throw errObj;
           }
           const restoreRes = db.restoreAccountData(targetUserId, resData.dataPackage);
           if (!restoreRes.success) {
-            throw new Error(restoreRes.message || 'Local merge apply failed');
+            const errObj: any = new Error(restoreRes.message || 'Local merge apply failed');
+            errObj.httpStatus = res.status || 200;
+            errObj.errorCode = 'LOCAL_MERGE_APPLY_FAILED';
+            throw errObj;
           }
         }
 
@@ -2102,6 +2306,7 @@ export async function performFullSync(
 
         return {
           success: true,
+          httpStatus: res.status || 200,
           message: `تمت المزامنة وحفظ البيانات سحابياً بنجاح (${finalPackage.stats?.totalStudents || 0} طالب، ${finalPackage.stats?.totalGroups || 0} مجموعة، ${finalPackage.stats?.totalSessions || 0} حصة).`,
           dataPackage: finalPackage,
         };
@@ -2109,12 +2314,15 @@ export async function performFullSync(
         const errorDetail = res.data?.error || res.error || `HTTP ${res.status}`;
         const errObj: any = new Error(errorDetail);
         errObj.httpStatus = res.status;
+        errObj.errorCode = res.data?.errorCode;
+        errObj.isTimeout = Boolean(res.isTimeout);
         throw errObj;
       }
     } catch (netErr: any) {
-      const isTimeout = netErr?.name === 'AbortError' || String(netErr?.message).includes('Timeout');
+      const httpStatus = typeof netErr?.httpStatus === 'number' ? netErr.httpStatus : 0;
+      const isTimeout = Boolean(netErr?.isTimeout) || netErr?.name === 'AbortError' || /timeout|timed out/i.test(String(netErr?.message || ''));
       const failureReason = isTimeout ? 'Request timed out' : netErr?.message || 'Network fetch error';
-      console.warn(`[Sync] Sync failure reason: ${failureReason}. Preserving local offline backup & dirty queue.`);
+      console.warn(`[Sync] Sync failure (HTTP ${httpStatus}): ${failureReason}. Preserving local offline backup & dirty queue.`);
 
       const latestQ = getSyncQueueState(targetUserId);
       const nextFailures = (latestQ.consecutiveFailures || 0) + 1;
@@ -2125,24 +2333,72 @@ export async function performFullSync(
         ...latestQ,
         consecutiveFailures: nextFailures,
         nextRetryAt,
-        lastError: failureReason,
-        lastHttpStatus: typeof netErr?.httpStatus === 'number' ? netErr.httpStatus : null,
+        lastError: httpStatus > 0 ? `HTTP ${httpStatus}: ${failureReason}` : failureReason,
+        lastHttpStatus: httpStatus > 0 ? httpStatus : null,
+        authExpired: httpStatus === 401 ? true : httpStatus > 0 ? false : latestQ.authExpired,
         inFlightStartedAt: null,
         lastAttemptAt: new Date().toISOString(),
       });
-      logPersistenceDiag('sync_fail', `${failureReason} (attempt #${nextFailures})`, targetUserId);
+      logPersistenceDiag('sync_fail', `http=${httpStatus} ${failureReason} (attempt #${nextFailures})`, targetUserId);
+
+      const isHttpServerError = httpStatus >= 400 || httpStatus === 200;
+      const isPayloadLimitError =
+        httpStatus === 413 ||
+        netErr?.errorCode === 'FIRESTORE_DOC_TOO_LARGE' ||
+        /maximum allowed size|1,048,576|INVALID_ARGUMENT/i.test(failureReason);
+
+      if (isHttpServerError) {
+        const statusMsg = isPayloadLimitError
+          ? `تم حفظ البيانات محلياً بأمان — السيرفر السحابي رفض حجم البيانات (HTTP ${httpStatus}: تجاوز حد المستند السحابي)`
+          : `تم حفظ البيانات محلياً بأمان — استجاب السيرفر السحابي بخطأ (HTTP ${httpStatus})`;
+        const userToastMsg = isPayloadLimitError
+          ? `تم حفظ البيانات محلياً بأمان. السيرفر السحابي رفض حفظ البيانات لتجاوزها الحد الأقصى للمستند (HTTP ${httpStatus}).`
+          : `تم حفظ البيانات محلياً بأمان. تعذر إتمام المزامنة بسبب خطأ من السيرفر السحابي (HTTP ${httpStatus}).`;
+
+        saveAutoSyncConfig(
+          {
+            status: 'error',
+            statusMessage: statusMsg,
+            lastSyncTime: localPackage.lastSyncTime,
+            autoRetryOnReconnect: true,
+            hasPendingChanges: latestQ.localMutationSeq > latestQ.lastSyncedMutationSeq,
+            lastErrorCode: netErr?.errorCode || `HTTP_${httpStatus}`,
+          },
+          targetUserId
+        );
+
+        try {
+          notificationDomainHooks?.onSyncOutcome?.({
+            outcome: 'server_failure',
+            errorReason: `HTTP ${httpStatus}: ${failureReason}`,
+            isManual,
+            userId: targetUserId,
+          });
+        } catch {}
+
+        return {
+          success: false,
+          isOffline: false,
+          httpStatus,
+          message: userToastMsg,
+          dataPackage: localPackage,
+          error: `HTTP ${httpStatus}: ${failureReason}`,
+        };
+      }
 
       const isServerUnreachable = netStatus.deviceConnected;
       saveAutoSyncConfig(
         {
           status: 'offline_deferred',
           statusMessage: isServerUnreachable
-            ? 'تم حفظ وتأمين البيانات محلياً - تعذر الوصول للسيرفر السحابي (سيُعاد المحاولة تلقائياً)'
+            ? isTimeout
+              ? 'تم حفظ وتأمين البيانات محلياً - انتهت مهلة الاتصال بالسيرفر السحابي (سيُعاد المحاولة تلقائياً)'
+              : 'تم حفظ وتأمين البيانات محلياً - تعذر الوصول للسيرفر السحابي (سيُعاد المحاولة تلقائياً)'
             : 'محفوظ محلياً بأمان - لا يوجد اتصال إنترنت (ستتم المزامنة السحابية فور عودة الاتصال)',
           lastSyncTime: localPackage.lastSyncTime,
           autoRetryOnReconnect: true,
           hasPendingChanges: latestQ.localMutationSeq > latestQ.lastSyncedMutationSeq,
-          lastErrorCode: failureReason.slice(0, 64),
+          lastErrorCode: isTimeout ? 'REQUEST_TIMEOUT' : failureReason.slice(0, 64),
         },
         targetUserId
       );
@@ -2160,8 +2416,11 @@ export async function performFullSync(
 
       return {
         success: false,
+        httpStatus: 0,
         message: isServerUnreachable
-          ? 'تم حفظ وتأمين البيانات محلياً. تعذر الاتصال بالسيرفر السحابي وسيتم إعادة المحاولة تلقائياً عند استقرار الاتصال.'
+          ? isTimeout
+            ? 'تم حفظ وتأمين البيانات محلياً. انتهت مهلة الاتصال بالسيرفر السحابي وسيتم إعادة المحاولة تلقائياً.'
+            : 'تم حفظ وتأمين البيانات محلياً. تعذر الاتصال بالسيرفر السحابي وسيتم إعادة المحاولة تلقائياً عند استقرار الاتصال.'
           : 'تم حفظ وتأمين البيانات محلياً، وستتم المزامنة السحابية عند استقرار الشبكة.',
         dataPackage: localPackage,
         isOffline: true,
@@ -2187,17 +2446,33 @@ export async function pullCloudDataPackageFromServer(
 
   try {
     console.log(`[Sync] Pulling cloud data package for user ${targetUserId} from Cloud Run backend...`);
-    const token = getAuthTokenForUser(targetUserId);
+    let token = getAuthTokenForUser(targetUserId);
+    if (!token) {
+      const refreshAttempt = await trySilentTokenRefresh(targetUserId);
+      if (refreshAttempt.refreshed && refreshAttempt.token) {
+        token = refreshAttempt.token;
+      }
+    }
     const pullUrl = getFullApiUrl('/api/sync/pull');
 
-    const res = await universalApiFetch(pullUrl, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'x-auth-token': token,
-      },
-      timeoutMs: 15000,
-    });
+    const doPull = (authTok: string) =>
+      universalApiFetch(pullUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authTok}`,
+          'x-auth-token': authTok,
+        },
+        timeoutMs: 25000,
+      });
+
+    let res = await doPull(token);
+    if (res.status === 401) {
+      const refreshAttempt = await trySilentTokenRefresh(targetUserId);
+      if (refreshAttempt.refreshed && refreshAttempt.token) {
+        token = refreshAttempt.token;
+        res = await doPull(token);
+      }
+    }
 
     if (res.status === 401) {
       const latestQ = getSyncQueueState(targetUserId);
@@ -2231,7 +2506,7 @@ export async function loginWithServerApi(credentials: {
   email?: string;
   name?: string;
   password?: string;
-}): Promise<{ success: boolean; token?: string; user?: any; error?: string }> {
+}): Promise<{ success: boolean; token?: string; refreshToken?: string; user?: any; error?: string }> {
   const loginUrl = getFullApiUrl('/api/auth/login');
   try {
     console.log(`[Auth] Logging in via server API at ${loginUrl}...`);
@@ -2245,7 +2520,7 @@ export async function loginWithServerApi(credentials: {
     if (res.ok && res.data) {
       const data = res.data;
       if (data.success) {
-        return { success: true, token: data.token, user: data.user };
+        return { success: true, token: data.token, refreshToken: data.refreshToken, user: data.user };
       }
       return { success: false, error: data.error || 'Login failed' };
     } else {
@@ -6560,6 +6835,8 @@ export const db = {
           paymentsCount: restoredPayments.length,
         });
 
+        lastSyncedAccountSnapshot.delete(targetUserId);
+        syncDirtyCounter++;
         autoSyncUserAccount(targetUserId);
         try {
           notificationDomainHooks?.onScheduleChanged?.(targetUserId);
@@ -6677,23 +6954,53 @@ export const db = {
 
   // 10. User Accounts & Authentication System (Server-Authoritative with Cloud Run & Firestore)
   getAccounts: (): UserAccount[] => {
-    return getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+    let hadLegacyPlaintext = false;
+    const sanitized = accounts.map((a) => {
+      if (a && a.password !== undefined) {
+        hadLegacyPlaintext = true;
+      }
+      return sanitizeStoredAccount(a);
+    });
+    if (hadLegacyPlaintext) {
+      try {
+        saveList(STORAGE_KEYS.ACCOUNTS, sanitized);
+      } catch {}
+    }
+    return sanitized;
   },
 
   saveAccounts: (accounts: UserAccount[]): void => {
-    saveList(STORAGE_KEYS.ACCOUNTS, accounts);
+    saveList(
+      STORAGE_KEYS.ACCOUNTS,
+      accounts.map((a) => sanitizeStoredAccount(a))
+    );
   },
 
   getCurrentSession: (): UserAccount | null => {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
       if (!raw) return null;
-      const user = JSON.parse(raw) as UserAccount;
+      const parsed = JSON.parse(raw) as UserAccount;
+      const hadLegacyPlaintext = parsed && parsed.password !== undefined;
+      const user = sanitizeStoredAccount(parsed);
       if (user && !user.authToken) {
         const storedToken = localStorage.getItem(`tm_v2_auth_token_${user.id}`);
         if (storedToken && storedToken.trim()) {
           user.authToken = storedToken.trim();
         }
+      }
+      if (user && !user.refreshToken) {
+        const storedRefresh = localStorage.getItem(`tm_v2_refresh_token_${user.id}`);
+        if (storedRefresh && storedRefresh.trim()) {
+          user.refreshToken = storedRefresh.trim();
+        }
+      }
+      if (hadLegacyPlaintext) {
+        try {
+          const { syncedData: _drop, ...light } = user;
+          localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(light));
+        } catch {}
       }
       return user;
     } catch {
@@ -6716,21 +7023,25 @@ export const db = {
         });
       } catch {}
     } else {
-      activeUserIdMemo = user.id || 'acc_master_teacher';
+      const cleanUser = sanitizeStoredAccount(user);
+      activeUserIdMemo = cleanUser.id || 'acc_master_teacher';
       dbDomainRevision++;
       clearDerivedFinancialCaches();
-      if (!user.authToken) {
-        const storedToken = localStorage.getItem(`tm_v2_auth_token_${user.id}`);
+      if (!cleanUser.authToken) {
+        const storedToken = localStorage.getItem(`tm_v2_auth_token_${cleanUser.id}`);
         if (storedToken && storedToken.trim()) {
-          user.authToken = storedToken.trim();
+          cleanUser.authToken = storedToken.trim();
         }
       }
-      if (user.authToken && user.authToken.trim()) {
+      if (cleanUser.authToken && cleanUser.authToken.trim()) {
         try {
-          localStorage.setItem(`tm_v2_auth_token_${user.id}`, user.authToken.trim());
+          localStorage.setItem(`tm_v2_auth_token_${cleanUser.id}`, cleanUser.authToken.trim());
         } catch {}
       }
-      const { syncedData: _omitSyncedData, ...lightweightUser } = user;
+      if (cleanUser.refreshToken && cleanUser.refreshToken.trim()) {
+        setRefreshTokenForUser(cleanUser.id, cleanUser.refreshToken);
+      }
+      const { syncedData: _omitSyncedData, ...lightweightUser } = cleanUser;
       localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(lightweightUser));
       if (prevUserId !== activeUserIdMemo) {
         try {
@@ -6782,6 +7093,8 @@ export const db = {
       if (res.ok && res.data && res.data.success && res.data.user) {
         const serverUser = res.data.user;
         const token = (res.data.token && typeof res.data.token === 'string') ? res.data.token.trim() : '';
+        const refreshToken =
+          res.data.refreshToken && typeof res.data.refreshToken === 'string' ? res.data.refreshToken.trim() : '';
 
         const newAccount: UserAccount = {
           id: serverUser.id,
@@ -6790,8 +7103,9 @@ export const db = {
           phone: serverUser.phone || accountData.phone?.trim(),
           subject: serverUser.subject || accountData.subject?.trim(),
           centerOrSchool: serverUser.centerOrSchool || accountData.centerOrSchool?.trim(),
-          password: accountData.password,
+          offlinePasswordHash: createOfflinePasswordVerifier(accountData.password),
           authToken: token,
+          refreshToken,
           recoveryPin: serverUser.recoveryPin || accountData.recoveryPin?.trim() || '123456',
           securityQuestion: accountData.securityQuestion?.trim() || 'ما هي مادتك الدراسية؟',
           securityAnswer: accountData.securityAnswer?.trim() || accountData.subject?.trim() || '',
@@ -6803,19 +7117,27 @@ export const db = {
         if (token) {
           localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
         }
+        if (refreshToken) {
+          setRefreshTokenForUser(serverUser.id, refreshToken);
+        }
         const existing = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []).filter((a) => a.id !== newAccount.id);
         db.saveAccounts([newAccount, ...existing]);
 
-        db.saveTeacherProfile(
-          {
-            name: newAccount.name,
-            subject: newAccount.subject || 'عام',
-            phone: newAccount.phone || '',
-            centerOrSchool: newAccount.centerOrSchool || '',
-            currency: 'ج.م',
-          },
-          newAccount.id
-        );
+        suppressMutationDirtyDepth++;
+        try {
+          db.saveTeacherProfile(
+            {
+              name: newAccount.name,
+              subject: newAccount.subject || 'عام',
+              phone: newAccount.phone || '',
+              centerOrSchool: newAccount.centerOrSchool || '',
+              currency: 'ج.م',
+            },
+            newAccount.id
+          );
+        } finally {
+          suppressMutationDirtyDepth = Math.max(0, suppressMutationDirtyDepth - 1);
+        }
 
         db.setCurrentSession(newAccount);
         saveSyncQueueState({
@@ -6897,17 +7219,19 @@ export const db = {
       });
 
       diag.httpStatus = res.status;
-      console.log('[Auth] 3. HTTP Status:', res.status, 'Response:', res.data);
+      console.log('[Auth] 3. HTTP Status:', res.status, 'Success:', Boolean(res.data?.success));
 
       if (res.ok && res.data && res.data.success && res.data.user) {
         const serverUser = res.data.user;
         const token = (res.data.token && typeof res.data.token === 'string') ? res.data.token.trim() : '';
+        const refreshToken =
+          res.data.refreshToken && typeof res.data.refreshToken === 'string' ? res.data.refreshToken.trim() : '';
 
         diag.loginSuccess = true;
         diag.authenticatedUserId = serverUser.id;
 
         console.log('[Auth] 4. Authentication Result: SUCCESS');
-        console.log('[Auth] 5. Returned User ID:', serverUser.id, 'Email:', serverUser.email);
+        console.log('[Auth] 5. Returned User ID:', serverUser.id);
 
         const userAccount: UserAccount = {
           id: serverUser.id,
@@ -6916,14 +7240,15 @@ export const db = {
           phone: serverUser.phone || '',
           subject: serverUser.subject || 'عام',
           centerOrSchool: serverUser.centerOrSchool || '',
-          password: password,
+          offlinePasswordHash: createOfflinePasswordVerifier(password),
           authToken: token,
+          refreshToken,
           recoveryPin: serverUser.recoveryPin || '123456',
           createdAt: serverUser.createdAt || new Date().toISOString(),
           lastLoginAt: new Date().toISOString(),
         };
 
-        // Cache token locally
+        // Cache tokens locally
         if (token) {
           try {
             localStorage.setItem(`tm_v2_auth_token_${serverUser.id}`, token);
@@ -6932,6 +7257,9 @@ export const db = {
             diag.tokenSaved = false;
           }
         }
+        if (refreshToken) {
+          setRefreshTokenForUser(serverUser.id, refreshToken);
+        }
 
         // Update local accounts array (offline cache)
         const existingAccounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []).filter(
@@ -6939,17 +7267,22 @@ export const db = {
         );
         db.saveAccounts([userAccount, ...existingAccounts]);
 
-        // Save profile
-        db.saveTeacherProfile(
-          {
-            name: userAccount.name,
-            subject: userAccount.subject || 'عام',
-            phone: userAccount.phone || '',
-            centerOrSchool: userAccount.centerOrSchool || '',
-            currency: 'ج.م',
-          },
-          userAccount.id
-        );
+        // Save profile (hydration from server — do not count as dirty local mutation)
+        suppressMutationDirtyDepth++;
+        try {
+          db.saveTeacherProfile(
+            {
+              name: userAccount.name,
+              subject: userAccount.subject || 'عام',
+              phone: userAccount.phone || '',
+              centerOrSchool: userAccount.centerOrSchool || '',
+              currency: 'ج.م',
+            },
+            userAccount.id
+          );
+        } finally {
+          suppressMutationDirtyDepth = Math.max(0, suppressMutationDirtyDepth - 1);
+        }
 
         // Set session
         db.setCurrentSession(userAccount);
@@ -7059,17 +7392,21 @@ export const db = {
         a.name.toLowerCase() === clean.toLowerCase()
     );
 
-    if (cached && cached.password === password) {
+    if (cached && verifyOfflinePasswordVerifier(cached, password)) {
       console.log('[Auth] Logging in via local offline cache...');
-      cached.lastLoginAt = new Date().toISOString();
-      db.saveAccounts(cachedAccounts.map((a) => (a.id === cached.id ? cached : a)));
-      db.setCurrentSession(cached);
-      autoSyncUserAccount(cached.id);
+      const upgradedCached = sanitizeStoredAccount({
+        ...cached,
+        offlinePasswordHash: cached.offlinePasswordHash || createOfflinePasswordVerifier(password),
+        lastLoginAt: new Date().toISOString(),
+      });
+      db.saveAccounts(cachedAccounts.map((a) => (a.id === cached.id ? upgradedCached : a)));
+      db.setCurrentSession(upgradedCached);
+      autoSyncUserAccount(upgradedCached.id);
       diag.loginSuccess = true;
-      diag.authenticatedUserId = cached.id;
+      diag.authenticatedUserId = upgradedCached.id;
       diag.restoreMessage = 'تم الدخول عبر النسخة المحلية المؤقتة (Offline)';
       lastAuthDiagnosticsRecord = diag;
-      return { success: true, user: cached, isOffline: true, diagnostics: diag };
+      return { success: true, user: upgradedCached, isOffline: true, diagnostics: diag };
     }
 
     diag.restoreMessage = 'تعذر الاتصال بالسيرفر السحابي للتحقق من الحساب.';
@@ -7106,13 +7443,14 @@ export const db = {
       });
 
       if (res.ok && res.data && res.data.success) {
-        // Update local cached account if present
+        // Update local cached account verifier if present (never store plaintext password)
         const accounts = getList<UserAccount>(STORAGE_KEYS.ACCOUNTS, []);
+        const newVerifier = createOfflinePasswordVerifier(newPassword);
         const updated = accounts.map((a) => {
           if (a.email.toLowerCase() === clean.toLowerCase() || (a.phone && a.phone.trim() === clean)) {
-            return { ...a, password: newPassword };
+            return sanitizeStoredAccount({ ...a, offlinePasswordHash: newVerifier });
           }
-          return a;
+          return sanitizeStoredAccount(a);
         });
         db.saveAccounts(updated);
         return { success: true };
@@ -7134,10 +7472,11 @@ export const db = {
     if (!user) {
       return { success: false, message: 'User not found' };
     }
-    if (user.password && user.password !== oldPass) {
+    if ((user.offlinePasswordHash || user.password) && !verifyOfflinePasswordVerifier(user, oldPass)) {
       return { success: false, message: 'Current password incorrect' };
     }
-    user.password = newPass;
+    user.offlinePasswordHash = createOfflinePasswordVerifier(newPass);
+    delete user.password;
     db.saveAccounts(accounts);
     return { success: true, message: 'Password changed successfully' };
   },

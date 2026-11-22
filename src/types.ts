@@ -827,8 +827,11 @@ export interface UserAccount {
   phone?: string;
   subject?: string;
   centerOrSchool?: string;
+  /** @deprecated Never persist plaintext passwords locally; kept optional only for legacy in-memory migration */
   password?: string;
+  offlinePasswordHash?: string;
   authToken?: string;
+  refreshToken?: string;
   recoveryPin?: string;
   securityQuestion?: string;
   securityAnswer?: string;

@@ -15,13 +15,14 @@ import {
   saveCloudDataPackage,
   mergeCloudDataPackage,
   resetUserCloudData,
+  refreshSessionToken,
   ServerUser,
 } from "./server/db";
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Enable CORS so Android Capacitor APK (https://localhost, capacitor://localhost, etc.) can reach the server APIs
 app.use(
@@ -129,6 +130,8 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
       token = String(req.headers["x-auth-token"]).trim();
     } else if (req.body && req.body.token) {
       token = String(req.body.token).trim();
+    } else if (req.query && req.query.token) {
+      token = String(req.query.token).trim();
     }
 
     if (!token) {
@@ -193,12 +196,13 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    const { user, token } = await authenticateUser(identifier, rawBody.password);
-    console.log(`[Auth Diagnostic] Login successful! User ID: ${user.id}, Email: ${user.email}`);
+    const { user, token, refreshToken } = await authenticateUser(identifier, rawBody.password);
+    console.log(`[Auth Diagnostic] Login successful! User ID: ${user.id}`);
 
     res.json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -274,7 +278,7 @@ app.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    const { user, token } = await registerUser({
+    const { user, token, refreshToken } = await registerUser({
       id,
       email,
       name,
@@ -290,6 +294,7 @@ app.post("/api/auth/register", async (req, res) => {
     res.json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -303,11 +308,55 @@ app.post("/api/auth/register", async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error(`[Auth API /api/auth/register] Registration error:`, error);
+    console.error(`[Auth API /api/auth/register] Registration error:`, error?.message || "REGISTRATION_FAILED");
     res.status(400).json({
       success: false,
       error: error.message || "فشل إنشاء الحساب",
       errorCode: error.code || "REGISTRATION_FAILED",
+    });
+  }
+});
+
+app.post("/api/auth/refresh", async (req, res) => {
+  try {
+    const rawBody = req.body || {};
+    const incomingRefreshToken = String(rawBody.refreshToken || "").trim();
+    if (!incomingRefreshToken) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Missing refresh token.",
+      });
+    }
+
+    const refreshed = await refreshSessionToken(incomingRefreshToken);
+    if (!refreshed) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Invalid or expired refresh token.",
+      });
+    }
+
+    res.json({
+      success: true,
+      token: refreshed.token,
+      refreshToken: refreshed.refreshToken,
+      user: {
+        id: refreshed.user.id,
+        email: refreshed.user.email,
+        name: refreshed.user.name,
+        phone: refreshed.user.phone || "",
+        subject: (refreshed.user as any).subject || "عام",
+        centerOrSchool: (refreshed.user as any).centerOrSchool || "",
+        recoveryPin: refreshed.user.recovery_pin || "123456",
+        createdAt: refreshed.user.created_at,
+        lastLoginAt: refreshed.user.updated_at,
+      },
+    });
+  } catch (error: any) {
+    console.warn("[Auth API /api/auth/refresh] Refresh failed:", error?.message || "REFRESH_FAILED");
+    return res.status(401).json({
+      success: false,
+      error: "Unauthorized: Session refresh failed.",
     });
   }
 });
@@ -328,7 +377,7 @@ app.post("/api/auth/sync-session", async (req, res) => {
     const userId = id || `acc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const userEmail = email || `${userId}@teachermanager.local`;
 
-    const { user, token } = await registerOrAuthenticateUser({
+    const { user, token, refreshToken } = await registerOrAuthenticateUser({
       id: userId,
       email: userEmail,
       name: name || "معلم",
@@ -337,9 +386,9 @@ app.post("/api/auth/sync-session", async (req, res) => {
       recoveryPin,
     });
 
-    res.json({ success: true, token, user: { id: user.id, email: user.email, name: user.name } });
+    res.json({ success: true, token, refreshToken, user: { id: user.id, email: user.email, name: user.name } });
   } catch (error: any) {
-    console.error("Auth sync error:", error);
+    console.error("Auth sync error:", error?.message || error);
     res.status(500).json({ success: false, error: error.message || "Failed to authenticate session" });
   }
 });
@@ -365,11 +414,24 @@ function validateIncomingSyncPackage(pkg: unknown): string | null {
   }
   const obj = pkg as Record<string, unknown>;
   for (const field of SYNC_COLLECTION_ARRAY_FIELDS) {
-    if (obj[field] !== undefined && !Array.isArray(obj[field])) {
+    if (obj[field] !== undefined && obj[field] !== null && !Array.isArray(obj[field])) {
       return `Invalid dataPackage.${field}: expected an array`;
     }
   }
   return null;
+}
+
+function formatSyncRouteError(error: any, fallbackMessage: string) {
+  const msg = String(error?.message || fallbackMessage);
+  const isSizeError =
+    msg.includes("maximum allowed size") ||
+    msg.includes("1,048,576") ||
+    msg.includes("INVALID_ARGUMENT");
+  return {
+    status: isSizeError ? 413 : 500,
+    errorCode: isSizeError ? "FIRESTORE_DOC_TOO_LARGE" : "CLOUD_SYNC_SERVER_ERROR",
+    error: msg,
+  };
 }
 
 // 1. Cloud Sync Push (Persists directly into Firebase Firestore)
@@ -379,14 +441,15 @@ app.post("/api/sync/push", requireAuth, async (req, res) => {
     const { dataPackage } = req.body;
     const validationError = validateIncomingSyncPackage(dataPackage);
     if (validationError) {
-      return res.status(400).json({ success: false, error: validationError });
+      return res.status(400).json({ success: false, errorCode: "INVALID_SYNC_PACKAGE", error: validationError });
     }
 
     const result = await saveCloudDataPackage(authenticatedUserId, dataPackage);
     res.json({ success: true, lastSyncTime: result.lastSyncTime, stats: result.stats });
   } catch (error: any) {
     console.error("Sync push error:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to push sync data" });
+    const formatted = formatSyncRouteError(error, "Failed to push sync data");
+    res.status(formatted.status).json({ success: false, errorCode: formatted.errorCode, error: formatted.error });
   }
 });
 
@@ -402,7 +465,8 @@ app.get("/api/sync/pull", requireAuth, async (req, res) => {
     res.json({ success: true, hasCloudData: true, dataPackage: cloudData });
   } catch (error: any) {
     console.error("Sync pull error:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
+    const formatted = formatSyncRouteError(error, "Failed to pull sync data");
+    res.status(formatted.status).json({ success: false, errorCode: formatted.errorCode, error: formatted.error });
   }
 });
 
@@ -418,7 +482,8 @@ app.get("/api/sync/pull/:userId", requireAuth, async (req, res) => {
     res.json({ success: true, hasCloudData: true, dataPackage: cloudData });
   } catch (error: any) {
     console.error("Sync pull error:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to pull sync data" });
+    const formatted = formatSyncRouteError(error, "Failed to pull sync data");
+    res.status(formatted.status).json({ success: false, errorCode: formatted.errorCode, error: formatted.error });
   }
 });
 
@@ -429,14 +494,15 @@ app.post("/api/sync/merge", requireAuth, async (req, res) => {
     const { dataPackage } = req.body;
     const validationError = validateIncomingSyncPackage(dataPackage);
     if (validationError) {
-      return res.status(400).json({ success: false, error: validationError });
+      return res.status(400).json({ success: false, errorCode: "INVALID_SYNC_PACKAGE", error: validationError });
     }
 
     const result = await mergeCloudDataPackage(authenticatedUserId, dataPackage);
     res.json({ success: true, dataPackage: result.dataPackage, merged: result.merged });
   } catch (error: any) {
     console.error("Sync merge error:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to merge sync data" });
+    const formatted = formatSyncRouteError(error, "Failed to merge sync data");
+    res.status(formatted.status).json({ success: false, errorCode: formatted.errorCode, error: formatted.error });
   }
 });
 
@@ -456,7 +522,8 @@ app.post("/api/sync/reset", requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     console.error("Sync reset error:", error);
-    res.status(500).json({ success: false, error: error.message || "Failed to reset cloud sync data" });
+    const formatted = formatSyncRouteError(error, "Failed to reset cloud sync data");
+    res.status(formatted.status).json({ success: false, errorCode: formatted.errorCode, error: formatted.error });
   }
 });
 

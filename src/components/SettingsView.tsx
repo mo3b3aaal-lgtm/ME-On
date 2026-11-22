@@ -641,7 +641,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const syncStatus = formatSyncStatusArabic(
-    autoSyncConfig.lastSyncStatus,
+    autoSyncConfig.status,
     networkStatus.isOnline,
     networkStatus.statusReason
   );
@@ -671,7 +671,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <SyncStatusPill
           isOnline={networkStatus.isOnline}
-          syncStatus={autoSyncConfig.lastSyncStatus}
+          syncStatus={autoSyncConfig.status}
           lastSyncTime={lastSyncTime || undefined}
           onClick={handleSyncNow}
         />
@@ -1117,7 +1117,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <SettingsSyncStatusSkeleton />
                 ) : (
                   <p className="t-meta text-slate text-xs mt-0.5">
-                    {syncStatus.label}
+                    {(autoSyncConfig.status === 'error' ||
+                      autoSyncConfig.status === 'auth_expired' ||
+                      autoSyncConfig.status === 'offline_deferred') &&
+                    autoSyncConfig.statusMessage
+                      ? autoSyncConfig.statusMessage
+                      : syncStatus.label}
                   </p>
                 )}
               </div>

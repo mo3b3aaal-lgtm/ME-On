@@ -203,7 +203,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const res = await performFullSync(undefined, true);
       setSyncConfig(getAutoSyncConfig());
       if (res.isOffline) {
-        showQuickFeedback(isEn ? 'Data saved safely locally (Device currently offline)' : 'تم حفظ البيانات محلياً بأمان - الجهاز غير متصل بالإنترنت حالياً');
+        showQuickFeedback(
+          res.message ||
+            (isEn
+              ? 'Data saved safely locally (Device currently offline)'
+              : 'تم حفظ البيانات محلياً بأمان - تعذر الوصول للسيرفر السحابي حالياً')
+        );
       } else if (res.success) {
         showQuickFeedback(isEn ? 'Cloud sync completed successfully!' : 'تمت المزامنة السحابية بنجاح وتحديث السجلات الدائمة!');
         onDataChanged?.();
